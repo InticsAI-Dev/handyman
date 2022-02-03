@@ -69,7 +69,8 @@ Action:
 	| Terminal
 	| NLPTextPreprocessing
 	| DropboxCleanup
-	| Mongo2Db);
+	| Mongo2Db
+	| SharePoint);
 
 DeleteFolder:
 	'deletefolder' 'as' name=STRING 'folder' foldersource=STRING 'zipfile' zipsource=STRING
@@ -352,6 +353,14 @@ Mongo2Db:
 	'transpose-table' transposeTable=STRING 'using'
 	'{'
 	value=SelectStatement
+	'}' 'on-condition' condition=Expression;
+	
+SharePoint:
+	'sharepoint' 'as' name=STRING 'client-id' shpClientId=STRING 'tenant-id' shpTenantId=STRING 'client-secret' shpClientSecret=STRING 
+	'org-name' orgName=STRING 'action-type' actionType=STRING 'site-url' siteUrl=STRING 'source-relative-path' sourceRelativePath=STRING 
+	'file-name' fileName=STRING 'target-relative-path' targetRelativePath=STRING 'using'
+	'{'
+		value=SelectStatement
 	'}' 'on-condition' condition=Expression;
 
 Column:
