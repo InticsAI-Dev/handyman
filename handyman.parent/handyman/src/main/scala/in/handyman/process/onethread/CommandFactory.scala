@@ -54,6 +54,8 @@ object CommandFactory {
       case "dropboxcleanup" => new DropboxCleanupAction
       case "mongo2db" => new Mongo2DbAction
       case "sharepoint" => new SharePointAction
+      case "ftp" => new FTPAction
+      case "sftp" => new SFTPAction
     }
   }
 }

@@ -70,7 +70,9 @@ Action:
 	| NLPTextPreprocessing
 	| DropboxCleanup
 	| Mongo2Db
-	| SharePoint);
+	| SharePoint
+	| FTP
+	| SFTP);
 
 DeleteFolder:
 	'deletefolder' 'as' name=STRING 'folder' foldersource=STRING 'zipfile' zipsource=STRING
@@ -353,6 +355,22 @@ Mongo2Db:
 	'transpose-table' transposeTable=STRING 'using'
 	'{'
 	value=SelectStatement
+	'}' 'on-condition' condition=Expression;
+	
+FTP:
+	'ftp' 'as' name=STRING 'host' host=STRING 'port' port=STRING 'username' username=STRING 'password' password=STRING
+	'action' action=STRING 'local-dir' localDir=STRING 'local-file' localFile=STRING 'remote-dir' remoteDir=STRING
+	'remote-file' remoteFile=STRING 'using'
+	'{'
+	value=STRING
+	'}' 'on-condition' condition=Expression;
+	
+SFTP:
+	'sftp' 'as' name=STRING 'host' host=STRING 'port' port=STRING 'username' username=STRING 'password' password=STRING
+	'action' action=STRING 'local-dir' localDir=STRING 'local-file' localFile=STRING 'remote-dir' remoteDir=STRING
+	'remote-file' remoteFile=STRING 'known-hosts' knownHosts=STRING 'using'
+	'{'
+	value=STRING
 	'}' 'on-condition' condition=Expression;
 	
 SharePoint:
