@@ -56,6 +56,7 @@ object CommandFactory {
       case "sharepoint" => new SharePointAction
       case "ftp" => new FTPAction
       case "sftp" => new SFTPAction
+      case "loadcsvintotable" => new LoadCsvIntoTableAction
     }
   }
 }

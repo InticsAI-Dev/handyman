@@ -72,7 +72,8 @@ Action:
 	| Mongo2Db
 	| SharePoint
 	| FTP
-	| SFTP);
+	| SFTP
+	| LoadCsvIntoTable);
 
 DeleteFolder:
 	'deletefolder' 'as' name=STRING 'folder' foldersource=STRING 'zipfile' zipsource=STRING
@@ -341,7 +342,7 @@ LoadCsv:
 	'{'
 	value=SelectStatement
 	'}' 'on-condition' condition=Expression;
-
+	
 Transform:
 	'transform' 'as' name=STRING 'on' on=STRING 'using'
 	'{'
@@ -377,6 +378,13 @@ SharePoint:
 	'sharepoint' 'as' name=STRING 'client-id' shpClientId=STRING 'tenant-id' shpTenantId=STRING 'client-secret' shpClientSecret=STRING 
 	'org-name' orgName=STRING 'action-type' actionType=STRING 'site-url' siteUrl=STRING 'source-relative-path' sourceRelativePath=STRING 
 	'file-name' fileName=STRING 'target-relative-path' targetRelativePath=STRING 'using'
+	'{'
+		value=SelectStatement
+	'}' 'on-condition' condition=Expression;
+	
+LoadCsvIntoTable:
+	'loadcsvintotable' 'as' name=STRING 'csv-file' csvFile=STRING 'target-table' targetTable=STRING 'with' delim=STRING 'by-batch' limit=STRING
+	'target-db' targetDb=STRING 'using'
 	'{'
 		value=SelectStatement
 	'}' 'on-condition' condition=Expression;
