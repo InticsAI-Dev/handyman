@@ -67,7 +67,6 @@ class SFTPAction extends in.handyman.command.Action with LazyLogging {
         channelSftp.disconnect()
       }
     }
-    System.out.println("ih")
     context
   }
 
