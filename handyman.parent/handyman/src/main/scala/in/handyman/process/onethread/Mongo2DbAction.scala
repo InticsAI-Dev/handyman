@@ -291,14 +291,24 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
           System.out.println("array element5....."+ gson.toJson(colValObj));
           System.out.println("array element6....."+ gson.toJson(colValObj, new TypeToken[ArrayList[_]]() {}.getType()))*/
 
-          val jsonArray : JSONArray = new JSONArray(colValObj);
+          //val jsonArray : JSONArray = new JSONArray(colValObj);
+         
           /*logger.info("array element1....."+jsonArray.toString());
           System.out.println("array element2....."+(new JSONArray(colValObj.toArray())).toString());
           System.out.println("array element3....."+(new JSONArray(colValObj.toArray())).toString());*/
           /*colValStr = ""
           colValObj.forEach(colValO => colValStr = colValStr + colValO.toString() + "|")
           queryAppend = queryAppend + "\'" + colValStr.substring(0, colValStr.length()-1) + "\'" + ","*/
-          queryAppend = queryAppend + "\'" + jsonArray.toString() + "\'" + ","
+          
+          val jsonArr : ArrayList[String]  = new java.util.ArrayList[String];
+	    		val obj1 : ArrayList[Document] = colValObj.asInstanceOf[ArrayList[Document]];
+	    		val iter : java.util.Iterator[Document] = obj1.iterator();
+	    		while(iter.hasNext()) {
+	    			val dc : Document = iter.next().asInstanceOf[Document];
+	    			jsonArr.add(dc.toJson());
+	    		}
+		    		
+          queryAppend = queryAppend + "\'" + jsonArr.toString() + "\'" + ","
         } else {
           queryAppend = queryAppend + null + ","
         }
