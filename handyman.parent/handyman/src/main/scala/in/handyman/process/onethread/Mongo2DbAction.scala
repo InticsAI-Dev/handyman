@@ -301,11 +301,14 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
           queryAppend = queryAppend + "\'" + colValStr.substring(0, colValStr.length()-1) + "\'" + ","*/
           
           val jsonArr : ArrayList[String]  = new java.util.ArrayList[String];
-	    		val obj1 : ArrayList[Document] = colValObj.asInstanceOf[ArrayList[Document]];
-	    		val iter : java.util.Iterator[Document] = obj1.iterator();
+	    		val obj1 : ArrayList[_] = colValObj.asInstanceOf[ArrayList[_]];
+	    		val iter : java.util.Iterator[_] = obj1.iterator();
 	    		while(iter.hasNext()) {
-	    			val dc : Document = iter.next().asInstanceOf[Document];
-	    			jsonArr.add(dc.toJson());
+	    			val dc = iter.next();
+	    			if(dc.isInstanceOf[Document])
+	    			  jsonArr.add(dc.asInstanceOf[Document].toJson());
+	    			else 
+	    			  jsonArr.add(dc.toString());
 	    		}
 		    		
           queryAppend = queryAppend + "\'" + jsonArr.toString() + "\'" + ","
