@@ -305,7 +305,7 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
 	    		val iter : java.util.Iterator[_] = obj1.iterator();
 	    		while(iter.hasNext()) {
 	    			val dc = iter.next();
-	    			if(dc.isInstanceOf[Document])
+	    			if(dc != null && dc.isInstanceOf[Document])
 	    			  jsonArr.add(dc.asInstanceOf[Document].toJson());
 	    			else 
 	    			  jsonArr.add(dc.toString());
