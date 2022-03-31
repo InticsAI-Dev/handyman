@@ -1,16 +1,19 @@
 package in.handyman.process.onethread
 
-import com.typesafe.scalalogging.LazyLogging
-import in.handyman.dsl.Action
-import in.handyman.command.Context
-import in.handyman.util.ResourceAccess
-import in.handyman.command.CommandProxy
-import in.handyman.util.ParameterisationEngine
-import in.handyman.util.ExceptionUtil
 import java.sql.SQLException
-import org.slf4j.MarkerFactory
 import java.sql.SQLSyntaxErrorException
+
+import org.slf4j.MarkerFactory
+
+import com.typesafe.scalalogging.LazyLogging
+
 import in.handyman.audit.AuditService
+import in.handyman.command.CommandProxy
+import in.handyman.command.Context
+import in.handyman.dsl.Action
+import in.handyman.util.ExceptionUtil
+import in.handyman.util.ParameterisationEngine
+import in.handyman.util.ResourceAccess
 
 class TransformAction extends in.handyman.command.Action with LazyLogging {
   val detailMap = new java.util.HashMap[String, String]
@@ -37,7 +40,11 @@ class TransformAction extends in.handyman.command.Action with LazyLogging {
       while (iter.hasNext) {
         val sqlWithoutQuotes = iter.next.replaceAll("\"", "")
         val sqlList = sqlWithoutQuotes.split(";")
-        sqlList.foreach { sql =>
+        sqlList.foreach {sql1 =>
+          var sql = sql1;
+          if(dbSrc.contains("mssql"))
+            sql = sql + ";"
+            
           if (!sql.trim.isEmpty()) {
             logger.info(aMarker, "Transform id#{}, executing script {}", id, sql.trim)
             val statementId = AuditService.insertStatementAudit(actionId, "transform->"+name, context.getValue("process-name"))

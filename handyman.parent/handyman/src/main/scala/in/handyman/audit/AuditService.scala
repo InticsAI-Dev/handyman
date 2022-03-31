@@ -1,11 +1,13 @@
 package in.handyman.audit
 
-import in.handyman.config.ConfigurationService
-import java.sql.DriverManager
 import java.sql.Statement
-import in.handyman.util.ResourceAccess
-import com.typesafe.scalalogging.LazyLogging
+
 import org.slf4j.MarkerFactory
+
+import com.typesafe.scalalogging.LazyLogging
+
+import in.handyman.config.ConfigurationService
+import in.handyman.util.ResourceAccess
 
 object AuditService extends LazyLogging{
 
@@ -191,4 +193,30 @@ object AuditService extends LazyLogging{
     }
   }
   
+  def insertRestApiResponse(response: String, processId: Int, restApi: in.handyman.dsl.RestApi) = {
+    val conn = ResourceAccess.rdbmsConn(restApi.getResponseLogDb)
+    conn.setAutoCommit(false)
+    val st = conn.prepareStatement("INSERT INTO " + restApi.getResponseLogTable + " (process_id, api_type, url, header, body, method, " + 
+                                    "url_param, response, createdat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW());")
+    try {
+      st.setInt(1, processId)
+      st.setString(2, restApi.getName)
+      st.setString(3, restApi.getUrl)
+      st.setString(4, restApi.getHeaders)
+      st.setString(5, restApi.getBody)
+      st.setString(6, restApi.getMethod)
+      st.setString(7, restApi.getUrlParam)
+      st.setString(8, response)
+      st.executeUpdate()
+      
+      conn.commit
+    } catch {
+      case t: Throwable =>
+        t.printStackTrace()
+        0
+    } finally {
+      st.close();
+      conn.close()
+    }
+  }
 }

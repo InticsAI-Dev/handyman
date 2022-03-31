@@ -32,6 +32,7 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
         val delim = loadCsvIntoTable.getDelim
         var limit = loadCsvIntoTable.getLimit.toInt
         val targetTable = loadCsvIntoTable.getTargetTable
+        val loadWithCsvSchema = loadCsvIntoTable.getLoadWithCsvSchema
         
         dbConn = ResourceAccess.rdbmsConn(targetDb)
         dbConn.setAutoCommit(false)
@@ -41,13 +42,19 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
         val reader: CSVReader = new CSVReader(new FileReader(csvFile))
         
         var nextLine: Array[String] = null
-        val firstLine: Array[String] = reader.readNext()
+        val headerLine: Array[String] = reader.readNext()
+        val csvSchema : LinkedHashMap[String, Int] = getCsvSchema(headerLine)
         
         var lineText : String = null;
         var rowCount : Int = 0;
         while ({ nextLine = reader.readNext(); nextLine != null }) {
           if(nextLine.size > 1) {
-            var insertStmt : String = getInsertStmt(targetTable, tableSchema, nextLine) 
+            var insertStmt : String = ""
+            if(loadWithCsvSchema.equalsIgnoreCase("true"))
+              insertStmt = getInsertStmtWithCsvSchema(targetTable, tableSchema, csvSchema, nextLine) 
+            else 
+              insertStmt = getInsertStmt(targetTable, tableSchema, nextLine) 
+            
             stmt.addBatch(insertStmt)
             
             rowCount += 1
@@ -119,6 +126,41 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
     return insertStmt.toString()
   }
   
+  def getInsertStmtWithCsvSchema(tableName : String, tableSchema : LinkedHashMap[String, String], csvSchema : LinkedHashMap[String, Int], 
+      values : Array[String]) : String = {
+    var insertStmt: StringBuilder = new StringBuilder()
+    insertStmt.append("INSERT INTO ").append(tableName).append(Constants.INSERT_STMT_VALUE_START)
+    
+    var colList : StringBuilder = new StringBuilder()
+    var colValList : StringBuilder = new StringBuilder()
+    
+    tableSchema.keySet().forEach(colName => {
+      val colPos = csvSchema.get(colName)
+      
+      colList.append(colName).append(Constants.FIELD_SEPARATOR)
+      
+      var colVal : String = values.apply(colPos).replace("'", "''");
+      tableSchema.get(colName).toLowerCase match {
+        case Constants.STRING_DATATYPE => colValList.append(Constants.STRING_ENCLOSER).
+          append(colVal).append(Constants.STRING_ENCLOSER)
+        case "datetime" => colValList.append(Constants.STRING_ENCLOSER).
+          append(colVal).append(Constants.STRING_ENCLOSER)
+        case "date" => colValList.append(Constants.STRING_ENCLOSER).
+          append(colVal).append(Constants.STRING_ENCLOSER)
+        case "timestamp" => colValList.append(Constants.STRING_ENCLOSER).
+          append(colVal).append(Constants.STRING_ENCLOSER)
+        case _ => colValList.append(colVal)
+      }
+      
+      colValList.append(Constants.FIELD_SEPARATOR)
+    })
+    
+    insertStmt.append(colList.substring(0, colList.length-1)).append(") VALUES").append(Constants.INSERT_STMT_VALUE_START)
+    insertStmt.append(colValList.substring(0, colValList.length-1)).append(Constants.INSERT_STMT_VALUE_END)
+
+    return insertStmt.toString()
+  }
+  
   def getTableSchema(tableName : String): LinkedHashMap[String, String] = {
     var tableSchema : LinkedHashMap[String, String] = new LinkedHashMap[String, String]();
     val schemaSQL : String = "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '"+ tableName + 
@@ -132,6 +174,20 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
     }
     
     return tableSchema 
+  }
+  
+  def getCsvSchema(headerLine : Array[String]): LinkedHashMap[String, Int] = {
+    var csvSchema : LinkedHashMap[String, Int] = new LinkedHashMap[String, Int]();
+    
+    if(headerLine != null) {
+      var colPosition : Int = 0;
+      headerLine.foreach(headerCol => {
+        csvSchema.put(headerCol, colPosition)
+        colPosition = colPosition + 1
+      })
+    }
+    
+    return csvSchema 
   }
   
   def executeIf(context: Context, action: in.handyman.dsl.Action): Boolean = {

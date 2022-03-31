@@ -73,7 +73,9 @@ Action:
 	| SharePoint
 	| FTP
 	| SFTP
-	| LoadCsvIntoTable);
+	| LoadCsvIntoTable
+	| RestApi
+	| Shell);
 
 DeleteFolder:
 	'deletefolder' 'as' name=STRING 'folder' foldersource=STRING 'zipfile' zipsource=STRING
@@ -384,7 +386,20 @@ SharePoint:
 	
 LoadCsvIntoTable:
 	'loadcsvintotable' 'as' name=STRING 'csv-file' csvFile=STRING 'target-table' targetTable=STRING 'with' delim=STRING 'by-batch' limit=STRING
-	'target-db' targetDb=STRING 'using'
+	'target-db' targetDb=STRING 'load-with-csv-schema' loadWithCsvSchema=STRING 'using'
+	'{'
+		value=SelectStatement
+	'}' 'on-condition' condition=Expression;
+	
+RestApi:
+	'restapi' 'as' name=STRING 'url' url=STRING 'method' method=STRING 'headers' headers=STRING 'body' body=STRING 'url-param' urlParam=STRING 
+	'response-log-db' responseLogDb=STRING 'response-log-table' responseLogTable=STRING 'using'
+	'{'
+		value=SelectStatement
+	'}' 'on-condition' condition=Expression;
+	
+Shell:
+	'shell' 'as' name=STRING 'command' command=STRING 'timeout' timeout=STRING 'using'
 	'{'
 		value=SelectStatement
 	'}' 'on-condition' condition=Expression;

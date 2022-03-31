@@ -57,6 +57,8 @@ object CommandFactory {
       case "ftp" => new FTPAction
       case "sftp" => new SFTPAction
       case "loadcsvintotable" => new LoadCsvIntoTableAction
+      case "restapi" => new RestApiAction
+      case "shell" => new ShellAction
     }
   }
 }
