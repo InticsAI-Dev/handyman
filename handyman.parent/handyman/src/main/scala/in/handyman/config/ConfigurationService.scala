@@ -31,8 +31,8 @@ object ConfigurationService extends LazyLogging {
   private val allQueryProcess= conf.getString("mysql.process_sql")
   private val allQueryInstance= conf.getString("mysql.instance_sql")
   private val resourceConfig = conf.getString("mysql.resource_sql")
-  
-  
+
+
   Class.forName(driver)  
   
   def getConfig(processName:String, key:String): String = 

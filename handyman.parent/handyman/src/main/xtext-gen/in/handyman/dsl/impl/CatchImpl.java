@@ -9,7 +9,6 @@ import in.handyman.dsl.DslPackage;
 
 import java.util.Collection;
 
-import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
 
 import org.eclipse.emf.common.util.EList;
@@ -17,7 +16,6 @@ import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.InternalEObject;
 
-import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
@@ -31,7 +29,6 @@ import org.eclipse.emf.ecore.util.InternalEList;
  * The following features are implemented:
  * </p>
  * <ul>
- *   <li>{@link in.handyman.dsl.impl.CatchImpl#getName <em>Name</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.CatchImpl#getAction <em>Action</em>}</li>
  * </ul>
  *
@@ -39,26 +36,6 @@ import org.eclipse.emf.ecore.util.InternalEList;
  */
 public class CatchImpl extends MinimalEObjectImpl.Container implements Catch
 {
-  /**
-   * The default value of the '{@link #getName() <em>Name</em>}' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see #getName()
-   * @generated
-   * @ordered
-   */
-  protected static final String NAME_EDEFAULT = null;
-
-  /**
-   * The cached value of the '{@link #getName() <em>Name</em>}' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see #getName()
-   * @generated
-   * @ordered
-   */
-  protected String name = NAME_EDEFAULT;
-
   /**
    * The cached value of the '{@link #getAction() <em>Action</em>}' containment reference list.
    * <!-- begin-user-doc -->
@@ -88,29 +65,6 @@ public class CatchImpl extends MinimalEObjectImpl.Container implements Catch
   protected EClass eStaticClass()
   {
     return DslPackage.Literals.CATCH;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public String getName()
-  {
-    return name;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public void setName(String newName)
-  {
-    String oldName = name;
-    name = newName;
-    if (eNotificationRequired())
-      eNotify(new ENotificationImpl(this, Notification.SET, DslPackage.CATCH__NAME, oldName, name));
   }
 
   /**
@@ -153,8 +107,6 @@ public class CatchImpl extends MinimalEObjectImpl.Container implements Catch
   {
     switch (featureID)
     {
-      case DslPackage.CATCH__NAME:
-        return getName();
       case DslPackage.CATCH__ACTION:
         return getAction();
     }
@@ -172,9 +124,6 @@ public class CatchImpl extends MinimalEObjectImpl.Container implements Catch
   {
     switch (featureID)
     {
-      case DslPackage.CATCH__NAME:
-        setName((String)newValue);
-        return;
       case DslPackage.CATCH__ACTION:
         getAction().clear();
         getAction().addAll((Collection<? extends Action>)newValue);
@@ -193,9 +142,6 @@ public class CatchImpl extends MinimalEObjectImpl.Container implements Catch
   {
     switch (featureID)
     {
-      case DslPackage.CATCH__NAME:
-        setName(NAME_EDEFAULT);
-        return;
       case DslPackage.CATCH__ACTION:
         getAction().clear();
         return;
@@ -213,29 +159,10 @@ public class CatchImpl extends MinimalEObjectImpl.Container implements Catch
   {
     switch (featureID)
     {
-      case DslPackage.CATCH__NAME:
-        return NAME_EDEFAULT == null ? name != null : !NAME_EDEFAULT.equals(name);
       case DslPackage.CATCH__ACTION:
         return action != null && !action.isEmpty();
     }
     return super.eIsSet(featureID);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  @Override
-  public String toString()
-  {
-    if (eIsProxy()) return super.toString();
-
-    StringBuffer result = new StringBuffer(super.toString());
-    result.append(" (name: ");
-    result.append(name);
-    result.append(')');
-    return result.toString();
   }
 
 } //CatchImpl

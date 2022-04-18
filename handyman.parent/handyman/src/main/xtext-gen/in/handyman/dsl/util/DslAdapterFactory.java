@@ -7,36 +7,39 @@ import in.handyman.dsl.Abort;
 import in.handyman.dsl.Action;
 import in.handyman.dsl.Callprocess;
 import in.handyman.dsl.Catch;
-import in.handyman.dsl.ClickSendSms;
+import in.handyman.dsl.Checksum;
 import in.handyman.dsl.Copydata;
+import in.handyman.dsl.DeleteFolder;
+import in.handyman.dsl.DeleteSql;
 import in.handyman.dsl.Doozle;
+import in.handyman.dsl.DropSql;
 import in.handyman.dsl.Dropfile;
 import in.handyman.dsl.DslPackage;
-import in.handyman.dsl.ElasticFBCLead;
-import in.handyman.dsl.ElasticGET;
 import in.handyman.dsl.ExecJava;
 import in.handyman.dsl.Expression;
-import in.handyman.dsl.FBCLead;
-import in.handyman.dsl.FBFormDownload;
+import in.handyman.dsl.FTP;
 import in.handyman.dsl.Fetch;
 import in.handyman.dsl.Finally;
-import in.handyman.dsl.FirebaseDatabasePut;
-import in.handyman.dsl.FirebaseReactiveNotification;
-import in.handyman.dsl.GooglecalPUT;
-import in.handyman.dsl.GooglecontactPUT;
-import in.handyman.dsl.GooglecontactSelectAll;
+import in.handyman.dsl.Forkprocess;
+import in.handyman.dsl.InsertSql;
+import in.handyman.dsl.JsonDeserialize;
+import in.handyman.dsl.JsonTransform;
+import in.handyman.dsl.ListFiles;
 import in.handyman.dsl.LoadCsv;
+import in.handyman.dsl.Mongo2Db;
+import in.handyman.dsl.Python;
 import in.handyman.dsl.Rest;
+import in.handyman.dsl.RestApi;
 import in.handyman.dsl.RestPart;
-import in.handyman.dsl.SendMail;
-import in.handyman.dsl.SlackPUT;
-import in.handyman.dsl.SmsLeadSms;
+import in.handyman.dsl.SendEMail;
+import in.handyman.dsl.Terminal;
 import in.handyman.dsl.Transform;
-import in.handyman.dsl.TrelloGET;
-import in.handyman.dsl.TrelloPUT;
+import in.handyman.dsl.TruncateSql;
 import in.handyman.dsl.Try;
-import in.handyman.dsl.Updatedaudit;
+import in.handyman.dsl.Unzip;
+import in.handyman.dsl.UpdateSql;
 import in.handyman.dsl.WriteCsv;
+import in.handyman.dsl.Zip;
 
 import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notifier;
@@ -134,14 +137,19 @@ public class DslAdapterFactory extends AdapterFactoryImpl
         return createActionAdapter();
       }
       @Override
-      public Adapter caseElasticFBCLead(ElasticFBCLead object)
+      public Adapter caseSendEMail(SendEMail object)
       {
-        return createElasticFBCLeadAdapter();
+        return createSendEMailAdapter();
       }
       @Override
-      public Adapter caseElasticGET(ElasticGET object)
+      public Adapter caseDeleteFolder(DeleteFolder object)
       {
-        return createElasticGETAdapter();
+        return createDeleteFolderAdapter();
+      }
+      @Override
+      public Adapter caseTerminal(Terminal object)
+      {
+        return createTerminalAdapter();
       }
       @Override
       public Adapter caseExecJava(ExecJava object)
@@ -149,54 +157,9 @@ public class DslAdapterFactory extends AdapterFactoryImpl
         return createExecJavaAdapter();
       }
       @Override
-      public Adapter caseFirebaseDatabasePut(FirebaseDatabasePut object)
-      {
-        return createFirebaseDatabasePutAdapter();
-      }
-      @Override
-      public Adapter caseFirebaseReactiveNotification(FirebaseReactiveNotification object)
-      {
-        return createFirebaseReactiveNotificationAdapter();
-      }
-      @Override
-      public Adapter caseSmsLeadSms(SmsLeadSms object)
-      {
-        return createSmsLeadSmsAdapter();
-      }
-      @Override
       public Adapter caseAbort(Abort object)
       {
         return createAbortAdapter();
-      }
-      @Override
-      public Adapter caseGooglecontactSelectAll(GooglecontactSelectAll object)
-      {
-        return createGooglecontactSelectAllAdapter();
-      }
-      @Override
-      public Adapter caseSendMail(SendMail object)
-      {
-        return createSendMailAdapter();
-      }
-      @Override
-      public Adapter caseGooglecontactPUT(GooglecontactPUT object)
-      {
-        return createGooglecontactPUTAdapter();
-      }
-      @Override
-      public Adapter caseGooglecalPUT(GooglecalPUT object)
-      {
-        return createGooglecalPUTAdapter();
-      }
-      @Override
-      public Adapter caseFBCLead(FBCLead object)
-      {
-        return createFBCLeadAdapter();
-      }
-      @Override
-      public Adapter caseFBFormDownload(FBFormDownload object)
-      {
-        return createFBFormDownloadAdapter();
       }
       @Override
       public Adapter caseDropfile(Dropfile object)
@@ -209,26 +172,6 @@ public class DslAdapterFactory extends AdapterFactoryImpl
         return createDoozleAdapter();
       }
       @Override
-      public Adapter caseRest(Rest object)
-      {
-        return createRestAdapter();
-      }
-      @Override
-      public Adapter caseRestPart(RestPart object)
-      {
-        return createRestPartAdapter();
-      }
-      @Override
-      public Adapter caseTrelloGET(TrelloGET object)
-      {
-        return createTrelloGETAdapter();
-      }
-      @Override
-      public Adapter caseTrelloPUT(TrelloPUT object)
-      {
-        return createTrelloPUTAdapter();
-      }
-      @Override
       public Adapter caseFetch(Fetch object)
       {
         return createFetchAdapter();
@@ -239,19 +182,9 @@ public class DslAdapterFactory extends AdapterFactoryImpl
         return createCallprocessAdapter();
       }
       @Override
-      public Adapter caseUpdatedaudit(Updatedaudit object)
+      public Adapter caseForkprocess(Forkprocess object)
       {
-        return createUpdatedauditAdapter();
-      }
-      @Override
-      public Adapter caseClickSendSms(ClickSendSms object)
-      {
-        return createClickSendSmsAdapter();
-      }
-      @Override
-      public Adapter caseSlackPUT(SlackPUT object)
-      {
-        return createSlackPUTAdapter();
+        return createForkprocessAdapter();
       }
       @Override
       public Adapter caseCopydata(Copydata object)
@@ -272,6 +205,91 @@ public class DslAdapterFactory extends AdapterFactoryImpl
       public Adapter caseTransform(Transform object)
       {
         return createTransformAdapter();
+      }
+      @Override
+      public Adapter caseDeleteSql(DeleteSql object)
+      {
+        return createDeleteSqlAdapter();
+      }
+      @Override
+      public Adapter caseUpdateSql(UpdateSql object)
+      {
+        return createUpdateSqlAdapter();
+      }
+      @Override
+      public Adapter caseInsertSql(InsertSql object)
+      {
+        return createInsertSqlAdapter();
+      }
+      @Override
+      public Adapter caseTruncateSql(TruncateSql object)
+      {
+        return createTruncateSqlAdapter();
+      }
+      @Override
+      public Adapter caseDropSql(DropSql object)
+      {
+        return createDropSqlAdapter();
+      }
+      @Override
+      public Adapter caseListFiles(ListFiles object)
+      {
+        return createListFilesAdapter();
+      }
+      @Override
+      public Adapter caseMongo2Db(Mongo2Db object)
+      {
+        return createMongo2DbAdapter();
+      }
+      @Override
+      public Adapter caseFTP(FTP object)
+      {
+        return createFTPAdapter();
+      }
+      @Override
+      public Adapter caseZip(Zip object)
+      {
+        return createZipAdapter();
+      }
+      @Override
+      public Adapter caseUnzip(Unzip object)
+      {
+        return createUnzipAdapter();
+      }
+      @Override
+      public Adapter caseChecksum(Checksum object)
+      {
+        return createChecksumAdapter();
+      }
+      @Override
+      public Adapter caseJsonTransform(JsonTransform object)
+      {
+        return createJsonTransformAdapter();
+      }
+      @Override
+      public Adapter caseJsonDeserialize(JsonDeserialize object)
+      {
+        return createJsonDeserializeAdapter();
+      }
+      @Override
+      public Adapter caseRestApi(RestApi object)
+      {
+        return createRestApiAdapter();
+      }
+      @Override
+      public Adapter casePython(Python object)
+      {
+        return createPythonAdapter();
+      }
+      @Override
+      public Adapter caseRest(Rest object)
+      {
+        return createRestAdapter();
+      }
+      @Override
+      public Adapter caseRestPart(RestPart object)
+      {
+        return createRestPartAdapter();
       }
       @Override
       public Adapter caseExpression(Expression object)
@@ -376,31 +394,46 @@ public class DslAdapterFactory extends AdapterFactoryImpl
   }
 
   /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.ElasticFBCLead <em>Elastic FBC Lead</em>}'.
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.SendEMail <em>Send EMail</em>}'.
    * <!-- begin-user-doc -->
    * This default implementation returns null so that we can easily ignore cases;
    * it's useful to ignore a case when inheritance will catch all the cases anyway.
    * <!-- end-user-doc -->
    * @return the new adapter.
-   * @see in.handyman.dsl.ElasticFBCLead
+   * @see in.handyman.dsl.SendEMail
    * @generated
    */
-  public Adapter createElasticFBCLeadAdapter()
+  public Adapter createSendEMailAdapter()
   {
     return null;
   }
 
   /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.ElasticGET <em>Elastic GET</em>}'.
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.DeleteFolder <em>Delete Folder</em>}'.
    * <!-- begin-user-doc -->
    * This default implementation returns null so that we can easily ignore cases;
    * it's useful to ignore a case when inheritance will catch all the cases anyway.
    * <!-- end-user-doc -->
    * @return the new adapter.
-   * @see in.handyman.dsl.ElasticGET
+   * @see in.handyman.dsl.DeleteFolder
    * @generated
    */
-  public Adapter createElasticGETAdapter()
+  public Adapter createDeleteFolderAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Terminal <em>Terminal</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Terminal
+   * @generated
+   */
+  public Adapter createTerminalAdapter()
   {
     return null;
   }
@@ -421,51 +454,6 @@ public class DslAdapterFactory extends AdapterFactoryImpl
   }
 
   /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.FirebaseDatabasePut <em>Firebase Database Put</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.FirebaseDatabasePut
-   * @generated
-   */
-  public Adapter createFirebaseDatabasePutAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.FirebaseReactiveNotification <em>Firebase Reactive Notification</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.FirebaseReactiveNotification
-   * @generated
-   */
-  public Adapter createFirebaseReactiveNotificationAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.SmsLeadSms <em>Sms Lead Sms</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.SmsLeadSms
-   * @generated
-   */
-  public Adapter createSmsLeadSmsAdapter()
-  {
-    return null;
-  }
-
-  /**
    * Creates a new adapter for an object of class '{@link in.handyman.dsl.Abort <em>Abort</em>}'.
    * <!-- begin-user-doc -->
    * This default implementation returns null so that we can easily ignore cases;
@@ -476,96 +464,6 @@ public class DslAdapterFactory extends AdapterFactoryImpl
    * @generated
    */
   public Adapter createAbortAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.GooglecontactSelectAll <em>Googlecontact Select All</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.GooglecontactSelectAll
-   * @generated
-   */
-  public Adapter createGooglecontactSelectAllAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.SendMail <em>Send Mail</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.SendMail
-   * @generated
-   */
-  public Adapter createSendMailAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.GooglecontactPUT <em>Googlecontact PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.GooglecontactPUT
-   * @generated
-   */
-  public Adapter createGooglecontactPUTAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.GooglecalPUT <em>Googlecal PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.GooglecalPUT
-   * @generated
-   */
-  public Adapter createGooglecalPUTAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.FBCLead <em>FBC Lead</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.FBCLead
-   * @generated
-   */
-  public Adapter createFBCLeadAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.FBFormDownload <em>FB Form Download</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.FBFormDownload
-   * @generated
-   */
-  public Adapter createFBFormDownloadAdapter()
   {
     return null;
   }
@@ -601,66 +499,6 @@ public class DslAdapterFactory extends AdapterFactoryImpl
   }
 
   /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Rest <em>Rest</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.Rest
-   * @generated
-   */
-  public Adapter createRestAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.RestPart <em>Rest Part</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.RestPart
-   * @generated
-   */
-  public Adapter createRestPartAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.TrelloGET <em>Trello GET</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.TrelloGET
-   * @generated
-   */
-  public Adapter createTrelloGETAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.TrelloPUT <em>Trello PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.TrelloPUT
-   * @generated
-   */
-  public Adapter createTrelloPUTAdapter()
-  {
-    return null;
-  }
-
-  /**
    * Creates a new adapter for an object of class '{@link in.handyman.dsl.Fetch <em>Fetch</em>}'.
    * <!-- begin-user-doc -->
    * This default implementation returns null so that we can easily ignore cases;
@@ -691,46 +529,16 @@ public class DslAdapterFactory extends AdapterFactoryImpl
   }
 
   /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Updatedaudit <em>Updatedaudit</em>}'.
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Forkprocess <em>Forkprocess</em>}'.
    * <!-- begin-user-doc -->
    * This default implementation returns null so that we can easily ignore cases;
    * it's useful to ignore a case when inheritance will catch all the cases anyway.
    * <!-- end-user-doc -->
    * @return the new adapter.
-   * @see in.handyman.dsl.Updatedaudit
+   * @see in.handyman.dsl.Forkprocess
    * @generated
    */
-  public Adapter createUpdatedauditAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.ClickSendSms <em>Click Send Sms</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.ClickSendSms
-   * @generated
-   */
-  public Adapter createClickSendSmsAdapter()
-  {
-    return null;
-  }
-
-  /**
-   * Creates a new adapter for an object of class '{@link in.handyman.dsl.SlackPUT <em>Slack PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * This default implementation returns null so that we can easily ignore cases;
-   * it's useful to ignore a case when inheritance will catch all the cases anyway.
-   * <!-- end-user-doc -->
-   * @return the new adapter.
-   * @see in.handyman.dsl.SlackPUT
-   * @generated
-   */
-  public Adapter createSlackPUTAdapter()
+  public Adapter createForkprocessAdapter()
   {
     return null;
   }
@@ -791,6 +599,261 @@ public class DslAdapterFactory extends AdapterFactoryImpl
    * @generated
    */
   public Adapter createTransformAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.DeleteSql <em>Delete Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.DeleteSql
+   * @generated
+   */
+  public Adapter createDeleteSqlAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.UpdateSql <em>Update Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.UpdateSql
+   * @generated
+   */
+  public Adapter createUpdateSqlAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.InsertSql <em>Insert Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.InsertSql
+   * @generated
+   */
+  public Adapter createInsertSqlAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.TruncateSql <em>Truncate Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.TruncateSql
+   * @generated
+   */
+  public Adapter createTruncateSqlAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.DropSql <em>Drop Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.DropSql
+   * @generated
+   */
+  public Adapter createDropSqlAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.ListFiles <em>List Files</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.ListFiles
+   * @generated
+   */
+  public Adapter createListFilesAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Mongo2Db <em>Mongo2 Db</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Mongo2Db
+   * @generated
+   */
+  public Adapter createMongo2DbAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.FTP <em>FTP</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.FTP
+   * @generated
+   */
+  public Adapter createFTPAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Zip <em>Zip</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Zip
+   * @generated
+   */
+  public Adapter createZipAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Unzip <em>Unzip</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Unzip
+   * @generated
+   */
+  public Adapter createUnzipAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Checksum <em>Checksum</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Checksum
+   * @generated
+   */
+  public Adapter createChecksumAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.JsonTransform <em>Json Transform</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.JsonTransform
+   * @generated
+   */
+  public Adapter createJsonTransformAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.JsonDeserialize <em>Json Deserialize</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.JsonDeserialize
+   * @generated
+   */
+  public Adapter createJsonDeserializeAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.RestApi <em>Rest Api</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.RestApi
+   * @generated
+   */
+  public Adapter createRestApiAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Python <em>Python</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Python
+   * @generated
+   */
+  public Adapter createPythonAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.Rest <em>Rest</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.Rest
+   * @generated
+   */
+  public Adapter createRestAdapter()
+  {
+    return null;
+  }
+
+  /**
+   * Creates a new adapter for an object of class '{@link in.handyman.dsl.RestPart <em>Rest Part</em>}'.
+   * <!-- begin-user-doc -->
+   * This default implementation returns null so that we can easily ignore cases;
+   * it's useful to ignore a case when inheritance will catch all the cases anyway.
+   * <!-- end-user-doc -->
+   * @return the new adapter.
+   * @see in.handyman.dsl.RestPart
+   * @generated
+   */
+  public Adapter createRestPartAdapter()
   {
     return null;
   }

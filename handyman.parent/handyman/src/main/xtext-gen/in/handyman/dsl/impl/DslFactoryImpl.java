@@ -7,37 +7,40 @@ import in.handyman.dsl.Abort;
 import in.handyman.dsl.Action;
 import in.handyman.dsl.Callprocess;
 import in.handyman.dsl.Catch;
-import in.handyman.dsl.ClickSendSms;
+import in.handyman.dsl.Checksum;
 import in.handyman.dsl.Copydata;
+import in.handyman.dsl.DeleteFolder;
+import in.handyman.dsl.DeleteSql;
 import in.handyman.dsl.Doozle;
+import in.handyman.dsl.DropSql;
 import in.handyman.dsl.Dropfile;
 import in.handyman.dsl.DslFactory;
 import in.handyman.dsl.DslPackage;
-import in.handyman.dsl.ElasticFBCLead;
-import in.handyman.dsl.ElasticGET;
 import in.handyman.dsl.ExecJava;
 import in.handyman.dsl.Expression;
-import in.handyman.dsl.FBCLead;
-import in.handyman.dsl.FBFormDownload;
+import in.handyman.dsl.FTP;
 import in.handyman.dsl.Fetch;
 import in.handyman.dsl.Finally;
-import in.handyman.dsl.FirebaseDatabasePut;
-import in.handyman.dsl.FirebaseReactiveNotification;
-import in.handyman.dsl.GooglecalPUT;
-import in.handyman.dsl.GooglecontactPUT;
-import in.handyman.dsl.GooglecontactSelectAll;
+import in.handyman.dsl.Forkprocess;
+import in.handyman.dsl.InsertSql;
+import in.handyman.dsl.JsonDeserialize;
+import in.handyman.dsl.JsonTransform;
+import in.handyman.dsl.ListFiles;
 import in.handyman.dsl.LoadCsv;
+import in.handyman.dsl.Mongo2Db;
+import in.handyman.dsl.Python;
 import in.handyman.dsl.Rest;
+import in.handyman.dsl.RestApi;
 import in.handyman.dsl.RestPart;
-import in.handyman.dsl.SendMail;
-import in.handyman.dsl.SlackPUT;
-import in.handyman.dsl.SmsLeadSms;
+import in.handyman.dsl.SendEMail;
+import in.handyman.dsl.Terminal;
 import in.handyman.dsl.Transform;
-import in.handyman.dsl.TrelloGET;
-import in.handyman.dsl.TrelloPUT;
+import in.handyman.dsl.TruncateSql;
 import in.handyman.dsl.Try;
-import in.handyman.dsl.Updatedaudit;
+import in.handyman.dsl.Unzip;
+import in.handyman.dsl.UpdateSql;
 import in.handyman.dsl.WriteCsv;
+import in.handyman.dsl.Zip;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
@@ -104,34 +107,37 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
       case DslPackage.FINALLY: return createFinally();
       case DslPackage.CATCH: return createCatch();
       case DslPackage.ACTION: return createAction();
-      case DslPackage.ELASTIC_FBC_LEAD: return createElasticFBCLead();
-      case DslPackage.ELASTIC_GET: return createElasticGET();
+      case DslPackage.SEND_EMAIL: return createSendEMail();
+      case DslPackage.DELETE_FOLDER: return createDeleteFolder();
+      case DslPackage.TERMINAL: return createTerminal();
       case DslPackage.EXEC_JAVA: return createExecJava();
-      case DslPackage.FIREBASE_DATABASE_PUT: return createFirebaseDatabasePut();
-      case DslPackage.FIREBASE_REACTIVE_NOTIFICATION: return createFirebaseReactiveNotification();
-      case DslPackage.SMS_LEAD_SMS: return createSmsLeadSms();
       case DslPackage.ABORT: return createAbort();
-      case DslPackage.GOOGLECONTACT_SELECT_ALL: return createGooglecontactSelectAll();
-      case DslPackage.SEND_MAIL: return createSendMail();
-      case DslPackage.GOOGLECONTACT_PUT: return createGooglecontactPUT();
-      case DslPackage.GOOGLECAL_PUT: return createGooglecalPUT();
-      case DslPackage.FBC_LEAD: return createFBCLead();
-      case DslPackage.FB_FORM_DOWNLOAD: return createFBFormDownload();
       case DslPackage.DROPFILE: return createDropfile();
       case DslPackage.DOOZLE: return createDoozle();
-      case DslPackage.REST: return createRest();
-      case DslPackage.REST_PART: return createRestPart();
-      case DslPackage.TRELLO_GET: return createTrelloGET();
-      case DslPackage.TRELLO_PUT: return createTrelloPUT();
       case DslPackage.FETCH: return createFetch();
       case DslPackage.CALLPROCESS: return createCallprocess();
-      case DslPackage.UPDATEDAUDIT: return createUpdatedaudit();
-      case DslPackage.CLICK_SEND_SMS: return createClickSendSms();
-      case DslPackage.SLACK_PUT: return createSlackPUT();
+      case DslPackage.FORKPROCESS: return createForkprocess();
       case DslPackage.COPYDATA: return createCopydata();
       case DslPackage.WRITE_CSV: return createWriteCsv();
       case DslPackage.LOAD_CSV: return createLoadCsv();
       case DslPackage.TRANSFORM: return createTransform();
+      case DslPackage.DELETE_SQL: return createDeleteSql();
+      case DslPackage.UPDATE_SQL: return createUpdateSql();
+      case DslPackage.INSERT_SQL: return createInsertSql();
+      case DslPackage.TRUNCATE_SQL: return createTruncateSql();
+      case DslPackage.DROP_SQL: return createDropSql();
+      case DslPackage.LIST_FILES: return createListFiles();
+      case DslPackage.MONGO2_DB: return createMongo2Db();
+      case DslPackage.FTP: return createFTP();
+      case DslPackage.ZIP: return createZip();
+      case DslPackage.UNZIP: return createUnzip();
+      case DslPackage.CHECKSUM: return createChecksum();
+      case DslPackage.JSON_TRANSFORM: return createJsonTransform();
+      case DslPackage.JSON_DESERIALIZE: return createJsonDeserialize();
+      case DslPackage.REST_API: return createRestApi();
+      case DslPackage.PYTHON: return createPython();
+      case DslPackage.REST: return createRest();
+      case DslPackage.REST_PART: return createRestPart();
       case DslPackage.EXPRESSION: return createExpression();
       default:
         throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
@@ -198,10 +204,10 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
    * <!-- end-user-doc -->
    * @generated
    */
-  public ElasticFBCLead createElasticFBCLead()
+  public SendEMail createSendEMail()
   {
-    ElasticFBCLeadImpl elasticFBCLead = new ElasticFBCLeadImpl();
-    return elasticFBCLead;
+    SendEMailImpl sendEMail = new SendEMailImpl();
+    return sendEMail;
   }
 
   /**
@@ -209,10 +215,21 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
    * <!-- end-user-doc -->
    * @generated
    */
-  public ElasticGET createElasticGET()
+  public DeleteFolder createDeleteFolder()
   {
-    ElasticGETImpl elasticGET = new ElasticGETImpl();
-    return elasticGET;
+    DeleteFolderImpl deleteFolder = new DeleteFolderImpl();
+    return deleteFolder;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Terminal createTerminal()
+  {
+    TerminalImpl terminal = new TerminalImpl();
+    return terminal;
   }
 
   /**
@@ -231,109 +248,10 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
    * <!-- end-user-doc -->
    * @generated
    */
-  public FirebaseDatabasePut createFirebaseDatabasePut()
-  {
-    FirebaseDatabasePutImpl firebaseDatabasePut = new FirebaseDatabasePutImpl();
-    return firebaseDatabasePut;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public FirebaseReactiveNotification createFirebaseReactiveNotification()
-  {
-    FirebaseReactiveNotificationImpl firebaseReactiveNotification = new FirebaseReactiveNotificationImpl();
-    return firebaseReactiveNotification;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public SmsLeadSms createSmsLeadSms()
-  {
-    SmsLeadSmsImpl smsLeadSms = new SmsLeadSmsImpl();
-    return smsLeadSms;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public Abort createAbort()
   {
     AbortImpl abort = new AbortImpl();
     return abort;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public GooglecontactSelectAll createGooglecontactSelectAll()
-  {
-    GooglecontactSelectAllImpl googlecontactSelectAll = new GooglecontactSelectAllImpl();
-    return googlecontactSelectAll;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public SendMail createSendMail()
-  {
-    SendMailImpl sendMail = new SendMailImpl();
-    return sendMail;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public GooglecontactPUT createGooglecontactPUT()
-  {
-    GooglecontactPUTImpl googlecontactPUT = new GooglecontactPUTImpl();
-    return googlecontactPUT;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public GooglecalPUT createGooglecalPUT()
-  {
-    GooglecalPUTImpl googlecalPUT = new GooglecalPUTImpl();
-    return googlecalPUT;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public FBCLead createFBCLead()
-  {
-    FBCLeadImpl fbcLead = new FBCLeadImpl();
-    return fbcLead;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public FBFormDownload createFBFormDownload()
-  {
-    FBFormDownloadImpl fbFormDownload = new FBFormDownloadImpl();
-    return fbFormDownload;
   }
 
   /**
@@ -363,50 +281,6 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
    * <!-- end-user-doc -->
    * @generated
    */
-  public Rest createRest()
-  {
-    RestImpl rest = new RestImpl();
-    return rest;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public RestPart createRestPart()
-  {
-    RestPartImpl restPart = new RestPartImpl();
-    return restPart;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public TrelloGET createTrelloGET()
-  {
-    TrelloGETImpl trelloGET = new TrelloGETImpl();
-    return trelloGET;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public TrelloPUT createTrelloPUT()
-  {
-    TrelloPUTImpl trelloPUT = new TrelloPUTImpl();
-    return trelloPUT;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public Fetch createFetch()
   {
     FetchImpl fetch = new FetchImpl();
@@ -429,32 +303,10 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
    * <!-- end-user-doc -->
    * @generated
    */
-  public Updatedaudit createUpdatedaudit()
+  public Forkprocess createForkprocess()
   {
-    UpdatedauditImpl updatedaudit = new UpdatedauditImpl();
-    return updatedaudit;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public ClickSendSms createClickSendSms()
-  {
-    ClickSendSmsImpl clickSendSms = new ClickSendSmsImpl();
-    return clickSendSms;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public SlackPUT createSlackPUT()
-  {
-    SlackPUTImpl slackPUT = new SlackPUTImpl();
-    return slackPUT;
+    ForkprocessImpl forkprocess = new ForkprocessImpl();
+    return forkprocess;
   }
 
   /**
@@ -499,6 +351,193 @@ public class DslFactoryImpl extends EFactoryImpl implements DslFactory
   {
     TransformImpl transform = new TransformImpl();
     return transform;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public DeleteSql createDeleteSql()
+  {
+    DeleteSqlImpl deleteSql = new DeleteSqlImpl();
+    return deleteSql;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public UpdateSql createUpdateSql()
+  {
+    UpdateSqlImpl updateSql = new UpdateSqlImpl();
+    return updateSql;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public InsertSql createInsertSql()
+  {
+    InsertSqlImpl insertSql = new InsertSqlImpl();
+    return insertSql;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public TruncateSql createTruncateSql()
+  {
+    TruncateSqlImpl truncateSql = new TruncateSqlImpl();
+    return truncateSql;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public DropSql createDropSql()
+  {
+    DropSqlImpl dropSql = new DropSqlImpl();
+    return dropSql;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public ListFiles createListFiles()
+  {
+    ListFilesImpl listFiles = new ListFilesImpl();
+    return listFiles;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Mongo2Db createMongo2Db()
+  {
+    Mongo2DbImpl mongo2Db = new Mongo2DbImpl();
+    return mongo2Db;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public FTP createFTP()
+  {
+    FTPImpl ftp = new FTPImpl();
+    return ftp;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Zip createZip()
+  {
+    ZipImpl zip = new ZipImpl();
+    return zip;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Unzip createUnzip()
+  {
+    UnzipImpl unzip = new UnzipImpl();
+    return unzip;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Checksum createChecksum()
+  {
+    ChecksumImpl checksum = new ChecksumImpl();
+    return checksum;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public JsonTransform createJsonTransform()
+  {
+    JsonTransformImpl jsonTransform = new JsonTransformImpl();
+    return jsonTransform;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public JsonDeserialize createJsonDeserialize()
+  {
+    JsonDeserializeImpl jsonDeserialize = new JsonDeserializeImpl();
+    return jsonDeserialize;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public RestApi createRestApi()
+  {
+    RestApiImpl restApi = new RestApiImpl();
+    return restApi;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Python createPython()
+  {
+    PythonImpl python = new PythonImpl();
+    return python;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public Rest createRest()
+  {
+    RestImpl rest = new RestImpl();
+    return rest;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public RestPart createRestPart()
+  {
+    RestPartImpl restPart = new RestPartImpl();
+    return restPart;
   }
 
   /**

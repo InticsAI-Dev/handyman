@@ -186,34 +186,16 @@ ruleTry returns [EObject current=null]
 		{
 			newLeafNode(otherlv_0, grammarAccess.getTryAccess().getTryKeyword_0());
 		}
-		(
-			(
-				lv_name_1_0=RULE_ID
-				{
-					newLeafNode(lv_name_1_0, grammarAccess.getTryAccess().getNameIDTerminalRuleCall_1_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTryRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_1_0,
-						"org.eclipse.xtext.common.Terminals.ID");
-				}
-			)
-		)
-		otherlv_2='{'
+		otherlv_1='{'
 		{
-			newLeafNode(otherlv_2, grammarAccess.getTryAccess().getLeftCurlyBracketKeyword_2());
+			newLeafNode(otherlv_1, grammarAccess.getTryAccess().getLeftCurlyBracketKeyword_1());
 		}
 		(
 			(
 				{
-					newCompositeNode(grammarAccess.getTryAccess().getActionActionParserRuleCall_3_0());
+					newCompositeNode(grammarAccess.getTryAccess().getActionActionParserRuleCall_2_0());
 				}
-				lv_action_3_0=ruleAction
+				lv_action_2_0=ruleAction
 				{
 					if ($current==null) {
 						$current = createModelElementForParent(grammarAccess.getTryRule());
@@ -221,15 +203,15 @@ ruleTry returns [EObject current=null]
 					add(
 						$current,
 						"action",
-						lv_action_3_0,
+						lv_action_2_0,
 						"in.handyman.Dsl.Action");
 					afterParserOrEnumRuleCall();
 				}
 			)
 		)*
-		otherlv_4='}'
+		otherlv_3='}'
 		{
-			newLeafNode(otherlv_4, grammarAccess.getTryAccess().getRightCurlyBracketKeyword_4());
+			newLeafNode(otherlv_3, grammarAccess.getTryAccess().getRightCurlyBracketKeyword_3());
 		}
 	)
 ;
@@ -254,34 +236,16 @@ ruleFinally returns [EObject current=null]
 		{
 			newLeafNode(otherlv_0, grammarAccess.getFinallyAccess().getFinallyKeyword_0());
 		}
-		(
-			(
-				lv_name_1_0=RULE_ID
-				{
-					newLeafNode(lv_name_1_0, grammarAccess.getFinallyAccess().getNameIDTerminalRuleCall_1_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFinallyRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_1_0,
-						"org.eclipse.xtext.common.Terminals.ID");
-				}
-			)
-		)
-		otherlv_2='{'
+		otherlv_1='{'
 		{
-			newLeafNode(otherlv_2, grammarAccess.getFinallyAccess().getLeftCurlyBracketKeyword_2());
+			newLeafNode(otherlv_1, grammarAccess.getFinallyAccess().getLeftCurlyBracketKeyword_1());
 		}
 		(
 			(
 				{
-					newCompositeNode(grammarAccess.getFinallyAccess().getActionActionParserRuleCall_3_0());
+					newCompositeNode(grammarAccess.getFinallyAccess().getActionActionParserRuleCall_2_0());
 				}
-				lv_action_3_0=ruleAction
+				lv_action_2_0=ruleAction
 				{
 					if ($current==null) {
 						$current = createModelElementForParent(grammarAccess.getFinallyRule());
@@ -289,15 +253,15 @@ ruleFinally returns [EObject current=null]
 					add(
 						$current,
 						"action",
-						lv_action_3_0,
+						lv_action_2_0,
 						"in.handyman.Dsl.Action");
 					afterParserOrEnumRuleCall();
 				}
 			)
 		)*
-		otherlv_4='}'
+		otherlv_3='}'
 		{
-			newLeafNode(otherlv_4, grammarAccess.getFinallyAccess().getRightCurlyBracketKeyword_4());
+			newLeafNode(otherlv_3, grammarAccess.getFinallyAccess().getRightCurlyBracketKeyword_3());
 		}
 	)
 ;
@@ -322,34 +286,16 @@ ruleCatch returns [EObject current=null]
 		{
 			newLeafNode(otherlv_0, grammarAccess.getCatchAccess().getCatchKeyword_0());
 		}
-		(
-			(
-				lv_name_1_0=RULE_ID
-				{
-					newLeafNode(lv_name_1_0, grammarAccess.getCatchAccess().getNameIDTerminalRuleCall_1_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCatchRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_1_0,
-						"org.eclipse.xtext.common.Terminals.ID");
-				}
-			)
-		)
-		otherlv_2='{'
+		otherlv_1='{'
 		{
-			newLeafNode(otherlv_2, grammarAccess.getCatchAccess().getLeftCurlyBracketKeyword_2());
+			newLeafNode(otherlv_1, grammarAccess.getCatchAccess().getLeftCurlyBracketKeyword_1());
 		}
 		(
 			(
 				{
-					newCompositeNode(grammarAccess.getCatchAccess().getActionActionParserRuleCall_3_0());
+					newCompositeNode(grammarAccess.getCatchAccess().getActionActionParserRuleCall_2_0());
 				}
-				lv_action_3_0=ruleAction
+				lv_action_2_0=ruleAction
 				{
 					if ($current==null) {
 						$current = createModelElementForParent(grammarAccess.getCatchRule());
@@ -357,15 +303,15 @@ ruleCatch returns [EObject current=null]
 					add(
 						$current,
 						"action",
-						lv_action_3_0,
+						lv_action_2_0,
 						"in.handyman.Dsl.Action");
 					afterParserOrEnumRuleCall();
 				}
 			)
 		)*
-		otherlv_4='}'
+		otherlv_3='}'
 		{
-			newLeafNode(otherlv_4, grammarAccess.getCatchAccess().getRightCurlyBracketKeyword_4());
+			newLeafNode(otherlv_3, grammarAccess.getCatchAccess().getRightCurlyBracketKeyword_3());
 		}
 	)
 ;
@@ -423,223 +369,250 @@ ruleAction returns [EObject current=null]
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getGooglecalPUTParserRuleCall_4());
+			newCompositeNode(grammarAccess.getActionAccess().getCallprocessParserRuleCall_4());
 		}
-		this_GooglecalPUT_4=ruleGooglecalPUT
+		this_Callprocess_4=ruleCallprocess
 		{
-			$current = $this_GooglecalPUT_4.current;
+			$current = $this_Callprocess_4.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getSlackPUTParserRuleCall_5());
+			newCompositeNode(grammarAccess.getActionAccess().getForkprocessParserRuleCall_5());
 		}
-		this_SlackPUT_5=ruleSlackPUT
+		this_Forkprocess_5=ruleForkprocess
 		{
-			$current = $this_SlackPUT_5.current;
+			$current = $this_Forkprocess_5.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getClickSendSmsParserRuleCall_6());
+			newCompositeNode(grammarAccess.getActionAccess().getFetchParserRuleCall_6());
 		}
-		this_ClickSendSms_6=ruleClickSendSms
+		this_Fetch_6=ruleFetch
 		{
-			$current = $this_ClickSendSms_6.current;
+			$current = $this_Fetch_6.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getUpdatedauditParserRuleCall_7());
+			newCompositeNode(grammarAccess.getActionAccess().getDoozleParserRuleCall_7());
 		}
-		this_Updatedaudit_7=ruleUpdatedaudit
+		this_Doozle_7=ruleDoozle
 		{
-			$current = $this_Updatedaudit_7.current;
+			$current = $this_Doozle_7.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getCallprocessParserRuleCall_8());
+			newCompositeNode(grammarAccess.getActionAccess().getDropfileParserRuleCall_8());
 		}
-		this_Callprocess_8=ruleCallprocess
+		this_Dropfile_8=ruleDropfile
 		{
-			$current = $this_Callprocess_8.current;
+			$current = $this_Dropfile_8.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getFetchParserRuleCall_9());
+			newCompositeNode(grammarAccess.getActionAccess().getAbortParserRuleCall_9());
 		}
-		this_Fetch_9=ruleFetch
+		this_Abort_9=ruleAbort
 		{
-			$current = $this_Fetch_9.current;
+			$current = $this_Abort_9.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getTrelloPUTParserRuleCall_10());
+			newCompositeNode(grammarAccess.getActionAccess().getExecJavaParserRuleCall_10());
 		}
-		this_TrelloPUT_10=ruleTrelloPUT
+		this_ExecJava_10=ruleExecJava
 		{
-			$current = $this_TrelloPUT_10.current;
+			$current = $this_ExecJava_10.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getTrelloGETParserRuleCall_11());
+			newCompositeNode(grammarAccess.getActionAccess().getDeleteFolderParserRuleCall_11());
 		}
-		this_TrelloGET_11=ruleTrelloGET
+		this_DeleteFolder_11=ruleDeleteFolder
 		{
-			$current = $this_TrelloGET_11.current;
+			$current = $this_DeleteFolder_11.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getRestParserRuleCall_12());
+			newCompositeNode(grammarAccess.getActionAccess().getTerminalParserRuleCall_12());
 		}
-		this_Rest_12=ruleRest
+		this_Terminal_12=ruleTerminal
 		{
-			$current = $this_Rest_12.current;
+			$current = $this_Terminal_12.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getDoozleParserRuleCall_13());
+			newCompositeNode(grammarAccess.getActionAccess().getSendEMailParserRuleCall_13());
 		}
-		this_Doozle_13=ruleDoozle
+		this_SendEMail_13=ruleSendEMail
 		{
-			$current = $this_Doozle_13.current;
+			$current = $this_SendEMail_13.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getDropfileParserRuleCall_14());
+			newCompositeNode(grammarAccess.getActionAccess().getMongo2DbParserRuleCall_14());
 		}
-		this_Dropfile_14=ruleDropfile
+		this_Mongo2Db_14=ruleMongo2Db
 		{
-			$current = $this_Dropfile_14.current;
+			$current = $this_Mongo2Db_14.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getFBCLeadParserRuleCall_15());
+			newCompositeNode(grammarAccess.getActionAccess().getFTPParserRuleCall_15());
 		}
-		this_FBCLead_15=ruleFBCLead
+		this_FTP_15=ruleFTP
 		{
-			$current = $this_FBCLead_15.current;
+			$current = $this_FTP_15.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getFBFormDownloadParserRuleCall_16());
+			newCompositeNode(grammarAccess.getActionAccess().getUnzipParserRuleCall_16());
 		}
-		this_FBFormDownload_16=ruleFBFormDownload
+		this_Unzip_16=ruleUnzip
 		{
-			$current = $this_FBFormDownload_16.current;
+			$current = $this_Unzip_16.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getSendMailParserRuleCall_17());
+			newCompositeNode(grammarAccess.getActionAccess().getZipParserRuleCall_17());
 		}
-		this_SendMail_17=ruleSendMail
+		this_Zip_17=ruleZip
 		{
-			$current = $this_SendMail_17.current;
+			$current = $this_Zip_17.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getGooglecontactPUTParserRuleCall_18());
+			newCompositeNode(grammarAccess.getActionAccess().getChecksumParserRuleCall_18());
 		}
-		this_GooglecontactPUT_18=ruleGooglecontactPUT
+		this_Checksum_18=ruleChecksum
 		{
-			$current = $this_GooglecontactPUT_18.current;
+			$current = $this_Checksum_18.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getGooglecontactSelectAllParserRuleCall_19());
+			newCompositeNode(grammarAccess.getActionAccess().getJsonTransformParserRuleCall_19());
 		}
-		this_GooglecontactSelectAll_19=ruleGooglecontactSelectAll
+		this_JsonTransform_19=ruleJsonTransform
 		{
-			$current = $this_GooglecontactSelectAll_19.current;
+			$current = $this_JsonTransform_19.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getAbortParserRuleCall_20());
+			newCompositeNode(grammarAccess.getActionAccess().getRestApiParserRuleCall_20());
 		}
-		this_Abort_20=ruleAbort
+		this_RestApi_20=ruleRestApi
 		{
-			$current = $this_Abort_20.current;
+			$current = $this_RestApi_20.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getSmsLeadSmsParserRuleCall_21());
+			newCompositeNode(grammarAccess.getActionAccess().getPythonParserRuleCall_21());
 		}
-		this_SmsLeadSms_21=ruleSmsLeadSms
+		this_Python_21=rulePython
 		{
-			$current = $this_SmsLeadSms_21.current;
+			$current = $this_Python_21.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getFirebaseReactiveNotificationParserRuleCall_22());
+			newCompositeNode(grammarAccess.getActionAccess().getRestParserRuleCall_22());
 		}
-		this_FirebaseReactiveNotification_22=ruleFirebaseReactiveNotification
+		this_Rest_22=ruleRest
 		{
-			$current = $this_FirebaseReactiveNotification_22.current;
+			$current = $this_Rest_22.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getFirebaseDatabasePutParserRuleCall_23());
+			newCompositeNode(grammarAccess.getActionAccess().getJsonDeserializeParserRuleCall_23());
 		}
-		this_FirebaseDatabasePut_23=ruleFirebaseDatabasePut
+		this_JsonDeserialize_23=ruleJsonDeserialize
 		{
-			$current = $this_FirebaseDatabasePut_23.current;
+			$current = $this_JsonDeserialize_23.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getExecJavaParserRuleCall_24());
+			newCompositeNode(grammarAccess.getActionAccess().getListFilesParserRuleCall_24());
 		}
-		this_ExecJava_24=ruleExecJava
+		this_ListFiles_24=ruleListFiles
 		{
-			$current = $this_ExecJava_24.current;
+			$current = $this_ListFiles_24.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getElasticFBCLeadParserRuleCall_25());
+			newCompositeNode(grammarAccess.getActionAccess().getDeleteSqlParserRuleCall_25());
 		}
-		this_ElasticFBCLead_25=ruleElasticFBCLead
+		this_DeleteSql_25=ruleDeleteSql
 		{
-			$current = $this_ElasticFBCLead_25.current;
+			$current = $this_DeleteSql_25.current;
 			afterParserOrEnumRuleCall();
 		}
 		    |
 		{
-			newCompositeNode(grammarAccess.getActionAccess().getElasticGETParserRuleCall_26());
+			newCompositeNode(grammarAccess.getActionAccess().getUpdateSqlParserRuleCall_26());
 		}
-		this_ElasticGET_26=ruleElasticGET
+		this_UpdateSql_26=ruleUpdateSql
 		{
-			$current = $this_ElasticGET_26.current;
+			$current = $this_UpdateSql_26.current;
+			afterParserOrEnumRuleCall();
+		}
+		    |
+		{
+			newCompositeNode(grammarAccess.getActionAccess().getInsertSqlParserRuleCall_27());
+		}
+		this_InsertSql_27=ruleInsertSql
+		{
+			$current = $this_InsertSql_27.current;
+			afterParserOrEnumRuleCall();
+		}
+		    |
+		{
+			newCompositeNode(grammarAccess.getActionAccess().getTruncateSqlParserRuleCall_28());
+		}
+		this_TruncateSql_28=ruleTruncateSql
+		{
+			$current = $this_TruncateSql_28.current;
+			afterParserOrEnumRuleCall();
+		}
+		    |
+		{
+			newCompositeNode(grammarAccess.getActionAccess().getDropSqlParserRuleCall_29());
+		}
+		this_DropSql_29=ruleDropSql
+		{
+			$current = $this_DropSql_29.current;
 			afterParserOrEnumRuleCall();
 		}
 	)
 ;
 
-// Entry rule entryRuleElasticFBCLead
-entryRuleElasticFBCLead returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getElasticFBCLeadRule()); }
-	iv_ruleElasticFBCLead=ruleElasticFBCLead
-	{ $current=$iv_ruleElasticFBCLead.current; }
+// Entry rule entryRuleSendEMail
+entryRuleSendEMail returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getSendEMailRule()); }
+	iv_ruleSendEMail=ruleSendEMail
+	{ $current=$iv_ruleSendEMail.current; }
 	EOF;
 
-// Rule ElasticFBCLead
-ruleElasticFBCLead returns [EObject current=null]
+// Rule SendEMail
+ruleSendEMail returns [EObject current=null]
 @init {
 	enterRule();
 }
@@ -647,23 +620,23 @@ ruleElasticFBCLead returns [EObject current=null]
 	leaveRule();
 }:
 	(
-		otherlv_0='efblc'
+		otherlv_0='sendemail'
 		{
-			newLeafNode(otherlv_0, grammarAccess.getElasticFBCLeadAccess().getEfblcKeyword_0());
+			newLeafNode(otherlv_0, grammarAccess.getSendEMailAccess().getSendemailKeyword_0());
 		}
 		otherlv_1='as'
 		{
-			newLeafNode(otherlv_1, grammarAccess.getElasticFBCLeadAccess().getAsKeyword_1());
+			newLeafNode(otherlv_1, grammarAccess.getSendEMailAccess().getAsKeyword_1());
 		}
 		(
 			(
 				lv_name_2_0=RULE_STRING
 				{
-					newLeafNode(lv_name_2_0, grammarAccess.getElasticFBCLeadAccess().getNameSTRINGTerminalRuleCall_2_0());
+					newLeafNode(lv_name_2_0, grammarAccess.getSendEMailAccess().getNameSTRINGTerminalRuleCall_2_0());
 				}
 				{
 					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
+						$current = createModelElement(grammarAccess.getSendEMailRule());
 					}
 					setWithLastConsumed(
 						$current,
@@ -673,227 +646,19 @@ ruleElasticFBCLead returns [EObject current=null]
 				}
 			)
 		)
-		otherlv_3='secured-by'
+		otherlv_3='db'
 		{
-			newLeafNode(otherlv_3, grammarAccess.getElasticFBCLeadAccess().getSecuredByKeyword_3());
-		}
-		(
-			(
-				lv_accessToken_4_0=RULE_STRING
-				{
-					newLeafNode(lv_accessToken_4_0, grammarAccess.getElasticFBCLeadAccess().getAccessTokenSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"accessToken",
-						lv_accessToken_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='with-key'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getElasticFBCLeadAccess().getWithKeyKeyword_5());
-		}
-		(
-			(
-				lv_appSecret_6_0=RULE_STRING
-				{
-					newLeafNode(lv_appSecret_6_0, grammarAccess.getElasticFBCLeadAccess().getAppSecretSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"appSecret",
-						lv_appSecret_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='through-user'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getElasticFBCLeadAccess().getThroughUserKeyword_7());
-		}
-		(
-			(
-				lv_accountId_8_0=RULE_STRING
-				{
-					newLeafNode(lv_accountId_8_0, grammarAccess.getElasticFBCLeadAccess().getAccountIdSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"accountId",
-						lv_accountId_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-campaign'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getElasticFBCLeadAccess().getForCampaignKeyword_9());
-		}
-		(
-			(
-				lv_campaignId_10_0=RULE_STRING
-				{
-					newLeafNode(lv_campaignId_10_0, grammarAccess.getElasticFBCLeadAccess().getCampaignIdSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"campaignId",
-						lv_campaignId_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='into'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getElasticFBCLeadAccess().getIntoKeyword_11());
-		}
-		(
-			(
-				lv_target_12_0=RULE_STRING
-				{
-					newLeafNode(lv_target_12_0, grammarAccess.getElasticFBCLeadAccess().getTargetSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"target",
-						lv_target_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getElasticFBCLeadAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getElasticFBCLeadAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				lv_value_15_0=RULE_STRING
-				{
-					newLeafNode(lv_value_15_0, grammarAccess.getElasticFBCLeadAccess().getValueSTRINGTerminalRuleCall_15_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_15_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getElasticFBCLeadAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getElasticFBCLeadAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getElasticFBCLeadAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getElasticFBCLeadRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleElasticGET
-entryRuleElasticGET returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getElasticGETRule()); }
-	iv_ruleElasticGET=ruleElasticGET
-	{ $current=$iv_ruleElasticGET.current; }
-	EOF;
-
-// Rule ElasticGET
-ruleElasticGET returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='elasticget'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getElasticGETAccess().getElasticgetKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getElasticGETAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getElasticGETAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='from'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getElasticGETAccess().getFromKeyword_3());
+			newLeafNode(otherlv_3, grammarAccess.getSendEMailAccess().getDbKeyword_3());
 		}
 		(
 			(
 				lv_source_4_0=RULE_STRING
 				{
-					newLeafNode(lv_source_4_0, grammarAccess.getElasticGETAccess().getSourceSTRINGTerminalRuleCall_4_0());
+					newLeafNode(lv_source_4_0, grammarAccess.getSendEMailAccess().getSourceSTRINGTerminalRuleCall_4_0());
 				}
 				{
 					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticGETRule());
+						$current = createModelElement(grammarAccess.getSendEMailRule());
 					}
 					setWithLastConsumed(
 						$current,
@@ -903,77 +668,534 @@ ruleElasticGET returns [EObject current=null]
 				}
 			)
 		)
-		otherlv_5='to'
+		otherlv_5='smtp-host'
 		{
-			newLeafNode(otherlv_5, grammarAccess.getElasticGETAccess().getToKeyword_5());
+			newLeafNode(otherlv_5, grammarAccess.getSendEMailAccess().getSmtpHostKeyword_5());
 		}
 		(
 			(
-				lv_to_6_0=RULE_STRING
+				lv_smtphost_6_0=RULE_STRING
 				{
-					newLeafNode(lv_to_6_0, grammarAccess.getElasticGETAccess().getToSTRINGTerminalRuleCall_6_0());
+					newLeafNode(lv_smtphost_6_0, grammarAccess.getSendEMailAccess().getSmtphostSTRINGTerminalRuleCall_6_0());
 				}
 				{
 					if ($current==null) {
-						$current = createModelElement(grammarAccess.getElasticGETRule());
+						$current = createModelElement(grammarAccess.getSendEMailRule());
 					}
 					setWithLastConsumed(
 						$current,
-						"to",
-						lv_to_6_0,
+						"smtphost",
+						lv_smtphost_6_0,
 						"org.eclipse.xtext.common.Terminals.STRING");
 				}
 			)
 		)
-		otherlv_7='using'
+		otherlv_7='smtp-port'
 		{
-			newLeafNode(otherlv_7, grammarAccess.getElasticGETAccess().getUsingKeyword_7());
+			newLeafNode(otherlv_7, grammarAccess.getSendEMailAccess().getSmtpPortKeyword_7());
 		}
-		otherlv_8='{'
+		(
+			(
+				lv_smtpport_8_0=RULE_STRING
+				{
+					newLeafNode(lv_smtpport_8_0, grammarAccess.getSendEMailAccess().getSmtpportSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"smtpport",
+						lv_smtpport_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='from'
 		{
-			newLeafNode(otherlv_8, grammarAccess.getElasticGETAccess().getLeftCurlyBracketKeyword_8());
+			newLeafNode(otherlv_9, grammarAccess.getSendEMailAccess().getFromKeyword_9());
+		}
+		(
+			(
+				lv_from_10_0=RULE_STRING
+				{
+					newLeafNode(lv_from_10_0, grammarAccess.getSendEMailAccess().getFromSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"from",
+						lv_from_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='pass'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getSendEMailAccess().getPassKeyword_11());
+		}
+		(
+			(
+				lv_pass_12_0=RULE_STRING
+				{
+					newLeafNode(lv_pass_12_0, grammarAccess.getSendEMailAccess().getPassSTRINGTerminalRuleCall_12_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"pass",
+						lv_pass_12_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_13='to'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getSendEMailAccess().getToKeyword_13());
+		}
+		(
+			(
+				lv_to_14_0=RULE_STRING
+				{
+					newLeafNode(lv_to_14_0, grammarAccess.getSendEMailAccess().getToSTRINGTerminalRuleCall_14_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"to",
+						lv_to_14_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_15='cc'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getSendEMailAccess().getCcKeyword_15());
+		}
+		(
+			(
+				lv_cc_16_0=RULE_STRING
+				{
+					newLeafNode(lv_cc_16_0, grammarAccess.getSendEMailAccess().getCcSTRINGTerminalRuleCall_16_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"cc",
+						lv_cc_16_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_17='bcc'
+		{
+			newLeafNode(otherlv_17, grammarAccess.getSendEMailAccess().getBccKeyword_17());
+		}
+		(
+			(
+				lv_bcc_18_0=RULE_STRING
+				{
+					newLeafNode(lv_bcc_18_0, grammarAccess.getSendEMailAccess().getBccSTRINGTerminalRuleCall_18_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"bcc",
+						lv_bcc_18_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_19='subject'
+		{
+			newLeafNode(otherlv_19, grammarAccess.getSendEMailAccess().getSubjectKeyword_19());
+		}
+		(
+			(
+				lv_subject_20_0=RULE_STRING
+				{
+					newLeafNode(lv_subject_20_0, grammarAccess.getSendEMailAccess().getSubjectSTRINGTerminalRuleCall_20_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"subject",
+						lv_subject_20_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_21='body'
+		{
+			newLeafNode(otherlv_21, grammarAccess.getSendEMailAccess().getBodyKeyword_21());
+		}
+		(
+			(
+				lv_body_22_0=RULE_STRING
+				{
+					newLeafNode(lv_body_22_0, grammarAccess.getSendEMailAccess().getBodySTRINGTerminalRuleCall_22_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"body",
+						lv_body_22_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_23='signature'
+		{
+			newLeafNode(otherlv_23, grammarAccess.getSendEMailAccess().getSignatureKeyword_23());
+		}
+		(
+			(
+				lv_signature_24_0=RULE_STRING
+				{
+					newLeafNode(lv_signature_24_0, grammarAccess.getSendEMailAccess().getSignatureSTRINGTerminalRuleCall_24_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getSendEMailRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"signature",
+						lv_signature_24_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_25='using'
+		{
+			newLeafNode(otherlv_25, grammarAccess.getSendEMailAccess().getUsingKeyword_25());
+		}
+		otherlv_26='{'
+		{
+			newLeafNode(otherlv_26, grammarAccess.getSendEMailAccess().getLeftCurlyBracketKeyword_26());
 		}
 		(
 			(
 				{
-					newCompositeNode(grammarAccess.getElasticGETAccess().getValueSelectStatementParserRuleCall_9_0());
+					newCompositeNode(grammarAccess.getSendEMailAccess().getValueSelectStatementParserRuleCall_27_0());
 				}
-				lv_value_9_0=ruleSelectStatement
+				lv_value_27_0=ruleSelectStatement
 				{
 					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getElasticGETRule());
+						$current = createModelElementForParent(grammarAccess.getSendEMailRule());
 					}
 					set(
 						$current,
 						"value",
-						lv_value_9_0,
+						lv_value_27_0,
 						"in.handyman.Dsl.SelectStatement");
 					afterParserOrEnumRuleCall();
 				}
 			)
 		)
-		otherlv_10='}'
+		otherlv_28='}'
 		{
-			newLeafNode(otherlv_10, grammarAccess.getElasticGETAccess().getRightCurlyBracketKeyword_10());
+			newLeafNode(otherlv_28, grammarAccess.getSendEMailAccess().getRightCurlyBracketKeyword_28());
 		}
-		otherlv_11='on-condition'
+		otherlv_29='on-condition'
 		{
-			newLeafNode(otherlv_11, grammarAccess.getElasticGETAccess().getOnConditionKeyword_11());
+			newLeafNode(otherlv_29, grammarAccess.getSendEMailAccess().getOnConditionKeyword_29());
 		}
 		(
 			(
 				{
-					newCompositeNode(grammarAccess.getElasticGETAccess().getConditionExpressionParserRuleCall_12_0());
+					newCompositeNode(grammarAccess.getSendEMailAccess().getConditionExpressionParserRuleCall_30_0());
 				}
-				lv_condition_12_0=ruleExpression
+				lv_condition_30_0=ruleExpression
 				{
 					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getElasticGETRule());
+						$current = createModelElementForParent(grammarAccess.getSendEMailRule());
 					}
 					set(
 						$current,
 						"condition",
-						lv_condition_12_0,
+						lv_condition_30_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleDeleteFolder
+entryRuleDeleteFolder returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getDeleteFolderRule()); }
+	iv_ruleDeleteFolder=ruleDeleteFolder
+	{ $current=$iv_ruleDeleteFolder.current; }
+	EOF;
+
+// Rule DeleteFolder
+ruleDeleteFolder returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='deletefolder'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getDeleteFolderAccess().getDeletefolderKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getDeleteFolderAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getDeleteFolderAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDeleteFolderRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='folder'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getDeleteFolderAccess().getFolderKeyword_3());
+		}
+		(
+			(
+				lv_foldersource_4_0=RULE_STRING
+				{
+					newLeafNode(lv_foldersource_4_0, grammarAccess.getDeleteFolderAccess().getFoldersourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDeleteFolderRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"foldersource",
+						lv_foldersource_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='zipfile'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getDeleteFolderAccess().getZipfileKeyword_5());
+		}
+		(
+			(
+				lv_zipsource_6_0=RULE_STRING
+				{
+					newLeafNode(lv_zipsource_6_0, grammarAccess.getDeleteFolderAccess().getZipsourceSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDeleteFolderRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"zipsource",
+						lv_zipsource_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='{'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getDeleteFolderAccess().getLeftCurlyBracketKeyword_7());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getDeleteFolderAccess().getValueSelectStatementParserRuleCall_8_0());
+				}
+				lv_value_8_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getDeleteFolderRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_8_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_9='}'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getDeleteFolderAccess().getRightCurlyBracketKeyword_9());
+		}
+		otherlv_10='on-condition'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getDeleteFolderAccess().getOnConditionKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getDeleteFolderAccess().getConditionExpressionParserRuleCall_11_0());
+				}
+				lv_condition_11_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getDeleteFolderRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_11_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleTerminal
+entryRuleTerminal returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getTerminalRule()); }
+	iv_ruleTerminal=ruleTerminal
+	{ $current=$iv_ruleTerminal.current; }
+	EOF;
+
+// Rule Terminal
+ruleTerminal returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='terminal'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getTerminalAccess().getTerminalKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getTerminalAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getTerminalAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTerminalRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='id'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getTerminalAccess().getIdKeyword_3());
+		}
+		(
+			(
+				lv_id_4_0=RULE_STRING
+				{
+					newLeafNode(lv_id_4_0, grammarAccess.getTerminalAccess().getIdSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTerminalRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"id",
+						lv_id_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getTerminalAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getTerminalAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				lv_value_7_0=RULE_STRING
+				{
+					newLeafNode(lv_value_7_0, grammarAccess.getTerminalAccess().getValueSTRINGTerminalRuleCall_7_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTerminalRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"value",
+						lv_value_7_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getTerminalAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getTerminalAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getTerminalAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getTerminalRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
 						"in.handyman.Dsl.Expression");
 					afterParserOrEnumRuleCall();
 				}
@@ -1120,622 +1342,6 @@ ruleExecJava returns [EObject current=null]
 	)
 ;
 
-// Entry rule entryRuleFirebaseDatabasePut
-entryRuleFirebaseDatabasePut returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getFirebaseDatabasePutRule()); }
-	iv_ruleFirebaseDatabasePut=ruleFirebaseDatabasePut
-	{ $current=$iv_ruleFirebaseDatabasePut.current; }
-	EOF;
-
-// Rule FirebaseDatabasePut
-ruleFirebaseDatabasePut returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='fbdp'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getFirebaseDatabasePutAccess().getFbdpKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getFirebaseDatabasePutAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getFirebaseDatabasePutAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='on'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getFirebaseDatabasePutAccess().getOnKeyword_3());
-		}
-		(
-			(
-				lv_url_4_0=RULE_STRING
-				{
-					newLeafNode(lv_url_4_0, grammarAccess.getFirebaseDatabasePutAccess().getUrlSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"url",
-						lv_url_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='auth-by'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getFirebaseDatabasePutAccess().getAuthByKeyword_5());
-		}
-		(
-			(
-				lv_fbjson_6_0=RULE_STRING
-				{
-					newLeafNode(lv_fbjson_6_0, grammarAccess.getFirebaseDatabasePutAccess().getFbjsonSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"fbjson",
-						lv_fbjson_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='for-group'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getFirebaseDatabasePutAccess().getForGroupKeyword_7());
-		}
-		(
-			(
-				lv_groupPath_8_0=RULE_STRING
-				{
-					newLeafNode(lv_groupPath_8_0, grammarAccess.getFirebaseDatabasePutAccess().getGroupPathSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"groupPath",
-						lv_groupPath_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='from-source'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getFirebaseDatabasePutAccess().getFromSourceKeyword_9());
-		}
-		(
-			(
-				lv_dbSrc_10_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_10_0, grammarAccess.getFirebaseDatabasePutAccess().getDbSrcSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='with-class'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getFirebaseDatabasePutAccess().getWithClassKeyword_11());
-		}
-		(
-			(
-				lv_classFqn_12_0=RULE_STRING
-				{
-					newLeafNode(lv_classFqn_12_0, grammarAccess.getFirebaseDatabasePutAccess().getClassFqnSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"classFqn",
-						lv_classFqn_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getFirebaseDatabasePutAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getFirebaseDatabasePutAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				lv_value_15_0=RULE_STRING
-				{
-					newLeafNode(lv_value_15_0, grammarAccess.getFirebaseDatabasePutAccess().getValueSTRINGTerminalRuleCall_15_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_15_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getFirebaseDatabasePutAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getFirebaseDatabasePutAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getFirebaseDatabasePutAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getFirebaseDatabasePutRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleFirebaseReactiveNotification
-entryRuleFirebaseReactiveNotification returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getFirebaseReactiveNotificationRule()); }
-	iv_ruleFirebaseReactiveNotification=ruleFirebaseReactiveNotification
-	{ $current=$iv_ruleFirebaseReactiveNotification.current; }
-	EOF;
-
-// Rule FirebaseReactiveNotification
-ruleFirebaseReactiveNotification returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='fbrn'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getFirebaseReactiveNotificationAccess().getFbrnKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getFirebaseReactiveNotificationAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getFirebaseReactiveNotificationAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='on'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getFirebaseReactiveNotificationAccess().getOnKeyword_3());
-		}
-		(
-			(
-				lv_url_4_0=RULE_STRING
-				{
-					newLeafNode(lv_url_4_0, grammarAccess.getFirebaseReactiveNotificationAccess().getUrlSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"url",
-						lv_url_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='auth-by'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getFirebaseReactiveNotificationAccess().getAuthByKeyword_5());
-		}
-		(
-			(
-				lv_fbjson_6_0=RULE_STRING
-				{
-					newLeafNode(lv_fbjson_6_0, grammarAccess.getFirebaseReactiveNotificationAccess().getFbjsonSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"fbjson",
-						lv_fbjson_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='for-group'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getFirebaseReactiveNotificationAccess().getForGroupKeyword_7());
-		}
-		(
-			(
-				lv_groupPath_8_0=RULE_STRING
-				{
-					newLeafNode(lv_groupPath_8_0, grammarAccess.getFirebaseReactiveNotificationAccess().getGroupPathSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"groupPath",
-						lv_groupPath_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='with-class'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getFirebaseReactiveNotificationAccess().getWithClassKeyword_9());
-		}
-		(
-			(
-				lv_classFqn_10_0=RULE_STRING
-				{
-					newLeafNode(lv_classFqn_10_0, grammarAccess.getFirebaseReactiveNotificationAccess().getClassFqnSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"classFqn",
-						lv_classFqn_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='using'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getFirebaseReactiveNotificationAccess().getUsingKeyword_11());
-		}
-		(
-			(
-				lv_dbSrc_12_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_12_0, grammarAccess.getFirebaseReactiveNotificationAccess().getDbSrcSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='on-condition'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getFirebaseReactiveNotificationAccess().getOnConditionKeyword_13());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getFirebaseReactiveNotificationAccess().getConditionExpressionParserRuleCall_14_0());
-				}
-				lv_condition_14_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getFirebaseReactiveNotificationRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_14_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleSmsLeadSms
-entryRuleSmsLeadSms returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getSmsLeadSmsRule()); }
-	iv_ruleSmsLeadSms=ruleSmsLeadSms
-	{ $current=$iv_ruleSmsLeadSms.current; }
-	EOF;
-
-// Rule SmsLeadSms
-ruleSmsLeadSms returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='smsleadssms'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getSmsLeadSmsAccess().getSmsleadssmsKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getSmsLeadSmsAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getSmsLeadSmsAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='on'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getSmsLeadSmsAccess().getOnKeyword_3());
-		}
-		(
-			(
-				lv_url_4_0=RULE_STRING
-				{
-					newLeafNode(lv_url_4_0, grammarAccess.getSmsLeadSmsAccess().getUrlSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"url",
-						lv_url_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='with-sender'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getSmsLeadSmsAccess().getWithSenderKeyword_5());
-		}
-		(
-			(
-				lv_sender_6_0=RULE_STRING
-				{
-					newLeafNode(lv_sender_6_0, grammarAccess.getSmsLeadSmsAccess().getSenderSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"sender",
-						lv_sender_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='through-account'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getSmsLeadSmsAccess().getThroughAccountKeyword_7());
-		}
-		(
-			(
-				lv_account_8_0=RULE_STRING
-				{
-					newLeafNode(lv_account_8_0, grammarAccess.getSmsLeadSmsAccess().getAccountSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"account",
-						lv_account_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='secured-by'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getSmsLeadSmsAccess().getSecuredByKeyword_9());
-		}
-		(
-			(
-				lv_privateKey_10_0=RULE_STRING
-				{
-					newLeafNode(lv_privateKey_10_0, grammarAccess.getSmsLeadSmsAccess().getPrivateKeySTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"privateKey",
-						lv_privateKey_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='from-source'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getSmsLeadSmsAccess().getFromSourceKeyword_11());
-		}
-		(
-			(
-				lv_dbSrc_12_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_12_0, grammarAccess.getSmsLeadSmsAccess().getDbSrcSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getSmsLeadSmsAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getSmsLeadSmsAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				lv_value_15_0=RULE_STRING
-				{
-					newLeafNode(lv_value_15_0, grammarAccess.getSmsLeadSmsAccess().getValueSTRINGTerminalRuleCall_15_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_15_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getSmsLeadSmsAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getSmsLeadSmsAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getSmsLeadSmsAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getSmsLeadSmsRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_19='do-dryrun-with'
-		{
-			newLeafNode(otherlv_19, grammarAccess.getSmsLeadSmsAccess().getDoDryrunWithKeyword_19());
-		}
-		(
-			(
-				lv_dryrunNumber_20_0=RULE_STRING
-				{
-					newLeafNode(lv_dryrunNumber_20_0, grammarAccess.getSmsLeadSmsAccess().getDryrunNumberSTRINGTerminalRuleCall_20_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSmsLeadSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dryrunNumber",
-						lv_dryrunNumber_20_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-	)
-;
-
 // Entry rule entryRuleAbort
 entryRuleAbort returns [EObject current=null]:
 	{ newCompositeNode(grammarAccess.getAbortRule()); }
@@ -1822,1298 +1428,6 @@ ruleAbort returns [EObject current=null]
 						$current,
 						"condition",
 						lv_condition_7_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleGooglecontactSelectAll
-entryRuleGooglecontactSelectAll returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getGooglecontactSelectAllRule()); }
-	iv_ruleGooglecontactSelectAll=ruleGooglecontactSelectAll
-	{ $current=$iv_ruleGooglecontactSelectAll.current; }
-	EOF;
-
-// Rule GooglecontactSelectAll
-ruleGooglecontactSelectAll returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='gcontact-fetchall'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getGooglecontactSelectAllAccess().getGcontactFetchallKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getGooglecontactSelectAllAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getGooglecontactSelectAllAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='through-account'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getGooglecontactSelectAllAccess().getThroughAccountKeyword_3());
-		}
-		(
-			(
-				lv_account_4_0=RULE_STRING
-				{
-					newLeafNode(lv_account_4_0, grammarAccess.getGooglecontactSelectAllAccess().getAccountSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"account",
-						lv_account_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='secured-by'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getGooglecontactSelectAllAccess().getSecuredByKeyword_5());
-		}
-		(
-			(
-				lv_privateKey_6_0=RULE_STRING
-				{
-					newLeafNode(lv_privateKey_6_0, grammarAccess.getGooglecontactSelectAllAccess().getPrivateKeySTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"privateKey",
-						lv_privateKey_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='with-key'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getGooglecontactSelectAllAccess().getWithKeyKeyword_7());
-		}
-		(
-			(
-				lv_ptwelveFile_8_0=RULE_STRING
-				{
-					newLeafNode(lv_ptwelveFile_8_0, grammarAccess.getGooglecontactSelectAllAccess().getPtwelveFileSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"ptwelveFile",
-						lv_ptwelveFile_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-project'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getGooglecontactSelectAllAccess().getForProjectKeyword_9());
-		}
-		(
-			(
-				lv_project_10_0=RULE_STRING
-				{
-					newLeafNode(lv_project_10_0, grammarAccess.getGooglecontactSelectAllAccess().getProjectSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"project",
-						lv_project_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='on-behalf-of'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getGooglecontactSelectAllAccess().getOnBehalfOfKeyword_11());
-		}
-		(
-			(
-				lv_impersonatedUser_12_0=RULE_STRING
-				{
-					newLeafNode(lv_impersonatedUser_12_0, grammarAccess.getGooglecontactSelectAllAccess().getImpersonatedUserSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"impersonatedUser",
-						lv_impersonatedUser_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='to-target'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getGooglecontactSelectAllAccess().getToTargetKeyword_13());
-		}
-		(
-			(
-				lv_dbSrc_14_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_14_0, grammarAccess.getGooglecontactSelectAllAccess().getDbSrcSTRINGTerminalRuleCall_14_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_14_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_15='using'
-		{
-			newLeafNode(otherlv_15, grammarAccess.getGooglecontactSelectAllAccess().getUsingKeyword_15());
-		}
-		otherlv_16='{'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getGooglecontactSelectAllAccess().getLeftCurlyBracketKeyword_16());
-		}
-		(
-			(
-				lv_value_17_0=RULE_STRING
-				{
-					newLeafNode(lv_value_17_0, grammarAccess.getGooglecontactSelectAllAccess().getValueSTRINGTerminalRuleCall_17_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_17_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_18='}'
-		{
-			newLeafNode(otherlv_18, grammarAccess.getGooglecontactSelectAllAccess().getRightCurlyBracketKeyword_18());
-		}
-		otherlv_19='on-condition'
-		{
-			newLeafNode(otherlv_19, grammarAccess.getGooglecontactSelectAllAccess().getOnConditionKeyword_19());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getGooglecontactSelectAllAccess().getConditionExpressionParserRuleCall_20_0());
-				}
-				lv_condition_20_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getGooglecontactSelectAllRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_20_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleSendMail
-entryRuleSendMail returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getSendMailRule()); }
-	iv_ruleSendMail=ruleSendMail
-	{ $current=$iv_ruleSendMail.current; }
-	EOF;
-
-// Rule SendMail
-ruleSendMail returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='sendmail'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getSendMailAccess().getSendmailKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getSendMailAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getSendMailAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSendMailRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='secured-by'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getSendMailAccess().getSecuredByKeyword_3());
-		}
-		(
-			(
-				lv_privateKey_4_0=RULE_STRING
-				{
-					newLeafNode(lv_privateKey_4_0, grammarAccess.getSendMailAccess().getPrivateKeySTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSendMailRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"privateKey",
-						lv_privateKey_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='on-behalf-of'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getSendMailAccess().getOnBehalfOfKeyword_5());
-		}
-		(
-			(
-				lv_impersonatedUser_6_0=RULE_STRING
-				{
-					newLeafNode(lv_impersonatedUser_6_0, grammarAccess.getSendMailAccess().getImpersonatedUserSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSendMailRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"impersonatedUser",
-						lv_impersonatedUser_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='from-source'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getSendMailAccess().getFromSourceKeyword_7());
-		}
-		(
-			(
-				lv_dbSrc_8_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_8_0, grammarAccess.getSendMailAccess().getDbSrcSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSendMailRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='using'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getSendMailAccess().getUsingKeyword_9());
-		}
-		otherlv_10='{'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getSendMailAccess().getLeftCurlyBracketKeyword_10());
-		}
-		(
-			(
-				lv_value_11_0=RULE_STRING
-				{
-					newLeafNode(lv_value_11_0, grammarAccess.getSendMailAccess().getValueSTRINGTerminalRuleCall_11_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSendMailRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_11_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_12='}'
-		{
-			newLeafNode(otherlv_12, grammarAccess.getSendMailAccess().getRightCurlyBracketKeyword_12());
-		}
-		otherlv_13='on-condition'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getSendMailAccess().getOnConditionKeyword_13());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getSendMailAccess().getConditionExpressionParserRuleCall_14_0());
-				}
-				lv_condition_14_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getSendMailRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_14_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_15='do-dryrun-with'
-		{
-			newLeafNode(otherlv_15, grammarAccess.getSendMailAccess().getDoDryrunWithKeyword_15());
-		}
-		(
-			(
-				lv_dryrunMail_16_0=RULE_STRING
-				{
-					newLeafNode(lv_dryrunMail_16_0, grammarAccess.getSendMailAccess().getDryrunMailSTRINGTerminalRuleCall_16_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSendMailRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dryrunMail",
-						lv_dryrunMail_16_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleGooglecontactPUT
-entryRuleGooglecontactPUT returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getGooglecontactPUTRule()); }
-	iv_ruleGooglecontactPUT=ruleGooglecontactPUT
-	{ $current=$iv_ruleGooglecontactPUT.current; }
-	EOF;
-
-// Rule GooglecontactPUT
-ruleGooglecontactPUT returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='gcontact'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getGooglecontactPUTAccess().getGcontactKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getGooglecontactPUTAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getGooglecontactPUTAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='through-account'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getGooglecontactPUTAccess().getThroughAccountKeyword_3());
-		}
-		(
-			(
-				lv_account_4_0=RULE_STRING
-				{
-					newLeafNode(lv_account_4_0, grammarAccess.getGooglecontactPUTAccess().getAccountSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"account",
-						lv_account_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='secured-by'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getGooglecontactPUTAccess().getSecuredByKeyword_5());
-		}
-		(
-			(
-				lv_privateKey_6_0=RULE_STRING
-				{
-					newLeafNode(lv_privateKey_6_0, grammarAccess.getGooglecontactPUTAccess().getPrivateKeySTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"privateKey",
-						lv_privateKey_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='with-key'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getGooglecontactPUTAccess().getWithKeyKeyword_7());
-		}
-		(
-			(
-				lv_ptwelveFile_8_0=RULE_STRING
-				{
-					newLeafNode(lv_ptwelveFile_8_0, grammarAccess.getGooglecontactPUTAccess().getPtwelveFileSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"ptwelveFile",
-						lv_ptwelveFile_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-project'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getGooglecontactPUTAccess().getForProjectKeyword_9());
-		}
-		(
-			(
-				lv_project_10_0=RULE_STRING
-				{
-					newLeafNode(lv_project_10_0, grammarAccess.getGooglecontactPUTAccess().getProjectSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"project",
-						lv_project_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='on-behalf-of'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getGooglecontactPUTAccess().getOnBehalfOfKeyword_11());
-		}
-		(
-			(
-				lv_impersonatedUser_12_0=RULE_STRING
-				{
-					newLeafNode(lv_impersonatedUser_12_0, grammarAccess.getGooglecontactPUTAccess().getImpersonatedUserSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"impersonatedUser",
-						lv_impersonatedUser_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='from-source'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getGooglecontactPUTAccess().getFromSourceKeyword_13());
-		}
-		(
-			(
-				lv_dbSrc_14_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_14_0, grammarAccess.getGooglecontactPUTAccess().getDbSrcSTRINGTerminalRuleCall_14_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_14_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_15='using'
-		{
-			newLeafNode(otherlv_15, grammarAccess.getGooglecontactPUTAccess().getUsingKeyword_15());
-		}
-		otherlv_16='{'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getGooglecontactPUTAccess().getLeftCurlyBracketKeyword_16());
-		}
-		(
-			(
-				lv_value_17_0=RULE_STRING
-				{
-					newLeafNode(lv_value_17_0, grammarAccess.getGooglecontactPUTAccess().getValueSTRINGTerminalRuleCall_17_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecontactPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_17_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_18='}'
-		{
-			newLeafNode(otherlv_18, grammarAccess.getGooglecontactPUTAccess().getRightCurlyBracketKeyword_18());
-		}
-		otherlv_19='on-condition'
-		{
-			newLeafNode(otherlv_19, grammarAccess.getGooglecontactPUTAccess().getOnConditionKeyword_19());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getGooglecontactPUTAccess().getConditionExpressionParserRuleCall_20_0());
-				}
-				lv_condition_20_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getGooglecontactPUTRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_20_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleGooglecalPUT
-entryRuleGooglecalPUT returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getGooglecalPUTRule()); }
-	iv_ruleGooglecalPUT=ruleGooglecalPUT
-	{ $current=$iv_ruleGooglecalPUT.current; }
-	EOF;
-
-// Rule GooglecalPUT
-ruleGooglecalPUT returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='gcalendar'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getGooglecalPUTAccess().getGcalendarKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getGooglecalPUTAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getGooglecalPUTAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='through-account'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getGooglecalPUTAccess().getThroughAccountKeyword_3());
-		}
-		(
-			(
-				lv_account_4_0=RULE_STRING
-				{
-					newLeafNode(lv_account_4_0, grammarAccess.getGooglecalPUTAccess().getAccountSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"account",
-						lv_account_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='secured-by'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getGooglecalPUTAccess().getSecuredByKeyword_5());
-		}
-		(
-			(
-				lv_privateKey_6_0=RULE_STRING
-				{
-					newLeafNode(lv_privateKey_6_0, grammarAccess.getGooglecalPUTAccess().getPrivateKeySTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"privateKey",
-						lv_privateKey_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='with-key'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getGooglecalPUTAccess().getWithKeyKeyword_7());
-		}
-		(
-			(
-				lv_ptwelveFile_8_0=RULE_STRING
-				{
-					newLeafNode(lv_ptwelveFile_8_0, grammarAccess.getGooglecalPUTAccess().getPtwelveFileSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"ptwelveFile",
-						lv_ptwelveFile_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-project'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getGooglecalPUTAccess().getForProjectKeyword_9());
-		}
-		(
-			(
-				lv_project_10_0=RULE_STRING
-				{
-					newLeafNode(lv_project_10_0, grammarAccess.getGooglecalPUTAccess().getProjectSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"project",
-						lv_project_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='on-behalf-of'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getGooglecalPUTAccess().getOnBehalfOfKeyword_11());
-		}
-		(
-			(
-				lv_impersonatedUser_12_0=RULE_STRING
-				{
-					newLeafNode(lv_impersonatedUser_12_0, grammarAccess.getGooglecalPUTAccess().getImpersonatedUserSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"impersonatedUser",
-						lv_impersonatedUser_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='from-source'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getGooglecalPUTAccess().getFromSourceKeyword_13());
-		}
-		(
-			(
-				lv_dbSrc_14_0=RULE_STRING
-				{
-					newLeafNode(lv_dbSrc_14_0, grammarAccess.getGooglecalPUTAccess().getDbSrcSTRINGTerminalRuleCall_14_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"dbSrc",
-						lv_dbSrc_14_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_15='using'
-		{
-			newLeafNode(otherlv_15, grammarAccess.getGooglecalPUTAccess().getUsingKeyword_15());
-		}
-		otherlv_16='{'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getGooglecalPUTAccess().getLeftCurlyBracketKeyword_16());
-		}
-		(
-			(
-				lv_value_17_0=RULE_STRING
-				{
-					newLeafNode(lv_value_17_0, grammarAccess.getGooglecalPUTAccess().getValueSTRINGTerminalRuleCall_17_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getGooglecalPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_17_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_18='}'
-		{
-			newLeafNode(otherlv_18, grammarAccess.getGooglecalPUTAccess().getRightCurlyBracketKeyword_18());
-		}
-		otherlv_19='on-condition'
-		{
-			newLeafNode(otherlv_19, grammarAccess.getGooglecalPUTAccess().getOnConditionKeyword_19());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getGooglecalPUTAccess().getConditionExpressionParserRuleCall_20_0());
-				}
-				lv_condition_20_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getGooglecalPUTRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_20_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleFBCLead
-entryRuleFBCLead returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getFBCLeadRule()); }
-	iv_ruleFBCLead=ruleFBCLead
-	{ $current=$iv_ruleFBCLead.current; }
-	EOF;
-
-// Rule FBCLead
-ruleFBCLead returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='fblc'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getFBCLeadAccess().getFblcKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getFBCLeadAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getFBCLeadAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='secured-by'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getFBCLeadAccess().getSecuredByKeyword_3());
-		}
-		(
-			(
-				lv_accessToken_4_0=RULE_STRING
-				{
-					newLeafNode(lv_accessToken_4_0, grammarAccess.getFBCLeadAccess().getAccessTokenSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"accessToken",
-						lv_accessToken_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='with-key'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getFBCLeadAccess().getWithKeyKeyword_5());
-		}
-		(
-			(
-				lv_appSecret_6_0=RULE_STRING
-				{
-					newLeafNode(lv_appSecret_6_0, grammarAccess.getFBCLeadAccess().getAppSecretSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"appSecret",
-						lv_appSecret_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='through-user'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getFBCLeadAccess().getThroughUserKeyword_7());
-		}
-		(
-			(
-				lv_accountId_8_0=RULE_STRING
-				{
-					newLeafNode(lv_accountId_8_0, grammarAccess.getFBCLeadAccess().getAccountIdSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"accountId",
-						lv_accountId_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-campaign'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getFBCLeadAccess().getForCampaignKeyword_9());
-		}
-		(
-			(
-				lv_campaignId_10_0=RULE_STRING
-				{
-					newLeafNode(lv_campaignId_10_0, grammarAccess.getFBCLeadAccess().getCampaignIdSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"campaignId",
-						lv_campaignId_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='into'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getFBCLeadAccess().getIntoKeyword_11());
-		}
-		(
-			(
-				lv_target_12_0=RULE_STRING
-				{
-					newLeafNode(lv_target_12_0, grammarAccess.getFBCLeadAccess().getTargetSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"target",
-						lv_target_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getFBCLeadAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getFBCLeadAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				lv_value_15_0=RULE_STRING
-				{
-					newLeafNode(lv_value_15_0, grammarAccess.getFBCLeadAccess().getValueSTRINGTerminalRuleCall_15_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBCLeadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_15_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getFBCLeadAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getFBCLeadAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getFBCLeadAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getFBCLeadRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleFBFormDownload
-entryRuleFBFormDownload returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getFBFormDownloadRule()); }
-	iv_ruleFBFormDownload=ruleFBFormDownload
-	{ $current=$iv_ruleFBFormDownload.current; }
-	EOF;
-
-// Rule FBFormDownload
-ruleFBFormDownload returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='fbfd'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getFBFormDownloadAccess().getFbfdKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getFBFormDownloadAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getFBFormDownloadAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='secured-by'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getFBFormDownloadAccess().getSecuredByKeyword_3());
-		}
-		(
-			(
-				lv_accessToken_4_0=RULE_STRING
-				{
-					newLeafNode(lv_accessToken_4_0, grammarAccess.getFBFormDownloadAccess().getAccessTokenSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"accessToken",
-						lv_accessToken_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='with-key'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getFBFormDownloadAccess().getWithKeyKeyword_5());
-		}
-		(
-			(
-				lv_appSecret_6_0=RULE_STRING
-				{
-					newLeafNode(lv_appSecret_6_0, grammarAccess.getFBFormDownloadAccess().getAppSecretSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"appSecret",
-						lv_appSecret_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='through-user'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getFBFormDownloadAccess().getThroughUserKeyword_7());
-		}
-		(
-			(
-				lv_accountId_8_0=RULE_STRING
-				{
-					newLeafNode(lv_accountId_8_0, grammarAccess.getFBFormDownloadAccess().getAccountIdSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"accountId",
-						lv_accountId_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-form'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getFBFormDownloadAccess().getForFormKeyword_9());
-		}
-		(
-			(
-				lv_formId_10_0=RULE_STRING
-				{
-					newLeafNode(lv_formId_10_0, grammarAccess.getFBFormDownloadAccess().getFormIdSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"formId",
-						lv_formId_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='into'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getFBFormDownloadAccess().getIntoKeyword_11());
-		}
-		(
-			(
-				lv_target_12_0=RULE_STRING
-				{
-					newLeafNode(lv_target_12_0, grammarAccess.getFBFormDownloadAccess().getTargetSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"target",
-						lv_target_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getFBFormDownloadAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getFBFormDownloadAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				lv_value_15_0=RULE_STRING
-				{
-					newLeafNode(lv_value_15_0, grammarAccess.getFBFormDownloadAccess().getValueSTRINGTerminalRuleCall_15_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFBFormDownloadRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_15_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getFBFormDownloadAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getFBFormDownloadAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getFBFormDownloadAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getFBFormDownloadRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
 						"in.handyman.Dsl.Expression");
 					afterParserOrEnumRuleCall();
 				}
@@ -3342,6 +1656,3942 @@ ruleDoozle returns [EObject current=null]
 				{
 					if ($current==null) {
 						$current = createModelElementForParent(grammarAccess.getDoozleRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_12_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleFetch
+entryRuleFetch returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getFetchRule()); }
+	iv_ruleFetch=ruleFetch
+	{ $current=$iv_ruleFetch.current; }
+	EOF;
+
+// Rule Fetch
+ruleFetch returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='assign'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getFetchAccess().getAssignKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getFetchAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getFetchAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFetchRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='source'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getFetchAccess().getSourceKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getFetchAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFetchRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getFetchAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getFetchAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				lv_value_7_0=RULE_STRING
+				{
+					newLeafNode(lv_value_7_0, grammarAccess.getFetchAccess().getValueSTRINGTerminalRuleCall_7_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFetchRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"value",
+						lv_value_7_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getFetchAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getFetchAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getFetchAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getFetchRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleCallprocess
+entryRuleCallprocess returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getCallprocessRule()); }
+	iv_ruleCallprocess=ruleCallprocess
+	{ $current=$iv_ruleCallprocess.current; }
+	EOF;
+
+// Rule Callprocess
+ruleCallprocess returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='callprocess'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getCallprocessAccess().getCallprocessKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getCallprocessAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getCallprocessAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCallprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='with-target'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getCallprocessAccess().getWithTargetKeyword_3());
+		}
+		(
+			(
+				lv_target_4_0=RULE_STRING
+				{
+					newLeafNode(lv_target_4_0, grammarAccess.getCallprocessAccess().getTargetSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCallprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"target",
+						lv_target_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='from-file'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getCallprocessAccess().getFromFileKeyword_5());
+		}
+		(
+			(
+				lv_source_6_0=RULE_STRING
+				{
+					newLeafNode(lv_source_6_0, grammarAccess.getCallprocessAccess().getSourceSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCallprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='using'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getCallprocessAccess().getUsingKeyword_7());
+		}
+		(
+			(
+				lv_datasource_8_0=RULE_STRING
+				{
+					newLeafNode(lv_datasource_8_0, grammarAccess.getCallprocessAccess().getDatasourceSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCallprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"datasource",
+						lv_datasource_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='for-every'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getCallprocessAccess().getForEveryKeyword_9());
+		}
+		otherlv_10='{'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getCallprocessAccess().getLeftCurlyBracketKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getCallprocessAccess().getValueSelectStatementParserRuleCall_11_0());
+				}
+				lv_value_11_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getCallprocessRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_11_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_12='}'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getCallprocessAccess().getRightCurlyBracketKeyword_12());
+		}
+		otherlv_13='on-condition'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getCallprocessAccess().getOnConditionKeyword_13());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getCallprocessAccess().getConditionExpressionParserRuleCall_14_0());
+				}
+				lv_condition_14_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getCallprocessRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_14_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleForkprocess
+entryRuleForkprocess returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getForkprocessRule()); }
+	iv_ruleForkprocess=ruleForkprocess
+	{ $current=$iv_ruleForkprocess.current; }
+	EOF;
+
+// Rule Forkprocess
+ruleForkprocess returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='forkprocess'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getForkprocessAccess().getForkprocessKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getForkprocessAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getForkprocessAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getForkprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='with-target'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getForkprocessAccess().getWithTargetKeyword_3());
+		}
+		(
+			(
+				lv_target_4_0=RULE_STRING
+				{
+					newLeafNode(lv_target_4_0, grammarAccess.getForkprocessAccess().getTargetSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getForkprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"target",
+						lv_target_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='from-file'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getForkprocessAccess().getFromFileKeyword_5());
+		}
+		(
+			(
+				lv_source_6_0=RULE_STRING
+				{
+					newLeafNode(lv_source_6_0, grammarAccess.getForkprocessAccess().getSourceSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getForkprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='using'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getForkprocessAccess().getUsingKeyword_7());
+		}
+		(
+			(
+				lv_datasource_8_0=RULE_STRING
+				{
+					newLeafNode(lv_datasource_8_0, grammarAccess.getForkprocessAccess().getDatasourceSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getForkprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"datasource",
+						lv_datasource_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='for-every'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getForkprocessAccess().getForEveryKeyword_9());
+		}
+		otherlv_10='{'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getForkprocessAccess().getLeftCurlyBracketKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getForkprocessAccess().getValueSelectStatementParserRuleCall_11_0());
+				}
+				lv_value_11_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getForkprocessRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_11_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_12='}'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getForkprocessAccess().getRightCurlyBracketKeyword_12());
+		}
+		otherlv_13='watermark'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getForkprocessAccess().getWatermarkKeyword_13());
+		}
+		(
+			(
+				lv_forkBatchSize_14_0=RULE_STRING
+				{
+					newLeafNode(lv_forkBatchSize_14_0, grammarAccess.getForkprocessAccess().getForkBatchSizeSTRINGTerminalRuleCall_14_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getForkprocessRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"forkBatchSize",
+						lv_forkBatchSize_14_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_15='on-condition'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getForkprocessAccess().getOnConditionKeyword_15());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getForkprocessAccess().getConditionExpressionParserRuleCall_16_0());
+				}
+				lv_condition_16_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getForkprocessRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_16_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleCopydata
+entryRuleCopydata returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getCopydataRule()); }
+	iv_ruleCopydata=ruleCopydata
+	{ $current=$iv_ruleCopydata.current; }
+	EOF;
+
+// Rule Copydata
+ruleCopydata returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='copydata'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getCopydataAccess().getCopydataKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getCopydataAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getCopydataAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCopydataRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getCopydataAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getCopydataAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCopydataRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='to'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getCopydataAccess().getToKeyword_5());
+		}
+		(
+			(
+				lv_to_6_0=RULE_STRING
+				{
+					newLeafNode(lv_to_6_0, grammarAccess.getCopydataAccess().getToSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCopydataRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"to",
+						lv_to_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='target'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getCopydataAccess().getTargetKeyword_7());
+		}
+		(
+			(
+				lv_target_8_0=RULE_STRING
+				{
+					newLeafNode(lv_target_8_0, grammarAccess.getCopydataAccess().getTargetSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCopydataRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"target",
+						lv_target_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='by-batch'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getCopydataAccess().getByBatchKeyword_9());
+		}
+		(
+			(
+				lv_limit_10_0=RULE_STRING
+				{
+					newLeafNode(lv_limit_10_0, grammarAccess.getCopydataAccess().getLimitSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getCopydataRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"limit",
+						lv_limit_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='using'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getCopydataAccess().getUsingKeyword_11());
+		}
+		otherlv_12='{'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getCopydataAccess().getLeftCurlyBracketKeyword_12());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getCopydataAccess().getValueSelectStatementParserRuleCall_13_0());
+				}
+				lv_value_13_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getCopydataRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_13_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_14='}'
+		{
+			newLeafNode(otherlv_14, grammarAccess.getCopydataAccess().getRightCurlyBracketKeyword_14());
+		}
+		otherlv_15='on-condition'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getCopydataAccess().getOnConditionKeyword_15());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getCopydataAccess().getConditionExpressionParserRuleCall_16_0());
+				}
+				lv_condition_16_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getCopydataRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_16_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleWriteCsv
+entryRuleWriteCsv returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getWriteCsvRule()); }
+	iv_ruleWriteCsv=ruleWriteCsv
+	{ $current=$iv_ruleWriteCsv.current; }
+	EOF;
+
+// Rule WriteCsv
+ruleWriteCsv returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='writecsv'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getWriteCsvAccess().getWritecsvKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getWriteCsvAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getWriteCsvAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getWriteCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getWriteCsvAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getWriteCsvAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getWriteCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='to'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getWriteCsvAccess().getToKeyword_5());
+		}
+		(
+			(
+				lv_to_6_0=RULE_STRING
+				{
+					newLeafNode(lv_to_6_0, grammarAccess.getWriteCsvAccess().getToSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getWriteCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"to",
+						lv_to_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='with'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getWriteCsvAccess().getWithKeyword_7());
+		}
+		(
+			(
+				lv_delim_8_0=RULE_STRING
+				{
+					newLeafNode(lv_delim_8_0, grammarAccess.getWriteCsvAccess().getDelimSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getWriteCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"delim",
+						lv_delim_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='using'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getWriteCsvAccess().getUsingKeyword_9());
+		}
+		otherlv_10='{'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getWriteCsvAccess().getLeftCurlyBracketKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getWriteCsvAccess().getValueSelectStatementParserRuleCall_11_0());
+				}
+				lv_value_11_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getWriteCsvRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_11_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_12='}'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getWriteCsvAccess().getRightCurlyBracketKeyword_12());
+		}
+		otherlv_13='on-condition'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getWriteCsvAccess().getOnConditionKeyword_13());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getWriteCsvAccess().getConditionExpressionParserRuleCall_14_0());
+				}
+				lv_condition_14_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getWriteCsvRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_14_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleLoadCsv
+entryRuleLoadCsv returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getLoadCsvRule()); }
+	iv_ruleLoadCsv=ruleLoadCsv
+	{ $current=$iv_ruleLoadCsv.current; }
+	EOF;
+
+// Rule LoadCsv
+ruleLoadCsv returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='loadcsv'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getLoadCsvAccess().getLoadcsvKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getLoadCsvAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getLoadCsvAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getLoadCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='pid'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getLoadCsvAccess().getPidKeyword_3());
+		}
+		(
+			(
+				lv_pid_4_0=RULE_STRING
+				{
+					newLeafNode(lv_pid_4_0, grammarAccess.getLoadCsvAccess().getPidSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getLoadCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"pid",
+						lv_pid_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='from'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getLoadCsvAccess().getFromKeyword_5());
+		}
+		(
+			(
+				lv_source_6_0=RULE_STRING
+				{
+					newLeafNode(lv_source_6_0, grammarAccess.getLoadCsvAccess().getSourceSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getLoadCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='to'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getLoadCsvAccess().getToKeyword_7());
+		}
+		(
+			(
+				lv_to_8_0=RULE_STRING
+				{
+					newLeafNode(lv_to_8_0, grammarAccess.getLoadCsvAccess().getToSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getLoadCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"to",
+						lv_to_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='with'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getLoadCsvAccess().getWithKeyword_9());
+		}
+		(
+			(
+				lv_delim_10_0=RULE_STRING
+				{
+					newLeafNode(lv_delim_10_0, grammarAccess.getLoadCsvAccess().getDelimSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getLoadCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"delim",
+						lv_delim_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='by-batch'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getLoadCsvAccess().getByBatchKeyword_11());
+		}
+		(
+			(
+				lv_limit_12_0=RULE_STRING
+				{
+					newLeafNode(lv_limit_12_0, grammarAccess.getLoadCsvAccess().getLimitSTRINGTerminalRuleCall_12_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getLoadCsvRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"limit",
+						lv_limit_12_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_13='using'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getLoadCsvAccess().getUsingKeyword_13());
+		}
+		otherlv_14='{'
+		{
+			newLeafNode(otherlv_14, grammarAccess.getLoadCsvAccess().getLeftCurlyBracketKeyword_14());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getLoadCsvAccess().getValueSelectStatementParserRuleCall_15_0());
+				}
+				lv_value_15_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getLoadCsvRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_15_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_16='}'
+		{
+			newLeafNode(otherlv_16, grammarAccess.getLoadCsvAccess().getRightCurlyBracketKeyword_16());
+		}
+		otherlv_17='on-condition'
+		{
+			newLeafNode(otherlv_17, grammarAccess.getLoadCsvAccess().getOnConditionKeyword_17());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getLoadCsvAccess().getConditionExpressionParserRuleCall_18_0());
+				}
+				lv_condition_18_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getLoadCsvRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_18_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleTransform
+entryRuleTransform returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getTransformRule()); }
+	iv_ruleTransform=ruleTransform
+	{ $current=$iv_ruleTransform.current; }
+	EOF;
+
+// Rule Transform
+ruleTransform returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='transform'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getTransformAccess().getTransformKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getTransformAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getTransformAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTransformRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='on'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getTransformAccess().getOnKeyword_3());
+		}
+		(
+			(
+				lv_on_4_0=RULE_STRING
+				{
+					newLeafNode(lv_on_4_0, grammarAccess.getTransformAccess().getOnSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTransformRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"on",
+						lv_on_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getTransformAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getTransformAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getTransformAccess().getValueNonSelectStatementParserRuleCall_7_0());
+				}
+				lv_value_7_0=ruleNonSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getTransformRule());
+					}
+					add(
+						$current,
+						"value",
+						lv_value_7_0,
+						"in.handyman.Dsl.NonSelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getTransformAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getTransformAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getTransformAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getTransformRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleDeleteSql
+entryRuleDeleteSql returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getDeleteSqlRule()); }
+	iv_ruleDeleteSql=ruleDeleteSql
+	{ $current=$iv_ruleDeleteSql.current; }
+	EOF;
+
+// Rule DeleteSql
+ruleDeleteSql returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='deletesql'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getDeleteSqlAccess().getDeletesqlKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getDeleteSqlAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getDeleteSqlAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDeleteSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='on'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getDeleteSqlAccess().getOnKeyword_3());
+		}
+		(
+			(
+				lv_on_4_0=RULE_STRING
+				{
+					newLeafNode(lv_on_4_0, grammarAccess.getDeleteSqlAccess().getOnSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDeleteSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"on",
+						lv_on_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getDeleteSqlAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getDeleteSqlAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getDeleteSqlAccess().getValueNonSelectStatementParserRuleCall_7_0());
+				}
+				lv_value_7_0=ruleNonSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getDeleteSqlRule());
+					}
+					add(
+						$current,
+						"value",
+						lv_value_7_0,
+						"in.handyman.Dsl.NonSelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getDeleteSqlAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getDeleteSqlAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getDeleteSqlAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getDeleteSqlRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleUpdateSql
+entryRuleUpdateSql returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getUpdateSqlRule()); }
+	iv_ruleUpdateSql=ruleUpdateSql
+	{ $current=$iv_ruleUpdateSql.current; }
+	EOF;
+
+// Rule UpdateSql
+ruleUpdateSql returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='updatesql'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getUpdateSqlAccess().getUpdatesqlKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getUpdateSqlAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getUpdateSqlAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getUpdateSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='on'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getUpdateSqlAccess().getOnKeyword_3());
+		}
+		(
+			(
+				lv_on_4_0=RULE_STRING
+				{
+					newLeafNode(lv_on_4_0, grammarAccess.getUpdateSqlAccess().getOnSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getUpdateSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"on",
+						lv_on_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getUpdateSqlAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getUpdateSqlAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getUpdateSqlAccess().getValueNonSelectStatementParserRuleCall_7_0());
+				}
+				lv_value_7_0=ruleNonSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getUpdateSqlRule());
+					}
+					add(
+						$current,
+						"value",
+						lv_value_7_0,
+						"in.handyman.Dsl.NonSelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getUpdateSqlAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getUpdateSqlAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getUpdateSqlAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getUpdateSqlRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleInsertSql
+entryRuleInsertSql returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getInsertSqlRule()); }
+	iv_ruleInsertSql=ruleInsertSql
+	{ $current=$iv_ruleInsertSql.current; }
+	EOF;
+
+// Rule InsertSql
+ruleInsertSql returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='insertsql'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getInsertSqlAccess().getInsertsqlKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getInsertSqlAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getInsertSqlAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getInsertSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='on'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getInsertSqlAccess().getOnKeyword_3());
+		}
+		(
+			(
+				lv_on_4_0=RULE_STRING
+				{
+					newLeafNode(lv_on_4_0, grammarAccess.getInsertSqlAccess().getOnSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getInsertSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"on",
+						lv_on_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getInsertSqlAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getInsertSqlAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getInsertSqlAccess().getValueNonSelectStatementParserRuleCall_7_0());
+				}
+				lv_value_7_0=ruleNonSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getInsertSqlRule());
+					}
+					add(
+						$current,
+						"value",
+						lv_value_7_0,
+						"in.handyman.Dsl.NonSelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getInsertSqlAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getInsertSqlAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getInsertSqlAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getInsertSqlRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleTruncateSql
+entryRuleTruncateSql returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getTruncateSqlRule()); }
+	iv_ruleTruncateSql=ruleTruncateSql
+	{ $current=$iv_ruleTruncateSql.current; }
+	EOF;
+
+// Rule TruncateSql
+ruleTruncateSql returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='truncatesql'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getTruncateSqlAccess().getTruncatesqlKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getTruncateSqlAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getTruncateSqlAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTruncateSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='on'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getTruncateSqlAccess().getOnKeyword_3());
+		}
+		(
+			(
+				lv_on_4_0=RULE_STRING
+				{
+					newLeafNode(lv_on_4_0, grammarAccess.getTruncateSqlAccess().getOnSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getTruncateSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"on",
+						lv_on_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getTruncateSqlAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getTruncateSqlAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getTruncateSqlAccess().getValueNonSelectStatementParserRuleCall_7_0());
+				}
+				lv_value_7_0=ruleNonSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getTruncateSqlRule());
+					}
+					add(
+						$current,
+						"value",
+						lv_value_7_0,
+						"in.handyman.Dsl.NonSelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getTruncateSqlAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getTruncateSqlAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getTruncateSqlAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getTruncateSqlRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleDropSql
+entryRuleDropSql returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getDropSqlRule()); }
+	iv_ruleDropSql=ruleDropSql
+	{ $current=$iv_ruleDropSql.current; }
+	EOF;
+
+// Rule DropSql
+ruleDropSql returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='dropsql'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getDropSqlAccess().getDropsqlKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getDropSqlAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getDropSqlAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDropSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='on'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getDropSqlAccess().getOnKeyword_3());
+		}
+		(
+			(
+				lv_on_4_0=RULE_STRING
+				{
+					newLeafNode(lv_on_4_0, grammarAccess.getDropSqlAccess().getOnSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getDropSqlRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"on",
+						lv_on_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='using'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getDropSqlAccess().getUsingKeyword_5());
+		}
+		otherlv_6='{'
+		{
+			newLeafNode(otherlv_6, grammarAccess.getDropSqlAccess().getLeftCurlyBracketKeyword_6());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getDropSqlAccess().getValueNonSelectStatementParserRuleCall_7_0());
+				}
+				lv_value_7_0=ruleNonSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getDropSqlRule());
+					}
+					add(
+						$current,
+						"value",
+						lv_value_7_0,
+						"in.handyman.Dsl.NonSelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_8='}'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getDropSqlAccess().getRightCurlyBracketKeyword_8());
+		}
+		otherlv_9='on-condition'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getDropSqlAccess().getOnConditionKeyword_9());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getDropSqlAccess().getConditionExpressionParserRuleCall_10_0());
+				}
+				lv_condition_10_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getDropSqlRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_10_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleListFiles
+entryRuleListFiles returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getListFilesRule()); }
+	iv_ruleListFiles=ruleListFiles
+	{ $current=$iv_ruleListFiles.current; }
+	EOF;
+
+// Rule ListFiles
+ruleListFiles returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='listfiles'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getListFilesAccess().getListfilesKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getListFilesAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getListFilesAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getListFilesRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getListFilesAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getListFilesAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getListFilesRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='on'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getListFilesAccess().getOnKeyword_5());
+		}
+		(
+			(
+				lv_to_6_0=RULE_STRING
+				{
+					newLeafNode(lv_to_6_0, grammarAccess.getListFilesAccess().getToSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getListFilesRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"to",
+						lv_to_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='target-table'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getListFilesAccess().getTargetTableKeyword_7());
+		}
+		(
+			(
+				lv_targetTable_8_0=RULE_STRING
+				{
+					newLeafNode(lv_targetTable_8_0, grammarAccess.getListFilesAccess().getTargetTableSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getListFilesRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetTable",
+						lv_targetTable_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='using'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getListFilesAccess().getUsingKeyword_9());
+		}
+		otherlv_10='{'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getListFilesAccess().getLeftCurlyBracketKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getListFilesAccess().getValueSelectStatementParserRuleCall_11_0());
+				}
+				lv_value_11_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getListFilesRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_11_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_12='}'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getListFilesAccess().getRightCurlyBracketKeyword_12());
+		}
+		otherlv_13='on-condition'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getListFilesAccess().getOnConditionKeyword_13());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getListFilesAccess().getConditionExpressionParserRuleCall_14_0());
+				}
+				lv_condition_14_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getListFilesRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_14_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleMongo2Db
+entryRuleMongo2Db returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getMongo2DbRule()); }
+	iv_ruleMongo2Db=ruleMongo2Db
+	{ $current=$iv_ruleMongo2Db.current; }
+	EOF;
+
+// Rule Mongo2Db
+ruleMongo2Db returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='mongo2db'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getMongo2DbAccess().getMongo2dbKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getMongo2DbAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getMongo2DbAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getMongo2DbAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_sourceConnStr_4_0=RULE_STRING
+				{
+					newLeafNode(lv_sourceConnStr_4_0, grammarAccess.getMongo2DbAccess().getSourceConnStrSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"sourceConnStr",
+						lv_sourceConnStr_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='to'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getMongo2DbAccess().getToKeyword_5());
+		}
+		(
+			(
+				lv_to_6_0=RULE_STRING
+				{
+					newLeafNode(lv_to_6_0, grammarAccess.getMongo2DbAccess().getToSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"to",
+						lv_to_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='srcDb'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getMongo2DbAccess().getSrcDbKeyword_7());
+		}
+		(
+			(
+				lv_sourceDb_8_0=RULE_STRING
+				{
+					newLeafNode(lv_sourceDb_8_0, grammarAccess.getMongo2DbAccess().getSourceDbSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"sourceDb",
+						lv_sourceDb_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='targetDb'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getMongo2DbAccess().getTargetDbKeyword_9());
+		}
+		(
+			(
+				lv_targetDb_10_0=RULE_STRING
+				{
+					newLeafNode(lv_targetDb_10_0, grammarAccess.getMongo2DbAccess().getTargetDbSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetDb",
+						lv_targetDb_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='targetTable'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getMongo2DbAccess().getTargetTableKeyword_11());
+		}
+		(
+			(
+				lv_targetTable_12_0=RULE_STRING
+				{
+					newLeafNode(lv_targetTable_12_0, grammarAccess.getMongo2DbAccess().getTargetTableSTRINGTerminalRuleCall_12_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetTable",
+						lv_targetTable_12_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_13='by-filter'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getMongo2DbAccess().getByFilterKeyword_13());
+		}
+		(
+			(
+				lv_filter_14_0=RULE_STRING
+				{
+					newLeafNode(lv_filter_14_0, grammarAccess.getMongo2DbAccess().getFilterSTRINGTerminalRuleCall_14_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"filter",
+						lv_filter_14_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_15='by-batch'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getMongo2DbAccess().getByBatchKeyword_15());
+		}
+		(
+			(
+				lv_limit_16_0=RULE_STRING
+				{
+					newLeafNode(lv_limit_16_0, grammarAccess.getMongo2DbAccess().getLimitSTRINGTerminalRuleCall_16_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"limit",
+						lv_limit_16_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_17='find-attribute'
+		{
+			newLeafNode(otherlv_17, grammarAccess.getMongo2DbAccess().getFindAttributeKeyword_17());
+		}
+		(
+			(
+				lv_findAttr_18_0=RULE_STRING
+				{
+					newLeafNode(lv_findAttr_18_0, grammarAccess.getMongo2DbAccess().getFindAttrSTRINGTerminalRuleCall_18_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"findAttr",
+						lv_findAttr_18_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_19='apply-manipulation'
+		{
+			newLeafNode(otherlv_19, grammarAccess.getMongo2DbAccess().getApplyManipulationKeyword_19());
+		}
+		(
+			(
+				lv_applyManipulation_20_0=RULE_STRING
+				{
+					newLeafNode(lv_applyManipulation_20_0, grammarAccess.getMongo2DbAccess().getApplyManipulationSTRINGTerminalRuleCall_20_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"applyManipulation",
+						lv_applyManipulation_20_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_21='on-updatekey'
+		{
+			newLeafNode(otherlv_21, grammarAccess.getMongo2DbAccess().getOnUpdatekeyKeyword_21());
+		}
+		(
+			(
+				lv_onUpdateKey_22_0=RULE_STRING
+				{
+					newLeafNode(lv_onUpdateKey_22_0, grammarAccess.getMongo2DbAccess().getOnUpdateKeySTRINGTerminalRuleCall_22_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"onUpdateKey",
+						lv_onUpdateKey_22_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_23='with-fetch-batch-size'
+		{
+			newLeafNode(otherlv_23, grammarAccess.getMongo2DbAccess().getWithFetchBatchSizeKeyword_23());
+		}
+		(
+			(
+				lv_fetchBatchSize_24_0=RULE_STRING
+				{
+					newLeafNode(lv_fetchBatchSize_24_0, grammarAccess.getMongo2DbAccess().getFetchBatchSizeSTRINGTerminalRuleCall_24_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"fetchBatchSize",
+						lv_fetchBatchSize_24_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_25='with-write-batch-size'
+		{
+			newLeafNode(otherlv_25, grammarAccess.getMongo2DbAccess().getWithWriteBatchSizeKeyword_25());
+		}
+		(
+			(
+				lv_writeBatchSize_26_0=RULE_STRING
+				{
+					newLeafNode(lv_writeBatchSize_26_0, grammarAccess.getMongo2DbAccess().getWriteBatchSizeSTRINGTerminalRuleCall_26_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getMongo2DbRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"writeBatchSize",
+						lv_writeBatchSize_26_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_27='using'
+		{
+			newLeafNode(otherlv_27, grammarAccess.getMongo2DbAccess().getUsingKeyword_27());
+		}
+		otherlv_28='{'
+		{
+			newLeafNode(otherlv_28, grammarAccess.getMongo2DbAccess().getLeftCurlyBracketKeyword_28());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getMongo2DbAccess().getValueSelectStatementParserRuleCall_29_0());
+				}
+				lv_value_29_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getMongo2DbRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_29_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_30='}'
+		{
+			newLeafNode(otherlv_30, grammarAccess.getMongo2DbAccess().getRightCurlyBracketKeyword_30());
+		}
+		otherlv_31='on-condition'
+		{
+			newLeafNode(otherlv_31, grammarAccess.getMongo2DbAccess().getOnConditionKeyword_31());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getMongo2DbAccess().getConditionExpressionParserRuleCall_32_0());
+				}
+				lv_condition_32_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getMongo2DbRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_32_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleFTP
+entryRuleFTP returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getFTPRule()); }
+	iv_ruleFTP=ruleFTP
+	{ $current=$iv_ruleFTP.current; }
+	EOF;
+
+// Rule FTP
+ruleFTP returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='ftp'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getFTPAccess().getFtpKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getFTPAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getFTPAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='host'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getFTPAccess().getHostKeyword_3());
+		}
+		(
+			(
+				lv_host_4_0=RULE_STRING
+				{
+					newLeafNode(lv_host_4_0, grammarAccess.getFTPAccess().getHostSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"host",
+						lv_host_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='port'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getFTPAccess().getPortKeyword_5());
+		}
+		(
+			(
+				lv_port_6_0=RULE_STRING
+				{
+					newLeafNode(lv_port_6_0, grammarAccess.getFTPAccess().getPortSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"port",
+						lv_port_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='username'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getFTPAccess().getUsernameKeyword_7());
+		}
+		(
+			(
+				lv_username_8_0=RULE_STRING
+				{
+					newLeafNode(lv_username_8_0, grammarAccess.getFTPAccess().getUsernameSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"username",
+						lv_username_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='password'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getFTPAccess().getPasswordKeyword_9());
+		}
+		(
+			(
+				lv_password_10_0=RULE_STRING
+				{
+					newLeafNode(lv_password_10_0, grammarAccess.getFTPAccess().getPasswordSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"password",
+						lv_password_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='action'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getFTPAccess().getActionKeyword_11());
+		}
+		(
+			(
+				lv_action_12_0=RULE_STRING
+				{
+					newLeafNode(lv_action_12_0, grammarAccess.getFTPAccess().getActionSTRINGTerminalRuleCall_12_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"action",
+						lv_action_12_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_13='local-dir'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getFTPAccess().getLocalDirKeyword_13());
+		}
+		(
+			(
+				lv_localDir_14_0=RULE_STRING
+				{
+					newLeafNode(lv_localDir_14_0, grammarAccess.getFTPAccess().getLocalDirSTRINGTerminalRuleCall_14_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"localDir",
+						lv_localDir_14_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_15='local-file'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getFTPAccess().getLocalFileKeyword_15());
+		}
+		(
+			(
+				lv_localFile_16_0=RULE_STRING
+				{
+					newLeafNode(lv_localFile_16_0, grammarAccess.getFTPAccess().getLocalFileSTRINGTerminalRuleCall_16_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"localFile",
+						lv_localFile_16_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_17='remote-dir'
+		{
+			newLeafNode(otherlv_17, grammarAccess.getFTPAccess().getRemoteDirKeyword_17());
+		}
+		(
+			(
+				lv_remoteDir_18_0=RULE_STRING
+				{
+					newLeafNode(lv_remoteDir_18_0, grammarAccess.getFTPAccess().getRemoteDirSTRINGTerminalRuleCall_18_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"remoteDir",
+						lv_remoteDir_18_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_19='remote-file'
+		{
+			newLeafNode(otherlv_19, grammarAccess.getFTPAccess().getRemoteFileKeyword_19());
+		}
+		(
+			(
+				lv_remoteFile_20_0=RULE_STRING
+				{
+					newLeafNode(lv_remoteFile_20_0, grammarAccess.getFTPAccess().getRemoteFileSTRINGTerminalRuleCall_20_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"remoteFile",
+						lv_remoteFile_20_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_21='from'
+		{
+			newLeafNode(otherlv_21, grammarAccess.getFTPAccess().getFromKeyword_21());
+		}
+		(
+			(
+				lv_source_22_0=RULE_STRING
+				{
+					newLeafNode(lv_source_22_0, grammarAccess.getFTPAccess().getSourceSTRINGTerminalRuleCall_22_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_22_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_23='target-table'
+		{
+			newLeafNode(otherlv_23, grammarAccess.getFTPAccess().getTargetTableKeyword_23());
+		}
+		(
+			(
+				lv_targetTable_24_0=RULE_STRING
+				{
+					newLeafNode(lv_targetTable_24_0, grammarAccess.getFTPAccess().getTargetTableSTRINGTerminalRuleCall_24_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetTable",
+						lv_targetTable_24_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_25='using'
+		{
+			newLeafNode(otherlv_25, grammarAccess.getFTPAccess().getUsingKeyword_25());
+		}
+		otherlv_26='{'
+		{
+			newLeafNode(otherlv_26, grammarAccess.getFTPAccess().getLeftCurlyBracketKeyword_26());
+		}
+		(
+			(
+				lv_value_27_0=RULE_STRING
+				{
+					newLeafNode(lv_value_27_0, grammarAccess.getFTPAccess().getValueSTRINGTerminalRuleCall_27_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getFTPRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"value",
+						lv_value_27_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_28='}'
+		{
+			newLeafNode(otherlv_28, grammarAccess.getFTPAccess().getRightCurlyBracketKeyword_28());
+		}
+		otherlv_29='on-condition'
+		{
+			newLeafNode(otherlv_29, grammarAccess.getFTPAccess().getOnConditionKeyword_29());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getFTPAccess().getConditionExpressionParserRuleCall_30_0());
+				}
+				lv_condition_30_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getFTPRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_30_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleZip
+entryRuleZip returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getZipRule()); }
+	iv_ruleZip=ruleZip
+	{ $current=$iv_ruleZip.current; }
+	EOF;
+
+// Rule Zip
+ruleZip returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='zip'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getZipAccess().getZipKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getZipAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getZipAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getZipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='zip-file-path'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getZipAccess().getZipFilePathKeyword_3());
+		}
+		(
+			(
+				lv_zipFilePath_4_0=RULE_STRING
+				{
+					newLeafNode(lv_zipFilePath_4_0, grammarAccess.getZipAccess().getZipFilePathSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getZipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"zipFilePath",
+						lv_zipFilePath_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='zip-file-name'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getZipAccess().getZipFileNameKeyword_5());
+		}
+		(
+			(
+				lv_zipFileName_6_0=RULE_STRING
+				{
+					newLeafNode(lv_zipFileName_6_0, grammarAccess.getZipAccess().getZipFileNameSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getZipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"zipFileName",
+						lv_zipFileName_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='source'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getZipAccess().getSourceKeyword_7());
+		}
+		(
+			(
+				lv_source_8_0=RULE_STRING
+				{
+					newLeafNode(lv_source_8_0, grammarAccess.getZipAccess().getSourceSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getZipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='buffer-size'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getZipAccess().getBufferSizeKeyword_9());
+		}
+		(
+			(
+				lv_bufferSize_10_0=RULE_STRING
+				{
+					newLeafNode(lv_bufferSize_10_0, grammarAccess.getZipAccess().getBufferSizeSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getZipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"bufferSize",
+						lv_bufferSize_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='using'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getZipAccess().getUsingKeyword_11());
+		}
+		otherlv_12='{'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getZipAccess().getLeftCurlyBracketKeyword_12());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getZipAccess().getValueSelectStatementParserRuleCall_13_0());
+				}
+				lv_value_13_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getZipRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_13_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_14='}'
+		{
+			newLeafNode(otherlv_14, grammarAccess.getZipAccess().getRightCurlyBracketKeyword_14());
+		}
+		otherlv_15='on-condition'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getZipAccess().getOnConditionKeyword_15());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getZipAccess().getConditionExpressionParserRuleCall_16_0());
+				}
+				lv_condition_16_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getZipRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_16_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleUnzip
+entryRuleUnzip returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getUnzipRule()); }
+	iv_ruleUnzip=ruleUnzip
+	{ $current=$iv_ruleUnzip.current; }
+	EOF;
+
+// Rule Unzip
+ruleUnzip returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='unzip'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getUnzipAccess().getUnzipKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getUnzipAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getUnzipAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getUnzipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='source'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getUnzipAccess().getSourceKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getUnzipAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getUnzipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='dest-dir'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getUnzipAccess().getDestDirKeyword_5());
+		}
+		(
+			(
+				lv_destDir_6_0=RULE_STRING
+				{
+					newLeafNode(lv_destDir_6_0, grammarAccess.getUnzipAccess().getDestDirSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getUnzipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"destDir",
+						lv_destDir_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='buffer-size'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getUnzipAccess().getBufferSizeKeyword_7());
+		}
+		(
+			(
+				lv_bufferSize_8_0=RULE_STRING
+				{
+					newLeafNode(lv_bufferSize_8_0, grammarAccess.getUnzipAccess().getBufferSizeSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getUnzipRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"bufferSize",
+						lv_bufferSize_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='using'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getUnzipAccess().getUsingKeyword_9());
+		}
+		otherlv_10='{'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getUnzipAccess().getLeftCurlyBracketKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getUnzipAccess().getValueSelectStatementParserRuleCall_11_0());
+				}
+				lv_value_11_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getUnzipRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_11_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_12='}'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getUnzipAccess().getRightCurlyBracketKeyword_12());
+		}
+		otherlv_13='on-condition'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getUnzipAccess().getOnConditionKeyword_13());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getUnzipAccess().getConditionExpressionParserRuleCall_14_0());
+				}
+				lv_condition_14_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getUnzipRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_14_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleChecksum
+entryRuleChecksum returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getChecksumRule()); }
+	iv_ruleChecksum=ruleChecksum
+	{ $current=$iv_ruleChecksum.current; }
+	EOF;
+
+// Rule Checksum
+ruleChecksum returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='checksum'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getChecksumAccess().getChecksumKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getChecksumAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getChecksumAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='host'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getChecksumAccess().getHostKeyword_3());
+		}
+		(
+			(
+				lv_host_4_0=RULE_STRING
+				{
+					newLeafNode(lv_host_4_0, grammarAccess.getChecksumAccess().getHostSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"host",
+						lv_host_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='port'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getChecksumAccess().getPortKeyword_5());
+		}
+		(
+			(
+				lv_port_6_0=RULE_STRING
+				{
+					newLeafNode(lv_port_6_0, grammarAccess.getChecksumAccess().getPortSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"port",
+						lv_port_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='username'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getChecksumAccess().getUsernameKeyword_7());
+		}
+		(
+			(
+				lv_username_8_0=RULE_STRING
+				{
+					newLeafNode(lv_username_8_0, grammarAccess.getChecksumAccess().getUsernameSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"username",
+						lv_username_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='password'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getChecksumAccess().getPasswordKeyword_9());
+		}
+		(
+			(
+				lv_password_10_0=RULE_STRING
+				{
+					newLeafNode(lv_password_10_0, grammarAccess.getChecksumAccess().getPasswordSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"password",
+						lv_password_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='local-dir'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getChecksumAccess().getLocalDirKeyword_11());
+		}
+		(
+			(
+				lv_localDir_12_0=RULE_STRING
+				{
+					newLeafNode(lv_localDir_12_0, grammarAccess.getChecksumAccess().getLocalDirSTRINGTerminalRuleCall_12_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"localDir",
+						lv_localDir_12_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_13='local-file'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getChecksumAccess().getLocalFileKeyword_13());
+		}
+		(
+			(
+				lv_localFile_14_0=RULE_STRING
+				{
+					newLeafNode(lv_localFile_14_0, grammarAccess.getChecksumAccess().getLocalFileSTRINGTerminalRuleCall_14_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"localFile",
+						lv_localFile_14_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_15='remote-dir'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getChecksumAccess().getRemoteDirKeyword_15());
+		}
+		(
+			(
+				lv_remoteDir_16_0=RULE_STRING
+				{
+					newLeafNode(lv_remoteDir_16_0, grammarAccess.getChecksumAccess().getRemoteDirSTRINGTerminalRuleCall_16_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"remoteDir",
+						lv_remoteDir_16_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_17='remote-file'
+		{
+			newLeafNode(otherlv_17, grammarAccess.getChecksumAccess().getRemoteFileKeyword_17());
+		}
+		(
+			(
+				lv_remoteFile_18_0=RULE_STRING
+				{
+					newLeafNode(lv_remoteFile_18_0, grammarAccess.getChecksumAccess().getRemoteFileSTRINGTerminalRuleCall_18_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getChecksumRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"remoteFile",
+						lv_remoteFile_18_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_19='using'
+		{
+			newLeafNode(otherlv_19, grammarAccess.getChecksumAccess().getUsingKeyword_19());
+		}
+		otherlv_20='{'
+		{
+			newLeafNode(otherlv_20, grammarAccess.getChecksumAccess().getLeftCurlyBracketKeyword_20());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getChecksumAccess().getValueSelectStatementParserRuleCall_21_0());
+				}
+				lv_value_21_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getChecksumRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_21_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_22='}'
+		{
+			newLeafNode(otherlv_22, grammarAccess.getChecksumAccess().getRightCurlyBracketKeyword_22());
+		}
+		otherlv_23='on-condition'
+		{
+			newLeafNode(otherlv_23, grammarAccess.getChecksumAccess().getOnConditionKeyword_23());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getChecksumAccess().getConditionExpressionParserRuleCall_24_0());
+				}
+				lv_condition_24_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getChecksumRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_24_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleJsonTransform
+entryRuleJsonTransform returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getJsonTransformRule()); }
+	iv_ruleJsonTransform=ruleJsonTransform
+	{ $current=$iv_ruleJsonTransform.current; }
+	EOF;
+
+// Rule JsonTransform
+ruleJsonTransform returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='jsontransform'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getJsonTransformAccess().getJsontransformKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getJsonTransformAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getJsonTransformAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonTransformRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getJsonTransformAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getJsonTransformAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonTransformRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='target-table'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getJsonTransformAccess().getTargetTableKeyword_5());
+		}
+		(
+			(
+				lv_targetTable_6_0=RULE_STRING
+				{
+					newLeafNode(lv_targetTable_6_0, grammarAccess.getJsonTransformAccess().getTargetTableSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonTransformRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetTable",
+						lv_targetTable_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='using'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getJsonTransformAccess().getUsingKeyword_7());
+		}
+		otherlv_8='{'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getJsonTransformAccess().getLeftCurlyBracketKeyword_8());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getJsonTransformAccess().getValueSelectStatementParserRuleCall_9_0());
+				}
+				lv_value_9_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getJsonTransformRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_9_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_10='}'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getJsonTransformAccess().getRightCurlyBracketKeyword_10());
+		}
+		otherlv_11='on-condition'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getJsonTransformAccess().getOnConditionKeyword_11());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getJsonTransformAccess().getConditionExpressionParserRuleCall_12_0());
+				}
+				lv_condition_12_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getJsonTransformRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_12_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleJsonDeserialize
+entryRuleJsonDeserialize returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getJsonDeserializeRule()); }
+	iv_ruleJsonDeserialize=ruleJsonDeserialize
+	{ $current=$iv_ruleJsonDeserialize.current; }
+	EOF;
+
+// Rule JsonDeserialize
+ruleJsonDeserialize returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='jsondeserialize'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getJsonDeserializeAccess().getJsondeserializeKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getJsonDeserializeAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getJsonDeserializeAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonDeserializeRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getJsonDeserializeAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getJsonDeserializeAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonDeserializeRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='target-table'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getJsonDeserializeAccess().getTargetTableKeyword_5());
+		}
+		(
+			(
+				lv_targetTable_6_0=RULE_STRING
+				{
+					newLeafNode(lv_targetTable_6_0, grammarAccess.getJsonDeserializeAccess().getTargetTableSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonDeserializeRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetTable",
+						lv_targetTable_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='input'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getJsonDeserializeAccess().getInputKeyword_7());
+		}
+		(
+			(
+				lv_input_8_0=RULE_STRING
+				{
+					newLeafNode(lv_input_8_0, grammarAccess.getJsonDeserializeAccess().getInputSTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getJsonDeserializeRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"input",
+						lv_input_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='using'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getJsonDeserializeAccess().getUsingKeyword_9());
+		}
+		otherlv_10='{'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getJsonDeserializeAccess().getLeftCurlyBracketKeyword_10());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getJsonDeserializeAccess().getValueSelectStatementParserRuleCall_11_0());
+				}
+				lv_value_11_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getJsonDeserializeRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_11_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_12='}'
+		{
+			newLeafNode(otherlv_12, grammarAccess.getJsonDeserializeAccess().getRightCurlyBracketKeyword_12());
+		}
+		otherlv_13='on-condition'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getJsonDeserializeAccess().getOnConditionKeyword_13());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getJsonDeserializeAccess().getConditionExpressionParserRuleCall_14_0());
+				}
+				lv_condition_14_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getJsonDeserializeRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_14_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRuleRestApi
+entryRuleRestApi returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getRestApiRule()); }
+	iv_ruleRestApi=ruleRestApi
+	{ $current=$iv_ruleRestApi.current; }
+	EOF;
+
+// Rule RestApi
+ruleRestApi returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='restapi'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getRestApiAccess().getRestapiKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getRestApiAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getRestApiAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='url'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getRestApiAccess().getUrlKeyword_3());
+		}
+		(
+			(
+				lv_url_4_0=RULE_STRING
+				{
+					newLeafNode(lv_url_4_0, grammarAccess.getRestApiAccess().getUrlSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"url",
+						lv_url_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='method'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getRestApiAccess().getMethodKeyword_5());
+		}
+		(
+			(
+				lv_method_6_0=RULE_STRING
+				{
+					newLeafNode(lv_method_6_0, grammarAccess.getRestApiAccess().getMethodSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"method",
+						lv_method_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='property'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getRestApiAccess().getPropertyKeyword_7());
+		}
+		(
+			(
+				lv_property_8_0=RULE_STRING
+				{
+					newLeafNode(lv_property_8_0, grammarAccess.getRestApiAccess().getPropertySTRINGTerminalRuleCall_8_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"property",
+						lv_property_8_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_9='payload'
+		{
+			newLeafNode(otherlv_9, grammarAccess.getRestApiAccess().getPayloadKeyword_9());
+		}
+		(
+			(
+				lv_payload_10_0=RULE_STRING
+				{
+					newLeafNode(lv_payload_10_0, grammarAccess.getRestApiAccess().getPayloadSTRINGTerminalRuleCall_10_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"payload",
+						lv_payload_10_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_11='from'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getRestApiAccess().getFromKeyword_11());
+		}
+		(
+			(
+				lv_source_12_0=RULE_STRING
+				{
+					newLeafNode(lv_source_12_0, grammarAccess.getRestApiAccess().getSourceSTRINGTerminalRuleCall_12_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_12_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_13='target-table'
+		{
+			newLeafNode(otherlv_13, grammarAccess.getRestApiAccess().getTargetTableKeyword_13());
+		}
+		(
+			(
+				lv_targetTable_14_0=RULE_STRING
+				{
+					newLeafNode(lv_targetTable_14_0, grammarAccess.getRestApiAccess().getTargetTableSTRINGTerminalRuleCall_14_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getRestApiRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"targetTable",
+						lv_targetTable_14_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_15='using'
+		{
+			newLeafNode(otherlv_15, grammarAccess.getRestApiAccess().getUsingKeyword_15());
+		}
+		otherlv_16='{'
+		{
+			newLeafNode(otherlv_16, grammarAccess.getRestApiAccess().getLeftCurlyBracketKeyword_16());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getRestApiAccess().getValueSelectStatementParserRuleCall_17_0());
+				}
+				lv_value_17_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getRestApiRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_17_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_18='}'
+		{
+			newLeafNode(otherlv_18, grammarAccess.getRestApiAccess().getRightCurlyBracketKeyword_18());
+		}
+		otherlv_19='on-condition'
+		{
+			newLeafNode(otherlv_19, grammarAccess.getRestApiAccess().getOnConditionKeyword_19());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getRestApiAccess().getConditionExpressionParserRuleCall_20_0());
+				}
+				lv_condition_20_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getRestApiRule());
+					}
+					set(
+						$current,
+						"condition",
+						lv_condition_20_0,
+						"in.handyman.Dsl.Expression");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+	)
+;
+
+// Entry rule entryRulePython
+entryRulePython returns [EObject current=null]:
+	{ newCompositeNode(grammarAccess.getPythonRule()); }
+	iv_rulePython=rulePython
+	{ $current=$iv_rulePython.current; }
+	EOF;
+
+// Rule Python
+rulePython returns [EObject current=null]
+@init {
+	enterRule();
+}
+@after {
+	leaveRule();
+}:
+	(
+		otherlv_0='python'
+		{
+			newLeafNode(otherlv_0, grammarAccess.getPythonAccess().getPythonKeyword_0());
+		}
+		otherlv_1='as'
+		{
+			newLeafNode(otherlv_1, grammarAccess.getPythonAccess().getAsKeyword_1());
+		}
+		(
+			(
+				lv_name_2_0=RULE_STRING
+				{
+					newLeafNode(lv_name_2_0, grammarAccess.getPythonAccess().getNameSTRINGTerminalRuleCall_2_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getPythonRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"name",
+						lv_name_2_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_3='from'
+		{
+			newLeafNode(otherlv_3, grammarAccess.getPythonAccess().getFromKeyword_3());
+		}
+		(
+			(
+				lv_source_4_0=RULE_STRING
+				{
+					newLeafNode(lv_source_4_0, grammarAccess.getPythonAccess().getSourceSTRINGTerminalRuleCall_4_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getPythonRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"source",
+						lv_source_4_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_5='target'
+		{
+			newLeafNode(otherlv_5, grammarAccess.getPythonAccess().getTargetKeyword_5());
+		}
+		(
+			(
+				lv_target_6_0=RULE_STRING
+				{
+					newLeafNode(lv_target_6_0, grammarAccess.getPythonAccess().getTargetSTRINGTerminalRuleCall_6_0());
+				}
+				{
+					if ($current==null) {
+						$current = createModelElement(grammarAccess.getPythonRule());
+					}
+					setWithLastConsumed(
+						$current,
+						"target",
+						lv_target_6_0,
+						"org.eclipse.xtext.common.Terminals.STRING");
+				}
+			)
+		)
+		otherlv_7='using'
+		{
+			newLeafNode(otherlv_7, grammarAccess.getPythonAccess().getUsingKeyword_7());
+		}
+		otherlv_8='{'
+		{
+			newLeafNode(otherlv_8, grammarAccess.getPythonAccess().getLeftCurlyBracketKeyword_8());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getPythonAccess().getValueSelectStatementParserRuleCall_9_0());
+				}
+				lv_value_9_0=ruleSelectStatement
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getPythonRule());
+					}
+					set(
+						$current,
+						"value",
+						lv_value_9_0,
+						"in.handyman.Dsl.SelectStatement");
+					afterParserOrEnumRuleCall();
+				}
+			)
+		)
+		otherlv_10='}'
+		{
+			newLeafNode(otherlv_10, grammarAccess.getPythonAccess().getRightCurlyBracketKeyword_10());
+		}
+		otherlv_11='on-condition'
+		{
+			newLeafNode(otherlv_11, grammarAccess.getPythonAccess().getOnConditionKeyword_11());
+		}
+		(
+			(
+				{
+					newCompositeNode(grammarAccess.getPythonAccess().getConditionExpressionParserRuleCall_12_0());
+				}
+				lv_condition_12_0=ruleExpression
+				{
+					if ($current==null) {
+						$current = createModelElementForParent(grammarAccess.getPythonRule());
 					}
 					set(
 						$current,
@@ -3815,1752 +6065,6 @@ ruleRestPart returns [EObject current=null]
 						"partData",
 						lv_partData_4_0,
 						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleTrelloGET
-entryRuleTrelloGET returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getTrelloGETRule()); }
-	iv_ruleTrelloGET=ruleTrelloGET
-	{ $current=$iv_ruleTrelloGET.current; }
-	EOF;
-
-// Rule TrelloGET
-ruleTrelloGET returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='trelloget'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getTrelloGETAccess().getTrellogetKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getTrelloGETAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getTrelloGETAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='secured-by'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getTrelloGETAccess().getSecuredByKeyword_3());
-		}
-		(
-			(
-				lv_authtoken_4_0=RULE_STRING
-				{
-					newLeafNode(lv_authtoken_4_0, grammarAccess.getTrelloGETAccess().getAuthtokenSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"authtoken",
-						lv_authtoken_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='with-key'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getTrelloGETAccess().getWithKeyKeyword_5());
-		}
-		(
-			(
-				lv_key_6_0=RULE_STRING
-				{
-					newLeafNode(lv_key_6_0, grammarAccess.getTrelloGETAccess().getKeySTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"key",
-						lv_key_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='through-user'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getTrelloGETAccess().getThroughUserKeyword_7());
-		}
-		(
-			(
-				lv_useraccount_8_0=RULE_STRING
-				{
-					newLeafNode(lv_useraccount_8_0, grammarAccess.getTrelloGETAccess().getUseraccountSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"useraccount",
-						lv_useraccount_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='from-board'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getTrelloGETAccess().getFromBoardKeyword_9());
-		}
-		(
-			(
-				lv_board_10_0=RULE_STRING
-				{
-					newLeafNode(lv_board_10_0, grammarAccess.getTrelloGETAccess().getBoardSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"board",
-						lv_board_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='to'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getTrelloGETAccess().getToKeyword_11());
-		}
-		(
-			(
-				lv_target_12_0=RULE_STRING
-				{
-					newLeafNode(lv_target_12_0, grammarAccess.getTrelloGETAccess().getTargetSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloGETRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"target",
-						lv_target_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getTrelloGETAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getTrelloGETAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getTrelloGETAccess().getValueSelectStatementParserRuleCall_15_0());
-				}
-				lv_value_15_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getTrelloGETRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_15_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getTrelloGETAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getTrelloGETAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getTrelloGETAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getTrelloGETRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleTrelloPUT
-entryRuleTrelloPUT returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getTrelloPUTRule()); }
-	iv_ruleTrelloPUT=ruleTrelloPUT
-	{ $current=$iv_ruleTrelloPUT.current; }
-	EOF;
-
-// Rule TrelloPUT
-ruleTrelloPUT returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='trelloput'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getTrelloPUTAccess().getTrelloputKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getTrelloPUTAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getTrelloPUTAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='secured-by'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getTrelloPUTAccess().getSecuredByKeyword_3());
-		}
-		(
-			(
-				lv_authtoken_4_0=RULE_STRING
-				{
-					newLeafNode(lv_authtoken_4_0, grammarAccess.getTrelloPUTAccess().getAuthtokenSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"authtoken",
-						lv_authtoken_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='with-key'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getTrelloPUTAccess().getWithKeyKeyword_5());
-		}
-		(
-			(
-				lv_key_6_0=RULE_STRING
-				{
-					newLeafNode(lv_key_6_0, grammarAccess.getTrelloPUTAccess().getKeySTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"key",
-						lv_key_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='through-user'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getTrelloPUTAccess().getThroughUserKeyword_7());
-		}
-		(
-			(
-				lv_useraccount_8_0=RULE_STRING
-				{
-					newLeafNode(lv_useraccount_8_0, grammarAccess.getTrelloPUTAccess().getUseraccountSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"useraccount",
-						lv_useraccount_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-list'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getTrelloPUTAccess().getForListKeyword_9());
-		}
-		(
-			(
-				lv_list_10_0=RULE_STRING
-				{
-					newLeafNode(lv_list_10_0, grammarAccess.getTrelloPUTAccess().getListSTRINGTerminalRuleCall_10_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"list",
-						lv_list_10_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_11='from-source'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getTrelloPUTAccess().getFromSourceKeyword_11());
-		}
-		(
-			(
-				lv_source_12_0=RULE_STRING
-				{
-					newLeafNode(lv_source_12_0, grammarAccess.getTrelloPUTAccess().getSourceSTRINGTerminalRuleCall_12_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTrelloPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"source",
-						lv_source_12_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_13='using'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getTrelloPUTAccess().getUsingKeyword_13());
-		}
-		otherlv_14='{'
-		{
-			newLeafNode(otherlv_14, grammarAccess.getTrelloPUTAccess().getLeftCurlyBracketKeyword_14());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getTrelloPUTAccess().getValueSelectStatementParserRuleCall_15_0());
-				}
-				lv_value_15_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getTrelloPUTRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_15_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_16='}'
-		{
-			newLeafNode(otherlv_16, grammarAccess.getTrelloPUTAccess().getRightCurlyBracketKeyword_16());
-		}
-		otherlv_17='on-condition'
-		{
-			newLeafNode(otherlv_17, grammarAccess.getTrelloPUTAccess().getOnConditionKeyword_17());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getTrelloPUTAccess().getConditionExpressionParserRuleCall_18_0());
-				}
-				lv_condition_18_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getTrelloPUTRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_18_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleFetch
-entryRuleFetch returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getFetchRule()); }
-	iv_ruleFetch=ruleFetch
-	{ $current=$iv_ruleFetch.current; }
-	EOF;
-
-// Rule Fetch
-ruleFetch returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='assign'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getFetchAccess().getAssignKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getFetchAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getFetchAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFetchRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='source'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getFetchAccess().getSourceKeyword_3());
-		}
-		(
-			(
-				lv_source_4_0=RULE_STRING
-				{
-					newLeafNode(lv_source_4_0, grammarAccess.getFetchAccess().getSourceSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFetchRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"source",
-						lv_source_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='using'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getFetchAccess().getUsingKeyword_5());
-		}
-		otherlv_6='{'
-		{
-			newLeafNode(otherlv_6, grammarAccess.getFetchAccess().getLeftCurlyBracketKeyword_6());
-		}
-		(
-			(
-				lv_value_7_0=RULE_STRING
-				{
-					newLeafNode(lv_value_7_0, grammarAccess.getFetchAccess().getValueSTRINGTerminalRuleCall_7_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getFetchRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_7_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_8='}'
-		{
-			newLeafNode(otherlv_8, grammarAccess.getFetchAccess().getRightCurlyBracketKeyword_8());
-		}
-		otherlv_9='on-condition'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getFetchAccess().getOnConditionKeyword_9());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getFetchAccess().getConditionExpressionParserRuleCall_10_0());
-				}
-				lv_condition_10_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getFetchRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_10_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleCallprocess
-entryRuleCallprocess returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getCallprocessRule()); }
-	iv_ruleCallprocess=ruleCallprocess
-	{ $current=$iv_ruleCallprocess.current; }
-	EOF;
-
-// Rule Callprocess
-ruleCallprocess returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='callprocess'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getCallprocessAccess().getCallprocessKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getCallprocessAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getCallprocessAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCallprocessRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='with-target'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getCallprocessAccess().getWithTargetKeyword_3());
-		}
-		(
-			(
-				lv_target_4_0=RULE_STRING
-				{
-					newLeafNode(lv_target_4_0, grammarAccess.getCallprocessAccess().getTargetSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCallprocessRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"target",
-						lv_target_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='from-file'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getCallprocessAccess().getFromFileKeyword_5());
-		}
-		(
-			(
-				lv_source_6_0=RULE_STRING
-				{
-					newLeafNode(lv_source_6_0, grammarAccess.getCallprocessAccess().getSourceSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCallprocessRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"source",
-						lv_source_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='using'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getCallprocessAccess().getUsingKeyword_7());
-		}
-		(
-			(
-				lv_datasource_8_0=RULE_STRING
-				{
-					newLeafNode(lv_datasource_8_0, grammarAccess.getCallprocessAccess().getDatasourceSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCallprocessRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"datasource",
-						lv_datasource_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='for-every'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getCallprocessAccess().getForEveryKeyword_9());
-		}
-		otherlv_10='{'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getCallprocessAccess().getLeftCurlyBracketKeyword_10());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getCallprocessAccess().getValueSelectStatementParserRuleCall_11_0());
-				}
-				lv_value_11_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getCallprocessRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_11_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_12='}'
-		{
-			newLeafNode(otherlv_12, grammarAccess.getCallprocessAccess().getRightCurlyBracketKeyword_12());
-		}
-		otherlv_13='on-condition'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getCallprocessAccess().getOnConditionKeyword_13());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getCallprocessAccess().getConditionExpressionParserRuleCall_14_0());
-				}
-				lv_condition_14_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getCallprocessRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_14_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleUpdatedaudit
-entryRuleUpdatedaudit returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getUpdatedauditRule()); }
-	iv_ruleUpdatedaudit=ruleUpdatedaudit
-	{ $current=$iv_ruleUpdatedaudit.current; }
-	EOF;
-
-// Rule Updatedaudit
-ruleUpdatedaudit returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='log'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getUpdatedauditAccess().getLogKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getUpdatedauditAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getUpdatedauditAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getUpdatedauditRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='logto'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getUpdatedauditAccess().getLogtoKeyword_3());
-		}
-		(
-			(
-				lv_logsink_4_0=RULE_STRING
-				{
-					newLeafNode(lv_logsink_4_0, grammarAccess.getUpdatedauditAccess().getLogsinkSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getUpdatedauditRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"logsink",
-						lv_logsink_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='in'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getUpdatedauditAccess().getInKeyword_5());
-		}
-		(
-			(
-				lv_datasource_6_0=RULE_STRING
-				{
-					newLeafNode(lv_datasource_6_0, grammarAccess.getUpdatedauditAccess().getDatasourceSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getUpdatedauditRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"datasource",
-						lv_datasource_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='using'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getUpdatedauditAccess().getUsingKeyword_7());
-		}
-		otherlv_8='{'
-		{
-			newLeafNode(otherlv_8, grammarAccess.getUpdatedauditAccess().getLeftCurlyBracketKeyword_8());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getUpdatedauditAccess().getValueSelectStatementParserRuleCall_9_0());
-				}
-				lv_value_9_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getUpdatedauditRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_9_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_10='}'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getUpdatedauditAccess().getRightCurlyBracketKeyword_10());
-		}
-		otherlv_11='on-condition'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getUpdatedauditAccess().getOnConditionKeyword_11());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getUpdatedauditAccess().getConditionExpressionParserRuleCall_12_0());
-				}
-				lv_condition_12_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getUpdatedauditRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_12_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleClickSendSms
-entryRuleClickSendSms returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getClickSendSmsRule()); }
-	iv_ruleClickSendSms=ruleClickSendSms
-	{ $current=$iv_ruleClickSendSms.current; }
-	EOF;
-
-// Rule ClickSendSms
-ruleClickSendSms returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='c2sms'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getClickSendSmsAccess().getC2smsKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getClickSendSmsAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getClickSendSmsAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getClickSendSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='with-user'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getClickSendSmsAccess().getWithUserKeyword_3());
-		}
-		(
-			(
-				lv_userid_4_0=RULE_STRING
-				{
-					newLeafNode(lv_userid_4_0, grammarAccess.getClickSendSmsAccess().getUseridSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getClickSendSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"userid",
-						lv_userid_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='secured-by'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getClickSendSmsAccess().getSecuredByKeyword_5());
-		}
-		(
-			(
-				lv_securityKey_6_0=RULE_STRING
-				{
-					newLeafNode(lv_securityKey_6_0, grammarAccess.getClickSendSmsAccess().getSecurityKeySTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getClickSendSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"securityKey",
-						lv_securityKey_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='from-source'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getClickSendSmsAccess().getFromSourceKeyword_7());
-		}
-		(
-			(
-				lv_target_8_0=RULE_STRING
-				{
-					newLeafNode(lv_target_8_0, grammarAccess.getClickSendSmsAccess().getTargetSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getClickSendSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"target",
-						lv_target_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='using'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getClickSendSmsAccess().getUsingKeyword_9());
-		}
-		otherlv_10='{'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getClickSendSmsAccess().getLeftCurlyBracketKeyword_10());
-		}
-		(
-			(
-				lv_value_11_0=RULE_STRING
-				{
-					newLeafNode(lv_value_11_0, grammarAccess.getClickSendSmsAccess().getValueSTRINGTerminalRuleCall_11_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getClickSendSmsRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_11_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_12='}'
-		{
-			newLeafNode(otherlv_12, grammarAccess.getClickSendSmsAccess().getRightCurlyBracketKeyword_12());
-		}
-		otherlv_13='on-condition'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getClickSendSmsAccess().getOnConditionKeyword_13());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getClickSendSmsAccess().getConditionExpressionParserRuleCall_14_0());
-				}
-				lv_condition_14_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getClickSendSmsRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_14_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleSlackPUT
-entryRuleSlackPUT returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getSlackPUTRule()); }
-	iv_ruleSlackPUT=ruleSlackPUT
-	{ $current=$iv_ruleSlackPUT.current; }
-	EOF;
-
-// Rule SlackPUT
-ruleSlackPUT returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='slackput'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getSlackPUTAccess().getSlackputKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getSlackPUTAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getSlackPUTAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSlackPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='to'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getSlackPUTAccess().getToKeyword_3());
-		}
-		(
-			(
-				lv_team_4_0=RULE_STRING
-				{
-					newLeafNode(lv_team_4_0, grammarAccess.getSlackPUTAccess().getTeamSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSlackPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"team",
-						lv_team_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='on'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getSlackPUTAccess().getOnKeyword_5());
-		}
-		(
-			(
-				lv_channel_6_0=RULE_STRING
-				{
-					newLeafNode(lv_channel_6_0, grammarAccess.getSlackPUTAccess().getChannelSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSlackPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"channel",
-						lv_channel_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='using'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getSlackPUTAccess().getUsingKeyword_7());
-		}
-		otherlv_8='{'
-		{
-			newLeafNode(otherlv_8, grammarAccess.getSlackPUTAccess().getLeftCurlyBracketKeyword_8());
-		}
-		(
-			(
-				lv_value_9_0=RULE_STRING
-				{
-					newLeafNode(lv_value_9_0, grammarAccess.getSlackPUTAccess().getValueSTRINGTerminalRuleCall_9_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getSlackPUTRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"value",
-						lv_value_9_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_10='}'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getSlackPUTAccess().getRightCurlyBracketKeyword_10());
-		}
-		otherlv_11='on-condition'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getSlackPUTAccess().getOnConditionKeyword_11());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getSlackPUTAccess().getConditionExpressionParserRuleCall_12_0());
-				}
-				lv_condition_12_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getSlackPUTRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_12_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleCopydata
-entryRuleCopydata returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getCopydataRule()); }
-	iv_ruleCopydata=ruleCopydata
-	{ $current=$iv_ruleCopydata.current; }
-	EOF;
-
-// Rule Copydata
-ruleCopydata returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='copydata'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getCopydataAccess().getCopydataKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getCopydataAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getCopydataAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCopydataRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='from'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getCopydataAccess().getFromKeyword_3());
-		}
-		(
-			(
-				lv_source_4_0=RULE_STRING
-				{
-					newLeafNode(lv_source_4_0, grammarAccess.getCopydataAccess().getSourceSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCopydataRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"source",
-						lv_source_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='to'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getCopydataAccess().getToKeyword_5());
-		}
-		(
-			(
-				lv_to_6_0=RULE_STRING
-				{
-					newLeafNode(lv_to_6_0, grammarAccess.getCopydataAccess().getToSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getCopydataRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"to",
-						lv_to_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='using'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getCopydataAccess().getUsingKeyword_7());
-		}
-		otherlv_8='{'
-		{
-			newLeafNode(otherlv_8, grammarAccess.getCopydataAccess().getLeftCurlyBracketKeyword_8());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getCopydataAccess().getValueSelectStatementParserRuleCall_9_0());
-				}
-				lv_value_9_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getCopydataRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_9_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_10='}'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getCopydataAccess().getRightCurlyBracketKeyword_10());
-		}
-		otherlv_11='on-condition'
-		{
-			newLeafNode(otherlv_11, grammarAccess.getCopydataAccess().getOnConditionKeyword_11());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getCopydataAccess().getConditionExpressionParserRuleCall_12_0());
-				}
-				lv_condition_12_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getCopydataRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_12_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleWriteCsv
-entryRuleWriteCsv returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getWriteCsvRule()); }
-	iv_ruleWriteCsv=ruleWriteCsv
-	{ $current=$iv_ruleWriteCsv.current; }
-	EOF;
-
-// Rule WriteCsv
-ruleWriteCsv returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='writecsv'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getWriteCsvAccess().getWritecsvKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getWriteCsvAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getWriteCsvAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getWriteCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='from'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getWriteCsvAccess().getFromKeyword_3());
-		}
-		(
-			(
-				lv_source_4_0=RULE_STRING
-				{
-					newLeafNode(lv_source_4_0, grammarAccess.getWriteCsvAccess().getSourceSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getWriteCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"source",
-						lv_source_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='to'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getWriteCsvAccess().getToKeyword_5());
-		}
-		(
-			(
-				lv_to_6_0=RULE_STRING
-				{
-					newLeafNode(lv_to_6_0, grammarAccess.getWriteCsvAccess().getToSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getWriteCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"to",
-						lv_to_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='with'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getWriteCsvAccess().getWithKeyword_7());
-		}
-		(
-			(
-				lv_delim_8_0=RULE_STRING
-				{
-					newLeafNode(lv_delim_8_0, grammarAccess.getWriteCsvAccess().getDelimSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getWriteCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"delim",
-						lv_delim_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='using'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getWriteCsvAccess().getUsingKeyword_9());
-		}
-		otherlv_10='{'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getWriteCsvAccess().getLeftCurlyBracketKeyword_10());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getWriteCsvAccess().getValueSelectStatementParserRuleCall_11_0());
-				}
-				lv_value_11_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getWriteCsvRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_11_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_12='}'
-		{
-			newLeafNode(otherlv_12, grammarAccess.getWriteCsvAccess().getRightCurlyBracketKeyword_12());
-		}
-		otherlv_13='on-condition'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getWriteCsvAccess().getOnConditionKeyword_13());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getWriteCsvAccess().getConditionExpressionParserRuleCall_14_0());
-				}
-				lv_condition_14_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getWriteCsvRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_14_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleLoadCsv
-entryRuleLoadCsv returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getLoadCsvRule()); }
-	iv_ruleLoadCsv=ruleLoadCsv
-	{ $current=$iv_ruleLoadCsv.current; }
-	EOF;
-
-// Rule LoadCsv
-ruleLoadCsv returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='loadcsv'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getLoadCsvAccess().getLoadcsvKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getLoadCsvAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getLoadCsvAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getLoadCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='from'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getLoadCsvAccess().getFromKeyword_3());
-		}
-		(
-			(
-				lv_source_4_0=RULE_STRING
-				{
-					newLeafNode(lv_source_4_0, grammarAccess.getLoadCsvAccess().getSourceSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getLoadCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"source",
-						lv_source_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='to'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getLoadCsvAccess().getToKeyword_5());
-		}
-		(
-			(
-				lv_to_6_0=RULE_STRING
-				{
-					newLeafNode(lv_to_6_0, grammarAccess.getLoadCsvAccess().getToSTRINGTerminalRuleCall_6_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getLoadCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"to",
-						lv_to_6_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_7='with'
-		{
-			newLeafNode(otherlv_7, grammarAccess.getLoadCsvAccess().getWithKeyword_7());
-		}
-		(
-			(
-				lv_delim_8_0=RULE_STRING
-				{
-					newLeafNode(lv_delim_8_0, grammarAccess.getLoadCsvAccess().getDelimSTRINGTerminalRuleCall_8_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getLoadCsvRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"delim",
-						lv_delim_8_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_9='using'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getLoadCsvAccess().getUsingKeyword_9());
-		}
-		otherlv_10='{'
-		{
-			newLeafNode(otherlv_10, grammarAccess.getLoadCsvAccess().getLeftCurlyBracketKeyword_10());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getLoadCsvAccess().getValueSelectStatementParserRuleCall_11_0());
-				}
-				lv_value_11_0=ruleSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getLoadCsvRule());
-					}
-					set(
-						$current,
-						"value",
-						lv_value_11_0,
-						"in.handyman.Dsl.SelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_12='}'
-		{
-			newLeafNode(otherlv_12, grammarAccess.getLoadCsvAccess().getRightCurlyBracketKeyword_12());
-		}
-		otherlv_13='on-condition'
-		{
-			newLeafNode(otherlv_13, grammarAccess.getLoadCsvAccess().getOnConditionKeyword_13());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getLoadCsvAccess().getConditionExpressionParserRuleCall_14_0());
-				}
-				lv_condition_14_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getLoadCsvRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_14_0,
-						"in.handyman.Dsl.Expression");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-	)
-;
-
-// Entry rule entryRuleTransform
-entryRuleTransform returns [EObject current=null]:
-	{ newCompositeNode(grammarAccess.getTransformRule()); }
-	iv_ruleTransform=ruleTransform
-	{ $current=$iv_ruleTransform.current; }
-	EOF;
-
-// Rule Transform
-ruleTransform returns [EObject current=null]
-@init {
-	enterRule();
-}
-@after {
-	leaveRule();
-}:
-	(
-		otherlv_0='transform'
-		{
-			newLeafNode(otherlv_0, grammarAccess.getTransformAccess().getTransformKeyword_0());
-		}
-		otherlv_1='as'
-		{
-			newLeafNode(otherlv_1, grammarAccess.getTransformAccess().getAsKeyword_1());
-		}
-		(
-			(
-				lv_name_2_0=RULE_STRING
-				{
-					newLeafNode(lv_name_2_0, grammarAccess.getTransformAccess().getNameSTRINGTerminalRuleCall_2_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTransformRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"name",
-						lv_name_2_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_3='on'
-		{
-			newLeafNode(otherlv_3, grammarAccess.getTransformAccess().getOnKeyword_3());
-		}
-		(
-			(
-				lv_on_4_0=RULE_STRING
-				{
-					newLeafNode(lv_on_4_0, grammarAccess.getTransformAccess().getOnSTRINGTerminalRuleCall_4_0());
-				}
-				{
-					if ($current==null) {
-						$current = createModelElement(grammarAccess.getTransformRule());
-					}
-					setWithLastConsumed(
-						$current,
-						"on",
-						lv_on_4_0,
-						"org.eclipse.xtext.common.Terminals.STRING");
-				}
-			)
-		)
-		otherlv_5='using'
-		{
-			newLeafNode(otherlv_5, grammarAccess.getTransformAccess().getUsingKeyword_5());
-		}
-		otherlv_6='{'
-		{
-			newLeafNode(otherlv_6, grammarAccess.getTransformAccess().getLeftCurlyBracketKeyword_6());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getTransformAccess().getValueNonSelectStatementParserRuleCall_7_0());
-				}
-				lv_value_7_0=ruleNonSelectStatement
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getTransformRule());
-					}
-					add(
-						$current,
-						"value",
-						lv_value_7_0,
-						"in.handyman.Dsl.NonSelectStatement");
-					afterParserOrEnumRuleCall();
-				}
-			)
-		)
-		otherlv_8='}'
-		{
-			newLeafNode(otherlv_8, grammarAccess.getTransformAccess().getRightCurlyBracketKeyword_8());
-		}
-		otherlv_9='on-condition'
-		{
-			newLeafNode(otherlv_9, grammarAccess.getTransformAccess().getOnConditionKeyword_9());
-		}
-		(
-			(
-				{
-					newCompositeNode(grammarAccess.getTransformAccess().getConditionExpressionParserRuleCall_10_0());
-				}
-				lv_condition_10_0=ruleExpression
-				{
-					if ($current==null) {
-						$current = createModelElementForParent(grammarAccess.getTransformRule());
-					}
-					set(
-						$current,
-						"condition",
-						lv_condition_10_0,
-						"in.handyman.Dsl.Expression");
 					afterParserOrEnumRuleCall();
 				}
 			)

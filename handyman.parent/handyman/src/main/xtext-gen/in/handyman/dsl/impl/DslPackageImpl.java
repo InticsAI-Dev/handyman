@@ -7,37 +7,39 @@ import in.handyman.dsl.Abort;
 import in.handyman.dsl.Action;
 import in.handyman.dsl.Callprocess;
 import in.handyman.dsl.Catch;
-import in.handyman.dsl.ClickSendSms;
+import in.handyman.dsl.Checksum;
 import in.handyman.dsl.Copydata;
+import in.handyman.dsl.DeleteFolder;
+import in.handyman.dsl.DeleteSql;
 import in.handyman.dsl.Doozle;
+import in.handyman.dsl.DropSql;
 import in.handyman.dsl.Dropfile;
 import in.handyman.dsl.DslFactory;
 import in.handyman.dsl.DslPackage;
-import in.handyman.dsl.ElasticFBCLead;
-import in.handyman.dsl.ElasticGET;
 import in.handyman.dsl.ExecJava;
 import in.handyman.dsl.Expression;
-import in.handyman.dsl.FBCLead;
-import in.handyman.dsl.FBFormDownload;
 import in.handyman.dsl.Fetch;
 import in.handyman.dsl.Finally;
-import in.handyman.dsl.FirebaseDatabasePut;
-import in.handyman.dsl.FirebaseReactiveNotification;
-import in.handyman.dsl.GooglecalPUT;
-import in.handyman.dsl.GooglecontactPUT;
-import in.handyman.dsl.GooglecontactSelectAll;
+import in.handyman.dsl.Forkprocess;
+import in.handyman.dsl.InsertSql;
+import in.handyman.dsl.JsonDeserialize;
+import in.handyman.dsl.JsonTransform;
+import in.handyman.dsl.ListFiles;
 import in.handyman.dsl.LoadCsv;
+import in.handyman.dsl.Mongo2Db;
+import in.handyman.dsl.Python;
 import in.handyman.dsl.Rest;
+import in.handyman.dsl.RestApi;
 import in.handyman.dsl.RestPart;
-import in.handyman.dsl.SendMail;
-import in.handyman.dsl.SlackPUT;
-import in.handyman.dsl.SmsLeadSms;
+import in.handyman.dsl.SendEMail;
+import in.handyman.dsl.Terminal;
 import in.handyman.dsl.Transform;
-import in.handyman.dsl.TrelloGET;
-import in.handyman.dsl.TrelloPUT;
+import in.handyman.dsl.TruncateSql;
 import in.handyman.dsl.Try;
-import in.handyman.dsl.Updatedaudit;
+import in.handyman.dsl.Unzip;
+import in.handyman.dsl.UpdateSql;
 import in.handyman.dsl.WriteCsv;
+import in.handyman.dsl.Zip;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -94,14 +96,21 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  private EClass elasticFBCLeadEClass = null;
+  private EClass sendEMailEClass = null;
 
   /**
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @generated
    */
-  private EClass elasticGETEClass = null;
+  private EClass deleteFolderEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass terminalEClass = null;
 
   /**
    * <!-- begin-user-doc -->
@@ -115,70 +124,7 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  private EClass firebaseDatabasePutEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass firebaseReactiveNotificationEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass smsLeadSmsEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   private EClass abortEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass googlecontactSelectAllEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass sendMailEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass googlecontactPUTEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass googlecalPUTEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass fbcLeadEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass fbFormDownloadEClass = null;
 
   /**
    * <!-- begin-user-doc -->
@@ -199,34 +145,6 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  private EClass restEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass restPartEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass trelloGETEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass trelloPUTEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   private EClass fetchEClass = null;
 
   /**
@@ -241,21 +159,7 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  private EClass updatedauditEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass clickSendSmsEClass = null;
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  private EClass slackPUTEClass = null;
+  private EClass forkprocessEClass = null;
 
   /**
    * <!-- begin-user-doc -->
@@ -284,6 +188,125 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * @generated
    */
   private EClass transformEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass deleteSqlEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass updateSqlEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass insertSqlEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass truncateSqlEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass dropSqlEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass listFilesEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass mongo2DbEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass ftpEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass zipEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass unzipEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass checksumEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass jsonTransformEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass jsonDeserializeEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass restApiEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass pythonEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass restEClass = null;
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  private EClass restPartEClass = null;
 
   /**
    * <!-- begin-user-doc -->
@@ -420,19 +443,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getTry_Name()
-  {
-    return (EAttribute)tryEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public EReference getTry_Action()
   {
-    return (EReference)tryEClass.getEStructuralFeatures().get(1);
+    return (EReference)tryEClass.getEStructuralFeatures().get(0);
   }
 
   /**
@@ -450,19 +463,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getFinally_Name()
-  {
-    return (EAttribute)finallyEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public EReference getFinally_Action()
   {
-    return (EReference)finallyEClass.getEStructuralFeatures().get(1);
+    return (EReference)finallyEClass.getEStructuralFeatures().get(0);
   }
 
   /**
@@ -480,19 +483,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getCatch_Name()
-  {
-    return (EAttribute)catchEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public EReference getCatch_Action()
   {
-    return (EReference)catchEClass.getEStructuralFeatures().get(1);
+    return (EReference)catchEClass.getEStructuralFeatures().get(0);
   }
 
   /**
@@ -530,9 +523,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EClass getElasticFBCLead()
+  public EClass getSendEMail()
   {
-    return elasticFBCLeadEClass;
+    return sendEMailEClass;
   }
 
   /**
@@ -540,9 +533,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticFBCLead_AccessToken()
+  public EAttribute getSendEMail_Source()
   {
-    return (EAttribute)elasticFBCLeadEClass.getEStructuralFeatures().get(0);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(0);
   }
 
   /**
@@ -550,9 +543,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticFBCLead_AppSecret()
+  public EAttribute getSendEMail_Smtphost()
   {
-    return (EAttribute)elasticFBCLeadEClass.getEStructuralFeatures().get(1);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(1);
   }
 
   /**
@@ -560,9 +553,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticFBCLead_AccountId()
+  public EAttribute getSendEMail_Smtpport()
   {
-    return (EAttribute)elasticFBCLeadEClass.getEStructuralFeatures().get(2);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(2);
   }
 
   /**
@@ -570,9 +563,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticFBCLead_CampaignId()
+  public EAttribute getSendEMail_From()
   {
-    return (EAttribute)elasticFBCLeadEClass.getEStructuralFeatures().get(3);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(3);
   }
 
   /**
@@ -580,9 +573,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticFBCLead_Target()
+  public EAttribute getSendEMail_Pass()
   {
-    return (EAttribute)elasticFBCLeadEClass.getEStructuralFeatures().get(4);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(4);
   }
 
   /**
@@ -590,9 +583,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticFBCLead_Value()
+  public EAttribute getSendEMail_To()
   {
-    return (EAttribute)elasticFBCLeadEClass.getEStructuralFeatures().get(5);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(5);
   }
 
   /**
@@ -600,9 +593,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EClass getElasticGET()
+  public EAttribute getSendEMail_Cc()
   {
-    return elasticGETEClass;
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(6);
   }
 
   /**
@@ -610,9 +603,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticGET_Source()
+  public EAttribute getSendEMail_Bcc()
   {
-    return (EAttribute)elasticGETEClass.getEStructuralFeatures().get(0);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(7);
   }
 
   /**
@@ -620,9 +613,9 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticGET_To()
+  public EAttribute getSendEMail_Subject()
   {
-    return (EAttribute)elasticGETEClass.getEStructuralFeatures().get(1);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(8);
   }
 
   /**
@@ -630,9 +623,99 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EAttribute getElasticGET_Value()
+  public EAttribute getSendEMail_Body()
   {
-    return (EAttribute)elasticGETEClass.getEStructuralFeatures().get(2);
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(9);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getSendEMail_Signature()
+  {
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(10);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getSendEMail_Value()
+  {
+    return (EAttribute)sendEMailEClass.getEStructuralFeatures().get(11);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getDeleteFolder()
+  {
+    return deleteFolderEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDeleteFolder_Foldersource()
+  {
+    return (EAttribute)deleteFolderEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDeleteFolder_Zipsource()
+  {
+    return (EAttribute)deleteFolderEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDeleteFolder_Value()
+  {
+    return (EAttribute)deleteFolderEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getTerminal()
+  {
+    return terminalEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getTerminal_Id()
+  {
+    return (EAttribute)terminalEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getTerminal_Value()
+  {
+    return (EAttribute)terminalEClass.getEStructuralFeatures().get(1);
   }
 
   /**
@@ -680,216 +763,6 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EClass getFirebaseDatabasePut()
-  {
-    return firebaseDatabasePutEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseDatabasePut_Url()
-  {
-    return (EAttribute)firebaseDatabasePutEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseDatabasePut_Fbjson()
-  {
-    return (EAttribute)firebaseDatabasePutEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseDatabasePut_GroupPath()
-  {
-    return (EAttribute)firebaseDatabasePutEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseDatabasePut_DbSrc()
-  {
-    return (EAttribute)firebaseDatabasePutEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseDatabasePut_ClassFqn()
-  {
-    return (EAttribute)firebaseDatabasePutEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseDatabasePut_Value()
-  {
-    return (EAttribute)firebaseDatabasePutEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getFirebaseReactiveNotification()
-  {
-    return firebaseReactiveNotificationEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseReactiveNotification_Url()
-  {
-    return (EAttribute)firebaseReactiveNotificationEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseReactiveNotification_Fbjson()
-  {
-    return (EAttribute)firebaseReactiveNotificationEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseReactiveNotification_GroupPath()
-  {
-    return (EAttribute)firebaseReactiveNotificationEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseReactiveNotification_ClassFqn()
-  {
-    return (EAttribute)firebaseReactiveNotificationEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFirebaseReactiveNotification_DbSrc()
-  {
-    return (EAttribute)firebaseReactiveNotificationEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getSmsLeadSms()
-  {
-    return smsLeadSmsEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_Url()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_Sender()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_Account()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_PrivateKey()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_DbSrc()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_Value()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSmsLeadSms_DryrunNumber()
-  {
-    return (EAttribute)smsLeadSmsEClass.getEStructuralFeatures().get(6);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public EClass getAbort()
   {
     return abortEClass;
@@ -903,446 +776,6 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
   public EAttribute getAbort_Value()
   {
     return (EAttribute)abortEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getGooglecontactSelectAll()
-  {
-    return googlecontactSelectAllEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_Account()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_PrivateKey()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_PtwelveFile()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_Project()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_ImpersonatedUser()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_DbSrc()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactSelectAll_Value()
-  {
-    return (EAttribute)googlecontactSelectAllEClass.getEStructuralFeatures().get(6);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getSendMail()
-  {
-    return sendMailEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSendMail_PrivateKey()
-  {
-    return (EAttribute)sendMailEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSendMail_ImpersonatedUser()
-  {
-    return (EAttribute)sendMailEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSendMail_DbSrc()
-  {
-    return (EAttribute)sendMailEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSendMail_Value()
-  {
-    return (EAttribute)sendMailEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSendMail_DryrunMail()
-  {
-    return (EAttribute)sendMailEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getGooglecontactPUT()
-  {
-    return googlecontactPUTEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_Account()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_PrivateKey()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_PtwelveFile()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_Project()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_ImpersonatedUser()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_DbSrc()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecontactPUT_Value()
-  {
-    return (EAttribute)googlecontactPUTEClass.getEStructuralFeatures().get(6);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getGooglecalPUT()
-  {
-    return googlecalPUTEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_Account()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_PrivateKey()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_PtwelveFile()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_Project()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_ImpersonatedUser()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_DbSrc()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getGooglecalPUT_Value()
-  {
-    return (EAttribute)googlecalPUTEClass.getEStructuralFeatures().get(6);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getFBCLead()
-  {
-    return fbcLeadEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBCLead_AccessToken()
-  {
-    return (EAttribute)fbcLeadEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBCLead_AppSecret()
-  {
-    return (EAttribute)fbcLeadEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBCLead_AccountId()
-  {
-    return (EAttribute)fbcLeadEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBCLead_CampaignId()
-  {
-    return (EAttribute)fbcLeadEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBCLead_Target()
-  {
-    return (EAttribute)fbcLeadEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBCLead_Value()
-  {
-    return (EAttribute)fbcLeadEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getFBFormDownload()
-  {
-    return fbFormDownloadEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBFormDownload_AccessToken()
-  {
-    return (EAttribute)fbFormDownloadEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBFormDownload_AppSecret()
-  {
-    return (EAttribute)fbFormDownloadEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBFormDownload_AccountId()
-  {
-    return (EAttribute)fbFormDownloadEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBFormDownload_FormId()
-  {
-    return (EAttribute)fbFormDownloadEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBFormDownload_Target()
-  {
-    return (EAttribute)fbFormDownloadEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFBFormDownload_Value()
-  {
-    return (EAttribute)fbFormDownloadEClass.getEStructuralFeatures().get(5);
   }
 
   /**
@@ -1403,6 +836,1246 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
   public EAttribute getDoozle_Value()
   {
     return (EAttribute)doozleEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getFetch()
+  {
+    return fetchEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFetch_Source()
+  {
+    return (EAttribute)fetchEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFetch_Value()
+  {
+    return (EAttribute)fetchEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getCallprocess()
+  {
+    return callprocessEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCallprocess_Target()
+  {
+    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCallprocess_Source()
+  {
+    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCallprocess_Datasource()
+  {
+    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCallprocess_Value()
+  {
+    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getForkprocess()
+  {
+    return forkprocessEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getForkprocess_Target()
+  {
+    return (EAttribute)forkprocessEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getForkprocess_Source()
+  {
+    return (EAttribute)forkprocessEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getForkprocess_Datasource()
+  {
+    return (EAttribute)forkprocessEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getForkprocess_Value()
+  {
+    return (EAttribute)forkprocessEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getForkprocess_ForkBatchSize()
+  {
+    return (EAttribute)forkprocessEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getCopydata()
+  {
+    return copydataEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCopydata_Source()
+  {
+    return (EAttribute)copydataEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCopydata_To()
+  {
+    return (EAttribute)copydataEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCopydata_Target()
+  {
+    return (EAttribute)copydataEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCopydata_Limit()
+  {
+    return (EAttribute)copydataEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getCopydata_Value()
+  {
+    return (EAttribute)copydataEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getWriteCsv()
+  {
+    return writeCsvEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getWriteCsv_Source()
+  {
+    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getWriteCsv_To()
+  {
+    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getWriteCsv_Delim()
+  {
+    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getWriteCsv_Value()
+  {
+    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getLoadCsv()
+  {
+    return loadCsvEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getLoadCsv_Pid()
+  {
+    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getLoadCsv_Source()
+  {
+    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getLoadCsv_To()
+  {
+    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getLoadCsv_Delim()
+  {
+    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getLoadCsv_Limit()
+  {
+    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getLoadCsv_Value()
+  {
+    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(5);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getTransform()
+  {
+    return transformEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getTransform_On()
+  {
+    return (EAttribute)transformEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getTransform_Value()
+  {
+    return (EAttribute)transformEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getDeleteSql()
+  {
+    return deleteSqlEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDeleteSql_On()
+  {
+    return (EAttribute)deleteSqlEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDeleteSql_Value()
+  {
+    return (EAttribute)deleteSqlEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getUpdateSql()
+  {
+    return updateSqlEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getUpdateSql_On()
+  {
+    return (EAttribute)updateSqlEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getUpdateSql_Value()
+  {
+    return (EAttribute)updateSqlEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getInsertSql()
+  {
+    return insertSqlEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getInsertSql_On()
+  {
+    return (EAttribute)insertSqlEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getInsertSql_Value()
+  {
+    return (EAttribute)insertSqlEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getTruncateSql()
+  {
+    return truncateSqlEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getTruncateSql_On()
+  {
+    return (EAttribute)truncateSqlEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getTruncateSql_Value()
+  {
+    return (EAttribute)truncateSqlEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getDropSql()
+  {
+    return dropSqlEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDropSql_On()
+  {
+    return (EAttribute)dropSqlEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getDropSql_Value()
+  {
+    return (EAttribute)dropSqlEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getListFiles()
+  {
+    return listFilesEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getListFiles_Source()
+  {
+    return (EAttribute)listFilesEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getListFiles_To()
+  {
+    return (EAttribute)listFilesEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getListFiles_TargetTable()
+  {
+    return (EAttribute)listFilesEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getListFiles_Value()
+  {
+    return (EAttribute)listFilesEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getMongo2Db()
+  {
+    return mongo2DbEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_SourceConnStr()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_To()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_SourceDb()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_TargetDb()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_TargetTable()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_Filter()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(5);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_Limit()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(6);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_FindAttr()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(7);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_ApplyManipulation()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(8);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_OnUpdateKey()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(9);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_FetchBatchSize()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(10);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_WriteBatchSize()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(11);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getMongo2Db_Value()
+  {
+    return (EAttribute)mongo2DbEClass.getEStructuralFeatures().get(12);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getFTP()
+  {
+    return ftpEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Host()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Port()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Username()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Password()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Action()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_LocalDir()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(5);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_LocalFile()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(6);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_RemoteDir()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(7);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_RemoteFile()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(8);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Source()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(9);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_TargetTable()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(10);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getFTP_Value()
+  {
+    return (EAttribute)ftpEClass.getEStructuralFeatures().get(11);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getZip()
+  {
+    return zipEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getZip_ZipFilePath()
+  {
+    return (EAttribute)zipEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getZip_ZipFileName()
+  {
+    return (EAttribute)zipEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getZip_Source()
+  {
+    return (EAttribute)zipEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getZip_BufferSize()
+  {
+    return (EAttribute)zipEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getZip_Value()
+  {
+    return (EAttribute)zipEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getUnzip()
+  {
+    return unzipEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getUnzip_Source()
+  {
+    return (EAttribute)unzipEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getUnzip_DestDir()
+  {
+    return (EAttribute)unzipEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getUnzip_BufferSize()
+  {
+    return (EAttribute)unzipEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getUnzip_Value()
+  {
+    return (EAttribute)unzipEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getChecksum()
+  {
+    return checksumEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_Host()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_Port()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_Username()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_Password()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_LocalDir()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_LocalFile()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(5);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_RemoteDir()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(6);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_RemoteFile()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(7);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getChecksum_Value()
+  {
+    return (EAttribute)checksumEClass.getEStructuralFeatures().get(8);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getJsonTransform()
+  {
+    return jsonTransformEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonTransform_Source()
+  {
+    return (EAttribute)jsonTransformEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonTransform_TargetTable()
+  {
+    return (EAttribute)jsonTransformEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonTransform_Value()
+  {
+    return (EAttribute)jsonTransformEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getJsonDeserialize()
+  {
+    return jsonDeserializeEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonDeserialize_Source()
+  {
+    return (EAttribute)jsonDeserializeEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonDeserialize_TargetTable()
+  {
+    return (EAttribute)jsonDeserializeEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonDeserialize_Input()
+  {
+    return (EAttribute)jsonDeserializeEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getJsonDeserialize_Value()
+  {
+    return (EAttribute)jsonDeserializeEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getRestApi()
+  {
+    return restApiEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_Url()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_Method()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_Property()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(2);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_Payload()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(3);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_Source()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(4);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_TargetTable()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(5);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getRestApi_Value()
+  {
+    return (EAttribute)restApiEClass.getEStructuralFeatures().get(6);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EClass getPython()
+  {
+    return pythonEClass;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getPython_Source()
+  {
+    return (EAttribute)pythonEClass.getEStructuralFeatures().get(0);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getPython_Target()
+  {
+    return (EAttribute)pythonEClass.getEStructuralFeatures().get(1);
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public EAttribute getPython_Value()
+  {
+    return (EAttribute)pythonEClass.getEStructuralFeatures().get(2);
   }
 
   /**
@@ -1580,526 +2253,6 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
    * <!-- end-user-doc -->
    * @generated
    */
-  public EClass getTrelloGET()
-  {
-    return trelloGETEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloGET_Authtoken()
-  {
-    return (EAttribute)trelloGETEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloGET_Key()
-  {
-    return (EAttribute)trelloGETEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloGET_Useraccount()
-  {
-    return (EAttribute)trelloGETEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloGET_Board()
-  {
-    return (EAttribute)trelloGETEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloGET_Target()
-  {
-    return (EAttribute)trelloGETEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloGET_Value()
-  {
-    return (EAttribute)trelloGETEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getTrelloPUT()
-  {
-    return trelloPUTEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloPUT_Authtoken()
-  {
-    return (EAttribute)trelloPUTEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloPUT_Key()
-  {
-    return (EAttribute)trelloPUTEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloPUT_Useraccount()
-  {
-    return (EAttribute)trelloPUTEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloPUT_List()
-  {
-    return (EAttribute)trelloPUTEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloPUT_Source()
-  {
-    return (EAttribute)trelloPUTEClass.getEStructuralFeatures().get(4);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTrelloPUT_Value()
-  {
-    return (EAttribute)trelloPUTEClass.getEStructuralFeatures().get(5);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getFetch()
-  {
-    return fetchEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFetch_Source()
-  {
-    return (EAttribute)fetchEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getFetch_Value()
-  {
-    return (EAttribute)fetchEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getCallprocess()
-  {
-    return callprocessEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCallprocess_Target()
-  {
-    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCallprocess_Source()
-  {
-    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCallprocess_Datasource()
-  {
-    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCallprocess_Value()
-  {
-    return (EAttribute)callprocessEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getUpdatedaudit()
-  {
-    return updatedauditEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getUpdatedaudit_Logsink()
-  {
-    return (EAttribute)updatedauditEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getUpdatedaudit_Datasource()
-  {
-    return (EAttribute)updatedauditEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getUpdatedaudit_Value()
-  {
-    return (EAttribute)updatedauditEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getClickSendSms()
-  {
-    return clickSendSmsEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getClickSendSms_Userid()
-  {
-    return (EAttribute)clickSendSmsEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getClickSendSms_SecurityKey()
-  {
-    return (EAttribute)clickSendSmsEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getClickSendSms_Target()
-  {
-    return (EAttribute)clickSendSmsEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getClickSendSms_Value()
-  {
-    return (EAttribute)clickSendSmsEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getSlackPUT()
-  {
-    return slackPUTEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSlackPUT_Team()
-  {
-    return (EAttribute)slackPUTEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSlackPUT_Channel()
-  {
-    return (EAttribute)slackPUTEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getSlackPUT_Value()
-  {
-    return (EAttribute)slackPUTEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getCopydata()
-  {
-    return copydataEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCopydata_Source()
-  {
-    return (EAttribute)copydataEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCopydata_To()
-  {
-    return (EAttribute)copydataEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getCopydata_Value()
-  {
-    return (EAttribute)copydataEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getWriteCsv()
-  {
-    return writeCsvEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getWriteCsv_Source()
-  {
-    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getWriteCsv_To()
-  {
-    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getWriteCsv_Delim()
-  {
-    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getWriteCsv_Value()
-  {
-    return (EAttribute)writeCsvEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getLoadCsv()
-  {
-    return loadCsvEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getLoadCsv_Source()
-  {
-    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getLoadCsv_To()
-  {
-    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getLoadCsv_Delim()
-  {
-    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(2);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getLoadCsv_Value()
-  {
-    return (EAttribute)loadCsvEClass.getEStructuralFeatures().get(3);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EClass getTransform()
-  {
-    return transformEClass;
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTransform_On()
-  {
-    return (EAttribute)transformEClass.getEStructuralFeatures().get(0);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
-  public EAttribute getTransform_Value()
-  {
-    return (EAttribute)transformEClass.getEStructuralFeatures().get(1);
-  }
-
-  /**
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   */
   public EClass getExpression()
   {
     return expressionEClass;
@@ -2172,115 +2325,48 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     createEReference(processEClass, PROCESS__FINALLY);
 
     tryEClass = createEClass(TRY);
-    createEAttribute(tryEClass, TRY__NAME);
     createEReference(tryEClass, TRY__ACTION);
 
     finallyEClass = createEClass(FINALLY);
-    createEAttribute(finallyEClass, FINALLY__NAME);
     createEReference(finallyEClass, FINALLY__ACTION);
 
     catchEClass = createEClass(CATCH);
-    createEAttribute(catchEClass, CATCH__NAME);
     createEReference(catchEClass, CATCH__ACTION);
 
     actionEClass = createEClass(ACTION);
     createEAttribute(actionEClass, ACTION__NAME);
     createEReference(actionEClass, ACTION__CONDITION);
 
-    elasticFBCLeadEClass = createEClass(ELASTIC_FBC_LEAD);
-    createEAttribute(elasticFBCLeadEClass, ELASTIC_FBC_LEAD__ACCESS_TOKEN);
-    createEAttribute(elasticFBCLeadEClass, ELASTIC_FBC_LEAD__APP_SECRET);
-    createEAttribute(elasticFBCLeadEClass, ELASTIC_FBC_LEAD__ACCOUNT_ID);
-    createEAttribute(elasticFBCLeadEClass, ELASTIC_FBC_LEAD__CAMPAIGN_ID);
-    createEAttribute(elasticFBCLeadEClass, ELASTIC_FBC_LEAD__TARGET);
-    createEAttribute(elasticFBCLeadEClass, ELASTIC_FBC_LEAD__VALUE);
+    sendEMailEClass = createEClass(SEND_EMAIL);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__SOURCE);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__SMTPHOST);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__SMTPPORT);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__FROM);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__PASS);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__TO);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__CC);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__BCC);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__SUBJECT);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__BODY);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__SIGNATURE);
+    createEAttribute(sendEMailEClass, SEND_EMAIL__VALUE);
 
-    elasticGETEClass = createEClass(ELASTIC_GET);
-    createEAttribute(elasticGETEClass, ELASTIC_GET__SOURCE);
-    createEAttribute(elasticGETEClass, ELASTIC_GET__TO);
-    createEAttribute(elasticGETEClass, ELASTIC_GET__VALUE);
+    deleteFolderEClass = createEClass(DELETE_FOLDER);
+    createEAttribute(deleteFolderEClass, DELETE_FOLDER__FOLDERSOURCE);
+    createEAttribute(deleteFolderEClass, DELETE_FOLDER__ZIPSOURCE);
+    createEAttribute(deleteFolderEClass, DELETE_FOLDER__VALUE);
+
+    terminalEClass = createEClass(TERMINAL);
+    createEAttribute(terminalEClass, TERMINAL__ID);
+    createEAttribute(terminalEClass, TERMINAL__VALUE);
 
     execJavaEClass = createEClass(EXEC_JAVA);
     createEAttribute(execJavaEClass, EXEC_JAVA__CLASS_FQN);
     createEAttribute(execJavaEClass, EXEC_JAVA__DB_SRC);
     createEAttribute(execJavaEClass, EXEC_JAVA__VALUE);
 
-    firebaseDatabasePutEClass = createEClass(FIREBASE_DATABASE_PUT);
-    createEAttribute(firebaseDatabasePutEClass, FIREBASE_DATABASE_PUT__URL);
-    createEAttribute(firebaseDatabasePutEClass, FIREBASE_DATABASE_PUT__FBJSON);
-    createEAttribute(firebaseDatabasePutEClass, FIREBASE_DATABASE_PUT__GROUP_PATH);
-    createEAttribute(firebaseDatabasePutEClass, FIREBASE_DATABASE_PUT__DB_SRC);
-    createEAttribute(firebaseDatabasePutEClass, FIREBASE_DATABASE_PUT__CLASS_FQN);
-    createEAttribute(firebaseDatabasePutEClass, FIREBASE_DATABASE_PUT__VALUE);
-
-    firebaseReactiveNotificationEClass = createEClass(FIREBASE_REACTIVE_NOTIFICATION);
-    createEAttribute(firebaseReactiveNotificationEClass, FIREBASE_REACTIVE_NOTIFICATION__URL);
-    createEAttribute(firebaseReactiveNotificationEClass, FIREBASE_REACTIVE_NOTIFICATION__FBJSON);
-    createEAttribute(firebaseReactiveNotificationEClass, FIREBASE_REACTIVE_NOTIFICATION__GROUP_PATH);
-    createEAttribute(firebaseReactiveNotificationEClass, FIREBASE_REACTIVE_NOTIFICATION__CLASS_FQN);
-    createEAttribute(firebaseReactiveNotificationEClass, FIREBASE_REACTIVE_NOTIFICATION__DB_SRC);
-
-    smsLeadSmsEClass = createEClass(SMS_LEAD_SMS);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__URL);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__SENDER);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__ACCOUNT);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__PRIVATE_KEY);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__DB_SRC);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__VALUE);
-    createEAttribute(smsLeadSmsEClass, SMS_LEAD_SMS__DRYRUN_NUMBER);
-
     abortEClass = createEClass(ABORT);
     createEAttribute(abortEClass, ABORT__VALUE);
-
-    googlecontactSelectAllEClass = createEClass(GOOGLECONTACT_SELECT_ALL);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__ACCOUNT);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__PRIVATE_KEY);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__PTWELVE_FILE);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__PROJECT);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__IMPERSONATED_USER);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__DB_SRC);
-    createEAttribute(googlecontactSelectAllEClass, GOOGLECONTACT_SELECT_ALL__VALUE);
-
-    sendMailEClass = createEClass(SEND_MAIL);
-    createEAttribute(sendMailEClass, SEND_MAIL__PRIVATE_KEY);
-    createEAttribute(sendMailEClass, SEND_MAIL__IMPERSONATED_USER);
-    createEAttribute(sendMailEClass, SEND_MAIL__DB_SRC);
-    createEAttribute(sendMailEClass, SEND_MAIL__VALUE);
-    createEAttribute(sendMailEClass, SEND_MAIL__DRYRUN_MAIL);
-
-    googlecontactPUTEClass = createEClass(GOOGLECONTACT_PUT);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__ACCOUNT);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__PRIVATE_KEY);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__PTWELVE_FILE);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__PROJECT);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__IMPERSONATED_USER);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__DB_SRC);
-    createEAttribute(googlecontactPUTEClass, GOOGLECONTACT_PUT__VALUE);
-
-    googlecalPUTEClass = createEClass(GOOGLECAL_PUT);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__ACCOUNT);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__PRIVATE_KEY);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__PTWELVE_FILE);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__PROJECT);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__IMPERSONATED_USER);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__DB_SRC);
-    createEAttribute(googlecalPUTEClass, GOOGLECAL_PUT__VALUE);
-
-    fbcLeadEClass = createEClass(FBC_LEAD);
-    createEAttribute(fbcLeadEClass, FBC_LEAD__ACCESS_TOKEN);
-    createEAttribute(fbcLeadEClass, FBC_LEAD__APP_SECRET);
-    createEAttribute(fbcLeadEClass, FBC_LEAD__ACCOUNT_ID);
-    createEAttribute(fbcLeadEClass, FBC_LEAD__CAMPAIGN_ID);
-    createEAttribute(fbcLeadEClass, FBC_LEAD__TARGET);
-    createEAttribute(fbcLeadEClass, FBC_LEAD__VALUE);
-
-    fbFormDownloadEClass = createEClass(FB_FORM_DOWNLOAD);
-    createEAttribute(fbFormDownloadEClass, FB_FORM_DOWNLOAD__ACCESS_TOKEN);
-    createEAttribute(fbFormDownloadEClass, FB_FORM_DOWNLOAD__APP_SECRET);
-    createEAttribute(fbFormDownloadEClass, FB_FORM_DOWNLOAD__ACCOUNT_ID);
-    createEAttribute(fbFormDownloadEClass, FB_FORM_DOWNLOAD__FORM_ID);
-    createEAttribute(fbFormDownloadEClass, FB_FORM_DOWNLOAD__TARGET);
-    createEAttribute(fbFormDownloadEClass, FB_FORM_DOWNLOAD__VALUE);
 
     dropfileEClass = createEClass(DROPFILE);
     createEAttribute(dropfileEClass, DROPFILE__TARGET);
@@ -2289,6 +2375,152 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     createEAttribute(doozleEClass, DOOZLE__TARGET);
     createEAttribute(doozleEClass, DOOZLE__ON);
     createEAttribute(doozleEClass, DOOZLE__VALUE);
+
+    fetchEClass = createEClass(FETCH);
+    createEAttribute(fetchEClass, FETCH__SOURCE);
+    createEAttribute(fetchEClass, FETCH__VALUE);
+
+    callprocessEClass = createEClass(CALLPROCESS);
+    createEAttribute(callprocessEClass, CALLPROCESS__TARGET);
+    createEAttribute(callprocessEClass, CALLPROCESS__SOURCE);
+    createEAttribute(callprocessEClass, CALLPROCESS__DATASOURCE);
+    createEAttribute(callprocessEClass, CALLPROCESS__VALUE);
+
+    forkprocessEClass = createEClass(FORKPROCESS);
+    createEAttribute(forkprocessEClass, FORKPROCESS__TARGET);
+    createEAttribute(forkprocessEClass, FORKPROCESS__SOURCE);
+    createEAttribute(forkprocessEClass, FORKPROCESS__DATASOURCE);
+    createEAttribute(forkprocessEClass, FORKPROCESS__VALUE);
+    createEAttribute(forkprocessEClass, FORKPROCESS__FORK_BATCH_SIZE);
+
+    copydataEClass = createEClass(COPYDATA);
+    createEAttribute(copydataEClass, COPYDATA__SOURCE);
+    createEAttribute(copydataEClass, COPYDATA__TO);
+    createEAttribute(copydataEClass, COPYDATA__TARGET);
+    createEAttribute(copydataEClass, COPYDATA__LIMIT);
+    createEAttribute(copydataEClass, COPYDATA__VALUE);
+
+    writeCsvEClass = createEClass(WRITE_CSV);
+    createEAttribute(writeCsvEClass, WRITE_CSV__SOURCE);
+    createEAttribute(writeCsvEClass, WRITE_CSV__TO);
+    createEAttribute(writeCsvEClass, WRITE_CSV__DELIM);
+    createEAttribute(writeCsvEClass, WRITE_CSV__VALUE);
+
+    loadCsvEClass = createEClass(LOAD_CSV);
+    createEAttribute(loadCsvEClass, LOAD_CSV__PID);
+    createEAttribute(loadCsvEClass, LOAD_CSV__SOURCE);
+    createEAttribute(loadCsvEClass, LOAD_CSV__TO);
+    createEAttribute(loadCsvEClass, LOAD_CSV__DELIM);
+    createEAttribute(loadCsvEClass, LOAD_CSV__LIMIT);
+    createEAttribute(loadCsvEClass, LOAD_CSV__VALUE);
+
+    transformEClass = createEClass(TRANSFORM);
+    createEAttribute(transformEClass, TRANSFORM__ON);
+    createEAttribute(transformEClass, TRANSFORM__VALUE);
+
+    deleteSqlEClass = createEClass(DELETE_SQL);
+    createEAttribute(deleteSqlEClass, DELETE_SQL__ON);
+    createEAttribute(deleteSqlEClass, DELETE_SQL__VALUE);
+
+    updateSqlEClass = createEClass(UPDATE_SQL);
+    createEAttribute(updateSqlEClass, UPDATE_SQL__ON);
+    createEAttribute(updateSqlEClass, UPDATE_SQL__VALUE);
+
+    insertSqlEClass = createEClass(INSERT_SQL);
+    createEAttribute(insertSqlEClass, INSERT_SQL__ON);
+    createEAttribute(insertSqlEClass, INSERT_SQL__VALUE);
+
+    truncateSqlEClass = createEClass(TRUNCATE_SQL);
+    createEAttribute(truncateSqlEClass, TRUNCATE_SQL__ON);
+    createEAttribute(truncateSqlEClass, TRUNCATE_SQL__VALUE);
+
+    dropSqlEClass = createEClass(DROP_SQL);
+    createEAttribute(dropSqlEClass, DROP_SQL__ON);
+    createEAttribute(dropSqlEClass, DROP_SQL__VALUE);
+
+    listFilesEClass = createEClass(LIST_FILES);
+    createEAttribute(listFilesEClass, LIST_FILES__SOURCE);
+    createEAttribute(listFilesEClass, LIST_FILES__TO);
+    createEAttribute(listFilesEClass, LIST_FILES__TARGET_TABLE);
+    createEAttribute(listFilesEClass, LIST_FILES__VALUE);
+
+    mongo2DbEClass = createEClass(MONGO2_DB);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__SOURCE_CONN_STR);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__TO);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__SOURCE_DB);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__TARGET_DB);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__TARGET_TABLE);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__FILTER);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__LIMIT);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__FIND_ATTR);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__APPLY_MANIPULATION);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__ON_UPDATE_KEY);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__FETCH_BATCH_SIZE);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__WRITE_BATCH_SIZE);
+    createEAttribute(mongo2DbEClass, MONGO2_DB__VALUE);
+
+    ftpEClass = createEClass(FTP);
+    createEAttribute(ftpEClass, FTP__HOST);
+    createEAttribute(ftpEClass, FTP__PORT);
+    createEAttribute(ftpEClass, FTP__USERNAME);
+    createEAttribute(ftpEClass, FTP__PASSWORD);
+    createEAttribute(ftpEClass, FTP__ACTION);
+    createEAttribute(ftpEClass, FTP__LOCAL_DIR);
+    createEAttribute(ftpEClass, FTP__LOCAL_FILE);
+    createEAttribute(ftpEClass, FTP__REMOTE_DIR);
+    createEAttribute(ftpEClass, FTP__REMOTE_FILE);
+    createEAttribute(ftpEClass, FTP__SOURCE);
+    createEAttribute(ftpEClass, FTP__TARGET_TABLE);
+    createEAttribute(ftpEClass, FTP__VALUE);
+
+    zipEClass = createEClass(ZIP);
+    createEAttribute(zipEClass, ZIP__ZIP_FILE_PATH);
+    createEAttribute(zipEClass, ZIP__ZIP_FILE_NAME);
+    createEAttribute(zipEClass, ZIP__SOURCE);
+    createEAttribute(zipEClass, ZIP__BUFFER_SIZE);
+    createEAttribute(zipEClass, ZIP__VALUE);
+
+    unzipEClass = createEClass(UNZIP);
+    createEAttribute(unzipEClass, UNZIP__SOURCE);
+    createEAttribute(unzipEClass, UNZIP__DEST_DIR);
+    createEAttribute(unzipEClass, UNZIP__BUFFER_SIZE);
+    createEAttribute(unzipEClass, UNZIP__VALUE);
+
+    checksumEClass = createEClass(CHECKSUM);
+    createEAttribute(checksumEClass, CHECKSUM__HOST);
+    createEAttribute(checksumEClass, CHECKSUM__PORT);
+    createEAttribute(checksumEClass, CHECKSUM__USERNAME);
+    createEAttribute(checksumEClass, CHECKSUM__PASSWORD);
+    createEAttribute(checksumEClass, CHECKSUM__LOCAL_DIR);
+    createEAttribute(checksumEClass, CHECKSUM__LOCAL_FILE);
+    createEAttribute(checksumEClass, CHECKSUM__REMOTE_DIR);
+    createEAttribute(checksumEClass, CHECKSUM__REMOTE_FILE);
+    createEAttribute(checksumEClass, CHECKSUM__VALUE);
+
+    jsonTransformEClass = createEClass(JSON_TRANSFORM);
+    createEAttribute(jsonTransformEClass, JSON_TRANSFORM__SOURCE);
+    createEAttribute(jsonTransformEClass, JSON_TRANSFORM__TARGET_TABLE);
+    createEAttribute(jsonTransformEClass, JSON_TRANSFORM__VALUE);
+
+    jsonDeserializeEClass = createEClass(JSON_DESERIALIZE);
+    createEAttribute(jsonDeserializeEClass, JSON_DESERIALIZE__SOURCE);
+    createEAttribute(jsonDeserializeEClass, JSON_DESERIALIZE__TARGET_TABLE);
+    createEAttribute(jsonDeserializeEClass, JSON_DESERIALIZE__INPUT);
+    createEAttribute(jsonDeserializeEClass, JSON_DESERIALIZE__VALUE);
+
+    restApiEClass = createEClass(REST_API);
+    createEAttribute(restApiEClass, REST_API__URL);
+    createEAttribute(restApiEClass, REST_API__METHOD);
+    createEAttribute(restApiEClass, REST_API__PROPERTY);
+    createEAttribute(restApiEClass, REST_API__PAYLOAD);
+    createEAttribute(restApiEClass, REST_API__SOURCE);
+    createEAttribute(restApiEClass, REST_API__TARGET_TABLE);
+    createEAttribute(restApiEClass, REST_API__VALUE);
+
+    pythonEClass = createEClass(PYTHON);
+    createEAttribute(pythonEClass, PYTHON__SOURCE);
+    createEAttribute(pythonEClass, PYTHON__TARGET);
+    createEAttribute(pythonEClass, PYTHON__VALUE);
 
     restEClass = createEClass(REST);
     createEAttribute(restEClass, REST__AUTHTOKEN);
@@ -2308,69 +2540,6 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     restPartEClass = createEClass(REST_PART);
     createEAttribute(restPartEClass, REST_PART__PART_NAME);
     createEAttribute(restPartEClass, REST_PART__PART_DATA);
-
-    trelloGETEClass = createEClass(TRELLO_GET);
-    createEAttribute(trelloGETEClass, TRELLO_GET__AUTHTOKEN);
-    createEAttribute(trelloGETEClass, TRELLO_GET__KEY);
-    createEAttribute(trelloGETEClass, TRELLO_GET__USERACCOUNT);
-    createEAttribute(trelloGETEClass, TRELLO_GET__BOARD);
-    createEAttribute(trelloGETEClass, TRELLO_GET__TARGET);
-    createEAttribute(trelloGETEClass, TRELLO_GET__VALUE);
-
-    trelloPUTEClass = createEClass(TRELLO_PUT);
-    createEAttribute(trelloPUTEClass, TRELLO_PUT__AUTHTOKEN);
-    createEAttribute(trelloPUTEClass, TRELLO_PUT__KEY);
-    createEAttribute(trelloPUTEClass, TRELLO_PUT__USERACCOUNT);
-    createEAttribute(trelloPUTEClass, TRELLO_PUT__LIST);
-    createEAttribute(trelloPUTEClass, TRELLO_PUT__SOURCE);
-    createEAttribute(trelloPUTEClass, TRELLO_PUT__VALUE);
-
-    fetchEClass = createEClass(FETCH);
-    createEAttribute(fetchEClass, FETCH__SOURCE);
-    createEAttribute(fetchEClass, FETCH__VALUE);
-
-    callprocessEClass = createEClass(CALLPROCESS);
-    createEAttribute(callprocessEClass, CALLPROCESS__TARGET);
-    createEAttribute(callprocessEClass, CALLPROCESS__SOURCE);
-    createEAttribute(callprocessEClass, CALLPROCESS__DATASOURCE);
-    createEAttribute(callprocessEClass, CALLPROCESS__VALUE);
-
-    updatedauditEClass = createEClass(UPDATEDAUDIT);
-    createEAttribute(updatedauditEClass, UPDATEDAUDIT__LOGSINK);
-    createEAttribute(updatedauditEClass, UPDATEDAUDIT__DATASOURCE);
-    createEAttribute(updatedauditEClass, UPDATEDAUDIT__VALUE);
-
-    clickSendSmsEClass = createEClass(CLICK_SEND_SMS);
-    createEAttribute(clickSendSmsEClass, CLICK_SEND_SMS__USERID);
-    createEAttribute(clickSendSmsEClass, CLICK_SEND_SMS__SECURITY_KEY);
-    createEAttribute(clickSendSmsEClass, CLICK_SEND_SMS__TARGET);
-    createEAttribute(clickSendSmsEClass, CLICK_SEND_SMS__VALUE);
-
-    slackPUTEClass = createEClass(SLACK_PUT);
-    createEAttribute(slackPUTEClass, SLACK_PUT__TEAM);
-    createEAttribute(slackPUTEClass, SLACK_PUT__CHANNEL);
-    createEAttribute(slackPUTEClass, SLACK_PUT__VALUE);
-
-    copydataEClass = createEClass(COPYDATA);
-    createEAttribute(copydataEClass, COPYDATA__SOURCE);
-    createEAttribute(copydataEClass, COPYDATA__TO);
-    createEAttribute(copydataEClass, COPYDATA__VALUE);
-
-    writeCsvEClass = createEClass(WRITE_CSV);
-    createEAttribute(writeCsvEClass, WRITE_CSV__SOURCE);
-    createEAttribute(writeCsvEClass, WRITE_CSV__TO);
-    createEAttribute(writeCsvEClass, WRITE_CSV__DELIM);
-    createEAttribute(writeCsvEClass, WRITE_CSV__VALUE);
-
-    loadCsvEClass = createEClass(LOAD_CSV);
-    createEAttribute(loadCsvEClass, LOAD_CSV__SOURCE);
-    createEAttribute(loadCsvEClass, LOAD_CSV__TO);
-    createEAttribute(loadCsvEClass, LOAD_CSV__DELIM);
-    createEAttribute(loadCsvEClass, LOAD_CSV__VALUE);
-
-    transformEClass = createEClass(TRANSFORM);
-    createEAttribute(transformEClass, TRANSFORM__ON);
-    createEAttribute(transformEClass, TRANSFORM__VALUE);
 
     expressionEClass = createEClass(EXPRESSION);
     createEAttribute(expressionEClass, EXPRESSION__LHS);
@@ -2407,33 +2576,36 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     // Set bounds for type parameters
 
     // Add supertypes to classes
-    elasticFBCLeadEClass.getESuperTypes().add(this.getAction());
-    elasticGETEClass.getESuperTypes().add(this.getAction());
+    sendEMailEClass.getESuperTypes().add(this.getAction());
+    deleteFolderEClass.getESuperTypes().add(this.getAction());
+    terminalEClass.getESuperTypes().add(this.getAction());
     execJavaEClass.getESuperTypes().add(this.getAction());
-    firebaseDatabasePutEClass.getESuperTypes().add(this.getAction());
-    firebaseReactiveNotificationEClass.getESuperTypes().add(this.getAction());
-    smsLeadSmsEClass.getESuperTypes().add(this.getAction());
     abortEClass.getESuperTypes().add(this.getAction());
-    googlecontactSelectAllEClass.getESuperTypes().add(this.getAction());
-    sendMailEClass.getESuperTypes().add(this.getAction());
-    googlecontactPUTEClass.getESuperTypes().add(this.getAction());
-    googlecalPUTEClass.getESuperTypes().add(this.getAction());
-    fbcLeadEClass.getESuperTypes().add(this.getAction());
-    fbFormDownloadEClass.getESuperTypes().add(this.getAction());
     dropfileEClass.getESuperTypes().add(this.getAction());
     doozleEClass.getESuperTypes().add(this.getAction());
-    restEClass.getESuperTypes().add(this.getAction());
-    trelloGETEClass.getESuperTypes().add(this.getAction());
-    trelloPUTEClass.getESuperTypes().add(this.getAction());
     fetchEClass.getESuperTypes().add(this.getAction());
     callprocessEClass.getESuperTypes().add(this.getAction());
-    updatedauditEClass.getESuperTypes().add(this.getAction());
-    clickSendSmsEClass.getESuperTypes().add(this.getAction());
-    slackPUTEClass.getESuperTypes().add(this.getAction());
+    forkprocessEClass.getESuperTypes().add(this.getAction());
     copydataEClass.getESuperTypes().add(this.getAction());
     writeCsvEClass.getESuperTypes().add(this.getAction());
     loadCsvEClass.getESuperTypes().add(this.getAction());
     transformEClass.getESuperTypes().add(this.getAction());
+    deleteSqlEClass.getESuperTypes().add(this.getAction());
+    updateSqlEClass.getESuperTypes().add(this.getAction());
+    insertSqlEClass.getESuperTypes().add(this.getAction());
+    truncateSqlEClass.getESuperTypes().add(this.getAction());
+    dropSqlEClass.getESuperTypes().add(this.getAction());
+    listFilesEClass.getESuperTypes().add(this.getAction());
+    mongo2DbEClass.getESuperTypes().add(this.getAction());
+    ftpEClass.getESuperTypes().add(this.getAction());
+    zipEClass.getESuperTypes().add(this.getAction());
+    unzipEClass.getESuperTypes().add(this.getAction());
+    checksumEClass.getESuperTypes().add(this.getAction());
+    jsonTransformEClass.getESuperTypes().add(this.getAction());
+    jsonDeserializeEClass.getESuperTypes().add(this.getAction());
+    restApiEClass.getESuperTypes().add(this.getAction());
+    pythonEClass.getESuperTypes().add(this.getAction());
+    restEClass.getESuperTypes().add(this.getAction());
 
     // Initialize classes and features; add operations and parameters
     initEClass(processEClass, in.handyman.dsl.Process.class, "Process", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -2443,115 +2615,48 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     initEReference(getProcess_Finally(), this.getFinally(), null, "finally", null, 0, 1, in.handyman.dsl.Process.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(tryEClass, Try.class, "Try", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getTry_Name(), ecorePackage.getEString(), "name", null, 0, 1, Try.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEReference(getTry_Action(), this.getAction(), null, "action", null, 0, -1, Try.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(finallyEClass, Finally.class, "Finally", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getFinally_Name(), ecorePackage.getEString(), "name", null, 0, 1, Finally.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEReference(getFinally_Action(), this.getAction(), null, "action", null, 0, -1, Finally.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(catchEClass, Catch.class, "Catch", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getCatch_Name(), ecorePackage.getEString(), "name", null, 0, 1, Catch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEReference(getCatch_Action(), this.getAction(), null, "action", null, 0, -1, Catch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(actionEClass, Action.class, "Action", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getAction_Name(), ecorePackage.getEString(), "name", null, 0, 1, Action.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEReference(getAction_Condition(), this.getExpression(), null, "condition", null, 0, 1, Action.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-    initEClass(elasticFBCLeadEClass, ElasticFBCLead.class, "ElasticFBCLead", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getElasticFBCLead_AccessToken(), ecorePackage.getEString(), "accessToken", null, 0, 1, ElasticFBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticFBCLead_AppSecret(), ecorePackage.getEString(), "appSecret", null, 0, 1, ElasticFBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticFBCLead_AccountId(), ecorePackage.getEString(), "accountId", null, 0, 1, ElasticFBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticFBCLead_CampaignId(), ecorePackage.getEString(), "campaignId", null, 0, 1, ElasticFBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticFBCLead_Target(), ecorePackage.getEString(), "target", null, 0, 1, ElasticFBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticFBCLead_Value(), ecorePackage.getEString(), "value", null, 0, 1, ElasticFBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEClass(sendEMailEClass, SendEMail.class, "SendEMail", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getSendEMail_Source(), ecorePackage.getEString(), "source", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Smtphost(), ecorePackage.getEString(), "smtphost", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Smtpport(), ecorePackage.getEString(), "smtpport", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_From(), ecorePackage.getEString(), "from", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Pass(), ecorePackage.getEString(), "pass", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_To(), ecorePackage.getEString(), "to", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Cc(), ecorePackage.getEString(), "cc", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Bcc(), ecorePackage.getEString(), "bcc", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Subject(), ecorePackage.getEString(), "subject", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Body(), ecorePackage.getEString(), "body", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Signature(), ecorePackage.getEString(), "signature", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getSendEMail_Value(), ecorePackage.getEString(), "value", null, 0, 1, SendEMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-    initEClass(elasticGETEClass, ElasticGET.class, "ElasticGET", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getElasticGET_Source(), ecorePackage.getEString(), "source", null, 0, 1, ElasticGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticGET_To(), ecorePackage.getEString(), "to", null, 0, 1, ElasticGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getElasticGET_Value(), ecorePackage.getEString(), "value", null, 0, 1, ElasticGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEClass(deleteFolderEClass, DeleteFolder.class, "DeleteFolder", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getDeleteFolder_Foldersource(), ecorePackage.getEString(), "foldersource", null, 0, 1, DeleteFolder.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getDeleteFolder_Zipsource(), ecorePackage.getEString(), "zipsource", null, 0, 1, DeleteFolder.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getDeleteFolder_Value(), ecorePackage.getEString(), "value", null, 0, 1, DeleteFolder.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(terminalEClass, Terminal.class, "Terminal", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getTerminal_Id(), ecorePackage.getEString(), "id", null, 0, 1, Terminal.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getTerminal_Value(), ecorePackage.getEString(), "value", null, 0, 1, Terminal.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(execJavaEClass, ExecJava.class, "ExecJava", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getExecJava_ClassFqn(), ecorePackage.getEString(), "classFqn", null, 0, 1, ExecJava.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEAttribute(getExecJava_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, ExecJava.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEAttribute(getExecJava_Value(), ecorePackage.getEString(), "value", null, 0, 1, ExecJava.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-    initEClass(firebaseDatabasePutEClass, FirebaseDatabasePut.class, "FirebaseDatabasePut", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getFirebaseDatabasePut_Url(), ecorePackage.getEString(), "url", null, 0, 1, FirebaseDatabasePut.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseDatabasePut_Fbjson(), ecorePackage.getEString(), "fbjson", null, 0, 1, FirebaseDatabasePut.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseDatabasePut_GroupPath(), ecorePackage.getEString(), "groupPath", null, 0, 1, FirebaseDatabasePut.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseDatabasePut_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, FirebaseDatabasePut.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseDatabasePut_ClassFqn(), ecorePackage.getEString(), "classFqn", null, 0, 1, FirebaseDatabasePut.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseDatabasePut_Value(), ecorePackage.getEString(), "value", null, 0, 1, FirebaseDatabasePut.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(firebaseReactiveNotificationEClass, FirebaseReactiveNotification.class, "FirebaseReactiveNotification", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getFirebaseReactiveNotification_Url(), ecorePackage.getEString(), "url", null, 0, 1, FirebaseReactiveNotification.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseReactiveNotification_Fbjson(), ecorePackage.getEString(), "fbjson", null, 0, 1, FirebaseReactiveNotification.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseReactiveNotification_GroupPath(), ecorePackage.getEString(), "groupPath", null, 0, 1, FirebaseReactiveNotification.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseReactiveNotification_ClassFqn(), ecorePackage.getEString(), "classFqn", null, 0, 1, FirebaseReactiveNotification.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFirebaseReactiveNotification_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, FirebaseReactiveNotification.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(smsLeadSmsEClass, SmsLeadSms.class, "SmsLeadSms", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getSmsLeadSms_Url(), ecorePackage.getEString(), "url", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSmsLeadSms_Sender(), ecorePackage.getEString(), "sender", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSmsLeadSms_Account(), ecorePackage.getEString(), "account", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSmsLeadSms_PrivateKey(), ecorePackage.getEString(), "privateKey", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSmsLeadSms_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSmsLeadSms_Value(), ecorePackage.getEString(), "value", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSmsLeadSms_DryrunNumber(), ecorePackage.getEString(), "dryrunNumber", null, 0, 1, SmsLeadSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
     initEClass(abortEClass, Abort.class, "Abort", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getAbort_Value(), ecorePackage.getEString(), "value", null, 0, 1, Abort.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(googlecontactSelectAllEClass, GooglecontactSelectAll.class, "GooglecontactSelectAll", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getGooglecontactSelectAll_Account(), ecorePackage.getEString(), "account", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactSelectAll_PrivateKey(), ecorePackage.getEString(), "privateKey", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactSelectAll_PtwelveFile(), ecorePackage.getEString(), "ptwelveFile", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactSelectAll_Project(), ecorePackage.getEString(), "project", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactSelectAll_ImpersonatedUser(), ecorePackage.getEString(), "impersonatedUser", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactSelectAll_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactSelectAll_Value(), ecorePackage.getEString(), "value", null, 0, 1, GooglecontactSelectAll.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(sendMailEClass, SendMail.class, "SendMail", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getSendMail_PrivateKey(), ecorePackage.getEString(), "privateKey", null, 0, 1, SendMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSendMail_ImpersonatedUser(), ecorePackage.getEString(), "impersonatedUser", null, 0, 1, SendMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSendMail_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, SendMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSendMail_Value(), ecorePackage.getEString(), "value", null, 0, 1, SendMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSendMail_DryrunMail(), ecorePackage.getEString(), "dryrunMail", null, 0, 1, SendMail.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(googlecontactPUTEClass, GooglecontactPUT.class, "GooglecontactPUT", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getGooglecontactPUT_Account(), ecorePackage.getEString(), "account", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactPUT_PrivateKey(), ecorePackage.getEString(), "privateKey", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactPUT_PtwelveFile(), ecorePackage.getEString(), "ptwelveFile", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactPUT_Project(), ecorePackage.getEString(), "project", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactPUT_ImpersonatedUser(), ecorePackage.getEString(), "impersonatedUser", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactPUT_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecontactPUT_Value(), ecorePackage.getEString(), "value", null, 0, 1, GooglecontactPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(googlecalPUTEClass, GooglecalPUT.class, "GooglecalPUT", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getGooglecalPUT_Account(), ecorePackage.getEString(), "account", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecalPUT_PrivateKey(), ecorePackage.getEString(), "privateKey", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecalPUT_PtwelveFile(), ecorePackage.getEString(), "ptwelveFile", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecalPUT_Project(), ecorePackage.getEString(), "project", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecalPUT_ImpersonatedUser(), ecorePackage.getEString(), "impersonatedUser", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecalPUT_DbSrc(), ecorePackage.getEString(), "dbSrc", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getGooglecalPUT_Value(), ecorePackage.getEString(), "value", null, 0, 1, GooglecalPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(fbcLeadEClass, FBCLead.class, "FBCLead", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getFBCLead_AccessToken(), ecorePackage.getEString(), "accessToken", null, 0, 1, FBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBCLead_AppSecret(), ecorePackage.getEString(), "appSecret", null, 0, 1, FBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBCLead_AccountId(), ecorePackage.getEString(), "accountId", null, 0, 1, FBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBCLead_CampaignId(), ecorePackage.getEString(), "campaignId", null, 0, 1, FBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBCLead_Target(), ecorePackage.getEString(), "target", null, 0, 1, FBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBCLead_Value(), ecorePackage.getEString(), "value", null, 0, 1, FBCLead.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(fbFormDownloadEClass, FBFormDownload.class, "FBFormDownload", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getFBFormDownload_AccessToken(), ecorePackage.getEString(), "accessToken", null, 0, 1, FBFormDownload.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBFormDownload_AppSecret(), ecorePackage.getEString(), "appSecret", null, 0, 1, FBFormDownload.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBFormDownload_AccountId(), ecorePackage.getEString(), "accountId", null, 0, 1, FBFormDownload.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBFormDownload_FormId(), ecorePackage.getEString(), "formId", null, 0, 1, FBFormDownload.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBFormDownload_Target(), ecorePackage.getEString(), "target", null, 0, 1, FBFormDownload.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFBFormDownload_Value(), ecorePackage.getEString(), "value", null, 0, 1, FBFormDownload.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(dropfileEClass, Dropfile.class, "Dropfile", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getDropfile_Target(), ecorePackage.getEString(), "target", null, 0, 1, Dropfile.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -2560,6 +2665,152 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     initEAttribute(getDoozle_Target(), ecorePackage.getEString(), "target", null, 0, 1, Doozle.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEAttribute(getDoozle_On(), ecorePackage.getEString(), "on", null, 0, 1, Doozle.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEAttribute(getDoozle_Value(), ecorePackage.getEString(), "value", null, 0, 1, Doozle.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(fetchEClass, Fetch.class, "Fetch", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getFetch_Source(), ecorePackage.getEString(), "source", null, 0, 1, Fetch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFetch_Value(), ecorePackage.getEString(), "value", null, 0, 1, Fetch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(callprocessEClass, Callprocess.class, "Callprocess", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getCallprocess_Target(), ecorePackage.getEString(), "target", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCallprocess_Source(), ecorePackage.getEString(), "source", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCallprocess_Datasource(), ecorePackage.getEString(), "datasource", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCallprocess_Value(), ecorePackage.getEString(), "value", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(forkprocessEClass, Forkprocess.class, "Forkprocess", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getForkprocess_Target(), ecorePackage.getEString(), "target", null, 0, 1, Forkprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getForkprocess_Source(), ecorePackage.getEString(), "source", null, 0, 1, Forkprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getForkprocess_Datasource(), ecorePackage.getEString(), "datasource", null, 0, 1, Forkprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getForkprocess_Value(), ecorePackage.getEString(), "value", null, 0, 1, Forkprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getForkprocess_ForkBatchSize(), ecorePackage.getEString(), "forkBatchSize", null, 0, 1, Forkprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(copydataEClass, Copydata.class, "Copydata", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getCopydata_Source(), ecorePackage.getEString(), "source", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCopydata_To(), ecorePackage.getEString(), "to", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCopydata_Target(), ecorePackage.getEString(), "target", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCopydata_Limit(), ecorePackage.getEString(), "limit", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getCopydata_Value(), ecorePackage.getEString(), "value", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(writeCsvEClass, WriteCsv.class, "WriteCsv", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getWriteCsv_Source(), ecorePackage.getEString(), "source", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getWriteCsv_To(), ecorePackage.getEString(), "to", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getWriteCsv_Delim(), ecorePackage.getEString(), "delim", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getWriteCsv_Value(), ecorePackage.getEString(), "value", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(loadCsvEClass, LoadCsv.class, "LoadCsv", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getLoadCsv_Pid(), ecorePackage.getEString(), "pid", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getLoadCsv_Source(), ecorePackage.getEString(), "source", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getLoadCsv_To(), ecorePackage.getEString(), "to", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getLoadCsv_Delim(), ecorePackage.getEString(), "delim", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getLoadCsv_Limit(), ecorePackage.getEString(), "limit", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getLoadCsv_Value(), ecorePackage.getEString(), "value", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(transformEClass, Transform.class, "Transform", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getTransform_On(), ecorePackage.getEString(), "on", null, 0, 1, Transform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getTransform_Value(), ecorePackage.getEString(), "value", null, 0, -1, Transform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(deleteSqlEClass, DeleteSql.class, "DeleteSql", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getDeleteSql_On(), ecorePackage.getEString(), "on", null, 0, 1, DeleteSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getDeleteSql_Value(), ecorePackage.getEString(), "value", null, 0, -1, DeleteSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(updateSqlEClass, UpdateSql.class, "UpdateSql", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getUpdateSql_On(), ecorePackage.getEString(), "on", null, 0, 1, UpdateSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getUpdateSql_Value(), ecorePackage.getEString(), "value", null, 0, -1, UpdateSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(insertSqlEClass, InsertSql.class, "InsertSql", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getInsertSql_On(), ecorePackage.getEString(), "on", null, 0, 1, InsertSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getInsertSql_Value(), ecorePackage.getEString(), "value", null, 0, -1, InsertSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(truncateSqlEClass, TruncateSql.class, "TruncateSql", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getTruncateSql_On(), ecorePackage.getEString(), "on", null, 0, 1, TruncateSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getTruncateSql_Value(), ecorePackage.getEString(), "value", null, 0, -1, TruncateSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(dropSqlEClass, DropSql.class, "DropSql", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getDropSql_On(), ecorePackage.getEString(), "on", null, 0, 1, DropSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getDropSql_Value(), ecorePackage.getEString(), "value", null, 0, -1, DropSql.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(listFilesEClass, ListFiles.class, "ListFiles", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getListFiles_Source(), ecorePackage.getEString(), "source", null, 0, 1, ListFiles.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getListFiles_To(), ecorePackage.getEString(), "to", null, 0, 1, ListFiles.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getListFiles_TargetTable(), ecorePackage.getEString(), "targetTable", null, 0, 1, ListFiles.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getListFiles_Value(), ecorePackage.getEString(), "value", null, 0, 1, ListFiles.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(mongo2DbEClass, Mongo2Db.class, "Mongo2Db", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getMongo2Db_SourceConnStr(), ecorePackage.getEString(), "sourceConnStr", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_To(), ecorePackage.getEString(), "to", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_SourceDb(), ecorePackage.getEString(), "sourceDb", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_TargetDb(), ecorePackage.getEString(), "targetDb", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_TargetTable(), ecorePackage.getEString(), "targetTable", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_Filter(), ecorePackage.getEString(), "filter", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_Limit(), ecorePackage.getEString(), "limit", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_FindAttr(), ecorePackage.getEString(), "findAttr", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_ApplyManipulation(), ecorePackage.getEString(), "applyManipulation", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_OnUpdateKey(), ecorePackage.getEString(), "onUpdateKey", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_FetchBatchSize(), ecorePackage.getEString(), "fetchBatchSize", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_WriteBatchSize(), ecorePackage.getEString(), "writeBatchSize", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getMongo2Db_Value(), ecorePackage.getEString(), "value", null, 0, 1, Mongo2Db.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(ftpEClass, in.handyman.dsl.FTP.class, "FTP", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getFTP_Host(), ecorePackage.getEString(), "host", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_Port(), ecorePackage.getEString(), "port", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_Username(), ecorePackage.getEString(), "username", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_Password(), ecorePackage.getEString(), "password", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_Action(), ecorePackage.getEString(), "action", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_LocalDir(), ecorePackage.getEString(), "localDir", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_LocalFile(), ecorePackage.getEString(), "localFile", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_RemoteDir(), ecorePackage.getEString(), "remoteDir", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_RemoteFile(), ecorePackage.getEString(), "remoteFile", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_Source(), ecorePackage.getEString(), "source", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_TargetTable(), ecorePackage.getEString(), "targetTable", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getFTP_Value(), ecorePackage.getEString(), "value", null, 0, 1, in.handyman.dsl.FTP.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(zipEClass, Zip.class, "Zip", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getZip_ZipFilePath(), ecorePackage.getEString(), "zipFilePath", null, 0, 1, Zip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getZip_ZipFileName(), ecorePackage.getEString(), "zipFileName", null, 0, 1, Zip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getZip_Source(), ecorePackage.getEString(), "source", null, 0, 1, Zip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getZip_BufferSize(), ecorePackage.getEString(), "bufferSize", null, 0, 1, Zip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getZip_Value(), ecorePackage.getEString(), "value", null, 0, 1, Zip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(unzipEClass, Unzip.class, "Unzip", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getUnzip_Source(), ecorePackage.getEString(), "source", null, 0, 1, Unzip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getUnzip_DestDir(), ecorePackage.getEString(), "destDir", null, 0, 1, Unzip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getUnzip_BufferSize(), ecorePackage.getEString(), "bufferSize", null, 0, 1, Unzip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getUnzip_Value(), ecorePackage.getEString(), "value", null, 0, 1, Unzip.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(checksumEClass, Checksum.class, "Checksum", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getChecksum_Host(), ecorePackage.getEString(), "host", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_Port(), ecorePackage.getEString(), "port", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_Username(), ecorePackage.getEString(), "username", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_Password(), ecorePackage.getEString(), "password", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_LocalDir(), ecorePackage.getEString(), "localDir", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_LocalFile(), ecorePackage.getEString(), "localFile", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_RemoteDir(), ecorePackage.getEString(), "remoteDir", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_RemoteFile(), ecorePackage.getEString(), "remoteFile", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getChecksum_Value(), ecorePackage.getEString(), "value", null, 0, 1, Checksum.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(jsonTransformEClass, JsonTransform.class, "JsonTransform", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getJsonTransform_Source(), ecorePackage.getEString(), "source", null, 0, 1, JsonTransform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getJsonTransform_TargetTable(), ecorePackage.getEString(), "targetTable", null, 0, 1, JsonTransform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getJsonTransform_Value(), ecorePackage.getEString(), "value", null, 0, 1, JsonTransform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(jsonDeserializeEClass, JsonDeserialize.class, "JsonDeserialize", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getJsonDeserialize_Source(), ecorePackage.getEString(), "source", null, 0, 1, JsonDeserialize.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getJsonDeserialize_TargetTable(), ecorePackage.getEString(), "targetTable", null, 0, 1, JsonDeserialize.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getJsonDeserialize_Input(), ecorePackage.getEString(), "input", null, 0, 1, JsonDeserialize.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getJsonDeserialize_Value(), ecorePackage.getEString(), "value", null, 0, 1, JsonDeserialize.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(restApiEClass, RestApi.class, "RestApi", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getRestApi_Url(), ecorePackage.getEString(), "url", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getRestApi_Method(), ecorePackage.getEString(), "method", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getRestApi_Property(), ecorePackage.getEString(), "property", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getRestApi_Payload(), ecorePackage.getEString(), "payload", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getRestApi_Source(), ecorePackage.getEString(), "source", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getRestApi_TargetTable(), ecorePackage.getEString(), "targetTable", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getRestApi_Value(), ecorePackage.getEString(), "value", null, 0, 1, RestApi.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+    initEClass(pythonEClass, Python.class, "Python", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+    initEAttribute(getPython_Source(), ecorePackage.getEString(), "source", null, 0, 1, Python.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getPython_Target(), ecorePackage.getEString(), "target", null, 0, 1, Python.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+    initEAttribute(getPython_Value(), ecorePackage.getEString(), "value", null, 0, 1, Python.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(restEClass, Rest.class, "Rest", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getRest_Authtoken(), ecorePackage.getEString(), "authtoken", null, 0, 1, Rest.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -2579,69 +2830,6 @@ public class DslPackageImpl extends EPackageImpl implements DslPackage
     initEClass(restPartEClass, RestPart.class, "RestPart", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getRestPart_PartName(), ecorePackage.getEString(), "partName", null, 0, 1, RestPart.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
     initEAttribute(getRestPart_PartData(), ecorePackage.getEString(), "partData", null, 0, 1, RestPart.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(trelloGETEClass, TrelloGET.class, "TrelloGET", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getTrelloGET_Authtoken(), ecorePackage.getEString(), "authtoken", null, 0, 1, TrelloGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloGET_Key(), ecorePackage.getEString(), "key", null, 0, 1, TrelloGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloGET_Useraccount(), ecorePackage.getEString(), "useraccount", null, 0, 1, TrelloGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloGET_Board(), ecorePackage.getEString(), "board", null, 0, 1, TrelloGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloGET_Target(), ecorePackage.getEString(), "target", null, 0, 1, TrelloGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloGET_Value(), ecorePackage.getEString(), "value", null, 0, 1, TrelloGET.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(trelloPUTEClass, TrelloPUT.class, "TrelloPUT", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getTrelloPUT_Authtoken(), ecorePackage.getEString(), "authtoken", null, 0, 1, TrelloPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloPUT_Key(), ecorePackage.getEString(), "key", null, 0, 1, TrelloPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloPUT_Useraccount(), ecorePackage.getEString(), "useraccount", null, 0, 1, TrelloPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloPUT_List(), ecorePackage.getEString(), "list", null, 0, 1, TrelloPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloPUT_Source(), ecorePackage.getEString(), "source", null, 0, 1, TrelloPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTrelloPUT_Value(), ecorePackage.getEString(), "value", null, 0, 1, TrelloPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(fetchEClass, Fetch.class, "Fetch", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getFetch_Source(), ecorePackage.getEString(), "source", null, 0, 1, Fetch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getFetch_Value(), ecorePackage.getEString(), "value", null, 0, 1, Fetch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(callprocessEClass, Callprocess.class, "Callprocess", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getCallprocess_Target(), ecorePackage.getEString(), "target", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getCallprocess_Source(), ecorePackage.getEString(), "source", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getCallprocess_Datasource(), ecorePackage.getEString(), "datasource", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getCallprocess_Value(), ecorePackage.getEString(), "value", null, 0, 1, Callprocess.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(updatedauditEClass, Updatedaudit.class, "Updatedaudit", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getUpdatedaudit_Logsink(), ecorePackage.getEString(), "logsink", null, 0, 1, Updatedaudit.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getUpdatedaudit_Datasource(), ecorePackage.getEString(), "datasource", null, 0, 1, Updatedaudit.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getUpdatedaudit_Value(), ecorePackage.getEString(), "value", null, 0, 1, Updatedaudit.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(clickSendSmsEClass, ClickSendSms.class, "ClickSendSms", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getClickSendSms_Userid(), ecorePackage.getEString(), "userid", null, 0, 1, ClickSendSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getClickSendSms_SecurityKey(), ecorePackage.getEString(), "securityKey", null, 0, 1, ClickSendSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getClickSendSms_Target(), ecorePackage.getEString(), "target", null, 0, 1, ClickSendSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getClickSendSms_Value(), ecorePackage.getEString(), "value", null, 0, 1, ClickSendSms.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(slackPUTEClass, SlackPUT.class, "SlackPUT", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getSlackPUT_Team(), ecorePackage.getEString(), "team", null, 0, 1, SlackPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSlackPUT_Channel(), ecorePackage.getEString(), "channel", null, 0, 1, SlackPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getSlackPUT_Value(), ecorePackage.getEString(), "value", null, 0, 1, SlackPUT.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(copydataEClass, Copydata.class, "Copydata", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getCopydata_Source(), ecorePackage.getEString(), "source", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getCopydata_To(), ecorePackage.getEString(), "to", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getCopydata_Value(), ecorePackage.getEString(), "value", null, 0, 1, Copydata.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(writeCsvEClass, WriteCsv.class, "WriteCsv", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getWriteCsv_Source(), ecorePackage.getEString(), "source", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getWriteCsv_To(), ecorePackage.getEString(), "to", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getWriteCsv_Delim(), ecorePackage.getEString(), "delim", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getWriteCsv_Value(), ecorePackage.getEString(), "value", null, 0, 1, WriteCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(loadCsvEClass, LoadCsv.class, "LoadCsv", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getLoadCsv_Source(), ecorePackage.getEString(), "source", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getLoadCsv_To(), ecorePackage.getEString(), "to", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getLoadCsv_Delim(), ecorePackage.getEString(), "delim", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getLoadCsv_Value(), ecorePackage.getEString(), "value", null, 0, 1, LoadCsv.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-    initEClass(transformEClass, Transform.class, "Transform", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-    initEAttribute(getTransform_On(), ecorePackage.getEString(), "on", null, 0, 1, Transform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-    initEAttribute(getTransform_Value(), ecorePackage.getEString(), "value", null, 0, -1, Transform.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
     initEClass(expressionEClass, Expression.class, "Expression", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
     initEAttribute(getExpression_Lhs(), ecorePackage.getEString(), "lhs", null, 0, 1, Expression.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

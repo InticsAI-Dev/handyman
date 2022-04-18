@@ -7,36 +7,39 @@ import in.handyman.dsl.Abort;
 import in.handyman.dsl.Action;
 import in.handyman.dsl.Callprocess;
 import in.handyman.dsl.Catch;
-import in.handyman.dsl.ClickSendSms;
+import in.handyman.dsl.Checksum;
 import in.handyman.dsl.Copydata;
+import in.handyman.dsl.DeleteFolder;
+import in.handyman.dsl.DeleteSql;
 import in.handyman.dsl.Doozle;
+import in.handyman.dsl.DropSql;
 import in.handyman.dsl.Dropfile;
 import in.handyman.dsl.DslPackage;
-import in.handyman.dsl.ElasticFBCLead;
-import in.handyman.dsl.ElasticGET;
 import in.handyman.dsl.ExecJava;
 import in.handyman.dsl.Expression;
-import in.handyman.dsl.FBCLead;
-import in.handyman.dsl.FBFormDownload;
+import in.handyman.dsl.FTP;
 import in.handyman.dsl.Fetch;
 import in.handyman.dsl.Finally;
-import in.handyman.dsl.FirebaseDatabasePut;
-import in.handyman.dsl.FirebaseReactiveNotification;
-import in.handyman.dsl.GooglecalPUT;
-import in.handyman.dsl.GooglecontactPUT;
-import in.handyman.dsl.GooglecontactSelectAll;
+import in.handyman.dsl.Forkprocess;
+import in.handyman.dsl.InsertSql;
+import in.handyman.dsl.JsonDeserialize;
+import in.handyman.dsl.JsonTransform;
+import in.handyman.dsl.ListFiles;
 import in.handyman.dsl.LoadCsv;
+import in.handyman.dsl.Mongo2Db;
+import in.handyman.dsl.Python;
 import in.handyman.dsl.Rest;
+import in.handyman.dsl.RestApi;
 import in.handyman.dsl.RestPart;
-import in.handyman.dsl.SendMail;
-import in.handyman.dsl.SlackPUT;
-import in.handyman.dsl.SmsLeadSms;
+import in.handyman.dsl.SendEMail;
+import in.handyman.dsl.Terminal;
 import in.handyman.dsl.Transform;
-import in.handyman.dsl.TrelloGET;
-import in.handyman.dsl.TrelloPUT;
+import in.handyman.dsl.TruncateSql;
 import in.handyman.dsl.Try;
-import in.handyman.dsl.Updatedaudit;
+import in.handyman.dsl.Unzip;
+import in.handyman.dsl.UpdateSql;
 import in.handyman.dsl.WriteCsv;
+import in.handyman.dsl.Zip;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
@@ -141,19 +144,27 @@ public class DslSwitch<T> extends Switch<T>
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
-      case DslPackage.ELASTIC_FBC_LEAD:
+      case DslPackage.SEND_EMAIL:
       {
-        ElasticFBCLead elasticFBCLead = (ElasticFBCLead)theEObject;
-        T result = caseElasticFBCLead(elasticFBCLead);
-        if (result == null) result = caseAction(elasticFBCLead);
+        SendEMail sendEMail = (SendEMail)theEObject;
+        T result = caseSendEMail(sendEMail);
+        if (result == null) result = caseAction(sendEMail);
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
-      case DslPackage.ELASTIC_GET:
+      case DslPackage.DELETE_FOLDER:
       {
-        ElasticGET elasticGET = (ElasticGET)theEObject;
-        T result = caseElasticGET(elasticGET);
-        if (result == null) result = caseAction(elasticGET);
+        DeleteFolder deleteFolder = (DeleteFolder)theEObject;
+        T result = caseDeleteFolder(deleteFolder);
+        if (result == null) result = caseAction(deleteFolder);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.TERMINAL:
+      {
+        Terminal terminal = (Terminal)theEObject;
+        T result = caseTerminal(terminal);
+        if (result == null) result = caseAction(terminal);
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
@@ -165,83 +176,11 @@ public class DslSwitch<T> extends Switch<T>
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
-      case DslPackage.FIREBASE_DATABASE_PUT:
-      {
-        FirebaseDatabasePut firebaseDatabasePut = (FirebaseDatabasePut)theEObject;
-        T result = caseFirebaseDatabasePut(firebaseDatabasePut);
-        if (result == null) result = caseAction(firebaseDatabasePut);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.FIREBASE_REACTIVE_NOTIFICATION:
-      {
-        FirebaseReactiveNotification firebaseReactiveNotification = (FirebaseReactiveNotification)theEObject;
-        T result = caseFirebaseReactiveNotification(firebaseReactiveNotification);
-        if (result == null) result = caseAction(firebaseReactiveNotification);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.SMS_LEAD_SMS:
-      {
-        SmsLeadSms smsLeadSms = (SmsLeadSms)theEObject;
-        T result = caseSmsLeadSms(smsLeadSms);
-        if (result == null) result = caseAction(smsLeadSms);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
       case DslPackage.ABORT:
       {
         Abort abort = (Abort)theEObject;
         T result = caseAbort(abort);
         if (result == null) result = caseAction(abort);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.GOOGLECONTACT_SELECT_ALL:
-      {
-        GooglecontactSelectAll googlecontactSelectAll = (GooglecontactSelectAll)theEObject;
-        T result = caseGooglecontactSelectAll(googlecontactSelectAll);
-        if (result == null) result = caseAction(googlecontactSelectAll);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.SEND_MAIL:
-      {
-        SendMail sendMail = (SendMail)theEObject;
-        T result = caseSendMail(sendMail);
-        if (result == null) result = caseAction(sendMail);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.GOOGLECONTACT_PUT:
-      {
-        GooglecontactPUT googlecontactPUT = (GooglecontactPUT)theEObject;
-        T result = caseGooglecontactPUT(googlecontactPUT);
-        if (result == null) result = caseAction(googlecontactPUT);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.GOOGLECAL_PUT:
-      {
-        GooglecalPUT googlecalPUT = (GooglecalPUT)theEObject;
-        T result = caseGooglecalPUT(googlecalPUT);
-        if (result == null) result = caseAction(googlecalPUT);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.FBC_LEAD:
-      {
-        FBCLead fbcLead = (FBCLead)theEObject;
-        T result = caseFBCLead(fbcLead);
-        if (result == null) result = caseAction(fbcLead);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.FB_FORM_DOWNLOAD:
-      {
-        FBFormDownload fbFormDownload = (FBFormDownload)theEObject;
-        T result = caseFBFormDownload(fbFormDownload);
-        if (result == null) result = caseAction(fbFormDownload);
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
@@ -261,37 +200,6 @@ public class DslSwitch<T> extends Switch<T>
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
-      case DslPackage.REST:
-      {
-        Rest rest = (Rest)theEObject;
-        T result = caseRest(rest);
-        if (result == null) result = caseAction(rest);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.REST_PART:
-      {
-        RestPart restPart = (RestPart)theEObject;
-        T result = caseRestPart(restPart);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.TRELLO_GET:
-      {
-        TrelloGET trelloGET = (TrelloGET)theEObject;
-        T result = caseTrelloGET(trelloGET);
-        if (result == null) result = caseAction(trelloGET);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.TRELLO_PUT:
-      {
-        TrelloPUT trelloPUT = (TrelloPUT)theEObject;
-        T result = caseTrelloPUT(trelloPUT);
-        if (result == null) result = caseAction(trelloPUT);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
       case DslPackage.FETCH:
       {
         Fetch fetch = (Fetch)theEObject;
@@ -308,27 +216,11 @@ public class DslSwitch<T> extends Switch<T>
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
-      case DslPackage.UPDATEDAUDIT:
+      case DslPackage.FORKPROCESS:
       {
-        Updatedaudit updatedaudit = (Updatedaudit)theEObject;
-        T result = caseUpdatedaudit(updatedaudit);
-        if (result == null) result = caseAction(updatedaudit);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.CLICK_SEND_SMS:
-      {
-        ClickSendSms clickSendSms = (ClickSendSms)theEObject;
-        T result = caseClickSendSms(clickSendSms);
-        if (result == null) result = caseAction(clickSendSms);
-        if (result == null) result = defaultCase(theEObject);
-        return result;
-      }
-      case DslPackage.SLACK_PUT:
-      {
-        SlackPUT slackPUT = (SlackPUT)theEObject;
-        T result = caseSlackPUT(slackPUT);
-        if (result == null) result = caseAction(slackPUT);
+        Forkprocess forkprocess = (Forkprocess)theEObject;
+        T result = caseForkprocess(forkprocess);
+        if (result == null) result = caseAction(forkprocess);
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
@@ -361,6 +253,141 @@ public class DslSwitch<T> extends Switch<T>
         Transform transform = (Transform)theEObject;
         T result = caseTransform(transform);
         if (result == null) result = caseAction(transform);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.DELETE_SQL:
+      {
+        DeleteSql deleteSql = (DeleteSql)theEObject;
+        T result = caseDeleteSql(deleteSql);
+        if (result == null) result = caseAction(deleteSql);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.UPDATE_SQL:
+      {
+        UpdateSql updateSql = (UpdateSql)theEObject;
+        T result = caseUpdateSql(updateSql);
+        if (result == null) result = caseAction(updateSql);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.INSERT_SQL:
+      {
+        InsertSql insertSql = (InsertSql)theEObject;
+        T result = caseInsertSql(insertSql);
+        if (result == null) result = caseAction(insertSql);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.TRUNCATE_SQL:
+      {
+        TruncateSql truncateSql = (TruncateSql)theEObject;
+        T result = caseTruncateSql(truncateSql);
+        if (result == null) result = caseAction(truncateSql);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.DROP_SQL:
+      {
+        DropSql dropSql = (DropSql)theEObject;
+        T result = caseDropSql(dropSql);
+        if (result == null) result = caseAction(dropSql);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.LIST_FILES:
+      {
+        ListFiles listFiles = (ListFiles)theEObject;
+        T result = caseListFiles(listFiles);
+        if (result == null) result = caseAction(listFiles);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.MONGO2_DB:
+      {
+        Mongo2Db mongo2Db = (Mongo2Db)theEObject;
+        T result = caseMongo2Db(mongo2Db);
+        if (result == null) result = caseAction(mongo2Db);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.FTP:
+      {
+        FTP ftp = (FTP)theEObject;
+        T result = caseFTP(ftp);
+        if (result == null) result = caseAction(ftp);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.ZIP:
+      {
+        Zip zip = (Zip)theEObject;
+        T result = caseZip(zip);
+        if (result == null) result = caseAction(zip);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.UNZIP:
+      {
+        Unzip unzip = (Unzip)theEObject;
+        T result = caseUnzip(unzip);
+        if (result == null) result = caseAction(unzip);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.CHECKSUM:
+      {
+        Checksum checksum = (Checksum)theEObject;
+        T result = caseChecksum(checksum);
+        if (result == null) result = caseAction(checksum);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.JSON_TRANSFORM:
+      {
+        JsonTransform jsonTransform = (JsonTransform)theEObject;
+        T result = caseJsonTransform(jsonTransform);
+        if (result == null) result = caseAction(jsonTransform);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.JSON_DESERIALIZE:
+      {
+        JsonDeserialize jsonDeserialize = (JsonDeserialize)theEObject;
+        T result = caseJsonDeserialize(jsonDeserialize);
+        if (result == null) result = caseAction(jsonDeserialize);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.REST_API:
+      {
+        RestApi restApi = (RestApi)theEObject;
+        T result = caseRestApi(restApi);
+        if (result == null) result = caseAction(restApi);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.PYTHON:
+      {
+        Python python = (Python)theEObject;
+        T result = casePython(python);
+        if (result == null) result = caseAction(python);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.REST:
+      {
+        Rest rest = (Rest)theEObject;
+        T result = caseRest(rest);
+        if (result == null) result = caseAction(rest);
+        if (result == null) result = defaultCase(theEObject);
+        return result;
+      }
+      case DslPackage.REST_PART:
+      {
+        RestPart restPart = (RestPart)theEObject;
+        T result = caseRestPart(restPart);
         if (result == null) result = defaultCase(theEObject);
         return result;
       }
@@ -456,33 +483,49 @@ public class DslSwitch<T> extends Switch<T>
   }
 
   /**
-   * Returns the result of interpreting the object as an instance of '<em>Elastic FBC Lead</em>'.
+   * Returns the result of interpreting the object as an instance of '<em>Send EMail</em>'.
    * <!-- begin-user-doc -->
    * This implementation returns null;
    * returning a non-null result will terminate the switch.
    * <!-- end-user-doc -->
    * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Elastic FBC Lead</em>'.
+   * @return the result of interpreting the object as an instance of '<em>Send EMail</em>'.
    * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
    * @generated
    */
-  public T caseElasticFBCLead(ElasticFBCLead object)
+  public T caseSendEMail(SendEMail object)
   {
     return null;
   }
 
   /**
-   * Returns the result of interpreting the object as an instance of '<em>Elastic GET</em>'.
+   * Returns the result of interpreting the object as an instance of '<em>Delete Folder</em>'.
    * <!-- begin-user-doc -->
    * This implementation returns null;
    * returning a non-null result will terminate the switch.
    * <!-- end-user-doc -->
    * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Elastic GET</em>'.
+   * @return the result of interpreting the object as an instance of '<em>Delete Folder</em>'.
    * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
    * @generated
    */
-  public T caseElasticGET(ElasticGET object)
+  public T caseDeleteFolder(DeleteFolder object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Terminal</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Terminal</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseTerminal(Terminal object)
   {
     return null;
   }
@@ -504,54 +547,6 @@ public class DslSwitch<T> extends Switch<T>
   }
 
   /**
-   * Returns the result of interpreting the object as an instance of '<em>Firebase Database Put</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Firebase Database Put</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseFirebaseDatabasePut(FirebaseDatabasePut object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Firebase Reactive Notification</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Firebase Reactive Notification</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseFirebaseReactiveNotification(FirebaseReactiveNotification object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Sms Lead Sms</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Sms Lead Sms</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseSmsLeadSms(SmsLeadSms object)
-  {
-    return null;
-  }
-
-  /**
    * Returns the result of interpreting the object as an instance of '<em>Abort</em>'.
    * <!-- begin-user-doc -->
    * This implementation returns null;
@@ -563,102 +558,6 @@ public class DslSwitch<T> extends Switch<T>
    * @generated
    */
   public T caseAbort(Abort object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Googlecontact Select All</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Googlecontact Select All</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseGooglecontactSelectAll(GooglecontactSelectAll object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Send Mail</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Send Mail</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseSendMail(SendMail object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Googlecontact PUT</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Googlecontact PUT</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseGooglecontactPUT(GooglecontactPUT object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Googlecal PUT</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Googlecal PUT</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseGooglecalPUT(GooglecalPUT object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>FBC Lead</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>FBC Lead</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseFBCLead(FBCLead object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>FB Form Download</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>FB Form Download</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseFBFormDownload(FBFormDownload object)
   {
     return null;
   }
@@ -696,70 +595,6 @@ public class DslSwitch<T> extends Switch<T>
   }
 
   /**
-   * Returns the result of interpreting the object as an instance of '<em>Rest</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Rest</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseRest(Rest object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Rest Part</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Rest Part</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseRestPart(RestPart object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Trello GET</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Trello GET</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseTrelloGET(TrelloGET object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Trello PUT</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Trello PUT</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseTrelloPUT(TrelloPUT object)
-  {
-    return null;
-  }
-
-  /**
    * Returns the result of interpreting the object as an instance of '<em>Fetch</em>'.
    * <!-- begin-user-doc -->
    * This implementation returns null;
@@ -792,49 +627,17 @@ public class DslSwitch<T> extends Switch<T>
   }
 
   /**
-   * Returns the result of interpreting the object as an instance of '<em>Updatedaudit</em>'.
+   * Returns the result of interpreting the object as an instance of '<em>Forkprocess</em>'.
    * <!-- begin-user-doc -->
    * This implementation returns null;
    * returning a non-null result will terminate the switch.
    * <!-- end-user-doc -->
    * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Updatedaudit</em>'.
+   * @return the result of interpreting the object as an instance of '<em>Forkprocess</em>'.
    * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
    * @generated
    */
-  public T caseUpdatedaudit(Updatedaudit object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Click Send Sms</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Click Send Sms</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseClickSendSms(ClickSendSms object)
-  {
-    return null;
-  }
-
-  /**
-   * Returns the result of interpreting the object as an instance of '<em>Slack PUT</em>'.
-   * <!-- begin-user-doc -->
-   * This implementation returns null;
-   * returning a non-null result will terminate the switch.
-   * <!-- end-user-doc -->
-   * @param object the target of the switch.
-   * @return the result of interpreting the object as an instance of '<em>Slack PUT</em>'.
-   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-   * @generated
-   */
-  public T caseSlackPUT(SlackPUT object)
+  public T caseForkprocess(Forkprocess object)
   {
     return null;
   }
@@ -899,6 +702,278 @@ public class DslSwitch<T> extends Switch<T>
    * @generated
    */
   public T caseTransform(Transform object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Delete Sql</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Delete Sql</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseDeleteSql(DeleteSql object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Update Sql</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Update Sql</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseUpdateSql(UpdateSql object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Insert Sql</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Insert Sql</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseInsertSql(InsertSql object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Truncate Sql</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Truncate Sql</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseTruncateSql(TruncateSql object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Drop Sql</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Drop Sql</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseDropSql(DropSql object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>List Files</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>List Files</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseListFiles(ListFiles object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Mongo2 Db</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Mongo2 Db</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseMongo2Db(Mongo2Db object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>FTP</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>FTP</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseFTP(FTP object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Zip</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Zip</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseZip(Zip object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Unzip</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Unzip</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseUnzip(Unzip object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Checksum</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Checksum</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseChecksum(Checksum object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Json Transform</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Json Transform</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseJsonTransform(JsonTransform object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Json Deserialize</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Json Deserialize</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseJsonDeserialize(JsonDeserialize object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Rest Api</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Rest Api</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseRestApi(RestApi object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Python</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Python</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T casePython(Python object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Rest</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Rest</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseRest(Rest object)
+  {
+    return null;
+  }
+
+  /**
+   * Returns the result of interpreting the object as an instance of '<em>Rest Part</em>'.
+   * <!-- begin-user-doc -->
+   * This implementation returns null;
+   * returning a non-null result will terminate the switch.
+   * <!-- end-user-doc -->
+   * @param object the target of the switch.
+   * @return the result of interpreting the object as an instance of '<em>Rest Part</em>'.
+   * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+   * @generated
+   */
+  public T caseRestPart(RestPart object)
   {
     return null;
   }

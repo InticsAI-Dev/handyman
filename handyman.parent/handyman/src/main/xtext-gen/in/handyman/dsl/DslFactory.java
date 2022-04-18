@@ -69,22 +69,31 @@ public interface DslFactory extends EFactory
   Action createAction();
 
   /**
-   * Returns a new object of class '<em>Elastic FBC Lead</em>'.
+   * Returns a new object of class '<em>Send EMail</em>'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @return a new object of class '<em>Elastic FBC Lead</em>'.
+   * @return a new object of class '<em>Send EMail</em>'.
    * @generated
    */
-  ElasticFBCLead createElasticFBCLead();
+  SendEMail createSendEMail();
 
   /**
-   * Returns a new object of class '<em>Elastic GET</em>'.
+   * Returns a new object of class '<em>Delete Folder</em>'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @return a new object of class '<em>Elastic GET</em>'.
+   * @return a new object of class '<em>Delete Folder</em>'.
    * @generated
    */
-  ElasticGET createElasticGET();
+  DeleteFolder createDeleteFolder();
+
+  /**
+   * Returns a new object of class '<em>Terminal</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Terminal</em>'.
+   * @generated
+   */
+  Terminal createTerminal();
 
   /**
    * Returns a new object of class '<em>Exec Java</em>'.
@@ -96,33 +105,6 @@ public interface DslFactory extends EFactory
   ExecJava createExecJava();
 
   /**
-   * Returns a new object of class '<em>Firebase Database Put</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Firebase Database Put</em>'.
-   * @generated
-   */
-  FirebaseDatabasePut createFirebaseDatabasePut();
-
-  /**
-   * Returns a new object of class '<em>Firebase Reactive Notification</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Firebase Reactive Notification</em>'.
-   * @generated
-   */
-  FirebaseReactiveNotification createFirebaseReactiveNotification();
-
-  /**
-   * Returns a new object of class '<em>Sms Lead Sms</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Sms Lead Sms</em>'.
-   * @generated
-   */
-  SmsLeadSms createSmsLeadSms();
-
-  /**
    * Returns a new object of class '<em>Abort</em>'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -130,60 +112,6 @@ public interface DslFactory extends EFactory
    * @generated
    */
   Abort createAbort();
-
-  /**
-   * Returns a new object of class '<em>Googlecontact Select All</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Googlecontact Select All</em>'.
-   * @generated
-   */
-  GooglecontactSelectAll createGooglecontactSelectAll();
-
-  /**
-   * Returns a new object of class '<em>Send Mail</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Send Mail</em>'.
-   * @generated
-   */
-  SendMail createSendMail();
-
-  /**
-   * Returns a new object of class '<em>Googlecontact PUT</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Googlecontact PUT</em>'.
-   * @generated
-   */
-  GooglecontactPUT createGooglecontactPUT();
-
-  /**
-   * Returns a new object of class '<em>Googlecal PUT</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Googlecal PUT</em>'.
-   * @generated
-   */
-  GooglecalPUT createGooglecalPUT();
-
-  /**
-   * Returns a new object of class '<em>FBC Lead</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>FBC Lead</em>'.
-   * @generated
-   */
-  FBCLead createFBCLead();
-
-  /**
-   * Returns a new object of class '<em>FB Form Download</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>FB Form Download</em>'.
-   * @generated
-   */
-  FBFormDownload createFBFormDownload();
 
   /**
    * Returns a new object of class '<em>Dropfile</em>'.
@@ -204,42 +132,6 @@ public interface DslFactory extends EFactory
   Doozle createDoozle();
 
   /**
-   * Returns a new object of class '<em>Rest</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Rest</em>'.
-   * @generated
-   */
-  Rest createRest();
-
-  /**
-   * Returns a new object of class '<em>Rest Part</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Rest Part</em>'.
-   * @generated
-   */
-  RestPart createRestPart();
-
-  /**
-   * Returns a new object of class '<em>Trello GET</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Trello GET</em>'.
-   * @generated
-   */
-  TrelloGET createTrelloGET();
-
-  /**
-   * Returns a new object of class '<em>Trello PUT</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Trello PUT</em>'.
-   * @generated
-   */
-  TrelloPUT createTrelloPUT();
-
-  /**
    * Returns a new object of class '<em>Fetch</em>'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -258,31 +150,13 @@ public interface DslFactory extends EFactory
   Callprocess createCallprocess();
 
   /**
-   * Returns a new object of class '<em>Updatedaudit</em>'.
+   * Returns a new object of class '<em>Forkprocess</em>'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @return a new object of class '<em>Updatedaudit</em>'.
+   * @return a new object of class '<em>Forkprocess</em>'.
    * @generated
    */
-  Updatedaudit createUpdatedaudit();
-
-  /**
-   * Returns a new object of class '<em>Click Send Sms</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Click Send Sms</em>'.
-   * @generated
-   */
-  ClickSendSms createClickSendSms();
-
-  /**
-   * Returns a new object of class '<em>Slack PUT</em>'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return a new object of class '<em>Slack PUT</em>'.
-   * @generated
-   */
-  SlackPUT createSlackPUT();
+  Forkprocess createForkprocess();
 
   /**
    * Returns a new object of class '<em>Copydata</em>'.
@@ -319,6 +193,159 @@ public interface DslFactory extends EFactory
    * @generated
    */
   Transform createTransform();
+
+  /**
+   * Returns a new object of class '<em>Delete Sql</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Delete Sql</em>'.
+   * @generated
+   */
+  DeleteSql createDeleteSql();
+
+  /**
+   * Returns a new object of class '<em>Update Sql</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Update Sql</em>'.
+   * @generated
+   */
+  UpdateSql createUpdateSql();
+
+  /**
+   * Returns a new object of class '<em>Insert Sql</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Insert Sql</em>'.
+   * @generated
+   */
+  InsertSql createInsertSql();
+
+  /**
+   * Returns a new object of class '<em>Truncate Sql</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Truncate Sql</em>'.
+   * @generated
+   */
+  TruncateSql createTruncateSql();
+
+  /**
+   * Returns a new object of class '<em>Drop Sql</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Drop Sql</em>'.
+   * @generated
+   */
+  DropSql createDropSql();
+
+  /**
+   * Returns a new object of class '<em>List Files</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>List Files</em>'.
+   * @generated
+   */
+  ListFiles createListFiles();
+
+  /**
+   * Returns a new object of class '<em>Mongo2 Db</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Mongo2 Db</em>'.
+   * @generated
+   */
+  Mongo2Db createMongo2Db();
+
+  /**
+   * Returns a new object of class '<em>FTP</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>FTP</em>'.
+   * @generated
+   */
+  FTP createFTP();
+
+  /**
+   * Returns a new object of class '<em>Zip</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Zip</em>'.
+   * @generated
+   */
+  Zip createZip();
+
+  /**
+   * Returns a new object of class '<em>Unzip</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Unzip</em>'.
+   * @generated
+   */
+  Unzip createUnzip();
+
+  /**
+   * Returns a new object of class '<em>Checksum</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Checksum</em>'.
+   * @generated
+   */
+  Checksum createChecksum();
+
+  /**
+   * Returns a new object of class '<em>Json Transform</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Json Transform</em>'.
+   * @generated
+   */
+  JsonTransform createJsonTransform();
+
+  /**
+   * Returns a new object of class '<em>Json Deserialize</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Json Deserialize</em>'.
+   * @generated
+   */
+  JsonDeserialize createJsonDeserialize();
+
+  /**
+   * Returns a new object of class '<em>Rest Api</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Rest Api</em>'.
+   * @generated
+   */
+  RestApi createRestApi();
+
+  /**
+   * Returns a new object of class '<em>Python</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Python</em>'.
+   * @generated
+   */
+  Python createPython();
+
+  /**
+   * Returns a new object of class '<em>Rest</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Rest</em>'.
+   * @generated
+   */
+  Rest createRest();
+
+  /**
+   * Returns a new object of class '<em>Rest Part</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Rest Part</em>'.
+   * @generated
+   */
+  RestPart createRestPart();
 
   /**
    * Returns a new object of class '<em>Expression</em>'.

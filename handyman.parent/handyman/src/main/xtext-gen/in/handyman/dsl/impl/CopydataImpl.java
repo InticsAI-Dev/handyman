@@ -22,6 +22,8 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
  * <ul>
  *   <li>{@link in.handyman.dsl.impl.CopydataImpl#getSource <em>Source</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.CopydataImpl#getTo <em>To</em>}</li>
+ *   <li>{@link in.handyman.dsl.impl.CopydataImpl#getTarget <em>Target</em>}</li>
+ *   <li>{@link in.handyman.dsl.impl.CopydataImpl#getLimit <em>Limit</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.CopydataImpl#getValue <em>Value</em>}</li>
  * </ul>
  *
@@ -68,6 +70,46 @@ public class CopydataImpl extends ActionImpl implements Copydata
    * @ordered
    */
   protected String to = TO_EDEFAULT;
+
+  /**
+   * The default value of the '{@link #getTarget() <em>Target</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getTarget()
+   * @generated
+   * @ordered
+   */
+  protected static final String TARGET_EDEFAULT = null;
+
+  /**
+   * The cached value of the '{@link #getTarget() <em>Target</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getTarget()
+   * @generated
+   * @ordered
+   */
+  protected String target = TARGET_EDEFAULT;
+
+  /**
+   * The default value of the '{@link #getLimit() <em>Limit</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getLimit()
+   * @generated
+   * @ordered
+   */
+  protected static final String LIMIT_EDEFAULT = null;
+
+  /**
+   * The cached value of the '{@link #getLimit() <em>Limit</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getLimit()
+   * @generated
+   * @ordered
+   */
+  protected String limit = LIMIT_EDEFAULT;
 
   /**
    * The default value of the '{@link #getValue() <em>Value</em>}' attribute.
@@ -161,6 +203,52 @@ public class CopydataImpl extends ActionImpl implements Copydata
    * <!-- end-user-doc -->
    * @generated
    */
+  public String getTarget()
+  {
+    return target;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public void setTarget(String newTarget)
+  {
+    String oldTarget = target;
+    target = newTarget;
+    if (eNotificationRequired())
+      eNotify(new ENotificationImpl(this, Notification.SET, DslPackage.COPYDATA__TARGET, oldTarget, target));
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public String getLimit()
+  {
+    return limit;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public void setLimit(String newLimit)
+  {
+    String oldLimit = limit;
+    limit = newLimit;
+    if (eNotificationRequired())
+      eNotify(new ENotificationImpl(this, Notification.SET, DslPackage.COPYDATA__LIMIT, oldLimit, limit));
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
   public String getValue()
   {
     return value;
@@ -193,6 +281,10 @@ public class CopydataImpl extends ActionImpl implements Copydata
         return getSource();
       case DslPackage.COPYDATA__TO:
         return getTo();
+      case DslPackage.COPYDATA__TARGET:
+        return getTarget();
+      case DslPackage.COPYDATA__LIMIT:
+        return getLimit();
       case DslPackage.COPYDATA__VALUE:
         return getValue();
     }
@@ -214,6 +306,12 @@ public class CopydataImpl extends ActionImpl implements Copydata
         return;
       case DslPackage.COPYDATA__TO:
         setTo((String)newValue);
+        return;
+      case DslPackage.COPYDATA__TARGET:
+        setTarget((String)newValue);
+        return;
+      case DslPackage.COPYDATA__LIMIT:
+        setLimit((String)newValue);
         return;
       case DslPackage.COPYDATA__VALUE:
         setValue((String)newValue);
@@ -238,6 +336,12 @@ public class CopydataImpl extends ActionImpl implements Copydata
       case DslPackage.COPYDATA__TO:
         setTo(TO_EDEFAULT);
         return;
+      case DslPackage.COPYDATA__TARGET:
+        setTarget(TARGET_EDEFAULT);
+        return;
+      case DslPackage.COPYDATA__LIMIT:
+        setLimit(LIMIT_EDEFAULT);
+        return;
       case DslPackage.COPYDATA__VALUE:
         setValue(VALUE_EDEFAULT);
         return;
@@ -259,6 +363,10 @@ public class CopydataImpl extends ActionImpl implements Copydata
         return SOURCE_EDEFAULT == null ? source != null : !SOURCE_EDEFAULT.equals(source);
       case DslPackage.COPYDATA__TO:
         return TO_EDEFAULT == null ? to != null : !TO_EDEFAULT.equals(to);
+      case DslPackage.COPYDATA__TARGET:
+        return TARGET_EDEFAULT == null ? target != null : !TARGET_EDEFAULT.equals(target);
+      case DslPackage.COPYDATA__LIMIT:
+        return LIMIT_EDEFAULT == null ? limit != null : !LIMIT_EDEFAULT.equals(limit);
       case DslPackage.COPYDATA__VALUE:
         return VALUE_EDEFAULT == null ? value != null : !VALUE_EDEFAULT.equals(value);
     }
@@ -280,6 +388,10 @@ public class CopydataImpl extends ActionImpl implements Copydata
     result.append(source);
     result.append(", to: ");
     result.append(to);
+    result.append(", target: ");
+    result.append(target);
+    result.append(", limit: ");
+    result.append(limit);
     result.append(", value: ");
     result.append(value);
     result.append(')');

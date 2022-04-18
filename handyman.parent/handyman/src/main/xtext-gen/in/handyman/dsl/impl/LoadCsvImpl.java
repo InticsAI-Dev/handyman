@@ -20,9 +20,11 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
  * The following features are implemented:
  * </p>
  * <ul>
+ *   <li>{@link in.handyman.dsl.impl.LoadCsvImpl#getPid <em>Pid</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.LoadCsvImpl#getSource <em>Source</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.LoadCsvImpl#getTo <em>To</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.LoadCsvImpl#getDelim <em>Delim</em>}</li>
+ *   <li>{@link in.handyman.dsl.impl.LoadCsvImpl#getLimit <em>Limit</em>}</li>
  *   <li>{@link in.handyman.dsl.impl.LoadCsvImpl#getValue <em>Value</em>}</li>
  * </ul>
  *
@@ -30,6 +32,26 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
  */
 public class LoadCsvImpl extends ActionImpl implements LoadCsv
 {
+  /**
+   * The default value of the '{@link #getPid() <em>Pid</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getPid()
+   * @generated
+   * @ordered
+   */
+  protected static final String PID_EDEFAULT = null;
+
+  /**
+   * The cached value of the '{@link #getPid() <em>Pid</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getPid()
+   * @generated
+   * @ordered
+   */
+  protected String pid = PID_EDEFAULT;
+
   /**
    * The default value of the '{@link #getSource() <em>Source</em>}' attribute.
    * <!-- begin-user-doc -->
@@ -91,6 +113,26 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
   protected String delim = DELIM_EDEFAULT;
 
   /**
+   * The default value of the '{@link #getLimit() <em>Limit</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getLimit()
+   * @generated
+   * @ordered
+   */
+  protected static final String LIMIT_EDEFAULT = null;
+
+  /**
+   * The cached value of the '{@link #getLimit() <em>Limit</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #getLimit()
+   * @generated
+   * @ordered
+   */
+  protected String limit = LIMIT_EDEFAULT;
+
+  /**
    * The default value of the '{@link #getValue() <em>Value</em>}' attribute.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -129,6 +171,29 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
   protected EClass eStaticClass()
   {
     return DslPackage.Literals.LOAD_CSV;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public String getPid()
+  {
+    return pid;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public void setPid(String newPid)
+  {
+    String oldPid = pid;
+    pid = newPid;
+    if (eNotificationRequired())
+      eNotify(new ENotificationImpl(this, Notification.SET, DslPackage.LOAD_CSV__PID, oldPid, pid));
   }
 
   /**
@@ -205,6 +270,29 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
    * <!-- end-user-doc -->
    * @generated
    */
+  public String getLimit()
+  {
+    return limit;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public void setLimit(String newLimit)
+  {
+    String oldLimit = limit;
+    limit = newLimit;
+    if (eNotificationRequired())
+      eNotify(new ENotificationImpl(this, Notification.SET, DslPackage.LOAD_CSV__LIMIT, oldLimit, limit));
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
   public String getValue()
   {
     return value;
@@ -233,12 +321,16 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
   {
     switch (featureID)
     {
+      case DslPackage.LOAD_CSV__PID:
+        return getPid();
       case DslPackage.LOAD_CSV__SOURCE:
         return getSource();
       case DslPackage.LOAD_CSV__TO:
         return getTo();
       case DslPackage.LOAD_CSV__DELIM:
         return getDelim();
+      case DslPackage.LOAD_CSV__LIMIT:
+        return getLimit();
       case DslPackage.LOAD_CSV__VALUE:
         return getValue();
     }
@@ -255,6 +347,9 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
   {
     switch (featureID)
     {
+      case DslPackage.LOAD_CSV__PID:
+        setPid((String)newValue);
+        return;
       case DslPackage.LOAD_CSV__SOURCE:
         setSource((String)newValue);
         return;
@@ -263,6 +358,9 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
         return;
       case DslPackage.LOAD_CSV__DELIM:
         setDelim((String)newValue);
+        return;
+      case DslPackage.LOAD_CSV__LIMIT:
+        setLimit((String)newValue);
         return;
       case DslPackage.LOAD_CSV__VALUE:
         setValue((String)newValue);
@@ -281,6 +379,9 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
   {
     switch (featureID)
     {
+      case DslPackage.LOAD_CSV__PID:
+        setPid(PID_EDEFAULT);
+        return;
       case DslPackage.LOAD_CSV__SOURCE:
         setSource(SOURCE_EDEFAULT);
         return;
@@ -289,6 +390,9 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
         return;
       case DslPackage.LOAD_CSV__DELIM:
         setDelim(DELIM_EDEFAULT);
+        return;
+      case DslPackage.LOAD_CSV__LIMIT:
+        setLimit(LIMIT_EDEFAULT);
         return;
       case DslPackage.LOAD_CSV__VALUE:
         setValue(VALUE_EDEFAULT);
@@ -307,12 +411,16 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
   {
     switch (featureID)
     {
+      case DslPackage.LOAD_CSV__PID:
+        return PID_EDEFAULT == null ? pid != null : !PID_EDEFAULT.equals(pid);
       case DslPackage.LOAD_CSV__SOURCE:
         return SOURCE_EDEFAULT == null ? source != null : !SOURCE_EDEFAULT.equals(source);
       case DslPackage.LOAD_CSV__TO:
         return TO_EDEFAULT == null ? to != null : !TO_EDEFAULT.equals(to);
       case DslPackage.LOAD_CSV__DELIM:
         return DELIM_EDEFAULT == null ? delim != null : !DELIM_EDEFAULT.equals(delim);
+      case DslPackage.LOAD_CSV__LIMIT:
+        return LIMIT_EDEFAULT == null ? limit != null : !LIMIT_EDEFAULT.equals(limit);
       case DslPackage.LOAD_CSV__VALUE:
         return VALUE_EDEFAULT == null ? value != null : !VALUE_EDEFAULT.equals(value);
     }
@@ -330,12 +438,16 @@ public class LoadCsvImpl extends ActionImpl implements LoadCsv
     if (eIsProxy()) return super.toString();
 
     StringBuffer result = new StringBuffer(super.toString());
-    result.append(" (source: ");
+    result.append(" (pid: ");
+    result.append(pid);
+    result.append(", source: ");
     result.append(source);
     result.append(", to: ");
     result.append(to);
     result.append(", delim: ");
     result.append(delim);
+    result.append(", limit: ");
+    result.append(limit);
     result.append(", value: ");
     result.append(value);
     result.append(')');

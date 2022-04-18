@@ -13,115 +13,48 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Dsl.ecore#//Process/finally"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Try">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Try/name"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Dsl.ecore#//Try/action"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Finally">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Finally/name"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Dsl.ecore#//Finally/action"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Catch">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Catch/name"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Dsl.ecore#//Catch/action"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Action">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Action/name"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Dsl.ecore#//Action/condition"/>
     </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//ElasticFBCLead">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticFBCLead/accessToken"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticFBCLead/appSecret"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticFBCLead/accountId"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticFBCLead/campaignId"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticFBCLead/target"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticFBCLead/value"/>
+    <genClasses ecoreClass="Dsl.ecore#//SendEMail">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/smtphost"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/smtpport"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/from"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/pass"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/cc"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/bcc"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/subject"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/body"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/signature"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendEMail/value"/>
     </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//ElasticGET">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticGET/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticGET/to"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ElasticGET/value"/>
+    <genClasses ecoreClass="Dsl.ecore#//DeleteFolder">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DeleteFolder/foldersource"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DeleteFolder/zipsource"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DeleteFolder/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Terminal">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Terminal/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Terminal/value"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//ExecJava">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ExecJava/classFqn"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ExecJava/dbSrc"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ExecJava/value"/>
     </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//FirebaseDatabasePut">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseDatabasePut/url"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseDatabasePut/fbjson"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseDatabasePut/groupPath"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseDatabasePut/dbSrc"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseDatabasePut/classFqn"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseDatabasePut/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//FirebaseReactiveNotification">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseReactiveNotification/url"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseReactiveNotification/fbjson"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseReactiveNotification/groupPath"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseReactiveNotification/classFqn"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FirebaseReactiveNotification/dbSrc"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//SmsLeadSms">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/url"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/sender"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/account"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/privateKey"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/dbSrc"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/value"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SmsLeadSms/dryrunNumber"/>
-    </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Abort">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Abort/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//GooglecontactSelectAll">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/account"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/privateKey"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/ptwelveFile"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/project"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/impersonatedUser"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/dbSrc"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactSelectAll/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//SendMail">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendMail/privateKey"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendMail/impersonatedUser"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendMail/dbSrc"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendMail/value"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SendMail/dryrunMail"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//GooglecontactPUT">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/account"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/privateKey"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/ptwelveFile"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/project"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/impersonatedUser"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/dbSrc"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecontactPUT/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//GooglecalPUT">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/account"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/privateKey"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/ptwelveFile"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/project"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/impersonatedUser"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/dbSrc"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//GooglecalPUT/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//FBCLead">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBCLead/accessToken"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBCLead/appSecret"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBCLead/accountId"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBCLead/campaignId"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBCLead/target"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBCLead/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//FBFormDownload">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBFormDownload/accessToken"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBFormDownload/appSecret"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBFormDownload/accountId"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBFormDownload/formId"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBFormDownload/target"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FBFormDownload/value"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Dropfile">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Dropfile/target"/>
@@ -130,6 +63,152 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Doozle/target"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Doozle/on"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Doozle/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Fetch">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Fetch/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Fetch/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Callprocess">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/datasource"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Forkprocess">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Forkprocess/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Forkprocess/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Forkprocess/datasource"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Forkprocess/value"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Forkprocess/forkBatchSize"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Copydata">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/limit"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//WriteCsv">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/delim"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//LoadCsv">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/pid"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/delim"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/limit"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Transform">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Transform/on"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Transform/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//DeleteSql">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DeleteSql/on"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DeleteSql/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//UpdateSql">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//UpdateSql/on"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//UpdateSql/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//InsertSql">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//InsertSql/on"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//InsertSql/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//TruncateSql">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TruncateSql/on"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TruncateSql/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//DropSql">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DropSql/on"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//DropSql/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//ListFiles">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ListFiles/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ListFiles/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ListFiles/targetTable"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ListFiles/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Mongo2Db">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/sourceConnStr"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/sourceDb"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/targetDb"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/targetTable"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/filter"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/limit"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/findAttr"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/applyManipulation"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/onUpdateKey"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/fetchBatchSize"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/writeBatchSize"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Mongo2Db/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//FTP">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/host"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/port"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/username"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/password"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/action"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/localDir"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/localFile"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/remoteDir"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/remoteFile"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/targetTable"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//FTP/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Zip">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Zip/zipFilePath"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Zip/zipFileName"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Zip/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Zip/bufferSize"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Zip/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Unzip">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Unzip/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Unzip/destDir"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Unzip/bufferSize"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Unzip/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Checksum">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/host"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/port"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/username"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/password"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/localDir"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/localFile"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/remoteDir"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/remoteFile"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Checksum/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//JsonTransform">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonTransform/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonTransform/targetTable"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonTransform/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//JsonDeserialize">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonDeserialize/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonDeserialize/targetTable"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonDeserialize/input"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//JsonDeserialize/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//RestApi">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/url"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/method"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/property"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/payload"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/targetTable"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestApi/value"/>
+    </genClasses>
+    <genClasses ecoreClass="Dsl.ecore#//Python">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Python/source"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Python/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Python/value"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Rest">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Rest/authtoken"/>
@@ -149,69 +228,6 @@
     <genClasses ecoreClass="Dsl.ecore#//RestPart">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestPart/partName"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//RestPart/partData"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//TrelloGET">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloGET/authtoken"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloGET/key"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloGET/useraccount"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloGET/board"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloGET/target"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloGET/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//TrelloPUT">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloPUT/authtoken"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloPUT/key"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloPUT/useraccount"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloPUT/list"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloPUT/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//TrelloPUT/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//Fetch">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Fetch/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Fetch/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//Callprocess">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/target"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/datasource"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Callprocess/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//Updatedaudit">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Updatedaudit/logsink"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Updatedaudit/datasource"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Updatedaudit/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//ClickSendSms">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ClickSendSms/userid"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ClickSendSms/securityKey"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ClickSendSms/target"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//ClickSendSms/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//SlackPUT">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SlackPUT/team"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SlackPUT/channel"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//SlackPUT/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//Copydata">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/to"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Copydata/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//WriteCsv">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/to"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/delim"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//WriteCsv/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//LoadCsv">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/source"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/to"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/delim"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//LoadCsv/value"/>
-    </genClasses>
-    <genClasses ecoreClass="Dsl.ecore#//Transform">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Transform/on"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Transform/value"/>
     </genClasses>
     <genClasses ecoreClass="Dsl.ecore#//Expression">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Dsl.ecore#//Expression/lhs"/>
