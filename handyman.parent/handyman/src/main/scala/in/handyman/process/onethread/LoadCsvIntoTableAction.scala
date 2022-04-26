@@ -139,17 +139,28 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
       
       colList.append(colName).append(Constants.FIELD_SEPARATOR)
       
-      var colVal : String = values.apply(colPos).replace("'", "''");
+      var colVal : String = values.apply(colPos).toString();
+        
       tableSchema.get(colName).toLowerCase match {
         case Constants.STRING_DATATYPE => colValList.append(Constants.STRING_ENCLOSER).
-          append(colVal).append(Constants.STRING_ENCLOSER)
+          append(colVal.replace("'", "''")).append(Constants.STRING_ENCLOSER)
         case "datetime" => colValList.append(Constants.STRING_ENCLOSER).
           append(colVal).append(Constants.STRING_ENCLOSER)
         case "date" => colValList.append(Constants.STRING_ENCLOSER).
           append(colVal).append(Constants.STRING_ENCLOSER)
         case "timestamp" => colValList.append(Constants.STRING_ENCLOSER).
           append(colVal).append(Constants.STRING_ENCLOSER)
-        case _ => colValList.append(colVal)
+        case _ => {
+          if(colVal.isEmpty())
+            colVal = null
+          /*else
+            println(colVal+"::::::::::::::::::::::"+colVal)
+            
+           values.foreach( f => print(f+"\t"))
+            
+          println(colName+"::::::::::::::::::::::"+colVal+"-----------------------"+colPos)*/
+          colValList.append(colVal)
+        }
       }
       
       colValList.append(Constants.FIELD_SEPARATOR)
