@@ -1,7 +1,8 @@
 package in.handyman.util
 
-import in.handyman.command.Context
 import org.apache.commons.text.StrSubstitutor
+
+import in.handyman.command.Context
 
 object ParameterisationEngine {
 
@@ -9,8 +10,12 @@ object ParameterisationEngine {
     val configMap = context.getMe
     val paramEngine = new StrSubstitutor(configMap)
     if (inputString != null) {
-      val output = paramEngine.replace(inputString).replace("0_", configMap.getOrDefault("process-id", "0_") + "_")
-      output
+      val temp_output = paramEngine.replace(inputString)
+      if (!temp_output.contains("_60_")){
+        val output = temp_output.replace("0_", configMap.getOrDefault("process-id", "0_") + "_")
+        output
+      }else
+        ""
     } else
       ""
   }
