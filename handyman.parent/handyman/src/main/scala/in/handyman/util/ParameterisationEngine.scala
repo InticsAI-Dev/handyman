@@ -13,6 +13,7 @@ object ParameterisationEngine {
       val temp_output = paramEngine.replace(inputString)
       if (!temp_output.contains("_60_")){
         val output = temp_output.replace("0_", configMap.getOrDefault("process-id", "0_") + "_")
+        System.out.println(temp_output)
         output
       }else
         ""
