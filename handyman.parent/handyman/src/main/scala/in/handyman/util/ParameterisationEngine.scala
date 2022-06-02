@@ -11,9 +11,10 @@ object ParameterisationEngine {
     val paramEngine = new StrSubstitutor(configMap)
     if (inputString != null) {
       val temp_output = paramEngine.replace(inputString)
+      System.out.println("11111111111"+temp_output)
       if (!temp_output.contains("_60_")){
         val output = temp_output.replace("0_", configMap.getOrDefault("process-id", "0_") + "_")
-        System.out.println(temp_output)
+        System.out.println("2222222222222"+temp_output)
         output
       }else
         ""
