@@ -123,22 +123,13 @@ public interface DslPackage extends EPackage
   int TRY = 1;
 
   /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRY__NAME = 0;
-
-  /**
    * The feature id for the '<em><b>Action</b></em>' containment reference list.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @generated
    * @ordered
    */
-  int TRY__ACTION = 1;
+  int TRY__ACTION = 0;
 
   /**
    * The number of structural features of the '<em>Try</em>' class.
@@ -147,7 +138,7 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int TRY_FEATURE_COUNT = 2;
+  int TRY_FEATURE_COUNT = 1;
 
   /**
    * The meta object id for the '{@link in.handyman.dsl.impl.FinallyImpl <em>Finally</em>}' class.
@@ -160,22 +151,13 @@ public interface DslPackage extends EPackage
   int FINALLY = 2;
 
   /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FINALLY__NAME = 0;
-
-  /**
    * The feature id for the '<em><b>Action</b></em>' containment reference list.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @generated
    * @ordered
    */
-  int FINALLY__ACTION = 1;
+  int FINALLY__ACTION = 0;
 
   /**
    * The number of structural features of the '<em>Finally</em>' class.
@@ -184,7 +166,7 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int FINALLY_FEATURE_COUNT = 2;
+  int FINALLY_FEATURE_COUNT = 1;
 
   /**
    * The meta object id for the '{@link in.handyman.dsl.impl.CatchImpl <em>Catch</em>}' class.
@@ -197,22 +179,13 @@ public interface DslPackage extends EPackage
   int CATCH = 3;
 
   /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CATCH__NAME = 0;
-
-  /**
    * The feature id for the '<em><b>Action</b></em>' containment reference list.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @generated
    * @ordered
    */
-  int CATCH__ACTION = 1;
+  int CATCH__ACTION = 0;
 
   /**
    * The number of structural features of the '<em>Catch</em>' class.
@@ -221,7 +194,7 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int CATCH_FEATURE_COUNT = 2;
+  int CATCH_FEATURE_COUNT = 1;
 
   /**
    * The meta object id for the '{@link in.handyman.dsl.impl.ActionImpl <em>Action</em>}' class.
@@ -261,14 +234,14 @@ public interface DslPackage extends EPackage
   int ACTION_FEATURE_COUNT = 2;
 
   /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.ElasticFBCLeadImpl <em>Elastic FBC Lead</em>}' class.
+   * The meta object id for the '{@link in.handyman.dsl.impl.SendEMailImpl <em>Send EMail</em>}' class.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.ElasticFBCLeadImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getElasticFBCLead()
+   * @see in.handyman.dsl.impl.SendEMailImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getSendEMail()
    * @generated
    */
-  int ELASTIC_FBC_LEAD = 5;
+  int SEND_EMAIL = 5;
 
   /**
    * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -277,7 +250,7 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int ELASTIC_FBC_LEAD__NAME = ACTION__NAME;
+  int SEND_EMAIL__NAME = ACTION__NAME;
 
   /**
    * The feature id for the '<em><b>Condition</b></em>' containment reference.
@@ -286,98 +259,7 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int ELASTIC_FBC_LEAD__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Access Token</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD__ACCESS_TOKEN = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>App Secret</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD__APP_SECRET = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Account Id</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD__ACCOUNT_ID = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Campaign Id</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD__CAMPAIGN_ID = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Target</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD__TARGET = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The number of structural features of the '<em>Elastic FBC Lead</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_FBC_LEAD_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.ElasticGETImpl <em>Elastic GET</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.ElasticGETImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getElasticGET()
-   * @generated
-   */
-  int ELASTIC_GET = 6;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_GET__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int ELASTIC_GET__CONDITION = ACTION__CONDITION;
+  int SEND_EMAIL__CONDITION = ACTION__CONDITION;
 
   /**
    * The feature id for the '<em><b>Source</b></em>' attribute.
@@ -386,7 +268,43 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int ELASTIC_GET__SOURCE = ACTION_FEATURE_COUNT + 0;
+  int SEND_EMAIL__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Smtphost</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__SMTPHOST = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Smtpport</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__SMTPPORT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>From</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__FROM = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Pass</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__PASS = ACTION_FEATURE_COUNT + 4;
 
   /**
    * The feature id for the '<em><b>To</b></em>' attribute.
@@ -395,7 +313,52 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int ELASTIC_GET__TO = ACTION_FEATURE_COUNT + 1;
+  int SEND_EMAIL__TO = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The feature id for the '<em><b>Cc</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__CC = ACTION_FEATURE_COUNT + 6;
+
+  /**
+   * The feature id for the '<em><b>Bcc</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__BCC = ACTION_FEATURE_COUNT + 7;
+
+  /**
+   * The feature id for the '<em><b>Subject</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__SUBJECT = ACTION_FEATURE_COUNT + 8;
+
+  /**
+   * The feature id for the '<em><b>Body</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__BODY = ACTION_FEATURE_COUNT + 9;
+
+  /**
+   * The feature id for the '<em><b>Signature</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int SEND_EMAIL__SIGNATURE = ACTION_FEATURE_COUNT + 10;
 
   /**
    * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -404,16 +367,135 @@ public interface DslPackage extends EPackage
    * @generated
    * @ordered
    */
-  int ELASTIC_GET__VALUE = ACTION_FEATURE_COUNT + 2;
+  int SEND_EMAIL__VALUE = ACTION_FEATURE_COUNT + 11;
 
   /**
-   * The number of structural features of the '<em>Elastic GET</em>' class.
+   * The number of structural features of the '<em>Send EMail</em>' class.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @generated
    * @ordered
    */
-  int ELASTIC_GET_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
+  int SEND_EMAIL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 12;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.DeleteFolderImpl <em>Delete Folder</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.DeleteFolderImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getDeleteFolder()
+   * @generated
+   */
+  int DELETE_FOLDER = 6;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_FOLDER__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_FOLDER__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Foldersource</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_FOLDER__FOLDERSOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Zipsource</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_FOLDER__ZIPSOURCE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_FOLDER__VALUE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The number of structural features of the '<em>Delete Folder</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_FOLDER_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.TerminalImpl <em>Terminal</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.TerminalImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getTerminal()
+   * @generated
+   */
+  int TERMINAL = 7;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TERMINAL__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TERMINAL__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Id</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TERMINAL__ID = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TERMINAL__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Terminal</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TERMINAL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
 
   /**
    * The meta object id for the '{@link in.handyman.dsl.impl.ExecJavaImpl <em>Exec Java</em>}' class.
@@ -423,7 +505,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getExecJava()
    * @generated
    */
-  int EXEC_JAVA = 7;
+  int EXEC_JAVA = 8;
 
   /**
    * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -480,279 +562,6 @@ public interface DslPackage extends EPackage
   int EXEC_JAVA_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
 
   /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.FirebaseDatabasePutImpl <em>Firebase Database Put</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.FirebaseDatabasePutImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getFirebaseDatabasePut()
-   * @generated
-   */
-  int FIREBASE_DATABASE_PUT = 8;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Url</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__URL = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Fbjson</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__FBJSON = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Group Path</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__GROUP_PATH = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__DB_SRC = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Class Fqn</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__CLASS_FQN = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The number of structural features of the '<em>Firebase Database Put</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_DATABASE_PUT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.FirebaseReactiveNotificationImpl <em>Firebase Reactive Notification</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.FirebaseReactiveNotificationImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getFirebaseReactiveNotification()
-   * @generated
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION = 9;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Url</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__URL = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Fbjson</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__FBJSON = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Group Path</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__GROUP_PATH = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Class Fqn</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__CLASS_FQN = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION__DB_SRC = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The number of structural features of the '<em>Firebase Reactive Notification</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FIREBASE_REACTIVE_NOTIFICATION_FEATURE_COUNT = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.SmsLeadSmsImpl <em>Sms Lead Sms</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.SmsLeadSmsImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getSmsLeadSms()
-   * @generated
-   */
-  int SMS_LEAD_SMS = 10;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Url</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__URL = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Sender</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__SENDER = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Account</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__ACCOUNT = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Private Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__PRIVATE_KEY = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__DB_SRC = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The feature id for the '<em><b>Dryrun Number</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS__DRYRUN_NUMBER = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The number of structural features of the '<em>Sms Lead Sms</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SMS_LEAD_SMS_FEATURE_COUNT = ACTION_FEATURE_COUNT + 7;
-
-  /**
    * The meta object id for the '{@link in.handyman.dsl.impl.AbortImpl <em>Abort</em>}' class.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -760,7 +569,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getAbort()
    * @generated
    */
-  int ABORT = 11;
+  int ABORT = 9;
 
   /**
    * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -799,570 +608,6 @@ public interface DslPackage extends EPackage
   int ABORT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 1;
 
   /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.GooglecontactSelectAllImpl <em>Googlecontact Select All</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.GooglecontactSelectAllImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getGooglecontactSelectAll()
-   * @generated
-   */
-  int GOOGLECONTACT_SELECT_ALL = 12;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Account</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__ACCOUNT = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Private Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__PRIVATE_KEY = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Ptwelve File</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__PTWELVE_FILE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Project</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__PROJECT = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Impersonated User</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__IMPERSONATED_USER = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__DB_SRC = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL__VALUE = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The number of structural features of the '<em>Googlecontact Select All</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_SELECT_ALL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 7;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.SendMailImpl <em>Send Mail</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.SendMailImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getSendMail()
-   * @generated
-   */
-  int SEND_MAIL = 13;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Private Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__PRIVATE_KEY = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Impersonated User</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__IMPERSONATED_USER = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__DB_SRC = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__VALUE = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Dryrun Mail</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL__DRYRUN_MAIL = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The number of structural features of the '<em>Send Mail</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SEND_MAIL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.GooglecontactPUTImpl <em>Googlecontact PUT</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.GooglecontactPUTImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getGooglecontactPUT()
-   * @generated
-   */
-  int GOOGLECONTACT_PUT = 14;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Account</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__ACCOUNT = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Private Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__PRIVATE_KEY = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Ptwelve File</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__PTWELVE_FILE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Project</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__PROJECT = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Impersonated User</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__IMPERSONATED_USER = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__DB_SRC = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT__VALUE = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The number of structural features of the '<em>Googlecontact PUT</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECONTACT_PUT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 7;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.GooglecalPUTImpl <em>Googlecal PUT</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.GooglecalPUTImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getGooglecalPUT()
-   * @generated
-   */
-  int GOOGLECAL_PUT = 15;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Account</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__ACCOUNT = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Private Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__PRIVATE_KEY = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Ptwelve File</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__PTWELVE_FILE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Project</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__PROJECT = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Impersonated User</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__IMPERSONATED_USER = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Db Src</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__DB_SRC = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT__VALUE = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The number of structural features of the '<em>Googlecal PUT</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int GOOGLECAL_PUT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 7;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.FBCLeadImpl <em>FBC Lead</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.FBCLeadImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getFBCLead()
-   * @generated
-   */
-  int FBC_LEAD = 16;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Access Token</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__ACCESS_TOKEN = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>App Secret</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__APP_SECRET = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Account Id</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__ACCOUNT_ID = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Campaign Id</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__CAMPAIGN_ID = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Target</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__TARGET = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The number of structural features of the '<em>FBC Lead</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FBC_LEAD_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.FBFormDownloadImpl <em>FB Form Download</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.FBFormDownloadImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getFBFormDownload()
-   * @generated
-   */
-  int FB_FORM_DOWNLOAD = 17;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Access Token</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__ACCESS_TOKEN = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>App Secret</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__APP_SECRET = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Account Id</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__ACCOUNT_ID = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Form Id</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__FORM_ID = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Target</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__TARGET = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The number of structural features of the '<em>FB Form Download</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FB_FORM_DOWNLOAD_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
-
-  /**
    * The meta object id for the '{@link in.handyman.dsl.impl.DropfileImpl <em>Dropfile</em>}' class.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -1370,7 +615,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getDropfile()
    * @generated
    */
-  int DROPFILE = 18;
+  int DROPFILE = 10;
 
   /**
    * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1416,7 +661,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getDoozle()
    * @generated
    */
-  int DOOZLE = 19;
+  int DOOZLE = 11;
 
   /**
    * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1473,6 +718,1738 @@ public interface DslPackage extends EPackage
   int DOOZLE_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
 
   /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.FetchImpl <em>Fetch</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.FetchImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getFetch()
+   * @generated
+   */
+  int FETCH = 12;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FETCH__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FETCH__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FETCH__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FETCH__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Fetch</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FETCH_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.CallprocessImpl <em>Callprocess</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.CallprocessImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getCallprocess()
+   * @generated
+   */
+  int CALLPROCESS = 13;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Target</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS__TARGET = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS__SOURCE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Datasource</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS__DATASOURCE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS__VALUE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The number of structural features of the '<em>Callprocess</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CALLPROCESS_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.ForkprocessImpl <em>Forkprocess</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.ForkprocessImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getForkprocess()
+   * @generated
+   */
+  int FORKPROCESS = 14;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Target</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__TARGET = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__SOURCE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Datasource</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__DATASOURCE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__VALUE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Fork Batch Size</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS__FORK_BATCH_SIZE = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The number of structural features of the '<em>Forkprocess</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FORKPROCESS_FEATURE_COUNT = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.CopydataImpl <em>Copydata</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.CopydataImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getCopydata()
+   * @generated
+   */
+  int COPYDATA = 15;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>To</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__TO = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Target</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__TARGET = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Limit</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__LIMIT = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA__VALUE = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The number of structural features of the '<em>Copydata</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int COPYDATA_FEATURE_COUNT = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.WriteCsvImpl <em>Write Csv</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.WriteCsvImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getWriteCsv()
+   * @generated
+   */
+  int WRITE_CSV = 16;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>To</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV__TO = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Delim</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV__DELIM = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV__VALUE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The number of structural features of the '<em>Write Csv</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int WRITE_CSV_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.LoadCsvImpl <em>Load Csv</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.LoadCsvImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getLoadCsv()
+   * @generated
+   */
+  int LOAD_CSV = 17;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Pid</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__PID = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__SOURCE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>To</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__TO = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Delim</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__DELIM = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Limit</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__LIMIT = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV__VALUE = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The number of structural features of the '<em>Load Csv</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LOAD_CSV_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.TransformImpl <em>Transform</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.TransformImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getTransform()
+   * @generated
+   */
+  int TRANSFORM = 18;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRANSFORM__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRANSFORM__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>On</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRANSFORM__ON = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute list.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRANSFORM__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Transform</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRANSFORM_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.DeleteSqlImpl <em>Delete Sql</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.DeleteSqlImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getDeleteSql()
+   * @generated
+   */
+  int DELETE_SQL = 19;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_SQL__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_SQL__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>On</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_SQL__ON = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute list.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_SQL__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Delete Sql</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DELETE_SQL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.UpdateSqlImpl <em>Update Sql</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.UpdateSqlImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getUpdateSql()
+   * @generated
+   */
+  int UPDATE_SQL = 20;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UPDATE_SQL__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UPDATE_SQL__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>On</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UPDATE_SQL__ON = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute list.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UPDATE_SQL__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Update Sql</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UPDATE_SQL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.InsertSqlImpl <em>Insert Sql</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.InsertSqlImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getInsertSql()
+   * @generated
+   */
+  int INSERT_SQL = 21;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int INSERT_SQL__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int INSERT_SQL__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>On</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int INSERT_SQL__ON = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute list.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int INSERT_SQL__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Insert Sql</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int INSERT_SQL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.TruncateSqlImpl <em>Truncate Sql</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.TruncateSqlImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getTruncateSql()
+   * @generated
+   */
+  int TRUNCATE_SQL = 22;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRUNCATE_SQL__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRUNCATE_SQL__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>On</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRUNCATE_SQL__ON = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute list.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRUNCATE_SQL__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Truncate Sql</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int TRUNCATE_SQL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.DropSqlImpl <em>Drop Sql</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.DropSqlImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getDropSql()
+   * @generated
+   */
+  int DROP_SQL = 23;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DROP_SQL__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DROP_SQL__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>On</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DROP_SQL__ON = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute list.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DROP_SQL__VALUE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The number of structural features of the '<em>Drop Sql</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int DROP_SQL_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.ListFilesImpl <em>List Files</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.ListFilesImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getListFiles()
+   * @generated
+   */
+  int LIST_FILES = 24;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>To</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES__TO = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Target Table</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES__TARGET_TABLE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES__VALUE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The number of structural features of the '<em>List Files</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int LIST_FILES_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.Mongo2DbImpl <em>Mongo2 Db</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.Mongo2DbImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getMongo2Db()
+   * @generated
+   */
+  int MONGO2_DB = 25;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source Conn Str</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__SOURCE_CONN_STR = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>To</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__TO = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Source Db</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__SOURCE_DB = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Target Db</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__TARGET_DB = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Target Table</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__TARGET_TABLE = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The feature id for the '<em><b>Filter</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__FILTER = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The feature id for the '<em><b>Limit</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__LIMIT = ACTION_FEATURE_COUNT + 6;
+
+  /**
+   * The feature id for the '<em><b>Find Attr</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__FIND_ATTR = ACTION_FEATURE_COUNT + 7;
+
+  /**
+   * The feature id for the '<em><b>Apply Manipulation</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__APPLY_MANIPULATION = ACTION_FEATURE_COUNT + 8;
+
+  /**
+   * The feature id for the '<em><b>On Update Key</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__ON_UPDATE_KEY = ACTION_FEATURE_COUNT + 9;
+
+  /**
+   * The feature id for the '<em><b>Fetch Batch Size</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__FETCH_BATCH_SIZE = ACTION_FEATURE_COUNT + 10;
+
+  /**
+   * The feature id for the '<em><b>Write Batch Size</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__WRITE_BATCH_SIZE = ACTION_FEATURE_COUNT + 11;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB__VALUE = ACTION_FEATURE_COUNT + 12;
+
+  /**
+   * The number of structural features of the '<em>Mongo2 Db</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int MONGO2_DB_FEATURE_COUNT = ACTION_FEATURE_COUNT + 13;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.FTPImpl <em>FTP</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.FTPImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getFTP()
+   * @generated
+   */
+  int FTP = 26;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Host</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__HOST = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Port</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__PORT = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Username</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__USERNAME = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Password</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__PASSWORD = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Action</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__ACTION = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The feature id for the '<em><b>Local Dir</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__LOCAL_DIR = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The feature id for the '<em><b>Local File</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__LOCAL_FILE = ACTION_FEATURE_COUNT + 6;
+
+  /**
+   * The feature id for the '<em><b>Remote Dir</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__REMOTE_DIR = ACTION_FEATURE_COUNT + 7;
+
+  /**
+   * The feature id for the '<em><b>Remote File</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__REMOTE_FILE = ACTION_FEATURE_COUNT + 8;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__SOURCE = ACTION_FEATURE_COUNT + 9;
+
+  /**
+   * The feature id for the '<em><b>Target Table</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__TARGET_TABLE = ACTION_FEATURE_COUNT + 10;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP__VALUE = ACTION_FEATURE_COUNT + 11;
+
+  /**
+   * The number of structural features of the '<em>FTP</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int FTP_FEATURE_COUNT = ACTION_FEATURE_COUNT + 12;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.ZipImpl <em>Zip</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.ZipImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getZip()
+   * @generated
+   */
+  int ZIP = 27;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Zip File Path</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__ZIP_FILE_PATH = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Zip File Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__ZIP_FILE_NAME = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__SOURCE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Buffer Size</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__BUFFER_SIZE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP__VALUE = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The number of structural features of the '<em>Zip</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int ZIP_FEATURE_COUNT = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.UnzipImpl <em>Unzip</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.UnzipImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getUnzip()
+   * @generated
+   */
+  int UNZIP = 28;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Dest Dir</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP__DEST_DIR = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Buffer Size</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP__BUFFER_SIZE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP__VALUE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The number of structural features of the '<em>Unzip</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int UNZIP_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.ChecksumImpl <em>Checksum</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.ChecksumImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getChecksum()
+   * @generated
+   */
+  int CHECKSUM = 29;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Host</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__HOST = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Port</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__PORT = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Username</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__USERNAME = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Password</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__PASSWORD = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Local Dir</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__LOCAL_DIR = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The feature id for the '<em><b>Local File</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__LOCAL_FILE = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The feature id for the '<em><b>Remote Dir</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__REMOTE_DIR = ACTION_FEATURE_COUNT + 6;
+
+  /**
+   * The feature id for the '<em><b>Remote File</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__REMOTE_FILE = ACTION_FEATURE_COUNT + 7;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM__VALUE = ACTION_FEATURE_COUNT + 8;
+
+  /**
+   * The number of structural features of the '<em>Checksum</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int CHECKSUM_FEATURE_COUNT = ACTION_FEATURE_COUNT + 9;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.JsonTransformImpl <em>Json Transform</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.JsonTransformImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getJsonTransform()
+   * @generated
+   */
+  int JSON_TRANSFORM = 30;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_TRANSFORM__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_TRANSFORM__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_TRANSFORM__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Target Table</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_TRANSFORM__TARGET_TABLE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_TRANSFORM__VALUE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The number of structural features of the '<em>Json Transform</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_TRANSFORM_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.JsonDeserializeImpl <em>Json Deserialize</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.JsonDeserializeImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getJsonDeserialize()
+   * @generated
+   */
+  int JSON_DESERIALIZE = 31;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Target Table</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE__TARGET_TABLE = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Input</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE__INPUT = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE__VALUE = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The number of structural features of the '<em>Json Deserialize</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int JSON_DESERIALIZE_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.RestApiImpl <em>Rest Api</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.RestApiImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getRestApi()
+   * @generated
+   */
+  int REST_API = 32;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Url</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__URL = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Method</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__METHOD = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Property</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__PROPERTY = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The feature id for the '<em><b>Payload</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__PAYLOAD = ACTION_FEATURE_COUNT + 3;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__SOURCE = ACTION_FEATURE_COUNT + 4;
+
+  /**
+   * The feature id for the '<em><b>Target Table</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__TARGET_TABLE = ACTION_FEATURE_COUNT + 5;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API__VALUE = ACTION_FEATURE_COUNT + 6;
+
+  /**
+   * The number of structural features of the '<em>Rest Api</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int REST_API_FEATURE_COUNT = ACTION_FEATURE_COUNT + 7;
+
+  /**
+   * The meta object id for the '{@link in.handyman.dsl.impl.PythonImpl <em>Python</em>}' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see in.handyman.dsl.impl.PythonImpl
+   * @see in.handyman.dsl.impl.DslPackageImpl#getPython()
+   * @generated
+   */
+  int PYTHON = 33;
+
+  /**
+   * The feature id for the '<em><b>Name</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int PYTHON__NAME = ACTION__NAME;
+
+  /**
+   * The feature id for the '<em><b>Condition</b></em>' containment reference.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int PYTHON__CONDITION = ACTION__CONDITION;
+
+  /**
+   * The feature id for the '<em><b>Source</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int PYTHON__SOURCE = ACTION_FEATURE_COUNT + 0;
+
+  /**
+   * The feature id for the '<em><b>Target</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int PYTHON__TARGET = ACTION_FEATURE_COUNT + 1;
+
+  /**
+   * The feature id for the '<em><b>Value</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int PYTHON__VALUE = ACTION_FEATURE_COUNT + 2;
+
+  /**
+   * The number of structural features of the '<em>Python</em>' class.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   * @ordered
+   */
+  int PYTHON_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
+
+  /**
    * The meta object id for the '{@link in.handyman.dsl.impl.RestImpl <em>Rest</em>}' class.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -1480,7 +2457,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getRest()
    * @generated
    */
-  int REST = 20;
+  int REST = 34;
 
   /**
    * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1634,7 +2611,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getRestPart()
    * @generated
    */
-  int REST_PART = 21;
+  int REST_PART = 35;
 
   /**
    * The feature id for the '<em><b>Part Name</b></em>' attribute.
@@ -1664,782 +2641,6 @@ public interface DslPackage extends EPackage
   int REST_PART_FEATURE_COUNT = 2;
 
   /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.TrelloGETImpl <em>Trello GET</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.TrelloGETImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getTrelloGET()
-   * @generated
-   */
-  int TRELLO_GET = 22;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Authtoken</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__AUTHTOKEN = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__KEY = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Useraccount</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__USERACCOUNT = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Board</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__BOARD = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Target</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__TARGET = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The number of structural features of the '<em>Trello GET</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_GET_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.TrelloPUTImpl <em>Trello PUT</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.TrelloPUTImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getTrelloPUT()
-   * @generated
-   */
-  int TRELLO_PUT = 23;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Authtoken</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__AUTHTOKEN = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__KEY = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Useraccount</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__USERACCOUNT = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>List</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__LIST = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The feature id for the '<em><b>Source</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__SOURCE = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT__VALUE = ACTION_FEATURE_COUNT + 5;
-
-  /**
-   * The number of structural features of the '<em>Trello PUT</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRELLO_PUT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 6;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.FetchImpl <em>Fetch</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.FetchImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getFetch()
-   * @generated
-   */
-  int FETCH = 24;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FETCH__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FETCH__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Source</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FETCH__SOURCE = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FETCH__VALUE = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The number of structural features of the '<em>Fetch</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int FETCH_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.CallprocessImpl <em>Callprocess</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.CallprocessImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getCallprocess()
-   * @generated
-   */
-  int CALLPROCESS = 25;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Target</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS__TARGET = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Source</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS__SOURCE = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Datasource</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS__DATASOURCE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS__VALUE = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The number of structural features of the '<em>Callprocess</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CALLPROCESS_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.UpdatedauditImpl <em>Updatedaudit</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.UpdatedauditImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getUpdatedaudit()
-   * @generated
-   */
-  int UPDATEDAUDIT = 26;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int UPDATEDAUDIT__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int UPDATEDAUDIT__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Logsink</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int UPDATEDAUDIT__LOGSINK = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Datasource</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int UPDATEDAUDIT__DATASOURCE = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int UPDATEDAUDIT__VALUE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The number of structural features of the '<em>Updatedaudit</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int UPDATEDAUDIT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.ClickSendSmsImpl <em>Click Send Sms</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.ClickSendSmsImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getClickSendSms()
-   * @generated
-   */
-  int CLICK_SEND_SMS = 27;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Userid</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS__USERID = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Security Key</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS__SECURITY_KEY = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Target</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS__TARGET = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS__VALUE = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The number of structural features of the '<em>Click Send Sms</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int CLICK_SEND_SMS_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.SlackPUTImpl <em>Slack PUT</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.SlackPUTImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getSlackPUT()
-   * @generated
-   */
-  int SLACK_PUT = 28;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SLACK_PUT__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SLACK_PUT__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Team</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SLACK_PUT__TEAM = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Channel</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SLACK_PUT__CHANNEL = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SLACK_PUT__VALUE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The number of structural features of the '<em>Slack PUT</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int SLACK_PUT_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.CopydataImpl <em>Copydata</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.CopydataImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getCopydata()
-   * @generated
-   */
-  int COPYDATA = 29;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int COPYDATA__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int COPYDATA__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Source</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int COPYDATA__SOURCE = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>To</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int COPYDATA__TO = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int COPYDATA__VALUE = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The number of structural features of the '<em>Copydata</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int COPYDATA_FEATURE_COUNT = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.WriteCsvImpl <em>Write Csv</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.WriteCsvImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getWriteCsv()
-   * @generated
-   */
-  int WRITE_CSV = 30;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Source</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV__SOURCE = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>To</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV__TO = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Delim</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV__DELIM = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV__VALUE = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The number of structural features of the '<em>Write Csv</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int WRITE_CSV_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.LoadCsvImpl <em>Load Csv</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.LoadCsvImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getLoadCsv()
-   * @generated
-   */
-  int LOAD_CSV = 31;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>Source</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV__SOURCE = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>To</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV__TO = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The feature id for the '<em><b>Delim</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV__DELIM = ACTION_FEATURE_COUNT + 2;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV__VALUE = ACTION_FEATURE_COUNT + 3;
-
-  /**
-   * The number of structural features of the '<em>Load Csv</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int LOAD_CSV_FEATURE_COUNT = ACTION_FEATURE_COUNT + 4;
-
-  /**
-   * The meta object id for the '{@link in.handyman.dsl.impl.TransformImpl <em>Transform</em>}' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @see in.handyman.dsl.impl.TransformImpl
-   * @see in.handyman.dsl.impl.DslPackageImpl#getTransform()
-   * @generated
-   */
-  int TRANSFORM = 32;
-
-  /**
-   * The feature id for the '<em><b>Name</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRANSFORM__NAME = ACTION__NAME;
-
-  /**
-   * The feature id for the '<em><b>Condition</b></em>' containment reference.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRANSFORM__CONDITION = ACTION__CONDITION;
-
-  /**
-   * The feature id for the '<em><b>On</b></em>' attribute.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRANSFORM__ON = ACTION_FEATURE_COUNT + 0;
-
-  /**
-   * The feature id for the '<em><b>Value</b></em>' attribute list.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRANSFORM__VALUE = ACTION_FEATURE_COUNT + 1;
-
-  /**
-   * The number of structural features of the '<em>Transform</em>' class.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @generated
-   * @ordered
-   */
-  int TRANSFORM_FEATURE_COUNT = ACTION_FEATURE_COUNT + 2;
-
-  /**
    * The meta object id for the '{@link in.handyman.dsl.impl.ExpressionImpl <em>Expression</em>}' class.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -2447,7 +2648,7 @@ public interface DslPackage extends EPackage
    * @see in.handyman.dsl.impl.DslPackageImpl#getExpression()
    * @generated
    */
-  int EXPRESSION = 33;
+  int EXPRESSION = 36;
 
   /**
    * The feature id for the '<em><b>Lhs</b></em>' attribute.
@@ -2551,17 +2752,6 @@ public interface DslPackage extends EPackage
   EClass getTry();
 
   /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Try#getName <em>Name</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Name</em>'.
-   * @see in.handyman.dsl.Try#getName()
-   * @see #getTry()
-   * @generated
-   */
-  EAttribute getTry_Name();
-
-  /**
    * Returns the meta object for the containment reference list '{@link in.handyman.dsl.Try#getAction <em>Action</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -2583,17 +2773,6 @@ public interface DslPackage extends EPackage
   EClass getFinally();
 
   /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Finally#getName <em>Name</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Name</em>'.
-   * @see in.handyman.dsl.Finally#getName()
-   * @see #getFinally()
-   * @generated
-   */
-  EAttribute getFinally_Name();
-
-  /**
    * Returns the meta object for the containment reference list '{@link in.handyman.dsl.Finally#getAction <em>Action</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -2613,17 +2792,6 @@ public interface DslPackage extends EPackage
    * @generated
    */
   EClass getCatch();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Catch#getName <em>Name</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Name</em>'.
-   * @see in.handyman.dsl.Catch#getName()
-   * @see #getCatch()
-   * @generated
-   */
-  EAttribute getCatch_Name();
 
   /**
    * Returns the meta object for the containment reference list '{@link in.handyman.dsl.Catch#getAction <em>Action</em>}'.
@@ -2669,123 +2837,221 @@ public interface DslPackage extends EPackage
   EReference getAction_Condition();
 
   /**
-   * Returns the meta object for class '{@link in.handyman.dsl.ElasticFBCLead <em>Elastic FBC Lead</em>}'.
+   * Returns the meta object for class '{@link in.handyman.dsl.SendEMail <em>Send EMail</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Elastic FBC Lead</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead
+   * @return the meta object for class '<em>Send EMail</em>'.
+   * @see in.handyman.dsl.SendEMail
    * @generated
    */
-  EClass getElasticFBCLead();
+  EClass getSendEMail();
 
   /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticFBCLead#getAccessToken <em>Access Token</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Access Token</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead#getAccessToken()
-   * @see #getElasticFBCLead()
-   * @generated
-   */
-  EAttribute getElasticFBCLead_AccessToken();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticFBCLead#getAppSecret <em>App Secret</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>App Secret</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead#getAppSecret()
-   * @see #getElasticFBCLead()
-   * @generated
-   */
-  EAttribute getElasticFBCLead_AppSecret();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticFBCLead#getAccountId <em>Account Id</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account Id</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead#getAccountId()
-   * @see #getElasticFBCLead()
-   * @generated
-   */
-  EAttribute getElasticFBCLead_AccountId();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticFBCLead#getCampaignId <em>Campaign Id</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Campaign Id</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead#getCampaignId()
-   * @see #getElasticFBCLead()
-   * @generated
-   */
-  EAttribute getElasticFBCLead_CampaignId();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticFBCLead#getTarget <em>Target</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Target</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead#getTarget()
-   * @see #getElasticFBCLead()
-   * @generated
-   */
-  EAttribute getElasticFBCLead_Target();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticFBCLead#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.ElasticFBCLead#getValue()
-   * @see #getElasticFBCLead()
-   * @generated
-   */
-  EAttribute getElasticFBCLead_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.ElasticGET <em>Elastic GET</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Elastic GET</em>'.
-   * @see in.handyman.dsl.ElasticGET
-   * @generated
-   */
-  EClass getElasticGET();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticGET#getSource <em>Source</em>}'.
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getSource <em>Source</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.ElasticGET#getSource()
-   * @see #getElasticGET()
+   * @see in.handyman.dsl.SendEMail#getSource()
+   * @see #getSendEMail()
    * @generated
    */
-  EAttribute getElasticGET_Source();
+  EAttribute getSendEMail_Source();
 
   /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticGET#getTo <em>To</em>}'.
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getSmtphost <em>Smtphost</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Smtphost</em>'.
+   * @see in.handyman.dsl.SendEMail#getSmtphost()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Smtphost();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getSmtpport <em>Smtpport</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Smtpport</em>'.
+   * @see in.handyman.dsl.SendEMail#getSmtpport()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Smtpport();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getFrom <em>From</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>From</em>'.
+   * @see in.handyman.dsl.SendEMail#getFrom()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_From();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getPass <em>Pass</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Pass</em>'.
+   * @see in.handyman.dsl.SendEMail#getPass()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Pass();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getTo <em>To</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @return the meta object for the attribute '<em>To</em>'.
-   * @see in.handyman.dsl.ElasticGET#getTo()
-   * @see #getElasticGET()
+   * @see in.handyman.dsl.SendEMail#getTo()
+   * @see #getSendEMail()
    * @generated
    */
-  EAttribute getElasticGET_To();
+  EAttribute getSendEMail_To();
 
   /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ElasticGET#getValue <em>Value</em>}'.
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getCc <em>Cc</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Cc</em>'.
+   * @see in.handyman.dsl.SendEMail#getCc()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Cc();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getBcc <em>Bcc</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Bcc</em>'.
+   * @see in.handyman.dsl.SendEMail#getBcc()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Bcc();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getSubject <em>Subject</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Subject</em>'.
+   * @see in.handyman.dsl.SendEMail#getSubject()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Subject();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getBody <em>Body</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Body</em>'.
+   * @see in.handyman.dsl.SendEMail#getBody()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Body();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getSignature <em>Signature</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Signature</em>'.
+   * @see in.handyman.dsl.SendEMail#getSignature()
+   * @see #getSendEMail()
+   * @generated
+   */
+  EAttribute getSendEMail_Signature();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendEMail#getValue <em>Value</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
    * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.ElasticGET#getValue()
-   * @see #getElasticGET()
+   * @see in.handyman.dsl.SendEMail#getValue()
+   * @see #getSendEMail()
    * @generated
    */
-  EAttribute getElasticGET_Value();
+  EAttribute getSendEMail_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.DeleteFolder <em>Delete Folder</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Delete Folder</em>'.
+   * @see in.handyman.dsl.DeleteFolder
+   * @generated
+   */
+  EClass getDeleteFolder();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.DeleteFolder#getFoldersource <em>Foldersource</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Foldersource</em>'.
+   * @see in.handyman.dsl.DeleteFolder#getFoldersource()
+   * @see #getDeleteFolder()
+   * @generated
+   */
+  EAttribute getDeleteFolder_Foldersource();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.DeleteFolder#getZipsource <em>Zipsource</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Zipsource</em>'.
+   * @see in.handyman.dsl.DeleteFolder#getZipsource()
+   * @see #getDeleteFolder()
+   * @generated
+   */
+  EAttribute getDeleteFolder_Zipsource();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.DeleteFolder#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.DeleteFolder#getValue()
+   * @see #getDeleteFolder()
+   * @generated
+   */
+  EAttribute getDeleteFolder_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Terminal <em>Terminal</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Terminal</em>'.
+   * @see in.handyman.dsl.Terminal
+   * @generated
+   */
+  EClass getTerminal();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Terminal#getId <em>Id</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Id</em>'.
+   * @see in.handyman.dsl.Terminal#getId()
+   * @see #getTerminal()
+   * @generated
+   */
+  EAttribute getTerminal_Id();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Terminal#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Terminal#getValue()
+   * @see #getTerminal()
+   * @generated
+   */
+  EAttribute getTerminal_Value();
 
   /**
    * Returns the meta object for class '{@link in.handyman.dsl.ExecJava <em>Exec Java</em>}'.
@@ -2831,234 +3097,6 @@ public interface DslPackage extends EPackage
   EAttribute getExecJava_Value();
 
   /**
-   * Returns the meta object for class '{@link in.handyman.dsl.FirebaseDatabasePut <em>Firebase Database Put</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Firebase Database Put</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut
-   * @generated
-   */
-  EClass getFirebaseDatabasePut();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseDatabasePut#getUrl <em>Url</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Url</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut#getUrl()
-   * @see #getFirebaseDatabasePut()
-   * @generated
-   */
-  EAttribute getFirebaseDatabasePut_Url();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseDatabasePut#getFbjson <em>Fbjson</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Fbjson</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut#getFbjson()
-   * @see #getFirebaseDatabasePut()
-   * @generated
-   */
-  EAttribute getFirebaseDatabasePut_Fbjson();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseDatabasePut#getGroupPath <em>Group Path</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Group Path</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut#getGroupPath()
-   * @see #getFirebaseDatabasePut()
-   * @generated
-   */
-  EAttribute getFirebaseDatabasePut_GroupPath();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseDatabasePut#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut#getDbSrc()
-   * @see #getFirebaseDatabasePut()
-   * @generated
-   */
-  EAttribute getFirebaseDatabasePut_DbSrc();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseDatabasePut#getClassFqn <em>Class Fqn</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Class Fqn</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut#getClassFqn()
-   * @see #getFirebaseDatabasePut()
-   * @generated
-   */
-  EAttribute getFirebaseDatabasePut_ClassFqn();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseDatabasePut#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.FirebaseDatabasePut#getValue()
-   * @see #getFirebaseDatabasePut()
-   * @generated
-   */
-  EAttribute getFirebaseDatabasePut_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.FirebaseReactiveNotification <em>Firebase Reactive Notification</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Firebase Reactive Notification</em>'.
-   * @see in.handyman.dsl.FirebaseReactiveNotification
-   * @generated
-   */
-  EClass getFirebaseReactiveNotification();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseReactiveNotification#getUrl <em>Url</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Url</em>'.
-   * @see in.handyman.dsl.FirebaseReactiveNotification#getUrl()
-   * @see #getFirebaseReactiveNotification()
-   * @generated
-   */
-  EAttribute getFirebaseReactiveNotification_Url();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseReactiveNotification#getFbjson <em>Fbjson</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Fbjson</em>'.
-   * @see in.handyman.dsl.FirebaseReactiveNotification#getFbjson()
-   * @see #getFirebaseReactiveNotification()
-   * @generated
-   */
-  EAttribute getFirebaseReactiveNotification_Fbjson();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseReactiveNotification#getGroupPath <em>Group Path</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Group Path</em>'.
-   * @see in.handyman.dsl.FirebaseReactiveNotification#getGroupPath()
-   * @see #getFirebaseReactiveNotification()
-   * @generated
-   */
-  EAttribute getFirebaseReactiveNotification_GroupPath();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseReactiveNotification#getClassFqn <em>Class Fqn</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Class Fqn</em>'.
-   * @see in.handyman.dsl.FirebaseReactiveNotification#getClassFqn()
-   * @see #getFirebaseReactiveNotification()
-   * @generated
-   */
-  EAttribute getFirebaseReactiveNotification_ClassFqn();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FirebaseReactiveNotification#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.FirebaseReactiveNotification#getDbSrc()
-   * @see #getFirebaseReactiveNotification()
-   * @generated
-   */
-  EAttribute getFirebaseReactiveNotification_DbSrc();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.SmsLeadSms <em>Sms Lead Sms</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Sms Lead Sms</em>'.
-   * @see in.handyman.dsl.SmsLeadSms
-   * @generated
-   */
-  EClass getSmsLeadSms();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getUrl <em>Url</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Url</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getUrl()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_Url();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getSender <em>Sender</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Sender</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getSender()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_Sender();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getAccount <em>Account</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getAccount()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_Account();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getPrivateKey <em>Private Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Private Key</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getPrivateKey()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_PrivateKey();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getDbSrc()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_DbSrc();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getValue()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_Value();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SmsLeadSms#getDryrunNumber <em>Dryrun Number</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Dryrun Number</em>'.
-   * @see in.handyman.dsl.SmsLeadSms#getDryrunNumber()
-   * @see #getSmsLeadSms()
-   * @generated
-   */
-  EAttribute getSmsLeadSms_DryrunNumber();
-
-  /**
    * Returns the meta object for class '{@link in.handyman.dsl.Abort <em>Abort</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -3078,484 +3116,6 @@ public interface DslPackage extends EPackage
    * @generated
    */
   EAttribute getAbort_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.GooglecontactSelectAll <em>Googlecontact Select All</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Googlecontact Select All</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll
-   * @generated
-   */
-  EClass getGooglecontactSelectAll();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getAccount <em>Account</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getAccount()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_Account();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getPrivateKey <em>Private Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Private Key</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getPrivateKey()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_PrivateKey();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getPtwelveFile <em>Ptwelve File</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Ptwelve File</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getPtwelveFile()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_PtwelveFile();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getProject <em>Project</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Project</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getProject()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_Project();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getImpersonatedUser <em>Impersonated User</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Impersonated User</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getImpersonatedUser()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_ImpersonatedUser();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getDbSrc()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_DbSrc();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactSelectAll#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.GooglecontactSelectAll#getValue()
-   * @see #getGooglecontactSelectAll()
-   * @generated
-   */
-  EAttribute getGooglecontactSelectAll_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.SendMail <em>Send Mail</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Send Mail</em>'.
-   * @see in.handyman.dsl.SendMail
-   * @generated
-   */
-  EClass getSendMail();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendMail#getPrivateKey <em>Private Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Private Key</em>'.
-   * @see in.handyman.dsl.SendMail#getPrivateKey()
-   * @see #getSendMail()
-   * @generated
-   */
-  EAttribute getSendMail_PrivateKey();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendMail#getImpersonatedUser <em>Impersonated User</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Impersonated User</em>'.
-   * @see in.handyman.dsl.SendMail#getImpersonatedUser()
-   * @see #getSendMail()
-   * @generated
-   */
-  EAttribute getSendMail_ImpersonatedUser();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendMail#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.SendMail#getDbSrc()
-   * @see #getSendMail()
-   * @generated
-   */
-  EAttribute getSendMail_DbSrc();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendMail#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.SendMail#getValue()
-   * @see #getSendMail()
-   * @generated
-   */
-  EAttribute getSendMail_Value();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SendMail#getDryrunMail <em>Dryrun Mail</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Dryrun Mail</em>'.
-   * @see in.handyman.dsl.SendMail#getDryrunMail()
-   * @see #getSendMail()
-   * @generated
-   */
-  EAttribute getSendMail_DryrunMail();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.GooglecontactPUT <em>Googlecontact PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Googlecontact PUT</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT
-   * @generated
-   */
-  EClass getGooglecontactPUT();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getAccount <em>Account</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getAccount()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_Account();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getPrivateKey <em>Private Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Private Key</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getPrivateKey()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_PrivateKey();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getPtwelveFile <em>Ptwelve File</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Ptwelve File</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getPtwelveFile()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_PtwelveFile();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getProject <em>Project</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Project</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getProject()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_Project();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getImpersonatedUser <em>Impersonated User</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Impersonated User</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getImpersonatedUser()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_ImpersonatedUser();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getDbSrc()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_DbSrc();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecontactPUT#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.GooglecontactPUT#getValue()
-   * @see #getGooglecontactPUT()
-   * @generated
-   */
-  EAttribute getGooglecontactPUT_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.GooglecalPUT <em>Googlecal PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Googlecal PUT</em>'.
-   * @see in.handyman.dsl.GooglecalPUT
-   * @generated
-   */
-  EClass getGooglecalPUT();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getAccount <em>Account</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getAccount()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_Account();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getPrivateKey <em>Private Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Private Key</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getPrivateKey()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_PrivateKey();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getPtwelveFile <em>Ptwelve File</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Ptwelve File</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getPtwelveFile()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_PtwelveFile();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getProject <em>Project</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Project</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getProject()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_Project();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getImpersonatedUser <em>Impersonated User</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Impersonated User</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getImpersonatedUser()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_ImpersonatedUser();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getDbSrc <em>Db Src</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Db Src</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getDbSrc()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_DbSrc();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.GooglecalPUT#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.GooglecalPUT#getValue()
-   * @see #getGooglecalPUT()
-   * @generated
-   */
-  EAttribute getGooglecalPUT_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.FBCLead <em>FBC Lead</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>FBC Lead</em>'.
-   * @see in.handyman.dsl.FBCLead
-   * @generated
-   */
-  EClass getFBCLead();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBCLead#getAccessToken <em>Access Token</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Access Token</em>'.
-   * @see in.handyman.dsl.FBCLead#getAccessToken()
-   * @see #getFBCLead()
-   * @generated
-   */
-  EAttribute getFBCLead_AccessToken();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBCLead#getAppSecret <em>App Secret</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>App Secret</em>'.
-   * @see in.handyman.dsl.FBCLead#getAppSecret()
-   * @see #getFBCLead()
-   * @generated
-   */
-  EAttribute getFBCLead_AppSecret();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBCLead#getAccountId <em>Account Id</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account Id</em>'.
-   * @see in.handyman.dsl.FBCLead#getAccountId()
-   * @see #getFBCLead()
-   * @generated
-   */
-  EAttribute getFBCLead_AccountId();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBCLead#getCampaignId <em>Campaign Id</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Campaign Id</em>'.
-   * @see in.handyman.dsl.FBCLead#getCampaignId()
-   * @see #getFBCLead()
-   * @generated
-   */
-  EAttribute getFBCLead_CampaignId();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBCLead#getTarget <em>Target</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Target</em>'.
-   * @see in.handyman.dsl.FBCLead#getTarget()
-   * @see #getFBCLead()
-   * @generated
-   */
-  EAttribute getFBCLead_Target();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBCLead#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.FBCLead#getValue()
-   * @see #getFBCLead()
-   * @generated
-   */
-  EAttribute getFBCLead_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.FBFormDownload <em>FB Form Download</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>FB Form Download</em>'.
-   * @see in.handyman.dsl.FBFormDownload
-   * @generated
-   */
-  EClass getFBFormDownload();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBFormDownload#getAccessToken <em>Access Token</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Access Token</em>'.
-   * @see in.handyman.dsl.FBFormDownload#getAccessToken()
-   * @see #getFBFormDownload()
-   * @generated
-   */
-  EAttribute getFBFormDownload_AccessToken();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBFormDownload#getAppSecret <em>App Secret</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>App Secret</em>'.
-   * @see in.handyman.dsl.FBFormDownload#getAppSecret()
-   * @see #getFBFormDownload()
-   * @generated
-   */
-  EAttribute getFBFormDownload_AppSecret();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBFormDownload#getAccountId <em>Account Id</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Account Id</em>'.
-   * @see in.handyman.dsl.FBFormDownload#getAccountId()
-   * @see #getFBFormDownload()
-   * @generated
-   */
-  EAttribute getFBFormDownload_AccountId();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBFormDownload#getFormId <em>Form Id</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Form Id</em>'.
-   * @see in.handyman.dsl.FBFormDownload#getFormId()
-   * @see #getFBFormDownload()
-   * @generated
-   */
-  EAttribute getFBFormDownload_FormId();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBFormDownload#getTarget <em>Target</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Target</em>'.
-   * @see in.handyman.dsl.FBFormDownload#getTarget()
-   * @see #getFBFormDownload()
-   * @generated
-   */
-  EAttribute getFBFormDownload_Target();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.FBFormDownload#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.FBFormDownload#getValue()
-   * @see #getFBFormDownload()
-   * @generated
-   */
-  EAttribute getFBFormDownload_Value();
 
   /**
    * Returns the meta object for class '{@link in.handyman.dsl.Dropfile <em>Dropfile</em>}'.
@@ -3620,6 +3180,1348 @@ public interface DslPackage extends EPackage
    * @generated
    */
   EAttribute getDoozle_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Fetch <em>Fetch</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Fetch</em>'.
+   * @see in.handyman.dsl.Fetch
+   * @generated
+   */
+  EClass getFetch();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Fetch#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Fetch#getSource()
+   * @see #getFetch()
+   * @generated
+   */
+  EAttribute getFetch_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Fetch#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Fetch#getValue()
+   * @see #getFetch()
+   * @generated
+   */
+  EAttribute getFetch_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Callprocess <em>Callprocess</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Callprocess</em>'.
+   * @see in.handyman.dsl.Callprocess
+   * @generated
+   */
+  EClass getCallprocess();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getTarget <em>Target</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target</em>'.
+   * @see in.handyman.dsl.Callprocess#getTarget()
+   * @see #getCallprocess()
+   * @generated
+   */
+  EAttribute getCallprocess_Target();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Callprocess#getSource()
+   * @see #getCallprocess()
+   * @generated
+   */
+  EAttribute getCallprocess_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getDatasource <em>Datasource</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Datasource</em>'.
+   * @see in.handyman.dsl.Callprocess#getDatasource()
+   * @see #getCallprocess()
+   * @generated
+   */
+  EAttribute getCallprocess_Datasource();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Callprocess#getValue()
+   * @see #getCallprocess()
+   * @generated
+   */
+  EAttribute getCallprocess_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Forkprocess <em>Forkprocess</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Forkprocess</em>'.
+   * @see in.handyman.dsl.Forkprocess
+   * @generated
+   */
+  EClass getForkprocess();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Forkprocess#getTarget <em>Target</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target</em>'.
+   * @see in.handyman.dsl.Forkprocess#getTarget()
+   * @see #getForkprocess()
+   * @generated
+   */
+  EAttribute getForkprocess_Target();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Forkprocess#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Forkprocess#getSource()
+   * @see #getForkprocess()
+   * @generated
+   */
+  EAttribute getForkprocess_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Forkprocess#getDatasource <em>Datasource</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Datasource</em>'.
+   * @see in.handyman.dsl.Forkprocess#getDatasource()
+   * @see #getForkprocess()
+   * @generated
+   */
+  EAttribute getForkprocess_Datasource();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Forkprocess#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Forkprocess#getValue()
+   * @see #getForkprocess()
+   * @generated
+   */
+  EAttribute getForkprocess_Value();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Forkprocess#getForkBatchSize <em>Fork Batch Size</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Fork Batch Size</em>'.
+   * @see in.handyman.dsl.Forkprocess#getForkBatchSize()
+   * @see #getForkprocess()
+   * @generated
+   */
+  EAttribute getForkprocess_ForkBatchSize();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Copydata <em>Copydata</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Copydata</em>'.
+   * @see in.handyman.dsl.Copydata
+   * @generated
+   */
+  EClass getCopydata();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Copydata#getSource()
+   * @see #getCopydata()
+   * @generated
+   */
+  EAttribute getCopydata_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getTo <em>To</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>To</em>'.
+   * @see in.handyman.dsl.Copydata#getTo()
+   * @see #getCopydata()
+   * @generated
+   */
+  EAttribute getCopydata_To();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getTarget <em>Target</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target</em>'.
+   * @see in.handyman.dsl.Copydata#getTarget()
+   * @see #getCopydata()
+   * @generated
+   */
+  EAttribute getCopydata_Target();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getLimit <em>Limit</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Limit</em>'.
+   * @see in.handyman.dsl.Copydata#getLimit()
+   * @see #getCopydata()
+   * @generated
+   */
+  EAttribute getCopydata_Limit();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Copydata#getValue()
+   * @see #getCopydata()
+   * @generated
+   */
+  EAttribute getCopydata_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.WriteCsv <em>Write Csv</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Write Csv</em>'.
+   * @see in.handyman.dsl.WriteCsv
+   * @generated
+   */
+  EClass getWriteCsv();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.WriteCsv#getSource()
+   * @see #getWriteCsv()
+   * @generated
+   */
+  EAttribute getWriteCsv_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getTo <em>To</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>To</em>'.
+   * @see in.handyman.dsl.WriteCsv#getTo()
+   * @see #getWriteCsv()
+   * @generated
+   */
+  EAttribute getWriteCsv_To();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getDelim <em>Delim</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Delim</em>'.
+   * @see in.handyman.dsl.WriteCsv#getDelim()
+   * @see #getWriteCsv()
+   * @generated
+   */
+  EAttribute getWriteCsv_Delim();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.WriteCsv#getValue()
+   * @see #getWriteCsv()
+   * @generated
+   */
+  EAttribute getWriteCsv_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.LoadCsv <em>Load Csv</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Load Csv</em>'.
+   * @see in.handyman.dsl.LoadCsv
+   * @generated
+   */
+  EClass getLoadCsv();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getPid <em>Pid</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Pid</em>'.
+   * @see in.handyman.dsl.LoadCsv#getPid()
+   * @see #getLoadCsv()
+   * @generated
+   */
+  EAttribute getLoadCsv_Pid();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.LoadCsv#getSource()
+   * @see #getLoadCsv()
+   * @generated
+   */
+  EAttribute getLoadCsv_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getTo <em>To</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>To</em>'.
+   * @see in.handyman.dsl.LoadCsv#getTo()
+   * @see #getLoadCsv()
+   * @generated
+   */
+  EAttribute getLoadCsv_To();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getDelim <em>Delim</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Delim</em>'.
+   * @see in.handyman.dsl.LoadCsv#getDelim()
+   * @see #getLoadCsv()
+   * @generated
+   */
+  EAttribute getLoadCsv_Delim();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getLimit <em>Limit</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Limit</em>'.
+   * @see in.handyman.dsl.LoadCsv#getLimit()
+   * @see #getLoadCsv()
+   * @generated
+   */
+  EAttribute getLoadCsv_Limit();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.LoadCsv#getValue()
+   * @see #getLoadCsv()
+   * @generated
+   */
+  EAttribute getLoadCsv_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Transform <em>Transform</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Transform</em>'.
+   * @see in.handyman.dsl.Transform
+   * @generated
+   */
+  EClass getTransform();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Transform#getOn <em>On</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On</em>'.
+   * @see in.handyman.dsl.Transform#getOn()
+   * @see #getTransform()
+   * @generated
+   */
+  EAttribute getTransform_On();
+
+  /**
+   * Returns the meta object for the attribute list '{@link in.handyman.dsl.Transform#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute list '<em>Value</em>'.
+   * @see in.handyman.dsl.Transform#getValue()
+   * @see #getTransform()
+   * @generated
+   */
+  EAttribute getTransform_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.DeleteSql <em>Delete Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Delete Sql</em>'.
+   * @see in.handyman.dsl.DeleteSql
+   * @generated
+   */
+  EClass getDeleteSql();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.DeleteSql#getOn <em>On</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On</em>'.
+   * @see in.handyman.dsl.DeleteSql#getOn()
+   * @see #getDeleteSql()
+   * @generated
+   */
+  EAttribute getDeleteSql_On();
+
+  /**
+   * Returns the meta object for the attribute list '{@link in.handyman.dsl.DeleteSql#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute list '<em>Value</em>'.
+   * @see in.handyman.dsl.DeleteSql#getValue()
+   * @see #getDeleteSql()
+   * @generated
+   */
+  EAttribute getDeleteSql_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.UpdateSql <em>Update Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Update Sql</em>'.
+   * @see in.handyman.dsl.UpdateSql
+   * @generated
+   */
+  EClass getUpdateSql();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.UpdateSql#getOn <em>On</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On</em>'.
+   * @see in.handyman.dsl.UpdateSql#getOn()
+   * @see #getUpdateSql()
+   * @generated
+   */
+  EAttribute getUpdateSql_On();
+
+  /**
+   * Returns the meta object for the attribute list '{@link in.handyman.dsl.UpdateSql#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute list '<em>Value</em>'.
+   * @see in.handyman.dsl.UpdateSql#getValue()
+   * @see #getUpdateSql()
+   * @generated
+   */
+  EAttribute getUpdateSql_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.InsertSql <em>Insert Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Insert Sql</em>'.
+   * @see in.handyman.dsl.InsertSql
+   * @generated
+   */
+  EClass getInsertSql();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.InsertSql#getOn <em>On</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On</em>'.
+   * @see in.handyman.dsl.InsertSql#getOn()
+   * @see #getInsertSql()
+   * @generated
+   */
+  EAttribute getInsertSql_On();
+
+  /**
+   * Returns the meta object for the attribute list '{@link in.handyman.dsl.InsertSql#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute list '<em>Value</em>'.
+   * @see in.handyman.dsl.InsertSql#getValue()
+   * @see #getInsertSql()
+   * @generated
+   */
+  EAttribute getInsertSql_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.TruncateSql <em>Truncate Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Truncate Sql</em>'.
+   * @see in.handyman.dsl.TruncateSql
+   * @generated
+   */
+  EClass getTruncateSql();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.TruncateSql#getOn <em>On</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On</em>'.
+   * @see in.handyman.dsl.TruncateSql#getOn()
+   * @see #getTruncateSql()
+   * @generated
+   */
+  EAttribute getTruncateSql_On();
+
+  /**
+   * Returns the meta object for the attribute list '{@link in.handyman.dsl.TruncateSql#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute list '<em>Value</em>'.
+   * @see in.handyman.dsl.TruncateSql#getValue()
+   * @see #getTruncateSql()
+   * @generated
+   */
+  EAttribute getTruncateSql_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.DropSql <em>Drop Sql</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Drop Sql</em>'.
+   * @see in.handyman.dsl.DropSql
+   * @generated
+   */
+  EClass getDropSql();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.DropSql#getOn <em>On</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On</em>'.
+   * @see in.handyman.dsl.DropSql#getOn()
+   * @see #getDropSql()
+   * @generated
+   */
+  EAttribute getDropSql_On();
+
+  /**
+   * Returns the meta object for the attribute list '{@link in.handyman.dsl.DropSql#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute list '<em>Value</em>'.
+   * @see in.handyman.dsl.DropSql#getValue()
+   * @see #getDropSql()
+   * @generated
+   */
+  EAttribute getDropSql_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.ListFiles <em>List Files</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>List Files</em>'.
+   * @see in.handyman.dsl.ListFiles
+   * @generated
+   */
+  EClass getListFiles();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.ListFiles#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.ListFiles#getSource()
+   * @see #getListFiles()
+   * @generated
+   */
+  EAttribute getListFiles_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.ListFiles#getTo <em>To</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>To</em>'.
+   * @see in.handyman.dsl.ListFiles#getTo()
+   * @see #getListFiles()
+   * @generated
+   */
+  EAttribute getListFiles_To();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.ListFiles#getTargetTable <em>Target Table</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Table</em>'.
+   * @see in.handyman.dsl.ListFiles#getTargetTable()
+   * @see #getListFiles()
+   * @generated
+   */
+  EAttribute getListFiles_TargetTable();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.ListFiles#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.ListFiles#getValue()
+   * @see #getListFiles()
+   * @generated
+   */
+  EAttribute getListFiles_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Mongo2Db <em>Mongo2 Db</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Mongo2 Db</em>'.
+   * @see in.handyman.dsl.Mongo2Db
+   * @generated
+   */
+  EClass getMongo2Db();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getSourceConnStr <em>Source Conn Str</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source Conn Str</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getSourceConnStr()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_SourceConnStr();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getTo <em>To</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>To</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getTo()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_To();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getSourceDb <em>Source Db</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source Db</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getSourceDb()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_SourceDb();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getTargetDb <em>Target Db</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Db</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getTargetDb()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_TargetDb();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getTargetTable <em>Target Table</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Table</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getTargetTable()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_TargetTable();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getFilter <em>Filter</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Filter</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getFilter()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_Filter();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getLimit <em>Limit</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Limit</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getLimit()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_Limit();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getFindAttr <em>Find Attr</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Find Attr</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getFindAttr()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_FindAttr();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getApplyManipulation <em>Apply Manipulation</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Apply Manipulation</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getApplyManipulation()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_ApplyManipulation();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getOnUpdateKey <em>On Update Key</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>On Update Key</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getOnUpdateKey()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_OnUpdateKey();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getFetchBatchSize <em>Fetch Batch Size</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Fetch Batch Size</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getFetchBatchSize()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_FetchBatchSize();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getWriteBatchSize <em>Write Batch Size</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Write Batch Size</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getWriteBatchSize()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_WriteBatchSize();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Mongo2Db#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Mongo2Db#getValue()
+   * @see #getMongo2Db()
+   * @generated
+   */
+  EAttribute getMongo2Db_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.FTP <em>FTP</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>FTP</em>'.
+   * @see in.handyman.dsl.FTP
+   * @generated
+   */
+  EClass getFTP();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getHost <em>Host</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Host</em>'.
+   * @see in.handyman.dsl.FTP#getHost()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Host();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getPort <em>Port</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Port</em>'.
+   * @see in.handyman.dsl.FTP#getPort()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Port();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getUsername <em>Username</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Username</em>'.
+   * @see in.handyman.dsl.FTP#getUsername()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Username();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getPassword <em>Password</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Password</em>'.
+   * @see in.handyman.dsl.FTP#getPassword()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Password();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getAction <em>Action</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Action</em>'.
+   * @see in.handyman.dsl.FTP#getAction()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Action();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getLocalDir <em>Local Dir</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Local Dir</em>'.
+   * @see in.handyman.dsl.FTP#getLocalDir()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_LocalDir();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getLocalFile <em>Local File</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Local File</em>'.
+   * @see in.handyman.dsl.FTP#getLocalFile()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_LocalFile();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getRemoteDir <em>Remote Dir</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Remote Dir</em>'.
+   * @see in.handyman.dsl.FTP#getRemoteDir()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_RemoteDir();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getRemoteFile <em>Remote File</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Remote File</em>'.
+   * @see in.handyman.dsl.FTP#getRemoteFile()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_RemoteFile();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.FTP#getSource()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getTargetTable <em>Target Table</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Table</em>'.
+   * @see in.handyman.dsl.FTP#getTargetTable()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_TargetTable();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.FTP#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.FTP#getValue()
+   * @see #getFTP()
+   * @generated
+   */
+  EAttribute getFTP_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Zip <em>Zip</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Zip</em>'.
+   * @see in.handyman.dsl.Zip
+   * @generated
+   */
+  EClass getZip();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Zip#getZipFilePath <em>Zip File Path</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Zip File Path</em>'.
+   * @see in.handyman.dsl.Zip#getZipFilePath()
+   * @see #getZip()
+   * @generated
+   */
+  EAttribute getZip_ZipFilePath();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Zip#getZipFileName <em>Zip File Name</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Zip File Name</em>'.
+   * @see in.handyman.dsl.Zip#getZipFileName()
+   * @see #getZip()
+   * @generated
+   */
+  EAttribute getZip_ZipFileName();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Zip#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Zip#getSource()
+   * @see #getZip()
+   * @generated
+   */
+  EAttribute getZip_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Zip#getBufferSize <em>Buffer Size</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Buffer Size</em>'.
+   * @see in.handyman.dsl.Zip#getBufferSize()
+   * @see #getZip()
+   * @generated
+   */
+  EAttribute getZip_BufferSize();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Zip#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Zip#getValue()
+   * @see #getZip()
+   * @generated
+   */
+  EAttribute getZip_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Unzip <em>Unzip</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Unzip</em>'.
+   * @see in.handyman.dsl.Unzip
+   * @generated
+   */
+  EClass getUnzip();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Unzip#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Unzip#getSource()
+   * @see #getUnzip()
+   * @generated
+   */
+  EAttribute getUnzip_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Unzip#getDestDir <em>Dest Dir</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Dest Dir</em>'.
+   * @see in.handyman.dsl.Unzip#getDestDir()
+   * @see #getUnzip()
+   * @generated
+   */
+  EAttribute getUnzip_DestDir();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Unzip#getBufferSize <em>Buffer Size</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Buffer Size</em>'.
+   * @see in.handyman.dsl.Unzip#getBufferSize()
+   * @see #getUnzip()
+   * @generated
+   */
+  EAttribute getUnzip_BufferSize();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Unzip#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Unzip#getValue()
+   * @see #getUnzip()
+   * @generated
+   */
+  EAttribute getUnzip_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Checksum <em>Checksum</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Checksum</em>'.
+   * @see in.handyman.dsl.Checksum
+   * @generated
+   */
+  EClass getChecksum();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getHost <em>Host</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Host</em>'.
+   * @see in.handyman.dsl.Checksum#getHost()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_Host();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getPort <em>Port</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Port</em>'.
+   * @see in.handyman.dsl.Checksum#getPort()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_Port();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getUsername <em>Username</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Username</em>'.
+   * @see in.handyman.dsl.Checksum#getUsername()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_Username();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getPassword <em>Password</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Password</em>'.
+   * @see in.handyman.dsl.Checksum#getPassword()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_Password();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getLocalDir <em>Local Dir</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Local Dir</em>'.
+   * @see in.handyman.dsl.Checksum#getLocalDir()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_LocalDir();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getLocalFile <em>Local File</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Local File</em>'.
+   * @see in.handyman.dsl.Checksum#getLocalFile()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_LocalFile();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getRemoteDir <em>Remote Dir</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Remote Dir</em>'.
+   * @see in.handyman.dsl.Checksum#getRemoteDir()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_RemoteDir();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getRemoteFile <em>Remote File</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Remote File</em>'.
+   * @see in.handyman.dsl.Checksum#getRemoteFile()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_RemoteFile();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Checksum#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Checksum#getValue()
+   * @see #getChecksum()
+   * @generated
+   */
+  EAttribute getChecksum_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.JsonTransform <em>Json Transform</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Json Transform</em>'.
+   * @see in.handyman.dsl.JsonTransform
+   * @generated
+   */
+  EClass getJsonTransform();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonTransform#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.JsonTransform#getSource()
+   * @see #getJsonTransform()
+   * @generated
+   */
+  EAttribute getJsonTransform_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonTransform#getTargetTable <em>Target Table</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Table</em>'.
+   * @see in.handyman.dsl.JsonTransform#getTargetTable()
+   * @see #getJsonTransform()
+   * @generated
+   */
+  EAttribute getJsonTransform_TargetTable();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonTransform#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.JsonTransform#getValue()
+   * @see #getJsonTransform()
+   * @generated
+   */
+  EAttribute getJsonTransform_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.JsonDeserialize <em>Json Deserialize</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Json Deserialize</em>'.
+   * @see in.handyman.dsl.JsonDeserialize
+   * @generated
+   */
+  EClass getJsonDeserialize();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonDeserialize#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.JsonDeserialize#getSource()
+   * @see #getJsonDeserialize()
+   * @generated
+   */
+  EAttribute getJsonDeserialize_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonDeserialize#getTargetTable <em>Target Table</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Table</em>'.
+   * @see in.handyman.dsl.JsonDeserialize#getTargetTable()
+   * @see #getJsonDeserialize()
+   * @generated
+   */
+  EAttribute getJsonDeserialize_TargetTable();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonDeserialize#getInput <em>Input</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Input</em>'.
+   * @see in.handyman.dsl.JsonDeserialize#getInput()
+   * @see #getJsonDeserialize()
+   * @generated
+   */
+  EAttribute getJsonDeserialize_Input();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.JsonDeserialize#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.JsonDeserialize#getValue()
+   * @see #getJsonDeserialize()
+   * @generated
+   */
+  EAttribute getJsonDeserialize_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.RestApi <em>Rest Api</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Rest Api</em>'.
+   * @see in.handyman.dsl.RestApi
+   * @generated
+   */
+  EClass getRestApi();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getUrl <em>Url</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Url</em>'.
+   * @see in.handyman.dsl.RestApi#getUrl()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_Url();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getMethod <em>Method</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Method</em>'.
+   * @see in.handyman.dsl.RestApi#getMethod()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_Method();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getProperty <em>Property</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Property</em>'.
+   * @see in.handyman.dsl.RestApi#getProperty()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_Property();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getPayload <em>Payload</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Payload</em>'.
+   * @see in.handyman.dsl.RestApi#getPayload()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_Payload();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.RestApi#getSource()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getTargetTable <em>Target Table</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target Table</em>'.
+   * @see in.handyman.dsl.RestApi#getTargetTable()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_TargetTable();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.RestApi#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.RestApi#getValue()
+   * @see #getRestApi()
+   * @generated
+   */
+  EAttribute getRestApi_Value();
+
+  /**
+   * Returns the meta object for class '{@link in.handyman.dsl.Python <em>Python</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for class '<em>Python</em>'.
+   * @see in.handyman.dsl.Python
+   * @generated
+   */
+  EClass getPython();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Python#getSource <em>Source</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Source</em>'.
+   * @see in.handyman.dsl.Python#getSource()
+   * @see #getPython()
+   * @generated
+   */
+  EAttribute getPython_Source();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Python#getTarget <em>Target</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Target</em>'.
+   * @see in.handyman.dsl.Python#getTarget()
+   * @see #getPython()
+   * @generated
+   */
+  EAttribute getPython_Target();
+
+  /**
+   * Returns the meta object for the attribute '{@link in.handyman.dsl.Python#getValue <em>Value</em>}'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return the meta object for the attribute '<em>Value</em>'.
+   * @see in.handyman.dsl.Python#getValue()
+   * @see #getPython()
+   * @generated
+   */
+  EAttribute getPython_Value();
 
   /**
    * Returns the meta object for class '{@link in.handyman.dsl.Rest <em>Rest</em>}'.
@@ -3807,567 +4709,6 @@ public interface DslPackage extends EPackage
   EAttribute getRestPart_PartData();
 
   /**
-   * Returns the meta object for class '{@link in.handyman.dsl.TrelloGET <em>Trello GET</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Trello GET</em>'.
-   * @see in.handyman.dsl.TrelloGET
-   * @generated
-   */
-  EClass getTrelloGET();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloGET#getAuthtoken <em>Authtoken</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Authtoken</em>'.
-   * @see in.handyman.dsl.TrelloGET#getAuthtoken()
-   * @see #getTrelloGET()
-   * @generated
-   */
-  EAttribute getTrelloGET_Authtoken();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloGET#getKey <em>Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Key</em>'.
-   * @see in.handyman.dsl.TrelloGET#getKey()
-   * @see #getTrelloGET()
-   * @generated
-   */
-  EAttribute getTrelloGET_Key();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloGET#getUseraccount <em>Useraccount</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Useraccount</em>'.
-   * @see in.handyman.dsl.TrelloGET#getUseraccount()
-   * @see #getTrelloGET()
-   * @generated
-   */
-  EAttribute getTrelloGET_Useraccount();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloGET#getBoard <em>Board</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Board</em>'.
-   * @see in.handyman.dsl.TrelloGET#getBoard()
-   * @see #getTrelloGET()
-   * @generated
-   */
-  EAttribute getTrelloGET_Board();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloGET#getTarget <em>Target</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Target</em>'.
-   * @see in.handyman.dsl.TrelloGET#getTarget()
-   * @see #getTrelloGET()
-   * @generated
-   */
-  EAttribute getTrelloGET_Target();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloGET#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.TrelloGET#getValue()
-   * @see #getTrelloGET()
-   * @generated
-   */
-  EAttribute getTrelloGET_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.TrelloPUT <em>Trello PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Trello PUT</em>'.
-   * @see in.handyman.dsl.TrelloPUT
-   * @generated
-   */
-  EClass getTrelloPUT();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloPUT#getAuthtoken <em>Authtoken</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Authtoken</em>'.
-   * @see in.handyman.dsl.TrelloPUT#getAuthtoken()
-   * @see #getTrelloPUT()
-   * @generated
-   */
-  EAttribute getTrelloPUT_Authtoken();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloPUT#getKey <em>Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Key</em>'.
-   * @see in.handyman.dsl.TrelloPUT#getKey()
-   * @see #getTrelloPUT()
-   * @generated
-   */
-  EAttribute getTrelloPUT_Key();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloPUT#getUseraccount <em>Useraccount</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Useraccount</em>'.
-   * @see in.handyman.dsl.TrelloPUT#getUseraccount()
-   * @see #getTrelloPUT()
-   * @generated
-   */
-  EAttribute getTrelloPUT_Useraccount();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloPUT#getList <em>List</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>List</em>'.
-   * @see in.handyman.dsl.TrelloPUT#getList()
-   * @see #getTrelloPUT()
-   * @generated
-   */
-  EAttribute getTrelloPUT_List();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloPUT#getSource <em>Source</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.TrelloPUT#getSource()
-   * @see #getTrelloPUT()
-   * @generated
-   */
-  EAttribute getTrelloPUT_Source();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.TrelloPUT#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.TrelloPUT#getValue()
-   * @see #getTrelloPUT()
-   * @generated
-   */
-  EAttribute getTrelloPUT_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.Fetch <em>Fetch</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Fetch</em>'.
-   * @see in.handyman.dsl.Fetch
-   * @generated
-   */
-  EClass getFetch();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Fetch#getSource <em>Source</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.Fetch#getSource()
-   * @see #getFetch()
-   * @generated
-   */
-  EAttribute getFetch_Source();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Fetch#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.Fetch#getValue()
-   * @see #getFetch()
-   * @generated
-   */
-  EAttribute getFetch_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.Callprocess <em>Callprocess</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Callprocess</em>'.
-   * @see in.handyman.dsl.Callprocess
-   * @generated
-   */
-  EClass getCallprocess();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getTarget <em>Target</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Target</em>'.
-   * @see in.handyman.dsl.Callprocess#getTarget()
-   * @see #getCallprocess()
-   * @generated
-   */
-  EAttribute getCallprocess_Target();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getSource <em>Source</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.Callprocess#getSource()
-   * @see #getCallprocess()
-   * @generated
-   */
-  EAttribute getCallprocess_Source();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getDatasource <em>Datasource</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Datasource</em>'.
-   * @see in.handyman.dsl.Callprocess#getDatasource()
-   * @see #getCallprocess()
-   * @generated
-   */
-  EAttribute getCallprocess_Datasource();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Callprocess#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.Callprocess#getValue()
-   * @see #getCallprocess()
-   * @generated
-   */
-  EAttribute getCallprocess_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.Updatedaudit <em>Updatedaudit</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Updatedaudit</em>'.
-   * @see in.handyman.dsl.Updatedaudit
-   * @generated
-   */
-  EClass getUpdatedaudit();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Updatedaudit#getLogsink <em>Logsink</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Logsink</em>'.
-   * @see in.handyman.dsl.Updatedaudit#getLogsink()
-   * @see #getUpdatedaudit()
-   * @generated
-   */
-  EAttribute getUpdatedaudit_Logsink();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Updatedaudit#getDatasource <em>Datasource</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Datasource</em>'.
-   * @see in.handyman.dsl.Updatedaudit#getDatasource()
-   * @see #getUpdatedaudit()
-   * @generated
-   */
-  EAttribute getUpdatedaudit_Datasource();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Updatedaudit#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.Updatedaudit#getValue()
-   * @see #getUpdatedaudit()
-   * @generated
-   */
-  EAttribute getUpdatedaudit_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.ClickSendSms <em>Click Send Sms</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Click Send Sms</em>'.
-   * @see in.handyman.dsl.ClickSendSms
-   * @generated
-   */
-  EClass getClickSendSms();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ClickSendSms#getUserid <em>Userid</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Userid</em>'.
-   * @see in.handyman.dsl.ClickSendSms#getUserid()
-   * @see #getClickSendSms()
-   * @generated
-   */
-  EAttribute getClickSendSms_Userid();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ClickSendSms#getSecurityKey <em>Security Key</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Security Key</em>'.
-   * @see in.handyman.dsl.ClickSendSms#getSecurityKey()
-   * @see #getClickSendSms()
-   * @generated
-   */
-  EAttribute getClickSendSms_SecurityKey();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ClickSendSms#getTarget <em>Target</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Target</em>'.
-   * @see in.handyman.dsl.ClickSendSms#getTarget()
-   * @see #getClickSendSms()
-   * @generated
-   */
-  EAttribute getClickSendSms_Target();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.ClickSendSms#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.ClickSendSms#getValue()
-   * @see #getClickSendSms()
-   * @generated
-   */
-  EAttribute getClickSendSms_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.SlackPUT <em>Slack PUT</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Slack PUT</em>'.
-   * @see in.handyman.dsl.SlackPUT
-   * @generated
-   */
-  EClass getSlackPUT();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SlackPUT#getTeam <em>Team</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Team</em>'.
-   * @see in.handyman.dsl.SlackPUT#getTeam()
-   * @see #getSlackPUT()
-   * @generated
-   */
-  EAttribute getSlackPUT_Team();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SlackPUT#getChannel <em>Channel</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Channel</em>'.
-   * @see in.handyman.dsl.SlackPUT#getChannel()
-   * @see #getSlackPUT()
-   * @generated
-   */
-  EAttribute getSlackPUT_Channel();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.SlackPUT#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.SlackPUT#getValue()
-   * @see #getSlackPUT()
-   * @generated
-   */
-  EAttribute getSlackPUT_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.Copydata <em>Copydata</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Copydata</em>'.
-   * @see in.handyman.dsl.Copydata
-   * @generated
-   */
-  EClass getCopydata();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getSource <em>Source</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.Copydata#getSource()
-   * @see #getCopydata()
-   * @generated
-   */
-  EAttribute getCopydata_Source();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getTo <em>To</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>To</em>'.
-   * @see in.handyman.dsl.Copydata#getTo()
-   * @see #getCopydata()
-   * @generated
-   */
-  EAttribute getCopydata_To();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Copydata#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.Copydata#getValue()
-   * @see #getCopydata()
-   * @generated
-   */
-  EAttribute getCopydata_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.WriteCsv <em>Write Csv</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Write Csv</em>'.
-   * @see in.handyman.dsl.WriteCsv
-   * @generated
-   */
-  EClass getWriteCsv();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getSource <em>Source</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.WriteCsv#getSource()
-   * @see #getWriteCsv()
-   * @generated
-   */
-  EAttribute getWriteCsv_Source();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getTo <em>To</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>To</em>'.
-   * @see in.handyman.dsl.WriteCsv#getTo()
-   * @see #getWriteCsv()
-   * @generated
-   */
-  EAttribute getWriteCsv_To();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getDelim <em>Delim</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Delim</em>'.
-   * @see in.handyman.dsl.WriteCsv#getDelim()
-   * @see #getWriteCsv()
-   * @generated
-   */
-  EAttribute getWriteCsv_Delim();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.WriteCsv#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.WriteCsv#getValue()
-   * @see #getWriteCsv()
-   * @generated
-   */
-  EAttribute getWriteCsv_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.LoadCsv <em>Load Csv</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Load Csv</em>'.
-   * @see in.handyman.dsl.LoadCsv
-   * @generated
-   */
-  EClass getLoadCsv();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getSource <em>Source</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Source</em>'.
-   * @see in.handyman.dsl.LoadCsv#getSource()
-   * @see #getLoadCsv()
-   * @generated
-   */
-  EAttribute getLoadCsv_Source();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getTo <em>To</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>To</em>'.
-   * @see in.handyman.dsl.LoadCsv#getTo()
-   * @see #getLoadCsv()
-   * @generated
-   */
-  EAttribute getLoadCsv_To();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getDelim <em>Delim</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Delim</em>'.
-   * @see in.handyman.dsl.LoadCsv#getDelim()
-   * @see #getLoadCsv()
-   * @generated
-   */
-  EAttribute getLoadCsv_Delim();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.LoadCsv#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>Value</em>'.
-   * @see in.handyman.dsl.LoadCsv#getValue()
-   * @see #getLoadCsv()
-   * @generated
-   */
-  EAttribute getLoadCsv_Value();
-
-  /**
-   * Returns the meta object for class '{@link in.handyman.dsl.Transform <em>Transform</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for class '<em>Transform</em>'.
-   * @see in.handyman.dsl.Transform
-   * @generated
-   */
-  EClass getTransform();
-
-  /**
-   * Returns the meta object for the attribute '{@link in.handyman.dsl.Transform#getOn <em>On</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute '<em>On</em>'.
-   * @see in.handyman.dsl.Transform#getOn()
-   * @see #getTransform()
-   * @generated
-   */
-  EAttribute getTransform_On();
-
-  /**
-   * Returns the meta object for the attribute list '{@link in.handyman.dsl.Transform#getValue <em>Value</em>}'.
-   * <!-- begin-user-doc -->
-   * <!-- end-user-doc -->
-   * @return the meta object for the attribute list '<em>Value</em>'.
-   * @see in.handyman.dsl.Transform#getValue()
-   * @see #getTransform()
-   * @generated
-   */
-  EAttribute getTransform_Value();
-
-  /**
    * Returns the meta object for class '{@link in.handyman.dsl.Expression <em>Expression</em>}'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -4486,14 +4827,6 @@ public interface DslPackage extends EPackage
     EClass TRY = eINSTANCE.getTry();
 
     /**
-     * The meta object literal for the '<em><b>Name</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRY__NAME = eINSTANCE.getTry_Name();
-
-    /**
      * The meta object literal for the '<em><b>Action</b></em>' containment reference list feature.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -4512,14 +4845,6 @@ public interface DslPackage extends EPackage
     EClass FINALLY = eINSTANCE.getFinally();
 
     /**
-     * The meta object literal for the '<em><b>Name</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FINALLY__NAME = eINSTANCE.getFinally_Name();
-
-    /**
      * The meta object literal for the '<em><b>Action</b></em>' containment reference list feature.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -4536,14 +4861,6 @@ public interface DslPackage extends EPackage
      * @generated
      */
     EClass CATCH = eINSTANCE.getCatch();
-
-    /**
-     * The meta object literal for the '<em><b>Name</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CATCH__NAME = eINSTANCE.getCatch_Name();
 
     /**
      * The meta object literal for the '<em><b>Action</b></em>' containment reference list feature.
@@ -4580,72 +4897,14 @@ public interface DslPackage extends EPackage
     EReference ACTION__CONDITION = eINSTANCE.getAction_Condition();
 
     /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.ElasticFBCLeadImpl <em>Elastic FBC Lead</em>}' class.
+     * The meta object literal for the '{@link in.handyman.dsl.impl.SendEMailImpl <em>Send EMail</em>}' class.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.ElasticFBCLeadImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getElasticFBCLead()
+     * @see in.handyman.dsl.impl.SendEMailImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getSendEMail()
      * @generated
      */
-    EClass ELASTIC_FBC_LEAD = eINSTANCE.getElasticFBCLead();
-
-    /**
-     * The meta object literal for the '<em><b>Access Token</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute ELASTIC_FBC_LEAD__ACCESS_TOKEN = eINSTANCE.getElasticFBCLead_AccessToken();
-
-    /**
-     * The meta object literal for the '<em><b>App Secret</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute ELASTIC_FBC_LEAD__APP_SECRET = eINSTANCE.getElasticFBCLead_AppSecret();
-
-    /**
-     * The meta object literal for the '<em><b>Account Id</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute ELASTIC_FBC_LEAD__ACCOUNT_ID = eINSTANCE.getElasticFBCLead_AccountId();
-
-    /**
-     * The meta object literal for the '<em><b>Campaign Id</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute ELASTIC_FBC_LEAD__CAMPAIGN_ID = eINSTANCE.getElasticFBCLead_CampaignId();
-
-    /**
-     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute ELASTIC_FBC_LEAD__TARGET = eINSTANCE.getElasticFBCLead_Target();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute ELASTIC_FBC_LEAD__VALUE = eINSTANCE.getElasticFBCLead_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.ElasticGETImpl <em>Elastic GET</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.ElasticGETImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getElasticGET()
-     * @generated
-     */
-    EClass ELASTIC_GET = eINSTANCE.getElasticGET();
+    EClass SEND_EMAIL = eINSTANCE.getSendEMail();
 
     /**
      * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
@@ -4653,7 +4912,39 @@ public interface DslPackage extends EPackage
      * <!-- end-user-doc -->
      * @generated
      */
-    EAttribute ELASTIC_GET__SOURCE = eINSTANCE.getElasticGET_Source();
+    EAttribute SEND_EMAIL__SOURCE = eINSTANCE.getSendEMail_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Smtphost</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__SMTPHOST = eINSTANCE.getSendEMail_Smtphost();
+
+    /**
+     * The meta object literal for the '<em><b>Smtpport</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__SMTPPORT = eINSTANCE.getSendEMail_Smtpport();
+
+    /**
+     * The meta object literal for the '<em><b>From</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__FROM = eINSTANCE.getSendEMail_From();
+
+    /**
+     * The meta object literal for the '<em><b>Pass</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__PASS = eINSTANCE.getSendEMail_Pass();
 
     /**
      * The meta object literal for the '<em><b>To</b></em>' attribute feature.
@@ -4661,7 +4952,47 @@ public interface DslPackage extends EPackage
      * <!-- end-user-doc -->
      * @generated
      */
-    EAttribute ELASTIC_GET__TO = eINSTANCE.getElasticGET_To();
+    EAttribute SEND_EMAIL__TO = eINSTANCE.getSendEMail_To();
+
+    /**
+     * The meta object literal for the '<em><b>Cc</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__CC = eINSTANCE.getSendEMail_Cc();
+
+    /**
+     * The meta object literal for the '<em><b>Bcc</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__BCC = eINSTANCE.getSendEMail_Bcc();
+
+    /**
+     * The meta object literal for the '<em><b>Subject</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__SUBJECT = eINSTANCE.getSendEMail_Subject();
+
+    /**
+     * The meta object literal for the '<em><b>Body</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__BODY = eINSTANCE.getSendEMail_Body();
+
+    /**
+     * The meta object literal for the '<em><b>Signature</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute SEND_EMAIL__SIGNATURE = eINSTANCE.getSendEMail_Signature();
 
     /**
      * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
@@ -4669,7 +5000,67 @@ public interface DslPackage extends EPackage
      * <!-- end-user-doc -->
      * @generated
      */
-    EAttribute ELASTIC_GET__VALUE = eINSTANCE.getElasticGET_Value();
+    EAttribute SEND_EMAIL__VALUE = eINSTANCE.getSendEMail_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.DeleteFolderImpl <em>Delete Folder</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.DeleteFolderImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getDeleteFolder()
+     * @generated
+     */
+    EClass DELETE_FOLDER = eINSTANCE.getDeleteFolder();
+
+    /**
+     * The meta object literal for the '<em><b>Foldersource</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DELETE_FOLDER__FOLDERSOURCE = eINSTANCE.getDeleteFolder_Foldersource();
+
+    /**
+     * The meta object literal for the '<em><b>Zipsource</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DELETE_FOLDER__ZIPSOURCE = eINSTANCE.getDeleteFolder_Zipsource();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DELETE_FOLDER__VALUE = eINSTANCE.getDeleteFolder_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.TerminalImpl <em>Terminal</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.TerminalImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getTerminal()
+     * @generated
+     */
+    EClass TERMINAL = eINSTANCE.getTerminal();
+
+    /**
+     * The meta object literal for the '<em><b>Id</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute TERMINAL__ID = eINSTANCE.getTerminal_Id();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute TERMINAL__VALUE = eINSTANCE.getTerminal_Value();
 
     /**
      * The meta object literal for the '{@link in.handyman.dsl.impl.ExecJavaImpl <em>Exec Java</em>}' class.
@@ -4706,180 +5097,6 @@ public interface DslPackage extends EPackage
     EAttribute EXEC_JAVA__VALUE = eINSTANCE.getExecJava_Value();
 
     /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.FirebaseDatabasePutImpl <em>Firebase Database Put</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.FirebaseDatabasePutImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getFirebaseDatabasePut()
-     * @generated
-     */
-    EClass FIREBASE_DATABASE_PUT = eINSTANCE.getFirebaseDatabasePut();
-
-    /**
-     * The meta object literal for the '<em><b>Url</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_DATABASE_PUT__URL = eINSTANCE.getFirebaseDatabasePut_Url();
-
-    /**
-     * The meta object literal for the '<em><b>Fbjson</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_DATABASE_PUT__FBJSON = eINSTANCE.getFirebaseDatabasePut_Fbjson();
-
-    /**
-     * The meta object literal for the '<em><b>Group Path</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_DATABASE_PUT__GROUP_PATH = eINSTANCE.getFirebaseDatabasePut_GroupPath();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_DATABASE_PUT__DB_SRC = eINSTANCE.getFirebaseDatabasePut_DbSrc();
-
-    /**
-     * The meta object literal for the '<em><b>Class Fqn</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_DATABASE_PUT__CLASS_FQN = eINSTANCE.getFirebaseDatabasePut_ClassFqn();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_DATABASE_PUT__VALUE = eINSTANCE.getFirebaseDatabasePut_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.FirebaseReactiveNotificationImpl <em>Firebase Reactive Notification</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.FirebaseReactiveNotificationImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getFirebaseReactiveNotification()
-     * @generated
-     */
-    EClass FIREBASE_REACTIVE_NOTIFICATION = eINSTANCE.getFirebaseReactiveNotification();
-
-    /**
-     * The meta object literal for the '<em><b>Url</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_REACTIVE_NOTIFICATION__URL = eINSTANCE.getFirebaseReactiveNotification_Url();
-
-    /**
-     * The meta object literal for the '<em><b>Fbjson</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_REACTIVE_NOTIFICATION__FBJSON = eINSTANCE.getFirebaseReactiveNotification_Fbjson();
-
-    /**
-     * The meta object literal for the '<em><b>Group Path</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_REACTIVE_NOTIFICATION__GROUP_PATH = eINSTANCE.getFirebaseReactiveNotification_GroupPath();
-
-    /**
-     * The meta object literal for the '<em><b>Class Fqn</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_REACTIVE_NOTIFICATION__CLASS_FQN = eINSTANCE.getFirebaseReactiveNotification_ClassFqn();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FIREBASE_REACTIVE_NOTIFICATION__DB_SRC = eINSTANCE.getFirebaseReactiveNotification_DbSrc();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.SmsLeadSmsImpl <em>Sms Lead Sms</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.SmsLeadSmsImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getSmsLeadSms()
-     * @generated
-     */
-    EClass SMS_LEAD_SMS = eINSTANCE.getSmsLeadSms();
-
-    /**
-     * The meta object literal for the '<em><b>Url</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__URL = eINSTANCE.getSmsLeadSms_Url();
-
-    /**
-     * The meta object literal for the '<em><b>Sender</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__SENDER = eINSTANCE.getSmsLeadSms_Sender();
-
-    /**
-     * The meta object literal for the '<em><b>Account</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__ACCOUNT = eINSTANCE.getSmsLeadSms_Account();
-
-    /**
-     * The meta object literal for the '<em><b>Private Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__PRIVATE_KEY = eINSTANCE.getSmsLeadSms_PrivateKey();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__DB_SRC = eINSTANCE.getSmsLeadSms_DbSrc();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__VALUE = eINSTANCE.getSmsLeadSms_Value();
-
-    /**
-     * The meta object literal for the '<em><b>Dryrun Number</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SMS_LEAD_SMS__DRYRUN_NUMBER = eINSTANCE.getSmsLeadSms_DryrunNumber();
-
-    /**
      * The meta object literal for the '{@link in.handyman.dsl.impl.AbortImpl <em>Abort</em>}' class.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -4896,370 +5113,6 @@ public interface DslPackage extends EPackage
      * @generated
      */
     EAttribute ABORT__VALUE = eINSTANCE.getAbort_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.GooglecontactSelectAllImpl <em>Googlecontact Select All</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.GooglecontactSelectAllImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getGooglecontactSelectAll()
-     * @generated
-     */
-    EClass GOOGLECONTACT_SELECT_ALL = eINSTANCE.getGooglecontactSelectAll();
-
-    /**
-     * The meta object literal for the '<em><b>Account</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__ACCOUNT = eINSTANCE.getGooglecontactSelectAll_Account();
-
-    /**
-     * The meta object literal for the '<em><b>Private Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__PRIVATE_KEY = eINSTANCE.getGooglecontactSelectAll_PrivateKey();
-
-    /**
-     * The meta object literal for the '<em><b>Ptwelve File</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__PTWELVE_FILE = eINSTANCE.getGooglecontactSelectAll_PtwelveFile();
-
-    /**
-     * The meta object literal for the '<em><b>Project</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__PROJECT = eINSTANCE.getGooglecontactSelectAll_Project();
-
-    /**
-     * The meta object literal for the '<em><b>Impersonated User</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__IMPERSONATED_USER = eINSTANCE.getGooglecontactSelectAll_ImpersonatedUser();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__DB_SRC = eINSTANCE.getGooglecontactSelectAll_DbSrc();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_SELECT_ALL__VALUE = eINSTANCE.getGooglecontactSelectAll_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.SendMailImpl <em>Send Mail</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.SendMailImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getSendMail()
-     * @generated
-     */
-    EClass SEND_MAIL = eINSTANCE.getSendMail();
-
-    /**
-     * The meta object literal for the '<em><b>Private Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SEND_MAIL__PRIVATE_KEY = eINSTANCE.getSendMail_PrivateKey();
-
-    /**
-     * The meta object literal for the '<em><b>Impersonated User</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SEND_MAIL__IMPERSONATED_USER = eINSTANCE.getSendMail_ImpersonatedUser();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SEND_MAIL__DB_SRC = eINSTANCE.getSendMail_DbSrc();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SEND_MAIL__VALUE = eINSTANCE.getSendMail_Value();
-
-    /**
-     * The meta object literal for the '<em><b>Dryrun Mail</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SEND_MAIL__DRYRUN_MAIL = eINSTANCE.getSendMail_DryrunMail();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.GooglecontactPUTImpl <em>Googlecontact PUT</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.GooglecontactPUTImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getGooglecontactPUT()
-     * @generated
-     */
-    EClass GOOGLECONTACT_PUT = eINSTANCE.getGooglecontactPUT();
-
-    /**
-     * The meta object literal for the '<em><b>Account</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__ACCOUNT = eINSTANCE.getGooglecontactPUT_Account();
-
-    /**
-     * The meta object literal for the '<em><b>Private Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__PRIVATE_KEY = eINSTANCE.getGooglecontactPUT_PrivateKey();
-
-    /**
-     * The meta object literal for the '<em><b>Ptwelve File</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__PTWELVE_FILE = eINSTANCE.getGooglecontactPUT_PtwelveFile();
-
-    /**
-     * The meta object literal for the '<em><b>Project</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__PROJECT = eINSTANCE.getGooglecontactPUT_Project();
-
-    /**
-     * The meta object literal for the '<em><b>Impersonated User</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__IMPERSONATED_USER = eINSTANCE.getGooglecontactPUT_ImpersonatedUser();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__DB_SRC = eINSTANCE.getGooglecontactPUT_DbSrc();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECONTACT_PUT__VALUE = eINSTANCE.getGooglecontactPUT_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.GooglecalPUTImpl <em>Googlecal PUT</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.GooglecalPUTImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getGooglecalPUT()
-     * @generated
-     */
-    EClass GOOGLECAL_PUT = eINSTANCE.getGooglecalPUT();
-
-    /**
-     * The meta object literal for the '<em><b>Account</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__ACCOUNT = eINSTANCE.getGooglecalPUT_Account();
-
-    /**
-     * The meta object literal for the '<em><b>Private Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__PRIVATE_KEY = eINSTANCE.getGooglecalPUT_PrivateKey();
-
-    /**
-     * The meta object literal for the '<em><b>Ptwelve File</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__PTWELVE_FILE = eINSTANCE.getGooglecalPUT_PtwelveFile();
-
-    /**
-     * The meta object literal for the '<em><b>Project</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__PROJECT = eINSTANCE.getGooglecalPUT_Project();
-
-    /**
-     * The meta object literal for the '<em><b>Impersonated User</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__IMPERSONATED_USER = eINSTANCE.getGooglecalPUT_ImpersonatedUser();
-
-    /**
-     * The meta object literal for the '<em><b>Db Src</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__DB_SRC = eINSTANCE.getGooglecalPUT_DbSrc();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute GOOGLECAL_PUT__VALUE = eINSTANCE.getGooglecalPUT_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.FBCLeadImpl <em>FBC Lead</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.FBCLeadImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getFBCLead()
-     * @generated
-     */
-    EClass FBC_LEAD = eINSTANCE.getFBCLead();
-
-    /**
-     * The meta object literal for the '<em><b>Access Token</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FBC_LEAD__ACCESS_TOKEN = eINSTANCE.getFBCLead_AccessToken();
-
-    /**
-     * The meta object literal for the '<em><b>App Secret</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FBC_LEAD__APP_SECRET = eINSTANCE.getFBCLead_AppSecret();
-
-    /**
-     * The meta object literal for the '<em><b>Account Id</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FBC_LEAD__ACCOUNT_ID = eINSTANCE.getFBCLead_AccountId();
-
-    /**
-     * The meta object literal for the '<em><b>Campaign Id</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FBC_LEAD__CAMPAIGN_ID = eINSTANCE.getFBCLead_CampaignId();
-
-    /**
-     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FBC_LEAD__TARGET = eINSTANCE.getFBCLead_Target();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FBC_LEAD__VALUE = eINSTANCE.getFBCLead_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.FBFormDownloadImpl <em>FB Form Download</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.FBFormDownloadImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getFBFormDownload()
-     * @generated
-     */
-    EClass FB_FORM_DOWNLOAD = eINSTANCE.getFBFormDownload();
-
-    /**
-     * The meta object literal for the '<em><b>Access Token</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FB_FORM_DOWNLOAD__ACCESS_TOKEN = eINSTANCE.getFBFormDownload_AccessToken();
-
-    /**
-     * The meta object literal for the '<em><b>App Secret</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FB_FORM_DOWNLOAD__APP_SECRET = eINSTANCE.getFBFormDownload_AppSecret();
-
-    /**
-     * The meta object literal for the '<em><b>Account Id</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FB_FORM_DOWNLOAD__ACCOUNT_ID = eINSTANCE.getFBFormDownload_AccountId();
-
-    /**
-     * The meta object literal for the '<em><b>Form Id</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FB_FORM_DOWNLOAD__FORM_ID = eINSTANCE.getFBFormDownload_FormId();
-
-    /**
-     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FB_FORM_DOWNLOAD__TARGET = eINSTANCE.getFBFormDownload_Target();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FB_FORM_DOWNLOAD__VALUE = eINSTANCE.getFBFormDownload_Value();
 
     /**
      * The meta object literal for the '{@link in.handyman.dsl.impl.DropfileImpl <em>Dropfile</em>}' class.
@@ -5312,6 +5165,1042 @@ public interface DslPackage extends EPackage
      * @generated
      */
     EAttribute DOOZLE__VALUE = eINSTANCE.getDoozle_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.FetchImpl <em>Fetch</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.FetchImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getFetch()
+     * @generated
+     */
+    EClass FETCH = eINSTANCE.getFetch();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FETCH__SOURCE = eINSTANCE.getFetch_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FETCH__VALUE = eINSTANCE.getFetch_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.CallprocessImpl <em>Callprocess</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.CallprocessImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getCallprocess()
+     * @generated
+     */
+    EClass CALLPROCESS = eINSTANCE.getCallprocess();
+
+    /**
+     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CALLPROCESS__TARGET = eINSTANCE.getCallprocess_Target();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CALLPROCESS__SOURCE = eINSTANCE.getCallprocess_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Datasource</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CALLPROCESS__DATASOURCE = eINSTANCE.getCallprocess_Datasource();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CALLPROCESS__VALUE = eINSTANCE.getCallprocess_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.ForkprocessImpl <em>Forkprocess</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.ForkprocessImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getForkprocess()
+     * @generated
+     */
+    EClass FORKPROCESS = eINSTANCE.getForkprocess();
+
+    /**
+     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FORKPROCESS__TARGET = eINSTANCE.getForkprocess_Target();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FORKPROCESS__SOURCE = eINSTANCE.getForkprocess_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Datasource</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FORKPROCESS__DATASOURCE = eINSTANCE.getForkprocess_Datasource();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FORKPROCESS__VALUE = eINSTANCE.getForkprocess_Value();
+
+    /**
+     * The meta object literal for the '<em><b>Fork Batch Size</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FORKPROCESS__FORK_BATCH_SIZE = eINSTANCE.getForkprocess_ForkBatchSize();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.CopydataImpl <em>Copydata</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.CopydataImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getCopydata()
+     * @generated
+     */
+    EClass COPYDATA = eINSTANCE.getCopydata();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute COPYDATA__SOURCE = eINSTANCE.getCopydata_Source();
+
+    /**
+     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute COPYDATA__TO = eINSTANCE.getCopydata_To();
+
+    /**
+     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute COPYDATA__TARGET = eINSTANCE.getCopydata_Target();
+
+    /**
+     * The meta object literal for the '<em><b>Limit</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute COPYDATA__LIMIT = eINSTANCE.getCopydata_Limit();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute COPYDATA__VALUE = eINSTANCE.getCopydata_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.WriteCsvImpl <em>Write Csv</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.WriteCsvImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getWriteCsv()
+     * @generated
+     */
+    EClass WRITE_CSV = eINSTANCE.getWriteCsv();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute WRITE_CSV__SOURCE = eINSTANCE.getWriteCsv_Source();
+
+    /**
+     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute WRITE_CSV__TO = eINSTANCE.getWriteCsv_To();
+
+    /**
+     * The meta object literal for the '<em><b>Delim</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute WRITE_CSV__DELIM = eINSTANCE.getWriteCsv_Delim();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute WRITE_CSV__VALUE = eINSTANCE.getWriteCsv_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.LoadCsvImpl <em>Load Csv</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.LoadCsvImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getLoadCsv()
+     * @generated
+     */
+    EClass LOAD_CSV = eINSTANCE.getLoadCsv();
+
+    /**
+     * The meta object literal for the '<em><b>Pid</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LOAD_CSV__PID = eINSTANCE.getLoadCsv_Pid();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LOAD_CSV__SOURCE = eINSTANCE.getLoadCsv_Source();
+
+    /**
+     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LOAD_CSV__TO = eINSTANCE.getLoadCsv_To();
+
+    /**
+     * The meta object literal for the '<em><b>Delim</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LOAD_CSV__DELIM = eINSTANCE.getLoadCsv_Delim();
+
+    /**
+     * The meta object literal for the '<em><b>Limit</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LOAD_CSV__LIMIT = eINSTANCE.getLoadCsv_Limit();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LOAD_CSV__VALUE = eINSTANCE.getLoadCsv_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.TransformImpl <em>Transform</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.TransformImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getTransform()
+     * @generated
+     */
+    EClass TRANSFORM = eINSTANCE.getTransform();
+
+    /**
+     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute TRANSFORM__ON = eINSTANCE.getTransform_On();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute TRANSFORM__VALUE = eINSTANCE.getTransform_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.DeleteSqlImpl <em>Delete Sql</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.DeleteSqlImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getDeleteSql()
+     * @generated
+     */
+    EClass DELETE_SQL = eINSTANCE.getDeleteSql();
+
+    /**
+     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DELETE_SQL__ON = eINSTANCE.getDeleteSql_On();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DELETE_SQL__VALUE = eINSTANCE.getDeleteSql_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.UpdateSqlImpl <em>Update Sql</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.UpdateSqlImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getUpdateSql()
+     * @generated
+     */
+    EClass UPDATE_SQL = eINSTANCE.getUpdateSql();
+
+    /**
+     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute UPDATE_SQL__ON = eINSTANCE.getUpdateSql_On();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute UPDATE_SQL__VALUE = eINSTANCE.getUpdateSql_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.InsertSqlImpl <em>Insert Sql</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.InsertSqlImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getInsertSql()
+     * @generated
+     */
+    EClass INSERT_SQL = eINSTANCE.getInsertSql();
+
+    /**
+     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute INSERT_SQL__ON = eINSTANCE.getInsertSql_On();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute INSERT_SQL__VALUE = eINSTANCE.getInsertSql_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.TruncateSqlImpl <em>Truncate Sql</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.TruncateSqlImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getTruncateSql()
+     * @generated
+     */
+    EClass TRUNCATE_SQL = eINSTANCE.getTruncateSql();
+
+    /**
+     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute TRUNCATE_SQL__ON = eINSTANCE.getTruncateSql_On();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute TRUNCATE_SQL__VALUE = eINSTANCE.getTruncateSql_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.DropSqlImpl <em>Drop Sql</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.DropSqlImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getDropSql()
+     * @generated
+     */
+    EClass DROP_SQL = eINSTANCE.getDropSql();
+
+    /**
+     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DROP_SQL__ON = eINSTANCE.getDropSql_On();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute DROP_SQL__VALUE = eINSTANCE.getDropSql_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.ListFilesImpl <em>List Files</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.ListFilesImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getListFiles()
+     * @generated
+     */
+    EClass LIST_FILES = eINSTANCE.getListFiles();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LIST_FILES__SOURCE = eINSTANCE.getListFiles_Source();
+
+    /**
+     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LIST_FILES__TO = eINSTANCE.getListFiles_To();
+
+    /**
+     * The meta object literal for the '<em><b>Target Table</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LIST_FILES__TARGET_TABLE = eINSTANCE.getListFiles_TargetTable();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute LIST_FILES__VALUE = eINSTANCE.getListFiles_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.Mongo2DbImpl <em>Mongo2 Db</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.Mongo2DbImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getMongo2Db()
+     * @generated
+     */
+    EClass MONGO2_DB = eINSTANCE.getMongo2Db();
+
+    /**
+     * The meta object literal for the '<em><b>Source Conn Str</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__SOURCE_CONN_STR = eINSTANCE.getMongo2Db_SourceConnStr();
+
+    /**
+     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__TO = eINSTANCE.getMongo2Db_To();
+
+    /**
+     * The meta object literal for the '<em><b>Source Db</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__SOURCE_DB = eINSTANCE.getMongo2Db_SourceDb();
+
+    /**
+     * The meta object literal for the '<em><b>Target Db</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__TARGET_DB = eINSTANCE.getMongo2Db_TargetDb();
+
+    /**
+     * The meta object literal for the '<em><b>Target Table</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__TARGET_TABLE = eINSTANCE.getMongo2Db_TargetTable();
+
+    /**
+     * The meta object literal for the '<em><b>Filter</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__FILTER = eINSTANCE.getMongo2Db_Filter();
+
+    /**
+     * The meta object literal for the '<em><b>Limit</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__LIMIT = eINSTANCE.getMongo2Db_Limit();
+
+    /**
+     * The meta object literal for the '<em><b>Find Attr</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__FIND_ATTR = eINSTANCE.getMongo2Db_FindAttr();
+
+    /**
+     * The meta object literal for the '<em><b>Apply Manipulation</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__APPLY_MANIPULATION = eINSTANCE.getMongo2Db_ApplyManipulation();
+
+    /**
+     * The meta object literal for the '<em><b>On Update Key</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__ON_UPDATE_KEY = eINSTANCE.getMongo2Db_OnUpdateKey();
+
+    /**
+     * The meta object literal for the '<em><b>Fetch Batch Size</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__FETCH_BATCH_SIZE = eINSTANCE.getMongo2Db_FetchBatchSize();
+
+    /**
+     * The meta object literal for the '<em><b>Write Batch Size</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__WRITE_BATCH_SIZE = eINSTANCE.getMongo2Db_WriteBatchSize();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute MONGO2_DB__VALUE = eINSTANCE.getMongo2Db_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.FTPImpl <em>FTP</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.FTPImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getFTP()
+     * @generated
+     */
+    EClass FTP = eINSTANCE.getFTP();
+
+    /**
+     * The meta object literal for the '<em><b>Host</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__HOST = eINSTANCE.getFTP_Host();
+
+    /**
+     * The meta object literal for the '<em><b>Port</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__PORT = eINSTANCE.getFTP_Port();
+
+    /**
+     * The meta object literal for the '<em><b>Username</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__USERNAME = eINSTANCE.getFTP_Username();
+
+    /**
+     * The meta object literal for the '<em><b>Password</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__PASSWORD = eINSTANCE.getFTP_Password();
+
+    /**
+     * The meta object literal for the '<em><b>Action</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__ACTION = eINSTANCE.getFTP_Action();
+
+    /**
+     * The meta object literal for the '<em><b>Local Dir</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__LOCAL_DIR = eINSTANCE.getFTP_LocalDir();
+
+    /**
+     * The meta object literal for the '<em><b>Local File</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__LOCAL_FILE = eINSTANCE.getFTP_LocalFile();
+
+    /**
+     * The meta object literal for the '<em><b>Remote Dir</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__REMOTE_DIR = eINSTANCE.getFTP_RemoteDir();
+
+    /**
+     * The meta object literal for the '<em><b>Remote File</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__REMOTE_FILE = eINSTANCE.getFTP_RemoteFile();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__SOURCE = eINSTANCE.getFTP_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Target Table</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__TARGET_TABLE = eINSTANCE.getFTP_TargetTable();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute FTP__VALUE = eINSTANCE.getFTP_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.ZipImpl <em>Zip</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.ZipImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getZip()
+     * @generated
+     */
+    EClass ZIP = eINSTANCE.getZip();
+
+    /**
+     * The meta object literal for the '<em><b>Zip File Path</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute ZIP__ZIP_FILE_PATH = eINSTANCE.getZip_ZipFilePath();
+
+    /**
+     * The meta object literal for the '<em><b>Zip File Name</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute ZIP__ZIP_FILE_NAME = eINSTANCE.getZip_ZipFileName();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute ZIP__SOURCE = eINSTANCE.getZip_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Buffer Size</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute ZIP__BUFFER_SIZE = eINSTANCE.getZip_BufferSize();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute ZIP__VALUE = eINSTANCE.getZip_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.UnzipImpl <em>Unzip</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.UnzipImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getUnzip()
+     * @generated
+     */
+    EClass UNZIP = eINSTANCE.getUnzip();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute UNZIP__SOURCE = eINSTANCE.getUnzip_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Dest Dir</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute UNZIP__DEST_DIR = eINSTANCE.getUnzip_DestDir();
+
+    /**
+     * The meta object literal for the '<em><b>Buffer Size</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute UNZIP__BUFFER_SIZE = eINSTANCE.getUnzip_BufferSize();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute UNZIP__VALUE = eINSTANCE.getUnzip_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.ChecksumImpl <em>Checksum</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.ChecksumImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getChecksum()
+     * @generated
+     */
+    EClass CHECKSUM = eINSTANCE.getChecksum();
+
+    /**
+     * The meta object literal for the '<em><b>Host</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__HOST = eINSTANCE.getChecksum_Host();
+
+    /**
+     * The meta object literal for the '<em><b>Port</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__PORT = eINSTANCE.getChecksum_Port();
+
+    /**
+     * The meta object literal for the '<em><b>Username</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__USERNAME = eINSTANCE.getChecksum_Username();
+
+    /**
+     * The meta object literal for the '<em><b>Password</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__PASSWORD = eINSTANCE.getChecksum_Password();
+
+    /**
+     * The meta object literal for the '<em><b>Local Dir</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__LOCAL_DIR = eINSTANCE.getChecksum_LocalDir();
+
+    /**
+     * The meta object literal for the '<em><b>Local File</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__LOCAL_FILE = eINSTANCE.getChecksum_LocalFile();
+
+    /**
+     * The meta object literal for the '<em><b>Remote Dir</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__REMOTE_DIR = eINSTANCE.getChecksum_RemoteDir();
+
+    /**
+     * The meta object literal for the '<em><b>Remote File</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__REMOTE_FILE = eINSTANCE.getChecksum_RemoteFile();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute CHECKSUM__VALUE = eINSTANCE.getChecksum_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.JsonTransformImpl <em>Json Transform</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.JsonTransformImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getJsonTransform()
+     * @generated
+     */
+    EClass JSON_TRANSFORM = eINSTANCE.getJsonTransform();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_TRANSFORM__SOURCE = eINSTANCE.getJsonTransform_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Target Table</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_TRANSFORM__TARGET_TABLE = eINSTANCE.getJsonTransform_TargetTable();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_TRANSFORM__VALUE = eINSTANCE.getJsonTransform_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.JsonDeserializeImpl <em>Json Deserialize</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.JsonDeserializeImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getJsonDeserialize()
+     * @generated
+     */
+    EClass JSON_DESERIALIZE = eINSTANCE.getJsonDeserialize();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_DESERIALIZE__SOURCE = eINSTANCE.getJsonDeserialize_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Target Table</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_DESERIALIZE__TARGET_TABLE = eINSTANCE.getJsonDeserialize_TargetTable();
+
+    /**
+     * The meta object literal for the '<em><b>Input</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_DESERIALIZE__INPUT = eINSTANCE.getJsonDeserialize_Input();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute JSON_DESERIALIZE__VALUE = eINSTANCE.getJsonDeserialize_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.RestApiImpl <em>Rest Api</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.RestApiImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getRestApi()
+     * @generated
+     */
+    EClass REST_API = eINSTANCE.getRestApi();
+
+    /**
+     * The meta object literal for the '<em><b>Url</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__URL = eINSTANCE.getRestApi_Url();
+
+    /**
+     * The meta object literal for the '<em><b>Method</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__METHOD = eINSTANCE.getRestApi_Method();
+
+    /**
+     * The meta object literal for the '<em><b>Property</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__PROPERTY = eINSTANCE.getRestApi_Property();
+
+    /**
+     * The meta object literal for the '<em><b>Payload</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__PAYLOAD = eINSTANCE.getRestApi_Payload();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__SOURCE = eINSTANCE.getRestApi_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Target Table</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__TARGET_TABLE = eINSTANCE.getRestApi_TargetTable();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute REST_API__VALUE = eINSTANCE.getRestApi_Value();
+
+    /**
+     * The meta object literal for the '{@link in.handyman.dsl.impl.PythonImpl <em>Python</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see in.handyman.dsl.impl.PythonImpl
+     * @see in.handyman.dsl.impl.DslPackageImpl#getPython()
+     * @generated
+     */
+    EClass PYTHON = eINSTANCE.getPython();
+
+    /**
+     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute PYTHON__SOURCE = eINSTANCE.getPython_Source();
+
+    /**
+     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute PYTHON__TARGET = eINSTANCE.getPython_Target();
+
+    /**
+     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    EAttribute PYTHON__VALUE = eINSTANCE.getPython_Value();
 
     /**
      * The meta object literal for the '{@link in.handyman.dsl.impl.RestImpl <em>Rest</em>}' class.
@@ -5452,444 +6341,6 @@ public interface DslPackage extends EPackage
      * @generated
      */
     EAttribute REST_PART__PART_DATA = eINSTANCE.getRestPart_PartData();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.TrelloGETImpl <em>Trello GET</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.TrelloGETImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getTrelloGET()
-     * @generated
-     */
-    EClass TRELLO_GET = eINSTANCE.getTrelloGET();
-
-    /**
-     * The meta object literal for the '<em><b>Authtoken</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_GET__AUTHTOKEN = eINSTANCE.getTrelloGET_Authtoken();
-
-    /**
-     * The meta object literal for the '<em><b>Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_GET__KEY = eINSTANCE.getTrelloGET_Key();
-
-    /**
-     * The meta object literal for the '<em><b>Useraccount</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_GET__USERACCOUNT = eINSTANCE.getTrelloGET_Useraccount();
-
-    /**
-     * The meta object literal for the '<em><b>Board</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_GET__BOARD = eINSTANCE.getTrelloGET_Board();
-
-    /**
-     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_GET__TARGET = eINSTANCE.getTrelloGET_Target();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_GET__VALUE = eINSTANCE.getTrelloGET_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.TrelloPUTImpl <em>Trello PUT</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.TrelloPUTImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getTrelloPUT()
-     * @generated
-     */
-    EClass TRELLO_PUT = eINSTANCE.getTrelloPUT();
-
-    /**
-     * The meta object literal for the '<em><b>Authtoken</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_PUT__AUTHTOKEN = eINSTANCE.getTrelloPUT_Authtoken();
-
-    /**
-     * The meta object literal for the '<em><b>Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_PUT__KEY = eINSTANCE.getTrelloPUT_Key();
-
-    /**
-     * The meta object literal for the '<em><b>Useraccount</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_PUT__USERACCOUNT = eINSTANCE.getTrelloPUT_Useraccount();
-
-    /**
-     * The meta object literal for the '<em><b>List</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_PUT__LIST = eINSTANCE.getTrelloPUT_List();
-
-    /**
-     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_PUT__SOURCE = eINSTANCE.getTrelloPUT_Source();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRELLO_PUT__VALUE = eINSTANCE.getTrelloPUT_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.FetchImpl <em>Fetch</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.FetchImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getFetch()
-     * @generated
-     */
-    EClass FETCH = eINSTANCE.getFetch();
-
-    /**
-     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FETCH__SOURCE = eINSTANCE.getFetch_Source();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute FETCH__VALUE = eINSTANCE.getFetch_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.CallprocessImpl <em>Callprocess</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.CallprocessImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getCallprocess()
-     * @generated
-     */
-    EClass CALLPROCESS = eINSTANCE.getCallprocess();
-
-    /**
-     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CALLPROCESS__TARGET = eINSTANCE.getCallprocess_Target();
-
-    /**
-     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CALLPROCESS__SOURCE = eINSTANCE.getCallprocess_Source();
-
-    /**
-     * The meta object literal for the '<em><b>Datasource</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CALLPROCESS__DATASOURCE = eINSTANCE.getCallprocess_Datasource();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CALLPROCESS__VALUE = eINSTANCE.getCallprocess_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.UpdatedauditImpl <em>Updatedaudit</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.UpdatedauditImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getUpdatedaudit()
-     * @generated
-     */
-    EClass UPDATEDAUDIT = eINSTANCE.getUpdatedaudit();
-
-    /**
-     * The meta object literal for the '<em><b>Logsink</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute UPDATEDAUDIT__LOGSINK = eINSTANCE.getUpdatedaudit_Logsink();
-
-    /**
-     * The meta object literal for the '<em><b>Datasource</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute UPDATEDAUDIT__DATASOURCE = eINSTANCE.getUpdatedaudit_Datasource();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute UPDATEDAUDIT__VALUE = eINSTANCE.getUpdatedaudit_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.ClickSendSmsImpl <em>Click Send Sms</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.ClickSendSmsImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getClickSendSms()
-     * @generated
-     */
-    EClass CLICK_SEND_SMS = eINSTANCE.getClickSendSms();
-
-    /**
-     * The meta object literal for the '<em><b>Userid</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CLICK_SEND_SMS__USERID = eINSTANCE.getClickSendSms_Userid();
-
-    /**
-     * The meta object literal for the '<em><b>Security Key</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CLICK_SEND_SMS__SECURITY_KEY = eINSTANCE.getClickSendSms_SecurityKey();
-
-    /**
-     * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CLICK_SEND_SMS__TARGET = eINSTANCE.getClickSendSms_Target();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute CLICK_SEND_SMS__VALUE = eINSTANCE.getClickSendSms_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.SlackPUTImpl <em>Slack PUT</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.SlackPUTImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getSlackPUT()
-     * @generated
-     */
-    EClass SLACK_PUT = eINSTANCE.getSlackPUT();
-
-    /**
-     * The meta object literal for the '<em><b>Team</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SLACK_PUT__TEAM = eINSTANCE.getSlackPUT_Team();
-
-    /**
-     * The meta object literal for the '<em><b>Channel</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SLACK_PUT__CHANNEL = eINSTANCE.getSlackPUT_Channel();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute SLACK_PUT__VALUE = eINSTANCE.getSlackPUT_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.CopydataImpl <em>Copydata</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.CopydataImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getCopydata()
-     * @generated
-     */
-    EClass COPYDATA = eINSTANCE.getCopydata();
-
-    /**
-     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute COPYDATA__SOURCE = eINSTANCE.getCopydata_Source();
-
-    /**
-     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute COPYDATA__TO = eINSTANCE.getCopydata_To();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute COPYDATA__VALUE = eINSTANCE.getCopydata_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.WriteCsvImpl <em>Write Csv</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.WriteCsvImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getWriteCsv()
-     * @generated
-     */
-    EClass WRITE_CSV = eINSTANCE.getWriteCsv();
-
-    /**
-     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute WRITE_CSV__SOURCE = eINSTANCE.getWriteCsv_Source();
-
-    /**
-     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute WRITE_CSV__TO = eINSTANCE.getWriteCsv_To();
-
-    /**
-     * The meta object literal for the '<em><b>Delim</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute WRITE_CSV__DELIM = eINSTANCE.getWriteCsv_Delim();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute WRITE_CSV__VALUE = eINSTANCE.getWriteCsv_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.LoadCsvImpl <em>Load Csv</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.LoadCsvImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getLoadCsv()
-     * @generated
-     */
-    EClass LOAD_CSV = eINSTANCE.getLoadCsv();
-
-    /**
-     * The meta object literal for the '<em><b>Source</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute LOAD_CSV__SOURCE = eINSTANCE.getLoadCsv_Source();
-
-    /**
-     * The meta object literal for the '<em><b>To</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute LOAD_CSV__TO = eINSTANCE.getLoadCsv_To();
-
-    /**
-     * The meta object literal for the '<em><b>Delim</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute LOAD_CSV__DELIM = eINSTANCE.getLoadCsv_Delim();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute LOAD_CSV__VALUE = eINSTANCE.getLoadCsv_Value();
-
-    /**
-     * The meta object literal for the '{@link in.handyman.dsl.impl.TransformImpl <em>Transform</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see in.handyman.dsl.impl.TransformImpl
-     * @see in.handyman.dsl.impl.DslPackageImpl#getTransform()
-     * @generated
-     */
-    EClass TRANSFORM = eINSTANCE.getTransform();
-
-    /**
-     * The meta object literal for the '<em><b>On</b></em>' attribute feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRANSFORM__ON = eINSTANCE.getTransform_On();
-
-    /**
-     * The meta object literal for the '<em><b>Value</b></em>' attribute list feature.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    EAttribute TRANSFORM__VALUE = eINSTANCE.getTransform_Value();
 
     /**
      * The meta object literal for the '{@link in.handyman.dsl.impl.ExpressionImpl <em>Expression</em>}' class.

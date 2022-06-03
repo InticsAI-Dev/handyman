@@ -15,6 +15,8 @@ package in.handyman.dsl;
  * <ul>
  *   <li>{@link in.handyman.dsl.Copydata#getSource <em>Source</em>}</li>
  *   <li>{@link in.handyman.dsl.Copydata#getTo <em>To</em>}</li>
+ *   <li>{@link in.handyman.dsl.Copydata#getTarget <em>Target</em>}</li>
+ *   <li>{@link in.handyman.dsl.Copydata#getLimit <em>Limit</em>}</li>
  *   <li>{@link in.handyman.dsl.Copydata#getValue <em>Value</em>}</li>
  * </ul>
  *
@@ -75,6 +77,58 @@ public interface Copydata extends Action
    * @generated
    */
   void setTo(String value);
+
+  /**
+   * Returns the value of the '<em><b>Target</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <p>
+   * If the meaning of the '<em>Target</em>' attribute isn't clear,
+   * there really should be more of a description here...
+   * </p>
+   * <!-- end-user-doc -->
+   * @return the value of the '<em>Target</em>' attribute.
+   * @see #setTarget(String)
+   * @see in.handyman.dsl.DslPackage#getCopydata_Target()
+   * @model
+   * @generated
+   */
+  String getTarget();
+
+  /**
+   * Sets the value of the '{@link in.handyman.dsl.Copydata#getTarget <em>Target</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @param value the new value of the '<em>Target</em>' attribute.
+   * @see #getTarget()
+   * @generated
+   */
+  void setTarget(String value);
+
+  /**
+   * Returns the value of the '<em><b>Limit</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <p>
+   * If the meaning of the '<em>Limit</em>' attribute isn't clear,
+   * there really should be more of a description here...
+   * </p>
+   * <!-- end-user-doc -->
+   * @return the value of the '<em>Limit</em>' attribute.
+   * @see #setLimit(String)
+   * @see in.handyman.dsl.DslPackage#getCopydata_Limit()
+   * @model
+   * @generated
+   */
+  String getLimit();
+
+  /**
+   * Sets the value of the '{@link in.handyman.dsl.Copydata#getLimit <em>Limit</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @param value the new value of the '<em>Limit</em>' attribute.
+   * @see #getLimit()
+   * @generated
+   */
+  void setLimit(String value);
 
   /**
    * Returns the value of the '<em><b>Value</b></em>' attribute.

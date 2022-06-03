@@ -70,7 +70,7 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
       var stoa: Array[String] = atos.split(",")
       if (fileName.contains(".csv")) {
         val column: String = convertArrayToInsertLine(firstLine, "`,`")
-        ct = convertArrayToInsertLine(firstLine, "`VARCHAR(344),`")
+        ct = convertArrayToInsertLine(firstLine, "`VARCHAR(100),`")
         dquery = "drop table if exists `" + pid + "_" + fileName.replace(".csv", "") + "`;"
         logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, dquery)
         st.execute(dquery)
@@ -100,7 +100,7 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
         con.commit()
       } else if (fileName.contains(".tsv")) {
         val column: String = convertArrayToInsertLine(stoa, "`,`")
-        ct = convertArrayToInsertLine(stoa, "`VARCHAR(344),`")
+        ct = convertArrayToInsertLine(stoa, "`VARCHAR(100),`")
         dquery = "drop table if exists " + pid + "_" + fileName.replace(".tsv", "") + ";"
         logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, dquery)
         st.execute(dquery)

@@ -13,9 +13,11 @@ package in.handyman.dsl;
  * The following features are supported:
  * </p>
  * <ul>
+ *   <li>{@link in.handyman.dsl.LoadCsv#getPid <em>Pid</em>}</li>
  *   <li>{@link in.handyman.dsl.LoadCsv#getSource <em>Source</em>}</li>
  *   <li>{@link in.handyman.dsl.LoadCsv#getTo <em>To</em>}</li>
  *   <li>{@link in.handyman.dsl.LoadCsv#getDelim <em>Delim</em>}</li>
+ *   <li>{@link in.handyman.dsl.LoadCsv#getLimit <em>Limit</em>}</li>
  *   <li>{@link in.handyman.dsl.LoadCsv#getValue <em>Value</em>}</li>
  * </ul>
  *
@@ -25,6 +27,32 @@ package in.handyman.dsl;
  */
 public interface LoadCsv extends Action
 {
+  /**
+   * Returns the value of the '<em><b>Pid</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <p>
+   * If the meaning of the '<em>Pid</em>' attribute isn't clear,
+   * there really should be more of a description here...
+   * </p>
+   * <!-- end-user-doc -->
+   * @return the value of the '<em>Pid</em>' attribute.
+   * @see #setPid(String)
+   * @see in.handyman.dsl.DslPackage#getLoadCsv_Pid()
+   * @model
+   * @generated
+   */
+  String getPid();
+
+  /**
+   * Sets the value of the '{@link in.handyman.dsl.LoadCsv#getPid <em>Pid</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @param value the new value of the '<em>Pid</em>' attribute.
+   * @see #getPid()
+   * @generated
+   */
+  void setPid(String value);
+
   /**
    * Returns the value of the '<em><b>Source</b></em>' attribute.
    * <!-- begin-user-doc -->
@@ -102,6 +130,32 @@ public interface LoadCsv extends Action
    * @generated
    */
   void setDelim(String value);
+
+  /**
+   * Returns the value of the '<em><b>Limit</b></em>' attribute.
+   * <!-- begin-user-doc -->
+   * <p>
+   * If the meaning of the '<em>Limit</em>' attribute isn't clear,
+   * there really should be more of a description here...
+   * </p>
+   * <!-- end-user-doc -->
+   * @return the value of the '<em>Limit</em>' attribute.
+   * @see #setLimit(String)
+   * @see in.handyman.dsl.DslPackage#getLoadCsv_Limit()
+   * @model
+   * @generated
+   */
+  String getLimit();
+
+  /**
+   * Sets the value of the '{@link in.handyman.dsl.LoadCsv#getLimit <em>Limit</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @param value the new value of the '<em>Limit</em>' attribute.
+   * @see #getLimit()
+   * @generated
+   */
+  void setLimit(String value);
 
   /**
    * Returns the value of the '<em><b>Value</b></em>' attribute.
