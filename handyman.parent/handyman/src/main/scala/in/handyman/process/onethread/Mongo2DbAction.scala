@@ -362,7 +362,7 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
           val docc : Document = obje1.get(0);
           
           println("dbColFunc....." + dbColFunc + ".....dbcol array size..... " + (dbColFunc.split(".")).length)
-          return obje1.get(0);
+          //return obje1.get(0);
           if(dbColFunc.split(".").length > 1){
             getColNestedDocIfExists(docc, dbColFunc)
           }else{
