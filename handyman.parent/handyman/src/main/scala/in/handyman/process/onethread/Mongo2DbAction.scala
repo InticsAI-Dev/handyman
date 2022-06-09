@@ -351,7 +351,7 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
   def getColNestedDocIfExists(docObj: Document, dbCol: String): Object = {
     if (docObj.isInstanceOf[Document] && !dbCol.isEmpty() && dbCol.contains(".")) {
       val dbColForm = dbCol.substring(0, dbCol.indexOf("."))
-      val dbColFunc = dbCol.substring(dbCol.indexOf(".") + 1, dbCol.length())
+      var dbColFunc = dbCol.substring(dbCol.indexOf(".") + 1, dbCol.length())
       val obje: Object = docObj.get(dbColForm)
       if (obje.isInstanceOf[java.util.ArrayList[Document]]) {
         val obje1 = obje.asInstanceOf[java.util.ArrayList[Document]]
@@ -361,9 +361,9 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
           
           val docc : Document = obje1.get(0);
           
-          println("dbColFunc....." + dbColFunc + ".....dbcol array size..... " + (dbColFunc.split(".")).length)
+          println("dbColFunc....." + dbColFunc + ".....dbcol array size..... " + (dbColFunc.split("\\.")).length)
           //return obje1.get(0);
-          if(dbColFunc.split(".").length > 1){
+          if(dbColFunc.split("\\.").length > 1){
             getColNestedDocIfExists(docc, dbColFunc)
           }else{
             return obje1.get(0);
