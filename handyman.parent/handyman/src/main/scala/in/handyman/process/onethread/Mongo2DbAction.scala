@@ -358,7 +358,16 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
         if(obje1!=null && !obje1.isEmpty()){
           /*val gson : Gson = new Gson();
           return gson.toJson(obje1);*/
+          
+          val docc : Document = obje1.get(0);
+          
+          println("dbColFunc....." + dbColFunc + "dbcol array size..... " + dbColFunc.split(".").size)
           return obje1.get(0);
+          /*if(dbColFunc.split(".").size > 1){
+            getColNestedDocIfExists(docc, dbColFunc)
+          }else{
+            return obje1.get(0);
+          }*/
         }
         else
           return null;
