@@ -13,7 +13,9 @@ class TryContext(var config: Map[String, String], val instanceName: String) exte
         println("varaibel:::" + variable);
         println("value:::" + value);
         //if(!variable.equals("search_export_id"))
-          ParameterisationEngine.resolve(value, this)
+        val valoutp = ParameterisationEngine.resolve(value, this)
+        println("sasasa:::"+valoutp)
+        valoutp
         //else
           //value
       }

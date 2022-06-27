@@ -63,7 +63,8 @@ object CommandProxy extends LazyLogging {
           case _ => {
             val inputString = method.invoke(proxee, args: _*).asInstanceOf[String]
             println("varaibel333:::" + inputString);
-            val result = ParameterisationEngine.resolve(inputString, context)
+            val result = ParameterisationEngine.resolve_without_processidrep(inputString, context)
+            println("varaibel333:::result::::" + result);
             result
           }
 
