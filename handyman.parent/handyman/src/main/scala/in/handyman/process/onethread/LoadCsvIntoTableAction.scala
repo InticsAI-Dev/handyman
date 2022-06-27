@@ -55,6 +55,7 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
             else 
               insertStmt = getInsertStmt(targetTable, tableSchema, nextLine) 
             
+            println("insert;;;"+insertStmt)
             stmt.addBatch(insertStmt)
             
             rowCount += 1

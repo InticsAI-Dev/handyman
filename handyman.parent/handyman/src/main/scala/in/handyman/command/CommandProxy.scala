@@ -35,9 +35,7 @@ object CommandProxy extends LazyLogging {
                 val iter = interim.iterator
                 while (iter.hasNext) {
                   val value = iter.next
-                  println("value1111:::" + value);
                   val result = ParameterisationEngine.resolve_without_processidrep(value, context)
-                  println("value1111:::result::::" + result);
                   output.add(result)
                 }
                 output
@@ -51,8 +49,6 @@ object CommandProxy extends LazyLogging {
                   .asInstanceOf[Expression]
                 logger.info("Invoking method in  action #{}", method.getName)
                 if (interim!=null && interim.getLhs != null && interim.getRhs != null) {
-                  println("varaibel222:::" + interim.getLhs);
-                  println("value2222:::" + interim.getRhs);
                   interim.setLhs(ParameterisationEngine.resolve(interim.getLhs, context))
                   interim.setRhs(ParameterisationEngine.resolve(interim.getRhs, context))
                 }
@@ -62,9 +58,7 @@ object CommandProxy extends LazyLogging {
           }
           case _ => {
             val inputString = method.invoke(proxee, args: _*).asInstanceOf[String]
-            println("varaibel333:::" + inputString);
             val result = ParameterisationEngine.resolve_without_processidrep(inputString, context)
-            println("varaibel333:::result::::" + result);
             result
           }
 
