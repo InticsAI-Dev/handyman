@@ -35,7 +35,6 @@ object CommandProxy extends LazyLogging {
                 val iter = interim.iterator
                 while (iter.hasNext) {
                   val value = iter.next
-                  println("varaibel111:::" + iter.next);
                   println("value1111:::" + value);
                   val result = ParameterisationEngine.resolve(value, context)
                   output.add(result)
@@ -43,7 +42,7 @@ object CommandProxy extends LazyLogging {
                 output
               }
             }
-          }
+          }  
           case "in.handyman.dsl.Expression" => {
             method.getName match {
               case "getCondition" => {
