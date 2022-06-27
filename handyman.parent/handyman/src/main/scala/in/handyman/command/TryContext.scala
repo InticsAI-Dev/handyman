@@ -12,10 +12,10 @@ class TryContext(var config: Map[String, String], val instanceName: String) exte
         val value = config.get(variable).get
         println("varaibel:::" + variable);
         println("value:::" + value);
-        if(!variable.equals("search_export_id"))
+        //if(!variable.equals("search_export_id"))
           ParameterisationEngine.resolve(value, this)
-        else
-          value
+        //else
+          //value
       }
       else
       {

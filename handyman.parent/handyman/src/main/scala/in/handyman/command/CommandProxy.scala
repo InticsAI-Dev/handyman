@@ -36,7 +36,8 @@ object CommandProxy extends LazyLogging {
                 while (iter.hasNext) {
                   val value = iter.next
                   println("value1111:::" + value);
-                  val result = ParameterisationEngine.resolve(value, context)
+                  val result = ParameterisationEngine.resolve_without_processidrep(value, context)
+                  println("value1111:::result::::" + result);
                   output.add(result)
                 }
                 output

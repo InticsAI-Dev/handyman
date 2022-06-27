@@ -19,6 +19,16 @@ object ParameterisationEngine {
     } else
       ""
   }
+  
+  def resolve_without_processidrep(inputString: String, context: Context): String = {
+    val configMap = context.getMe
+    val paramEngine = new StrSubstitutor(configMap)
+    if (inputString != null) {
+      val temp_output = paramEngine.replace(inputString)
+      temp_output
+    } else
+      ""
+  }
 
   def doYieldtoTrue(expression: in.handyman.dsl.Expression) = {
     expression match {
