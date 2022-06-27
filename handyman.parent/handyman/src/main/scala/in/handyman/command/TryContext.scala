@@ -10,7 +10,10 @@ class TryContext(var config: Map[String, String], val instanceName: String) exte
   def getValue(variable: String): String = {
       val output = if(config.contains(variable)) {
         val value = config.get(variable).get
-        ParameterisationEngine.resolve(value, this)
+        if(!variable.equals("search_export_id"))
+          ParameterisationEngine.resolve(value, this)
+        else
+          value
       }
       else
       {

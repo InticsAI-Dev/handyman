@@ -71,9 +71,11 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
     }catch {
       case ex: SQLException => {
         logger.error(s"LoadCSVIntoTable: SQL Exception", ex)
+        ex.printStackTrace()
       }
       case ex: Throwable => {
         logger.error(s"LoadCSVIntoTable: throwable exception", ex)
+        ex.printStackTrace()
       }
       case e: Exception => e.printStackTrace()
     } finally {
