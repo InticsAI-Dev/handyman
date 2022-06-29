@@ -33,7 +33,9 @@ class ShellAction extends in.handyman.command.Action with LazyLogging {
     
     detailMap.put("command", command)
     
-    command = command.replace("\\", "").replace("\"", "")
+    if(!command.startsWith("sed"))
+      command = command.replace("\\", "").replace("\"", "")
+    
     logger.info("Command to execute: " + command);
     
     val cmds : Array[String] = command.split(" ")

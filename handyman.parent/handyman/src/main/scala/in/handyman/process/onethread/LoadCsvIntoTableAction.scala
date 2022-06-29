@@ -137,24 +137,12 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
     var colList : StringBuilder = new StringBuilder()
     var colValList : StringBuilder = new StringBuilder()
     
-    println(values.mkString("::::"));
-    
     tableSchema.keySet().forEach(colName => {
       val colPos = csvSchema.get(colName)
       
       colList.append(colName).append(Constants.FIELD_SEPARATOR)
       
       println("Col Pos:: "+ colPos + " colName::" + colName + " colval:::" + values.apply(colPos))
-      
-      println("row start::::");
-      print(values(7)+"\t");
-      print(values(8)+"\t");
-		  print(values(24)+"\t");
-		  print(values(25)+"\t");
-		  print(values(49)+"\t");
-		  print(values(50)+"\t");
-		  println(values(51));
-		  println("row end::::");
       
       var colVal : String = values.apply(colPos).toString();
         
