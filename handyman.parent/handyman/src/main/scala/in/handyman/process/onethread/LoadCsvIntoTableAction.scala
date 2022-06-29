@@ -55,7 +55,6 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
             else 
               insertStmt = getInsertStmt(targetTable, tableSchema, nextLine) 
             
-            println("insert;;;"+insertStmt)
             stmt.addBatch(insertStmt)
             
             rowCount += 1
@@ -141,8 +140,6 @@ class LoadCsvIntoTableAction extends in.handyman.command.Action with LazyLogging
       val colPos = csvSchema.get(colName)
       
       colList.append(colName).append(Constants.FIELD_SEPARATOR)
-      
-      println("Col Pos:: "+ colPos + " colName::" + colName + " colval:::" + values.apply(colPos))
       
       var colVal : String = values.apply(colPos).toString();
         
