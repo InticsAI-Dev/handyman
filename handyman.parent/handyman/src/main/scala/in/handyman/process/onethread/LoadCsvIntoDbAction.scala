@@ -19,7 +19,7 @@ import in.handyman.util.ResourceAccess
 
 class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
   val detailMap = new java.util.HashMap[String, String]
-  val auditMarker = "DROPBOX";
+  val auditMarker = "LOADCSV";
   val aMarker = MarkerFactory.getMarker(auditMarker);
 
   def execute(context: Context, action: in.handyman.dsl.Action, actionId: Integer): Context = {
@@ -55,7 +55,7 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
     var dquery: String = ""
     var ct: String = ""
 
-    logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db)
+    logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, sqlList)
 
     val con = ResourceAccess.rdbmsConn(db)
     st = con.createStatement()
@@ -72,10 +72,12 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
         val column: String = convertArrayToInsertLine(firstLine, "`,`")
         ct = convertArrayToInsertLine(firstLine, "`VARCHAR(100),`")
         dquery = "drop table if exists `" + pid + "_" + fileName.replace(".csv", "") + "`;"
-        logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, dquery)
+        /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, dquery)*/
+        logger.info("LoadCsv id#{}, name#{}, from#{}, drop query using#{}", id, name, db, dquery)
         st.execute(dquery)
         cquery = "CREATE TABLE `" + pid + "_" + fileName.replace(".csv", "") + "` (" + "`" + ct + ");"
-        logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, cquery)
+        /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, cquery)*/
+        logger.info("LoadCsv id#{}, name#{}, from#{} using create query#{}", id, name, db, cquery)
         st.execute(cquery)
         while ({ nextLine = reader.readNext(); nextLine != null }) {
           values = convertArrayToInsertLine(nextLine, "','")
@@ -87,7 +89,12 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
           if (count % limit == 0) {
             iquery = "INSERT IGNORE INTO  `" + pid + "_" + fileName.replace(".csv", "") + "`  (" + "`" + column + ")" + "VALUES " + iquery
             iquery = iquery.substring(0, iquery.length() - 1) + ";"
-            logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)
+
+
+            /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)*/
+            if(count %(limit*400)==0){
+              logger.info("LoadCsv sending to db id#{}, name#{}, from#{}, batch count#{}", id, name, db, count.toString)
+            }
             st.execute(iquery)
             iquery = ""
             con.commit()
@@ -95,17 +102,20 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
         }
         iquery = "INSERT IGNORE INTO  `" + pid + "_" + fileName.replace(".csv", "") + "`  (" + "`" + column + ")" + "VALUES " + iquery
         iquery = iquery.substring(0, iquery.length() - 1) + ";"
-        logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)
+        /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)*/
+        logger.info("LoadCsv id#{}, name#{}, from#{}", id, name, db)
         st.execute(iquery)
         con.commit()
       } else if (fileName.contains(".tsv")) {
         val column: String = convertArrayToInsertLine(stoa, "`,`")
         ct = convertArrayToInsertLine(stoa, "`VARCHAR(100),`")
         dquery = "drop table if exists " + pid + "_" + fileName.replace(".tsv", "") + ";"
-        logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, dquery)
+        /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, dquery)*/
+        logger.info("LoadCsv id#{}, name#{}, from#{}", id, name, db)
         st.execute(dquery)
         cquery = "CREATE TABLE `" + pid + "_" + fileName.replace(".tsv", "") + "` (" + "`" + ct + ");"
-        logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, cquery)
+        /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, cquery)*/
+        logger.info("LoadCsv id#{}, name#{}, from#{}", id, name, db)
         st.execute(cquery)
 
         while ({ nextLine = reader.readNext(); nextLine != null }) {
@@ -120,7 +130,8 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
           if (count % limit == 0) {
             iquery = "INSERT IGNORE INTO  `" + pid + "_" + fileName.replace(".tsv", "") + "`  (" + "`" + column + ")" + "VALUES " + iquery
             iquery = iquery.substring(0, iquery.length() - 1) + ";"
-            logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)
+            /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)*/
+            logger.info("LoadCsv id#{}, name#{}, from#{}", id, name, db)
             st.execute(iquery)
             iquery = ""
             con.commit()
@@ -128,7 +139,8 @@ class LoadCsvIntoDbAction extends in.handyman.command.Action with LazyLogging {
         }
         iquery = "INSERT IGNORE INTO  `" + pid + "_" + fileName.replace(".tsv", "") + "`  (" + "`" + column + ")" + "VALUES " + iquery
         iquery = iquery.substring(0, iquery.length() - 1) + ";"
-        logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)
+        /*logger.info("LoadCsv id#{}, name#{}, from#{}, sqlList#{}", id, name, db, iquery)*/
+        logger.info("LoadCsv id#{}, name#{}, from#{}", id, name, db)
         st.execute(iquery)
         con.commit()
       } else {
