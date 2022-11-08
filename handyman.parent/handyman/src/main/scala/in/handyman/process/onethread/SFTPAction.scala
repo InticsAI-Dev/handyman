@@ -1,5 +1,7 @@
 package in.handyman.process.onethread
 
+import java.util.Properties
+
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
@@ -72,8 +74,14 @@ class SFTPAction extends in.handyman.command.Action with LazyLogging {
 
   def setupJsch(username : String, password : String, remoteHost : String, knownHosts : String) : ChannelSftp = {
     var jsch : JSch = new JSch();
-    jsch.setKnownHosts(knownHosts);
+    //jsch.setKnownHosts(knownHosts);
+    
+    // Avoid asking for key confirmation
+    var prop : Properties = new Properties();
+    prop.put("StrictHostKeyChecking", "no");
+            
     var jschSession : Session = jsch.getSession(username, remoteHost);
+    jschSession.setConfig(prop);
     jschSession.setPassword(password);
     jschSession.connect();
     return jschSession.openChannel("sftp").asInstanceOf[ChannelSftp];
