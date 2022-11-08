@@ -47,14 +47,14 @@ class WriteCsvAndTsvAction extends in.handyman.command.Action with LazyLogging {
     }
     while (ars.next()) {
       for (i <- 1 to ncols) {
-        var column: String = ""
+        var column: String = null
         
         var colObj : Object = ars.getObject(i)
 
         if (colObj != null) 
           column = colObj.toString();
                      
-        if (colObj.isInstanceOf[String]) {
+        if (colObj.isInstanceOf[String] && column != null) {
             column = "\"" + column.replaceAll("\"", "\"\"") + "\""
             //column = "\"" + column.replaceAll("[^a-zA-Z0-9-:.]", " ") + "\""
         }
