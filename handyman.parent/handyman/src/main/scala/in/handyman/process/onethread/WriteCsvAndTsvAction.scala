@@ -1,29 +1,17 @@
 package in.handyman.process.onethread
 
-import com.typesafe.scalalogging.LazyLogging
-import in.handyman.command.Action
-import in.handyman.command.Context
-import in.handyman.util.ResourceAccess
-import in.handyman.DslStandaloneSetup
-import in.handyman.server.PathResolver
-
-import in.handyman.command.TryContext
-import in.handyman.parser.antlr.DslParser
-import java.io.FileReader
-import in.handyman.server.ProcessExecutor
-import in.handyman.command.CommandProxy
-import in.handyman.server.ProcessAST
-import in.handyman.util.ParameterisationEngine
-import java.io.StringWriter
-import java.io.PrintWriter
-import in.handyman.util.ExceptionUtil
-import java.sql.SQLException
-import java.io.Writer
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.io.Writer
 import java.sql.ResultSet
+
+import com.typesafe.scalalogging.LazyLogging
+
+import in.handyman.command.CommandProxy
+import in.handyman.util.ParameterisationEngine
+import in.handyman.util.ResourceAccess
 
 class WriteCsvAndTsvAction extends in.handyman.command.Action with LazyLogging {
   val detailMap = new java.util.HashMap[String, String]
@@ -49,7 +37,6 @@ class WriteCsvAndTsvAction extends in.handyman.command.Action with LazyLogging {
 
     val fop: FileOutputStream = new FileOutputStream(to)
     val out: Writer = new OutputStreamWriter(new BufferedOutputStream(fop))
-    var column: String = ""
     if (!to.exists()) {
       to.createNewFile()
     }
@@ -60,10 +47,19 @@ class WriteCsvAndTsvAction extends in.handyman.command.Action with LazyLogging {
     }
     while (ars.next()) {
       for (i <- 1 to ncols) {
-        column = ars.getString(i)
-        if (column != null)
-          column = column.replaceAll("[^a-zA-Z0-9-:.]", " ")
-        out.append("\"" + column + "\"")
+        var column: String = ""
+        
+        var colObj : Object = ars.getObject(i)
+
+        if (colObj != null) 
+          column = colObj.toString();
+                     
+        if (colObj.isInstanceOf[String]) {
+            column = "\"" + column.replaceAll("\"", "\"\"") + "\""
+            //column = "\"" + column.replaceAll("[^a-zA-Z0-9-:.]", " ") + "\""
+        }
+                    
+        out.append(column)
         if (i < ncols) out.append(delim) else out.append("\r\n")
       }
     }
