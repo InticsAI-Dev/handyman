@@ -70,6 +70,7 @@ Action:
 	| NLPTextPreprocessing
 	| DropboxCleanup
 	| Mongo2Db
+	| Mongo2File
 	| SharePoint
 	| FTP
 	| SFTP
@@ -356,6 +357,13 @@ Mongo2Db:
 	'by-filter' filter=STRING 'by-batch' limit=STRING 'find-attribute' findAttr=STRING 'apply-manipulation' applyManipulation=STRING 
 	'on-updatekey' onUpdateKey=STRING 'with-fetch-batch-size' fetchBatchSize=STRING 'with-write-batch-size' writeBatchSize=STRING 
 	'transpose-table' transposeTable=STRING 'using'
+	'{'
+	value=SelectStatement
+	'}' 'on-condition' condition=Expression;
+	
+Mongo2File:
+	'mongo2file' 'as' name=STRING 'from' sourceConnStr=STRING 'to' to=STRING 'srcDb' sourceDb=STRING 'srcTable' sourceTable=STRING   
+	'by-filter' filter=STRING 'by-batch' limit=STRING 'with-fetch-batch-size' fetchBatchSize=STRING 'using'
 	'{'
 	value=SelectStatement
 	'}' 'on-condition' condition=Expression;

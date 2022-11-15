@@ -53,6 +53,7 @@ object CommandFactory {
       case "nlptextpreprocessing" => new NLPTextPreprocessingAction
       case "dropboxcleanup" => new DropboxCleanupAction
       case "mongo2db" => new Mongo2DbAction
+      case "mongo2file" => new Mongo2FileAction
       case "sharepoint" => new SharePointAction
       case "ftp" => new FTPAction
       case "sftp" => new SFTPAction
