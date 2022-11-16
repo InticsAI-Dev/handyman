@@ -188,10 +188,10 @@ class Mongo2FileAction extends in.handyman.command.Action with LazyLogging {
   }
   
   def executeIf(context: in.handyman.command.Context, action: in.handyman.dsl.Action): Boolean = {
-    val mongo2DbAsIs: in.handyman.dsl.Mongo2Db = action.asInstanceOf[in.handyman.dsl.Mongo2Db]
-    val mongo2Db: in.handyman.dsl.Mongo2Db = CommandProxy.createProxy(mongo2DbAsIs, classOf[in.handyman.dsl.Mongo2Db], context)
+    val mongo2FileAsIs: in.handyman.dsl.Mongo2File = action.asInstanceOf[in.handyman.dsl.Mongo2File]
+    val mongo2File: in.handyman.dsl.Mongo2File = CommandProxy.createProxy(mongo2FileAsIs, classOf[in.handyman.dsl.Mongo2File], context)
 
-    val expression = mongo2Db.getCondition
+    val expression = mongo2File.getCondition
     try {
       val output = ParameterisationEngine.doYieldtoTrue(expression)
       detailMap.putIfAbsent("condition-output", output.toString())
