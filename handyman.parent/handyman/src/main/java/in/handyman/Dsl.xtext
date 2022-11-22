@@ -148,10 +148,10 @@ Dropbox:
 	'}' 'on-condition' condition=Expression;
 
 S3:
-	's3' 'as' name=STRING 'db' db=STRING 'key' key=STRING 'token' token=STRING 'bucket' bucket=STRING 'type' type=STRING
-	'by-batch' limit=STRING 'using'
+	's3' 'as' name=STRING 'accesskey' accesskey=STRING 'secretkey' secretkey=STRING 'bucket' bucket=STRING 'contenttype' contentType=STRING
+	'file-path' filePath=STRING 'operation' operation=STRING 'key-name' keyName=STRING 'using'
 	'{'
-	value=SelectStatement
+	value=STRING
 	'}' 'on-condition' condition=Expression;
 
 ElasticFBCLead:
