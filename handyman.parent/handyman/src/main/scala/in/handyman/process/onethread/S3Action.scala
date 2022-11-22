@@ -5,10 +5,8 @@ import java.sql.SQLException
 
 import org.slf4j.MarkerFactory
 
-import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.typesafe.scalalogging.LazyLogging
@@ -16,6 +14,8 @@ import com.typesafe.scalalogging.LazyLogging
 import in.handyman.command.CommandProxy
 import in.handyman.command.Context
 import in.handyman.util.ParameterisationEngine
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.auth.AWSStaticCredentialsProvider
 
 class S3Action extends in.handyman.command.Action with LazyLogging {
   val detailMap = new java.util.HashMap[String, String]
@@ -35,10 +35,11 @@ class S3Action extends in.handyman.command.Action with LazyLogging {
     val contentType = s3.getContentType
     val filePath = s3.getFilePath
     val keyName = s3.getKeyName
+    val region = s3.getRegion
     var s3Client : AmazonS3 = null;
     try {
         val awsCreds : BasicAWSCredentials = new BasicAWSCredentials(accesskey, secretkey)
-			  s3Client = AmazonS3ClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build()
+			  s3Client = AmazonS3ClientBuilder.standard().withRegion(region).withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build()
         
         if(operation.equals("upload"))
             putObject(s3Client, bucket, keyName, filePath, contentType)
