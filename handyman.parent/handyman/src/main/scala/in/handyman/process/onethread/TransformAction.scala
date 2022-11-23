@@ -43,7 +43,7 @@ class TransformAction extends in.handyman.command.Action with LazyLogging {
         sqlList.foreach {sql1 =>
           var sql = sql1;
           println("sql....."+sql)
-          sql = sql.substring(1, sql.length()-1);
+          sql = sql.substring(1, sql.length());
           println("sql1....."+sql)
           if(sql.startsWith("skip-quote")){
             sql = sql.substring(10, sql.length());
