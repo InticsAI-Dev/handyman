@@ -347,7 +347,7 @@ LoadCsv:
 	'}' 'on-condition' condition=Expression;
 	
 Transform:
-	'transform' 'as' name=STRING 'on' on=STRING 'skip-quote' skipQuote=STRING 'using'
+	'transform' 'as' name=STRING 'on' on=STRING 'using'
 	'{'
 	value+=NonSelectStatement
 	'}' 'on-condition' condition=Expression;
