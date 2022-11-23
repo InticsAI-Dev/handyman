@@ -28,6 +28,7 @@ class TransformAction extends in.handyman.command.Action with LazyLogging {
     val name = transform.getName
     val id = context.getValue("process-id")
     val sqlList = transform.getValue
+    val skipQuote = transform.getSkipQuote
     logger.info(aMarker, "Transform id#{}, name#{}, dbSrc#{}, sqlList#{}", id, name, dbSrc)
     detailMap.put("dbSrc", dbSrc)
 
@@ -38,7 +39,10 @@ class TransformAction extends in.handyman.command.Action with LazyLogging {
     val iter = sqlList.iterator
     try {
       while (iter.hasNext) {
-        val sqlWithoutQuotes = iter.next.replaceAll("\"", "")
+        var sqlWithoutQuotes = iter.next
+        if(skipQuote != null && skipQuote.equals("false")){
+          sqlWithoutQuotes = sqlWithoutQuotes.replaceAll("\"", "")
+        }
         val sqlList = sqlWithoutQuotes.split(";")
         sqlList.foreach {sql1 =>
           var sql = sql1;
