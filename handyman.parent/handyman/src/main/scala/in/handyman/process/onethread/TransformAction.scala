@@ -39,14 +39,16 @@ class TransformAction extends in.handyman.command.Action with LazyLogging {
     try {
       while (iter.hasNext) {
         var sqlWithoutQuotes = iter.next
-        if(sqlWithoutQuotes.startsWith("skip-quote")){
-          sqlWithoutQuotes = sqlWithoutQuotes.substring(10, sqlWithoutQuotes.length());
-        }else{
-          sqlWithoutQuotes = sqlWithoutQuotes.replaceAll("\"", "")
-        }
         val sqlList = sqlWithoutQuotes.split(";")
         sqlList.foreach {sql1 =>
           var sql = sql1;
+          
+          if(sql.startsWith("skip-quote")){
+            sql = sql.substring(10, sql.length());
+          }else{
+            sql = sql.replaceAll("\"", "")
+          }
+          
           if(dbSrc.contains("mssql"))
             sql = sql + ";"
             
