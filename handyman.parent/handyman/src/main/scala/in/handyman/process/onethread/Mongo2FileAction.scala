@@ -71,6 +71,9 @@ class Mongo2FileAction extends in.handyman.command.Action with LazyLogging {
 	    		var suffix : String = "}";
 	    		
 	    		br.write(prefix+json+suffix);
+	    		
+	    		if(mongoCursor.hasNext())
+	    		  br.newLine();
 
           rowsProcessed = rowsProcessed + 1
         }
