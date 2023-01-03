@@ -8,6 +8,7 @@ import java.util.ArrayList
 import java.util.Date
 
 import org.bson.Document
+import org.bson.json.JsonWriterSettings
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -66,7 +67,12 @@ class Mongo2FileAction extends in.handyman.command.Action with LazyLogging {
         while (mongoCursor.hasNext()) {
           var doc: Document = mongoCursor.next();
           
-          var json : String = doc.toJson();
+          val settings : JsonWriterSettings = JsonWriterSettings.builder()
+                              	    				//.int64Converter((value, writer) => writer.writeNumber(value.toString()))
+                              	    				.doubleConverter((value, writer) => writer.writeNumber(java.lang.Long.toString(Math.round(value))))
+                              	    				//.objectIdConverter((value, writer) => writer.writeString(value.toHexString()))
+                              	    				.build();
+          var json : String = doc.toJson(settings);
 	    		var prefix : String = "{\"object_id\":\"" + doc.get("_id") + "\", \"document\":";
 	    		var suffix : String = "}";
 	    		
