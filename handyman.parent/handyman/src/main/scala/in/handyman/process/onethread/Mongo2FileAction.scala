@@ -68,7 +68,7 @@ class Mongo2FileAction extends in.handyman.command.Action with LazyLogging {
           var doc: Document = mongoCursor.next();
           
           val settings : JsonWriterSettings = JsonWriterSettings.builder()
-                              	    				//.int64Converter((value, writer) => writer.writeNumber(value.toString()))
+                              	    				.int64Converter((value, writer) => writer.writeNumber(value.toString()))
                               	    				.doubleConverter((value, writer) => writer.writeNumber(java.lang.Long.toString(Math.round(value))))
                               	    				//.objectIdConverter((value, writer) => writer.writeString(value.toHexString()))
                               	    				.build();
