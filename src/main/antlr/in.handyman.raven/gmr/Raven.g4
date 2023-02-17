@@ -105,7 +105,8 @@ action:
     |donutDocQa
     |intellimatch
     |scalarAdapter
-    |hwdetection);
+    |hwdetection
+    |checkboxVqa);
 
 
 multitude:
@@ -626,7 +627,19 @@ hwdetection:
      'modelPath' modelpath=STRING 'using'  '{' input=STRING '}'
      ('on-condition' condition=expression)* ;
 
-
+checkboxVqa:
+	  'checkbox-vqa' 'as' name=STRING
+      'result-table' resultTable=STRING
+      'audit-table' auditTable=STRING
+      'cad-model-path' cadModelPath=STRING
+      'cd-model-path' cdModelPath=STRING
+      'cr-model-path' crModelPath=STRING
+      'text-model' textModel=STRING
+      'cr-width' crWidth=STRING
+      'cr-height' crHeight=STRING
+      'output-dir' outputDir=STRING
+      'on-resource-conn' resourceConn=STRING
+      'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
 
 resource : STRING;
 
