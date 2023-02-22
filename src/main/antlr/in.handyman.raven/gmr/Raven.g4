@@ -107,7 +107,8 @@ action:
     |phraseMatchPaperFilter
     |zeroShotClassifierPaperFilter
     |dataExtraction
-    |assetInfo);
+    |assetInfo
+    |hwDetection);
 
 
 multitude:
@@ -644,6 +645,16 @@ dataExtraction:
 	'result-table' resultTable=STRING
 	'process-id' processId=STRING
 	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+hwDetection:
+    'hwDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'handwritten-table' handwrittenTable=STRING
+    'outputDir' directoryPath=STRING
+    'modelPath' modelPath=STRING
+    'using'  '{' querySet=STRING '}'
+    ('on-condition' condition=expression)* ;
+
 
 resource : STRING;
 

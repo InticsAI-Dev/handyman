@@ -840,6 +840,16 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitDataExtraction(RavenParser.DataExtractionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#hwDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterHwDetection(RavenParser.HwDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#hwDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitHwDetection(RavenParser.HwDetectionContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree
 	 */
