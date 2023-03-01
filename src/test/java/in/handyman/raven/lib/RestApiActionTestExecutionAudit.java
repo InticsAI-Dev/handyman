@@ -104,4 +104,13 @@ class RestApiActionTestExecutionAudit {
                 .build());
     }
 
+    @Test
+    public void hwTestSummoning() {
+        LContext request = LContext.builder()
+                .pipelineName("hw.urgency.triage.testing")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
 }
