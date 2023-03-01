@@ -890,6 +890,16 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitZipContentList(RavenParser.ZipContentListContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#hwUrgencyTriage}.
+	 * @param ctx the parse tree
+	 */
+	void enterHwUrgencyTriage(RavenParser.HwUrgencyTriageContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#hwUrgencyTriage}.
+	 * @param ctx the parse tree
+	 */
+	void exitHwUrgencyTriage(RavenParser.HwUrgencyTriageContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree
 	 */

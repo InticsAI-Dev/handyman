@@ -112,7 +112,8 @@ action:
     |userRegistration
     |authToken
     |eocJsonGenerator
-    |zipContentList);
+    |zipContentList
+    |hwUrgencyTriage);
 
 
 multitude:
@@ -692,6 +693,27 @@ zipContentList:
             'origin-id' originId=STRING
             'zip-file-path' zipFilePath=STRING
             'using'  '{' '}' ('on-condition' condition=expression)* ;
+
+hwUrgencyTriage:
+    'hwUrgencyTriage' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'binary-classifier-model-file-path' binaryClassifierModelFilePath=STRING
+    'multi-classifier-model-file-path' multiClassifierModelFilePath=STRING
+    'checkbox-classifier-model-file-path' checkboxClassifierModelFilePath=STRING
+    'synonyms' synonyms=STRING
+    'binary-classifier-labels' binaryClassifierLabels=STRING
+    'multi-classifier-labels' multiClassifierLabels=STRING
+    'checkbox-classifier-labels' checkboxClassifierLabels=STRING
+    'output-dir' outputDir=STRING
+    'binary-image-width' binaryImageWidth=STRING
+    'binary-image-height' binaryImageHeight=STRING
+    'multi-image-width' multiImageWidth=STRING
+    'multi-image-height' multiImageHeight=STRING
+    'checkbox-image-width' checkboxImageWidth=STRING
+    'checkbox-image-height' checkboxImageHeight=STRING
+    'using'  '{'
+        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 
 resource : STRING;
 
