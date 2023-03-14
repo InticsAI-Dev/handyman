@@ -104,7 +104,7 @@ public class IntellimatchAction implements IActionExecution {
                         resultQueue.add(result);
 
                     } else {
-                        insertSummaryAudit(jdbi, 0, 0, 1, "failed on" + result.getFileName());
+                        insertSummaryAudit(jdbi, 0, 0, 1, "failed on" + result.getOriginId());
                         throw new HandymanException(responseBody);
                     }
                 } catch (Throwable t) {
@@ -141,18 +141,15 @@ public class IntellimatchAction implements IActionExecution {
                         jdbi.useTransaction(handle -> {
                             try {
                                 Update update = handle.createUpdate(" INSERT INTO " + intellimatch.getMatchResult() +
-                                        " ( file_name, created_on, actual_value, extracted_value, similarity, levenshtein, perfect_match, text_match, intelli_match)" +
-                                        " VALUES( :fileName, NOW(), :actualValue, :extractedValue,  " +
+                                        " ( origin_id, paper_no,eoc_identifier,created_on, actual_value, extracted_value, similarity,levenshtein,intelli_match)" +
+                                        " VALUES( :originId,:paperNo,:eocIdentifier, NOW(), :actualValue, :extractedValue,  " +
                                         " similarity(lower(:actualValue),:extractedValue), " +
                                         " levenshtein(:actualValue,:extractedValue), " +
-                                        " (CASE WHEN lower(:actualValue)=:extractedValue THEN 'yes' ELSE 'no' end ), " +
-                                        " (CASE WHEN lower(:actualValue) like concat('%',:extractedValue,'%') THEN 'yes'" +
-                                        "                       WHEN lower(:actualValue) = :extractedValue THEN 'yes' ELSE 'no' end)," +
                                         "  :intelliMatch )");
                                 Update bindBean = update.bindBean(insert);
                                 bindBean.execute();
                             } catch (Throwable t) {
-                                insertSummaryAudit(jdbi, 0, 0, 1, "failed in bactch for " + insert.getFileName());
+                                insertSummaryAudit(jdbi, 0, 0, 1, "failed in bactch for " + insert.getOriginId());
                                 log.error(aMarker, "error inserting result {}", resultQueue, t);
                             }
                         });
@@ -215,13 +212,14 @@ public class IntellimatchAction implements IActionExecution {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MatchResultSet {
 
-        String fileName;
-        String actualValue;
+        String originId;
+        Integer paperNo;
+        String eocIdentifier;
         String extractedValue;
+        String actualValue;
         double similarity;
         double levenshtein;
-        String perfectMatch;
-        String textMatch;
+
         double intelliMatch;
     }
 }
