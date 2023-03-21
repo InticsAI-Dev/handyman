@@ -117,6 +117,7 @@ action:
     |intellimatch
     |checkboxVqa
     |hwUrgencyTriage
+    |masterdataComparison
     |qrExtraction);
 
 
@@ -718,6 +719,13 @@ intellimatch:
      'match-result' matchResult=STRING
      'audit-table' auditTable=STRING
      'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+
+masterdataComparison:
+    'masterdataComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'match-result' matchResult=STRING
+    'audit-table' auditTable=STRING
+    'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
 
 checkboxVqa:
     'checkbox-vqa' 'as' name=STRING
