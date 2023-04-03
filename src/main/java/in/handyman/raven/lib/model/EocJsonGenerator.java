@@ -26,7 +26,15 @@ public class EocJsonGenerator implements IActionContext {
 
   private String resourceConn;
 
-  private String querySet;
+  private String documentId;
+
+  private String eocId;
+
+  private String originId;
+
+  private String groupId;
+
+  private String authtoken;
 
   private Boolean condition = true;
 }
