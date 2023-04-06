@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.agadia.eocsplitting.EocIdCoverage;
 import in.handyman.raven.lib.agadia.eocsplitting.QrCodeCoverage;
 import in.handyman.raven.lib.agadia.eocsplitting.SorItemCoverage;
+import in.handyman.raven.lib.agadia.eocsplitting.OriginCoverage;
 import in.handyman.raven.lib.model.EpisodeOfCoverage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -85,6 +86,13 @@ public class EpisodeOfCoverageAction implements IActionExecution {
             OutputQueryExecutor(jdbi, "PND", patientNamePageNumbers);
             log.info("patient instance checked for patient_name and patient_dob from aggregation and the output result is {}", patientNamePageNumbers);
 
+            if(patientNamePageNumbers.isEmpty()){
+              log.info("patient instance check for origin id from aggregation");
+              OriginCoverage originCoverage = new OriginCoverage(log, episodeOfCoverage, aMarker, action);
+              Map<String, List<Integer>> originIdPageNumbers = originCoverage.aggregateByOrigin(jdbi, episodeOfCoverage.getOriginId()) ;
+              OutputQueryExecutor(jdbi, "NID", originIdPageNumbers);
+              log.info("patient instance checked for no id from aggregation and the output result is {}", originIdPageNumbers);
+            }
           }
 
         }
