@@ -52,7 +52,7 @@ public class OriginCoverage {
         try {
             String fileIdQuery = "SELECT file_id from info.source_of_origin where origin_id = '" + originId + "'";
             final String fileId = jdbi.withHandle(handle -> handle.createQuery(fileIdQuery).mapTo(String.class).one());
-            String fileNameQuery = "SELECT file_name from info.asset where origin_id = '" + fileId + "'";
+            String fileNameQuery = "SELECT file_name from info.asset where file_id = '" + fileId + "'";
             return jdbi.withHandle(handle -> handle.createQuery(fileNameQuery).mapTo(String.class).one());
         } catch (Exception e) {
             throw new HandymanException(String.valueOf(e));
