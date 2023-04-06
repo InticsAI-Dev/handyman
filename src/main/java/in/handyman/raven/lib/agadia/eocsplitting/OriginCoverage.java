@@ -42,7 +42,7 @@ public class OriginCoverage {
     private List<Integer> getPaperNos(Integer maxPaperNo) {
         List<Integer> paperNoList = new ArrayList<>();
         final int startPage = 1;
-        for (int index = startPage; index < maxPaperNo; index++) {
+        for (int index = startPage; index <= maxPaperNo; index++) {
             paperNoList.add(index);
         }
         return paperNoList;
