@@ -155,10 +155,10 @@ public class IntellimatchAction implements IActionExecution {
                         jdbi.useTransaction(handle -> {
                             try {
                                 Update update = handle.createUpdate(" INSERT INTO " + intellimatch.getMatchResult() +
-                                        " ( file_name, created_on,origin_id,group_id,root_pipeline_id,actual_value,extracted_value, similarity, levenshtein, perfect_match, text_match, intelli_match)" +
+                                        " ( file_name, created_on,origin_id,group_id,root_pipeline_id,actual_value,extracted_value, similarity, confidence_score, perfect_match, text_match, intelli_match)" +
                                         " VALUES(:fileName,:createdOn,:originId,:groupId,:rootpipelineId,:actualValue,:extractedValue," +
                                         " similarity(lower(:actualValue),lower(:extractedValue)), " +
-                                        " levenshtein(:actualValue,:extractedValue), " +
+                                        " :confidenceScore, " +
                                         " (CASE WHEN lower(:actualValue)=lower(:extractedValue) THEN 'yes' ELSE 'no' end ), " +
                                         " (CASE WHEN lower(:actualValue) like concat('%',lower(:extractedValue),'%') THEN 'yes'" +
                                         "                       WHEN lower(:actualValue) = lower(:extractedValue) THEN 'yes' ELSE 'no' end)," +
@@ -241,7 +241,7 @@ public class IntellimatchAction implements IActionExecution {
         String actualValue;
         String extractedValue;
         double similarity;
-        double levenshtein;
+        Integer confidenceScore;
         String perfectMatch;
         String textMatch;
         double intelliMatch;
