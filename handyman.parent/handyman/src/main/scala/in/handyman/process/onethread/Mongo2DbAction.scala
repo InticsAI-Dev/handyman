@@ -278,8 +278,8 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
       var colValStr = colVal.toString()
 
       if ((colVal.isInstanceOf[Integer] || colVal.isInstanceOf[Double])) {
-        if (!colValStr.equals(""))
-          queryAppend = queryAppend + colValStr + ","
+        if (!colValStr.trim().isEmpty())
+          queryAppend = queryAppend + colValStr.trim() + ","
         else
           queryAppend = queryAppend + null + ","
       } else if ((colVal.isInstanceOf[java.util.ArrayList[_]])) {
@@ -318,9 +318,9 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
           queryAppend = queryAppend + null + ","
         }
       } else if (colVal.isInstanceOf[Date]) {
-        colValStr = formatDate(colVal);
-        if (colValStr != null && !colValStr.isEmpty()) {
-          queryAppend = queryAppend + colValStr + ","
+        if (!colValStr.trim().isEmpty()) {
+          colValStr = formatDate(colVal);
+          queryAppend = queryAppend + colValStr.trim() + ","
         } else {
           queryAppend = queryAppend + "''" + ","
         }
