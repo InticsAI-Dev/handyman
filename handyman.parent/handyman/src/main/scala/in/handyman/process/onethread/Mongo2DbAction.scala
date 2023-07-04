@@ -128,7 +128,7 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
             }
             logger.info("Mongodbsql (Nqne) id#{}, name#{}, from#{}, rows#{}", id, name, source, rowsProcessed.toString)
 
-            System.out.println(insert)
+            //System.out.println(insert)
             mongo2DbStmtto.execute(insert)
 
             mongo2DbDbConnto.commit()
@@ -278,7 +278,7 @@ class Mongo2DbAction extends in.handyman.command.Action with LazyLogging {
       var colValStr = colVal.toString()
 
       if ((colVal.isInstanceOf[Integer] || colVal.isInstanceOf[Double])) {
-        if (!colValStr.trim().isEmpty())
+        if (!colValStr.trim().isEmpty() && !colValStr.trim().equals("NaN"))
           queryAppend = queryAppend + colValStr.trim() + ","
         else
           queryAppend = queryAppend + null + ","
