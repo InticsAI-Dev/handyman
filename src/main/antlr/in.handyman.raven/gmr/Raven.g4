@@ -135,6 +135,8 @@ action:
     |alchemyAuthToken
     |alchemyResponse
     |productResponse
+    |tableExtraction
+    |fileMergerPdf
     );
 
 
@@ -922,6 +924,24 @@ productResponse:
     'using'  '{'
      querySet=STRING
     '}'('on-condition' condition=expression)*;
+tableExtraction:
+    'tableExtarction' 'as' name=STRING
+	'output-Dir' outputDir=STRING
+	'resource-conn' resourceConn=STRING
+	'result-Table' resultTable=STRING
+	'process-id' processId=STRING
+	'using'  '{'
+	 querySet=STRING
+	'}'('on-condition' condition=expression)*;
+fileMergerPdf:
+    'fileMergerPdf' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'output-dir' outputDir=STRING
+    'output-table' outputTable=STRING
+    'using'  '{' querySet=STRING
+    '}' ('on-condition' condition=expression)*  ;
+
+
 
 //rules
 resource : STRING;
