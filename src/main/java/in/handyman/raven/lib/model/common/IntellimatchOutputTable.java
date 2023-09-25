@@ -34,6 +34,8 @@ import java.util.stream.Stream;
         private String message;
         private String modelName;
         private String modelVersion;
+        private String sentence;
+
 
 
         @Override
