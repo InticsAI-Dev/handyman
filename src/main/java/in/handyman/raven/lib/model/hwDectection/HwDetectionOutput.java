@@ -16,5 +16,5 @@ public class HwDetectionOutput {
         private String name;
         private String datatype;
         private List<Integer> shape;
-        private List<HwDetectionDataItem> data;
+        private List<String> data;
 }
