@@ -45,7 +45,7 @@ class AutoRotationActionTest {
                 .resourceConn("intics_agadia_db_conn")
                 .outputDir("/data/output")
                 .condition(true)
-                .querySet("SELECT 'INT-1' as origin_id,1 as group_id,'/data/output/pdf_to_image/SYNT_166838894_c1/SYNT_166838894_c1_1.jpg' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,12345 as process_id,1 as root_pipeline_id")
+                .querySet("SELECT 'INT-1' as origin_id,1 as group_id,'/data/input/test.jpeg' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,12345 as process_id,1 as root_pipeline_id")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
