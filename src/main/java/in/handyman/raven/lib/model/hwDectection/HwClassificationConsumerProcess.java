@@ -50,7 +50,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         final String PAPER_CLASSIFICATION_PROCESS="PAPER_CLASSIFICATION";
         long rootpipelineId= entity.getRootPipelineId();
         String modelPath = action.getModelPath();
-        String filePath = String.valueOf(entity.getFilePath());
         String outputDir = String.valueOf(entity.getOutputDir());
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -59,7 +58,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         HwDetectionpayload.setRootPipelineId(Long.valueOf(rootpipelineId));
         HwDetectionpayload.setActionId(actionId);
         HwDetectionpayload.setProcess(PAPER_CLASSIFICATION_PROCESS);
-        HwDetectionpayload.setInputFilePath(filePath);
+        HwDetectionpayload.setInputFilePath(entityFilePath);
         HwDetectionpayload.setOutputDir(outputDir);
         HwDetectionpayload.setModelPath(modelPath);
 
@@ -73,9 +72,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
-        //requestBody.setData(Collections.singletonList(jsonNodeRequest));
-
-        //   requestBody.setData(Collections.singletonList(HwDetectionpayload));
 
         TritonInputRequest tritonInputRequest=new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
@@ -83,7 +79,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
 
         Request request = new Request.Builder().url(endpoint)
-                .post(RequestBody.create(jsonRequest.toString(), MediaTypeJSON)).build();
+                .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
 
         if(log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} modelPath  {}  outputDir {} ", endpoint,entityFilePath,modelPath,outputDir);

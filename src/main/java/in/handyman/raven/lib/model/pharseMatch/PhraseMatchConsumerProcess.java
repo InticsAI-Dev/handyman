@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.pharseMatch;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -47,22 +48,30 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
+        String pageContent = String.valueOf(entity.getPageContent());
+
+
         ObjectMapper objectMapper = new ObjectMapper();
+        Map<String,List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
+        });
+
+
 
 
 
         //payload
         PharseMatchData data = new PharseMatchData();
-        data.setRootPipelineId("1");
+        data.setRootPipelineId(pipelineId);
         data.setActionId(actionId);
         data.setProcess(entity.getProcessId());
         data.setOriginId(originId);
         data.setPaperNo(paperNo);
+        data.setPageContent(pageContent);
+        data.setKeysToFilter(keysToFilterObject);
         data.setGroupId(groupId);
 
         String jsonInputRequest = objectMapper.writeValueAsString(data);
 
-        PharseMatchRequest requests = new PharseMatchRequest();
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("PM START");
         requestBody.setShape(List.of(1, 1));
@@ -72,15 +81,15 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
         TritonInputRequest tritonInputRequest=new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
+        String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
 
-        String jsonRequest = objectMapper.writeValueAsString(requests);
 
         try {
             String truthPlaceholder = entity.getTruthPlaceholder();
 
             log.info(aMarker, " Input variables id : {}", action.getActionId());
             Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonRequest.toString(), MediaTypeJSON)).build();
+                    .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
 
             if (log.isInfoEnabled()) {
                 log.info(aMarker, "Input variables id : {}", actionId);

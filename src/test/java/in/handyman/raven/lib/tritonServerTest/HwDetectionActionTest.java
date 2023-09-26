@@ -37,12 +37,12 @@ class HwDetectionActionTest {
                 .resourceConn("intics_agadia_db_conn")
                 .directoryPath("/data/output")
                 .modelPath("")
-                .querySet("SELECT 'INT-1' as originId, '1234567' as preprocessedFileId, 1 as paperNo,'/data/input/elixir-2page/SYNT_166838894_c1.pdf'  as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as modelScore, 123 as modelRegistryId;")
+                .querySet("SELECT 'INT-1' as originId,1 as rootPipelineId,'1234567' as preprocessedFileId, 1 as paperNo,'/data/input/test_qr.jpg' as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as modelScore, 123 as modelRegistryId;")
                 .build();
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
-        action.getContext().put("copro.hw-detection.url", "http://localhost:8600/v2/models/paper-classifier-service/versions/1/infer");
+        action.getContext().put("copro.hw-detection.url", "http://192.168.10.245:8600/v2/models/paper-classifier-service/versions/1/infer");
         action.getContext().put("read.batch.size", "1");
         action.getContext().put("paper.classification.consumer.API.count", "1");
         action.getContext().put("write.batch.size", "1");
