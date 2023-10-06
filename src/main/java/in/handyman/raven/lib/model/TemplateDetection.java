@@ -37,4 +37,5 @@ public class TemplateDetection implements IActionContext {
   private String querySet;
 
   private Boolean condition = true;
+
 }

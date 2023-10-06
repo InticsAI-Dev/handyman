@@ -46,7 +46,7 @@ public class NervalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Nervalidator:" + this.nervalidator.getName());
     }
 
-    int getNerScore(Validator adapter, String uri) {
+    public int getNerScore(Validator adapter, String uri) {
         int confidenceScore = 0;
         try {
             boolean alphaValidator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);

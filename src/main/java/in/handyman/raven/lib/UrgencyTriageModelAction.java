@@ -2,25 +2,20 @@
 
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.UrgencyTriageModel;
+import in.handyman.raven.lib.model.triton.TritonInputRequest;
+import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.utModel.*;
 import in.handyman.raven.util.ExceptionUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -35,7 +30,6 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 /**
@@ -47,9 +41,10 @@ import java.util.stream.Stream;
 public class UrgencyTriageModelAction implements IActionExecution {
   private final ActionExecutionAudit action;
   private final Logger log;
-  private static UrgencyTriageModel urgencyTriageModel = new UrgencyTriageModel();
+  public static UrgencyTriageModel urgencyTriageModel = new UrgencyTriageModel();
   private final Marker aMarker;
   private final String URI;
+
 
   public UrgencyTriageModelAction(final ActionExecutionAudit action, final Logger log,
                                   final Object UrgencyTriageModel) {
@@ -67,8 +62,8 @@ public class UrgencyTriageModelAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(urgencyTriageModel.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       log.info(aMarker, "Urgency Triage Action for {} has been started", urgencyTriageModel.getName());
-      final String insertQuery = "INSERT INTO urgency_triage.ut_model_result(created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id)" +
-              "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?)";
+      final String insertQuery = "INSERT INTO urgency_triage.ut_model_result(created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version)" +
+              "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?)";
       final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.urgency-triage-model.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
           return new URL(s1);
@@ -101,180 +96,6 @@ public class UrgencyTriageModelAction implements IActionExecution {
     return urgencyTriageModel.getCondition();
   }
 
-  public static class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProcess<UrgencyTriageInputTable, UrgencyTriageOutputTable> {
-    private final Logger log;
-    private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final MediaType MediaTypeJSON = MediaType
-            .parse("application/json; charset=utf-8");
-    public final ActionExecutionAudit action;
-    final OkHttpClient httpclient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.MINUTES)
-            .writeTimeout(10, TimeUnit.MINUTES)
-            .readTimeout(10, TimeUnit.MINUTES)
-            .build();
-
-    public UrgencyTriageConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
-      this.log = log;
-      this.aMarker = aMarker;
-      this.action = action;
-    }
-
-    @Override
-    public List<UrgencyTriageOutputTable> process(URL endpoint, UrgencyTriageInputTable entity) throws Exception {
-
-      List<UrgencyTriageOutputTable> parentObj = new ArrayList<>();
-      final ObjectNode objectNode = mapper.createObjectNode();
-      String inputFilePath = entity.getInputFilePath();
-      String outputDir = urgencyTriageModel.getOutputDir();
-      Long actionId= action.getActionId();
-      Long rootpipelineId= entity.getRootPipelineId();
-      final String UT_MODEL_PROCESS="URGENCY_TRIAGE_MODEL";
 
 
-      objectNode.put("inputFilePath", inputFilePath);
-      objectNode.put("outputDir", outputDir);
-
-      //added rootpipelineId,actionId,process to the object node
-      objectNode.put("rootPipelineId",rootpipelineId);
-      objectNode.put("actionId",actionId);
-      objectNode.put("process",UT_MODEL_PROCESS);
-      
-      log.info("request builder object node {}",objectNode);
-
-      Request request = new Request.Builder().url(endpoint)
-              .post(RequestBody.create(objectNode.toString(), MediaTypeJSON)).build();
-
-      if(log.isInfoEnabled()) {
-        log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} ,outputDir {} ", endpoint,inputFilePath,outputDir);
-      }
-
-      String createdUserId = entity.getCreatedUserId();
-      String lastUpdatedUserId = entity.getLastUpdatedUserId();
-      Long tenantId = entity.getTenantId();
-      Long processId = entity.getProcessId();
-      Integer groupId = entity.getGroupId();
-      String originId = entity.getOriginId();
-      Integer paperNo = entity.getPaperNo();
-      String templateId = entity.getTemplateId();
-      String modelId = entity.getModelId();
-      try (Response response = httpclient.newCall(request).execute()) {
-        final String responseBody = Objects.requireNonNull(response.body()).string();
-        if (response.isSuccessful()) {
-          log.info("Response Details: {}",response);
-          final String paperType = Optional.ofNullable(mapper.readTree(responseBody).get("paper_type")).map(JsonNode::asText).orElse(null);
-          final Long confidenceScore = Optional.ofNullable(mapper.readTree(responseBody).get("confidence_score")).map(JsonNode::asLong).orElse(null);
-          final String bboxes = Optional.ofNullable(mapper.readTree(responseBody).get("bboxes")).map(JsonNode::toString).orElse(null);
-          parentObj.add(UrgencyTriageOutputTable.builder()
-                  .createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
-                  .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
-                  .tenantId(Optional.ofNullable(tenantId).map(Long::valueOf).orElse(null))
-                  .processId(Optional.ofNullable(processId).map(String::valueOf).map(Long::parseLong).orElse(null))
-                  .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                  .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                  .paperNo(Optional.ofNullable(paperNo).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                  .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
-                  .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                  .utResult(paperType)
-                  .confScore(confidenceScore)
-                  .bbox(bboxes)
-                  .status("COMPLETED")
-                  .stage("URGENCY_TRIAGE_MODEL")
-                  .message("Urgency Triage Finished")
-                  .rootPipelineId(entity.rootPipelineId)
-                  .build());
-          log.info(aMarker, "Execute for urgency triage {}",response);
-        } else {
-          parentObj.add(UrgencyTriageOutputTable.builder()
-                  .createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
-                  .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
-                  .tenantId(Optional.ofNullable(tenantId).map(String::valueOf).map(Long::valueOf).orElse(null))
-                  .processId(Optional.ofNullable(processId).map(String::valueOf).map(Long::parseLong).orElse(null))
-                  .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                  .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                  .paperNo(Optional.ofNullable(paperNo).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                  .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
-                  .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                  .status("FAILED")
-                  .stage("URGENCY_TRIAGE_MODEL")
-                  .message(response.message())
-                  .rootPipelineId(entity.rootPipelineId)
-                  .build());
-          log.error(aMarker, "The Exception occurred in urgency triage {}",response);
-        }
-      } catch (Exception e) {
-        parentObj.add(UrgencyTriageOutputTable.builder()
-                .createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
-                .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
-                .tenantId(Optional.ofNullable(tenantId).map(String::valueOf).map(Long::valueOf).orElse(null))
-                .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                .processId(Optional.ofNullable(processId).map(String::valueOf).map(Long::parseLong).orElse(null))
-                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                .paperNo(Optional.ofNullable(paperNo).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
-                .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Integer::parseInt).orElse(null))
-                .status("FAILED")
-                .stage("URGENCY_TRIAGE_MODEL")
-                .message(ExceptionUtil.toString(e))
-                .rootPipelineId(entity.rootPipelineId)
-                .build());
-        log.error(aMarker, "The Exception occurred in urgency triage", e);
-        HandymanException handymanException = new HandymanException(e);
-        HandymanException.insertException("Exception occurred in urgency triage model action for group id - "+ groupId+ " and originId - "+ originId, handymanException, this.action);
-      }
-      return parentObj;
-    }
-  }
-
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @Data
-  @Builder
-  public static class UrgencyTriageInputTable implements CoproProcessor.Entity {
-    private String createdUserId;
-    private String lastUpdatedUserId;
-    private Long tenantId;
-    private Long processId;
-    private Integer groupId;
-    private String originId;
-    private Integer paperNo;
-    private String templateId;
-    private String modelId;
-    private String inputFilePath;
-    private Long rootPipelineId;
-
-    @Override
-    public List<Object> getRowData() {
-      return null;
-    }
-  }
-
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @Data
-  @Builder
-  public static class UrgencyTriageOutputTable implements CoproProcessor.Entity {
-    private String createdUserId;
-    private String lastUpdatedUserId;
-    private Long processId;
-    private Integer groupId;
-    private Long tenantId;
-    private Long confScore;
-    private String originId;
-    private Integer paperNo;
-    private String templateId;
-    private Integer modelId;
-    private String status;
-    private String stage;
-    private String message;
-    private String utResult;
-    private String bbox;
-    private Long rootPipelineId;
-
-    @Override
-    public List<Object> getRowData() {
-      return Stream.of(this.createdUserId, this.lastUpdatedUserId, this.processId, this.groupId, this.tenantId, this.confScore,
-              this.originId, this.paperNo, this.templateId, this.modelId, this.status, this.stage, this.message, this.utResult, this.bbox, this.rootPipelineId).collect(Collectors.toList());
-    }
-  }
 }

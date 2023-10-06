@@ -135,6 +135,16 @@ action:
     |alchemyAuthToken
     |alchemyResponse
     |productResponse
+    |tableExtraction
+    |mailServer
+    |alchemyKvpResponse
+    |alchemyTableResponse
+    |productOutboundZipfile
+    |mailServer
+    |fileMergerPdf
+    |zipFileCreationOutbound
+    |outboundKvpResponse
+    |outboundTableResponse
     );
 
 
@@ -918,12 +928,99 @@ productResponse:
     'productResponse' 'as' name=STRING
     'tenantId' tenantId=STRING
     'auth-token' token=STRING
+    'result-table' resultTable=STRING
     'on-resource-conn' resourceConn=STRING
     'using'  '{'
      querySet=STRING
     '}'('on-condition' condition=expression)*;
 
+
+tableExtraction:
+	'tableExtraction' 'as' name=STRING
+	'outputDir' outputDir=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+mailServer:
+	'mailServer' 'as' name=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+alchemyKvpResponse:
+    'alchemyKvpResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+alchemyTableResponse:
+    'alchemyTableResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+productOutboundZipfile:
+    'productOutboundZipfile' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'outputdirectory' outputDir=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+fileMergerPdf:
+    'file-merger-pdf' 'as' name=STRING
+    'result-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'output-directory' outputDir=STRING
+    'using' '{'
+        		querySet=STRING
+        	'}' ('on-condition' condition=expression)* ;
+
+
+zipFileCreationOutbound:
+    'outbound-Zipfile' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'outputdirectory' outputDir=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+outboundKvpResponse:
+    'outboundKvpResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+outboundTableResponse:
+    'outboundTableResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
 //rules
+
 resource : STRING;
 fragment DIGIT : [0-9];
 fragment NON_Z_DIGIT : [1-9];

@@ -390,7 +390,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
     public void insertExceptionLog(ActionExecutionAudit actionExecutionAudit, Throwable exception, String message) {
         HandymanExceptionAuditDetails exceptionAuditDetails = HandymanExceptionAuditDetails.builder()
-                .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
+          //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())
                 .rootPipelineName(actionExecutionAudit.getParentPipelineName())
                 .pipelineName(actionExecutionAudit.getPipelineName())

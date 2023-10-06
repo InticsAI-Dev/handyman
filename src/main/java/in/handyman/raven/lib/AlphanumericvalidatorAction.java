@@ -38,7 +38,7 @@ public class AlphanumericvalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Alphanumericvalidator:" + this.alphanumericvalidator.getName());
     }
 
-    int getAlphaNumericScore(Validator adapter) {
+    public int getAlphaNumericScore(Validator adapter) {
         try {
             boolean validator = alphaNumericAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;

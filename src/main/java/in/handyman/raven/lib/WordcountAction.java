@@ -38,7 +38,7 @@ public class WordcountAction implements IActionExecution {
 
     }
 
-    int getWordCount(String input, int countLimit, int threshold) {
+    public int getWordCount(String input, int countLimit, int threshold) {
         try {
             int wordCount = wordCountAdapter.getThresholdScore(input);
             return wordCount <= countLimit ? threshold : 0;

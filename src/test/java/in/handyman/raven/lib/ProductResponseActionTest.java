@@ -1,5 +1,8 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.ProductResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +10,8 @@ import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
@@ -65,5 +70,24 @@ class ProductResponseActionTest {
         productResponseAction.execute();
 //        }
 
+    }
+
+    @Test
+    void jsonNodeTest() throws JsonProcessingException {
+        final ObjectMapper mapper = new ObjectMapper();
+        JSONObject parentResponse = new JSONObject("{\"csvTablesPath\": [{\"rcnn_padd.cm1882524_0_0\": \"/home/logesh.b@zucisystems.com/workspace/dev/intics-agadia/pipeline/data/output/2/table_extraction/1392/INT-3/139147003665780118/tabel-extraction/CM1882524/rcnn_padd/CM1882524_0_0.csv\"}], \"tableResponse\": {\"payload\": [{\"encode\": \"\", \"tableData\": {\"columns\": [0, 1, 2, 3, 4, 5], \"data\": [[\"ITEMNUMBER\", \"DESCRIPTION\", \"QTY\", \"U/M\", \"UNITPRICE\", \"EXTPRICE\"], [\"SAN1735790\", \"MARKER,SHARPIE,UF,RT,BK refused. no paperwork.\", \"-1\", \"DZ\", \"8.65\", \"-8.65\"]]}}]}}");
+        JSONArray filePathArray = new JSONArray(parentResponse.get("csvTablesPath").toString());
+        JsonNode jsonNode = mapper.readTree(parentResponse.toString());
+        JsonNode tableResponse = jsonNode.get("tableResponse").get("payload").get(0);
+        System.out.println(filePathArray);
+        System.out.println(tableResponse);
+
+    }
+
+    @Test
+    void tableData() throws JsonProcessingException {
+        final ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonNode = mapper.readTree("{\"payload\":[{\"encode\":\"\",\"tableData\":{\"data\":[[\"ITEMNUMBER\",\"DESCRIPTION\",\"QTY\",\"U/M\",\"UNITPRICE\",\"EXTPRICE\"],[\"SAN1735790\",\"MARKER,SHARPIE,UF,RT,BK refused. no paperwork.\",\"-1\",\"DZ\",\"8.65\",\"-8.65\"]],\"columns\":[0,1,2,3,4,5]}}]}");
+        System.out.println(mapper.writeValueAsString(jsonNode.get("payload").get(0).get("tableData")));
     }
 }

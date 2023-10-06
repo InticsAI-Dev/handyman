@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.autoRotation.AutoRotationInputTable;
+import in.handyman.raven.lib.model.autoRotation.AutoRotationOutputTable;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.UniqueID;
 import okhttp3.*;

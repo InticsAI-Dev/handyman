@@ -39,7 +39,7 @@ public class NumericvalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Numericvalidator:" + this.numericvalidator.getName());
     }
 
-    int getNumericScore(Validator adapter) {
+    public int getNumericScore(Validator adapter) {
         try {
             boolean validator = numericAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;

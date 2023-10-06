@@ -160,7 +160,8 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setState(entity.getState());
             }
             if(feature.equals("TABLE_EXTRACT")){
-                alchemyRequestTable.setTableData(mapper.readTree(entity.getTableData()));
+                JsonNode tableNode = mapper.readTree(entity.getTableData());
+                alchemyRequestTable.setTableData(tableNode);
             }
 
 

@@ -37,6 +37,7 @@ public class ActionExecutionAudit extends AbstractAudit implements IAction {
     private String actionName;
 
     private String macroName;
+    private String modelPath;
 
     private Long pipelineId;
     private JsonNode input;

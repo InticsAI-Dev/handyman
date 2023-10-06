@@ -1,7 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -9,7 +7,10 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.AutoRotation;
-import okhttp3.*;
+import in.handyman.raven.lib.model.autoRotation.AutoRotationConsumerProcess;
+import in.handyman.raven.lib.model.autoRotation.AutoRotationInputTable;
+import in.handyman.raven.lib.model.autoRotation.AutoRotationOutputTable;
+import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -20,9 +21,11 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -44,8 +47,8 @@ public class AutoRotationAction implements IActionExecution {
     public static final String INSERT_INTO = "INSERT INTO";
     public static final String DEFAULT_INFO_SCHEMA_NAME = "info";
     public static final String AUTO_ROTATION = "auto_rotation";
-    public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id";
-    public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
+    public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version";
+    public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     public static final String READ_BATCH_SIZE = "read.batch.size";
     public static final String COPRO_AUTOROTATION_URL1 = "copro.autorotation.url";
     private final int threadSleepTime;
@@ -58,7 +61,7 @@ public class AutoRotationAction implements IActionExecution {
     private final String outputDir;
     private final String insertQuery;
 
-    private  int timeout;
+    private int timeout;
 
     private final ActionExecutionAudit action;
     private final Logger log;
@@ -77,10 +80,10 @@ public class AutoRotationAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" AutoRotation:" + this.autoRotation.getName());
         this.URI = action.getContext().get(COPRO_AUTOROTATION_URL);
         String socketTimeStr = action.getContext().get(COPRO_CLIENT_SOCKET_TIMEOUT);
-        socketTimeStr = socketTimeStr!=null && socketTimeStr.trim().length()>0?socketTimeStr: DEFAULT_SOCKET_TIME_OUT;
+        socketTimeStr = socketTimeStr != null && socketTimeStr.trim().length() > 0 ? socketTimeStr : DEFAULT_SOCKET_TIME_OUT;
         this.timeout = Integer.parseInt(socketTimeStr);
         String threadSleepTimeStr = action.getContext().get(COPRO_CLIENT_API_SLEEPTIME);
-        threadSleepTimeStr = threadSleepTimeStr!=null && threadSleepTimeStr.trim().length()>0?threadSleepTimeStr: THREAD_SLEEP_TIME;
+        threadSleepTimeStr = threadSleepTimeStr != null && threadSleepTimeStr.trim().length() > 0 ? threadSleepTimeStr : THREAD_SLEEP_TIME;
         this.threadSleepTime = Integer.parseInt(threadSleepTimeStr);
         //TODO - Please do same as above to ensure that you don't assume default values
         String consumerApiCountStr = this.action.getContext().get(CONSUMER_API_COUNT);
@@ -93,7 +96,7 @@ public class AutoRotationAction implements IActionExecution {
         this.columnList = COLUMN_LIST;
         this.autoRotateUrl = this.action.getContext().get(COPRO_AUTOROTATION_URL1);
         this.outputDir = Optional.ofNullable(this.autoRotation.getOutputDir()).map(String::valueOf).orElse(null);
-        insertQuery = INSERT_INTO + " " + schemaName +"."+ targetTableName +"("+ columnList + ") " + " " + VAL_STRING_LIST;
+        insertQuery = INSERT_INTO + " " + schemaName + "." + targetTableName + "(" + columnList + ") " + " " + VAL_STRING_LIST;
     }
 
     @Override
@@ -106,7 +109,7 @@ public class AutoRotationAction implements IActionExecution {
                 try {
                     return new URL(urlItem);
                 } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL "+urlItem, e);
+                    log.error("Error in processing the URL " + urlItem, e);
                     throw new HandymanException("Error in processing the URL", e, action);
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());

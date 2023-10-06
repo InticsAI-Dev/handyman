@@ -39,10 +39,10 @@ public class AlchemyAuthTokenAction implements IActionExecution {
     private final Marker aMarker;
     private final String URI;
     private final String user;
-    private final String password;
-    public static final String ALCHEMY_LOGIN_URL = "alchemy.login.url";
+    private final Long tenantId;
+    public static final String ALCHEMY_REFRESH_URL = "alchemy.refresh.url";
     public static final String ALCHEMY_USER = "alchemy.user";
-    public static final String ALCHEMY_PASSWORD = "alchemy.password";
+    private static final String TENANT_ID = "tenant_id";
 
     public AlchemyAuthTokenAction(final ActionExecutionAudit action, final Logger log,
                                   final Object alchemyAuthToken) {
@@ -50,9 +50,9 @@ public class AlchemyAuthTokenAction implements IActionExecution {
         this.action = action;
         this.log = log;
         this.aMarker = MarkerFactory.getMarker(" AlchemyAuthToken:" + this.alchemyAuthToken.getName());
-        this.URI = action.getContext().get(ALCHEMY_LOGIN_URL);
+        this.URI = action.getContext().get(ALCHEMY_REFRESH_URL);
         this.user = action.getContext().get(ALCHEMY_USER);
-        this.password = action.getContext().get(ALCHEMY_PASSWORD);
+        this.tenantId = Long.valueOf(action.getContext().get(TENANT_ID));
     }
 
     @Override
@@ -62,7 +62,7 @@ public class AlchemyAuthTokenAction implements IActionExecution {
 
         final ObjectNode objectNode = mapper.createObjectNode();
         objectNode.put("username", user);
-        objectNode.put("password", password);
+        objectNode.put("tenantId", tenantId);
         log.info(aMarker, " Input variables id : {}", action.getActionId());
 
         Request request = new Request.Builder().url(URI)

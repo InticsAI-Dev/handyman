@@ -37,7 +37,7 @@ public class AlphavalidatorAction implements IActionExecution {
         this.alphaAdapter = new AlphaAdapter();
     }
 
-    int getAlphaScore(Validator adapter) {
+    public int getAlphaScore(Validator adapter) {
         try {
             boolean validator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;

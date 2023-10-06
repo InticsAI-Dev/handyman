@@ -40,7 +40,7 @@ public class DatevalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Datevalidator:" + this.datevalidator.getName());
     }
 
-    int getDateScore(Validator adapter) {
+    public int getDateScore(Validator adapter) {
         try {
             int currentYear = Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date()));
             int comparableYear;
