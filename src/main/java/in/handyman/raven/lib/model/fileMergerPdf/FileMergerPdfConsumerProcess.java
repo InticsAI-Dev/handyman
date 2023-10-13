@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.fileMergerPdf;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
@@ -33,6 +34,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -55,6 +57,16 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
 //          .writeTimeout(10, TimeUnit.MINUTES)
 //          .readTimeout(10, TimeUnit.MINUTES)
 //          .build();
+
+
+
+  final OkHttpClient httpclient = new OkHttpClient.Builder()
+          .connectTimeout(10, TimeUnit.MINUTES)
+          .writeTimeout(10, TimeUnit.MINUTES)
+          .readTimeout(10, TimeUnit.MINUTES)
+          .build();
+
+
 
   public FileMergerPdfConsumerProcess(final Logger log, final Marker aMarker, final ActionExecutionAudit action, final Object fileMergerPdf) {
     this.fileMergerPdf = (FileMergerPdf) fileMergerPdf;
@@ -81,7 +93,8 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                   final String tenantId=entity.getTenantId();
                   final Integer group_id= entity.getGroupId();
                   final String fileId=entity.getFileId();
-                  final Integer paperNo=entity.getPaperNo();
+                  final String fileMerger="FILE_MERGER";
+//                  final Integer paperNo=entity.getPaperNo();
                   final String templateId= entity.getTemplateId();
                   final String actionId = entity.getActionId();
                   final String process = "FILE_MERGER";
@@ -99,6 +112,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                   fileMergerPayload.setProcess(process);
                   fileMergerPayload.setInputFilePaths(filePathString);
                   fileMergerPayload.setActionId(actionId);
+                  fileMergerPayload.setProcess(fileMerger);
                   fileMergerPayload.setOutputDir(outputDir);
                   fileMergerPayload.setOutputFileName(outputFileName);
 
@@ -136,18 +150,18 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                       if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                         modelResponse.getOutputs().forEach(o -> o.getData().forEach(fileMergerDataItem -> {
                           try {
-                            FileMergerDataItem fileMergerDataItem1 = mapper.readValue(fileMergerDataItem, FileMergerDataItem.class);
+                            FileMergerDataItem fileMergerDataItem1 = mapper.readValue(fileMergerDataItem,  new TypeReference<>(){});
                             parentObj.add(FileMergerpdfOutputEntity
                                     .builder()
                                     .processedFilePath(fileMergerDataItem1.getProcessedFilePath())
                                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                    .stage("")
+                                    .stage(fileMerger)
                                     .message("file merger macro completed")
                                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                     .rootPipelineId(Long.valueOf(rootPipelineId))
                                     .modelName(modelResponse.getModelName())
                                     .tenantId(tenantId)
-                                    .paperNo(paperNo)
+//                                    .paperNo(paperNo)
                                     .fileId(fileId)
                                     .templateId(templateId)
                                     .originId(entity.getOriginId())
