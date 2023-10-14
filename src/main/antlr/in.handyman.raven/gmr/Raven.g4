@@ -145,6 +145,7 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
+    |imageToEncodedFile
     );
 
 
@@ -1019,6 +1020,16 @@ outboundTableResponse:
     'using' '{'
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
+
+
+imageToEncodedFile:
+    'image-to-encoded-file' 'as' name=STRING
+    'from-target-file' filePath=STRING
+    'resource-conn' resourceConn=STRING
+    'result-table' resultTable=STRING
+
+     'using'  '{' '}' ('on-condition' condition=expression)* ;
+
 //rules
 
 resource : STRING;
