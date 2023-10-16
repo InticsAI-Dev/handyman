@@ -17,9 +17,6 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Types;
 import java.time.LocalDateTime;
 
@@ -102,13 +99,16 @@ public class FtpConnectionCheckAction implements IActionExecution {
     private boolean checkDirectoryAccess(String destDir, FTPClient ftpClient) throws IOException {
         ftpClient.enterLocalPassiveMode();
         try {
-            return ftpClient.changeWorkingDirectory(destDir);
-        }
-        catch (Exception e) {
+            boolean folderAccess = ftpClient.changeWorkingDirectory(destDir);
+            ftpClient.listNames();
+            return folderAccess;
+        } catch (Exception e) {
             return false;
-        }
-        finally {
-            ftpClient.disconnect();
+        } finally {
+            if (ftpClient.isConnected()) {
+                ftpClient.logout();
+                ftpClient.disconnect();
+            }
         }
     }
 
