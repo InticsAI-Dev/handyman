@@ -17,7 +17,6 @@ import java.util.stream.Stream;
 @Builder
 public class FtpDownloadOutputTable implements CoproProcessor.Entity {
 
-    private Long id;
     private Long tenantId;
     private Long rootPipelineId;
     private LocalDateTime createdDate;
@@ -33,9 +32,12 @@ public class FtpDownloadOutputTable implements CoproProcessor.Entity {
     private String filePath;
 
 
+
     @Override
     public List<Object> getRowData() {
-       return Stream.of(this.filePath, this.destinationPath, this.tenantId, this.ftpFolderPath, this.status, this.message
-                , this.type, this.status, this.createdDate, this.rootPipelineId, this.createdBy, this.lastModifiedBy, this.lastModifiedDate).collect(Collectors.toList());
+       return Stream.of(this.tenantId, this.rootPipelineId, this.createdDate, this.createdBy,
+               this.lastModifiedBy, this.lastModifiedDate, this.status, this.message, this.type, this.lastProcessedOn,
+               this.ftpFolderPath, this.destinationPath, this.filePath
+                ).collect(Collectors.toList());
     }
 }

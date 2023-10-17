@@ -17,7 +17,7 @@ public class FtpDownloadActionTest {
                 .name("ftp-download")
                 .resourceConn("intics_zio_db_conn")
                 .resultTable("onboard_wizard_info.ftp_download_info")
-                .querySet(" SELECT  'deploy@123' as password, 'fptuser' as username, '192.168.10.245' as serverAddress,  '/home/balasoundarya.thanga@zucisystems.com/Downloads/remdir' as folderPath;")
+                .querySet(" SELECT  'deploy@123' as password, 'ftpuser' as username, '192.168.10.245' as serverAddress,  '/home/balasoundarya.thanga@zucisystems.com/Downloads/remdir' as folderPath;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
