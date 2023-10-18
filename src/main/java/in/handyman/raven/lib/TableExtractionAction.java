@@ -146,7 +146,7 @@ public class TableExtractionAction implements IActionExecution {
             String inputFilePath = entity.getFilePath();
             Long uniqueId = UniqueID.getId();
             String uniqueIdStr = String.valueOf(uniqueId);
-            Long rootPipelineId = entity.getRootPipelineId();
+            Long rootPipelineId = action.getRootPipelineId();
             final String tableExtractionProcessName = "TABLE_EXTRACTION";
             Long actionId = action.getActionId();
             objectNode.put("rootPipelineId", rootPipelineId);
