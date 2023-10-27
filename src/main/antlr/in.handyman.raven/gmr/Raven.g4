@@ -145,6 +145,8 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
+    |ftpDownload
+    |ftpUpload
     );
 
 
@@ -1019,7 +1021,24 @@ outboundTableResponse:
     'using' '{'
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
-//rules
+
+ftpDownload:
+            'ftpdownload' 'as' name=STRING
+            'resource-conn' resourceConn=STRING
+            'result-table' resultTable=STRING
+            'using' '{'
+            		querySet=STRING
+            	'}' ('on-condition' condition=expression)* ;
+
+
+ftpUpload:
+            'ftpUpload' 'as' name=STRING
+            'resource-conn' resourceConn=STRING
+            'result-table' resultTable=STRING
+            'using' '{'
+            		querySet=STRING
+            	'}' ('on-condition' condition=expression)* ;
+
 
 resource : STRING;
 fragment DIGIT : [0-9];
