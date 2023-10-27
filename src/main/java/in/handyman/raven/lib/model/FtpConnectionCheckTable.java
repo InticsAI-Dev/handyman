@@ -3,26 +3,26 @@ package in.handyman.raven.lib.model;
 import lombok.*;
 
 import java.time.LocalDateTime;
-@Getter
-@Setter
-@Builder
-@RequiredArgsConstructor
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
 @AllArgsConstructor
+@Builder
+public class FtpConnectionCheckTable {
 
-public class FtpConnectionCheckTable{
-    private Long tenantId;
-    private String type;
-    private String info;
-    private Long rootPipelineId;
-    private String status;
-    private String message;
-    private LocalDateTime lastProcessedOn;
-    private boolean ftpConnected;
-    private LocalDateTime createdOn = LocalDateTime.now();
-    private LocalDateTime lastUpdatedOn;
-    private Long createdUserId;
-    private Long lastUpdatedUserId;
-    private Integer version = 1;
+        private Long id;
+        private Long tenantId;
+        private Long rootPipelineId;
+        private LocalDateTime createdDate;
+        private Long createdBy;
+        private Long lastModifiedBy;
+        private LocalDateTime lastModifiedDate;
+        private String status;
+        private String message;
+        private String type;
+        private String info;
+        private LocalDateTime lastProcessedOn;
+        private boolean ftpConnected;
+
+
 }
-
-
