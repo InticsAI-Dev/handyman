@@ -52,13 +52,6 @@ public class FtpDownloadConsumerProcess implements CoproProcessor.ConsumerProces
                 String password = entity.getPassword();
                 String remoteHost = entity.getServerAddress();
                 String sourceDir = entity.getFolderPath();
-//            final String tenantId = action.getContext().get("tenantId");
-//            final String destDir = action.getContext().get("destinationPath");
-//            final String uploadTime = action.getContext().get("uploadPath");
-                //final String remoteHost = action.getContext().get("ftpHost");
-                //final String userName = action.getContext().get("ftpUserName");
-                //final String password = action.getContext().get("ftpPassword");
-                //final String sourceDir = action.getContext().get("ftpSourceDir");
 
                 final String tenantId = action.getContext().get("tenant_id");
                 final Long rootPipelineId = action.getRootPipelineId();
@@ -68,7 +61,6 @@ public class FtpDownloadConsumerProcess implements CoproProcessor.ConsumerProces
                 final String uploadTime = action.getContext().get("uploadTime");
 
 
-                // ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out)));
                 int reply;
                 ftpClient.connect(remoteHost, Integer.parseInt(remotePort));
                 log.info(aMarker, "FTP URL HOST {} and port {} ", remoteHost, ftpClient.getDefaultPort());
@@ -84,7 +76,6 @@ public class FtpDownloadConsumerProcess implements CoproProcessor.ConsumerProces
 
                 ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
                 ftpClient.changeWorkingDirectory(sourceDir);
-//            log.info(aMarker, "Current directory is {}", ftpClient.printWorkingDirectory());
 
                 FTPFile[] subFiles = ftpClient.listFiles();
                 if (subFiles != null) {
@@ -98,7 +89,7 @@ public class FtpDownloadConsumerProcess implements CoproProcessor.ConsumerProces
 
 
                                 FtpDownloadOutputTable outputTable = FtpDownloadOutputTable.builder()
-                                        .tenantId(1L)
+                                        .tenantId(Long.valueOf(tenantId))
                                         .rootPipelineId(rootPipelineId) // Adjust as needed
                                         .createdDate(LocalDateTime.now())
                                         .createdBy(1L) // Set as needed
@@ -165,20 +156,6 @@ public class FtpDownloadConsumerProcess implements CoproProcessor.ConsumerProces
 
         return parentObj;
     }
-//    public void ftpDownloadDirectory(FTPClient ftpClient, String srcFile, String saveDir) throws IOException {
-//        FTPFile[] subFiles = ftpClient.listFiles(srcFile);
-//        if (subFiles != null) {
-//            for (FTPFile aFile : subFiles) {
-//
-//                if (aFile.isFile()) {
-//                    String remoteFilePath = srcFile + "/" + aFile.getName();
-//                    String savePath = saveDir + File.separator + aFile.getName();
-//                    downloadSingleFile(ftpClient, remoteFilePath, savePath);
-//                }
-//            }
-//        }
-
-    //    }
     public void downloadSingleFile(FTPClient ftpClient, String remoteFilePath, String savePath) throws IOException {
         File downloadFile = new File(savePath);
         File parentDir = downloadFile.getParentFile();
