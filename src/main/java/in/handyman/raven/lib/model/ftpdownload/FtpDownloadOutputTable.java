@@ -28,5 +28,6 @@ public class FtpDownloadOutputTable {
     private String filePath;
     private String executionStatus;
     private Integer version;
+    private String info;
 
 }
