@@ -244,7 +244,7 @@ public class FtpDownloadAction implements IActionExecution {
         jdbi.useTransaction(handle -> {
             handle.createUpdate("INSERT INTO onboard_wizard_info.ftp_download_info\n" +
                             "                (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, destination_path, execution_status, file_path, ftp_folder_path, info, last_processed_on, message, root_pipeline_id, tenant_id, type) " +
-                            "VALUES( :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, :destinationPath, :executionStatus, :filePath, :ftpFolderPath, :info, :lastProcessedOn, :message, :rootPipelineId, :tenantId, :type);")
+                            "VALUES( :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, :destinationPath, :executionStatus, :filePath::jsonb, :ftpFolderPath, :info, :lastProcessedOn, :message, :rootPipelineId, :tenantId, :type);")
                     .bindBean(ftpDownloadOutputTable).execute();
             log.debug(aMarker, "inserted {} into ftp download info details", ftpDownloadOutputTable);
         });
