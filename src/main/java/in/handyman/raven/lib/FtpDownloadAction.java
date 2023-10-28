@@ -96,6 +96,7 @@ public class FtpDownloadAction implements IActionExecution {
             ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
             ftpClient.changeWorkingDirectory(sourceDir);
             FTPFile[] subFiles = ftpClient.listFiles();
+            String completed = "COMPLETED";
             if (uploadTime.equals("null")) {
                 if (subFiles != null) {
                     for (FTPFile aFile : subFiles) {
@@ -128,7 +129,7 @@ public class FtpDownloadAction implements IActionExecution {
                                 .destinationPath(DestDir) // Set the destination path
                                 .filePath(filePaths)
                                 .version(1)
-                                .executionStatus("COMPLETED")
+                                .executionStatus(completed)
                                 .build();
                         insertIntoOutputTable(jdbi, outputTable);
                     }
@@ -156,6 +157,7 @@ public class FtpDownloadAction implements IActionExecution {
                         FtpDownloadOutputTable outputTable = FtpDownloadOutputTable.builder()
                                 .tenantId(tenantId)
                                 .rootPipelineId(rootPipelineId)
+                                .createdOn(LocalDateTime.now())
                                 .createdUserId(tenantId)
                                 .lastUpdatedUserId(tenantId)
                                 .lastUpdatedOn(LocalDateTime.now())
@@ -166,11 +168,8 @@ public class FtpDownloadAction implements IActionExecution {
                                 .ftpFolderPath(sourceDir)
                                 .destinationPath(DestDir)
                                 .filePath(filePaths)
-                                .createdOn(LocalDateTime.now())
-                                .createdUserId(tenantId)
-                                .lastUpdatedOn(LocalDateTime.now())
-                                .lastUpdatedUserId(tenantId)
                                 .version(1)
+                                .executionStatus(completed)
                                 .build();
                         insertIntoOutputTable(jdbi, outputTable);
                     }
@@ -182,6 +181,7 @@ public class FtpDownloadAction implements IActionExecution {
             FtpDownloadOutputTable outputTable = FtpDownloadOutputTable.builder()
                     .tenantId(tenantId)
                     .rootPipelineId(rootPipelineId)
+                    .createdOn(LocalDateTime.now())
                     .createdUserId(tenantId)
                     .lastUpdatedUserId(tenantId)
                     .lastUpdatedOn(LocalDateTime.now())
@@ -191,10 +191,6 @@ public class FtpDownloadAction implements IActionExecution {
                     .lastProcessedOn(LocalDateTime.now())
                     .ftpFolderPath(sourceDir)
                     .destinationPath(DestDir)
-                    .createdOn(LocalDateTime.now())
-                    .createdUserId(tenantId)
-                    .lastUpdatedOn(LocalDateTime.now())
-                    .lastUpdatedUserId(tenantId)
                     .version(1)
                     .executionStatus(executionStatus)
                     .build();
