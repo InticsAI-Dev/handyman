@@ -24,9 +24,9 @@ import lombok.NoArgsConstructor;
 public class FtpUpload implements IActionContext {
   private String name;
 
-  private String resourceConn;
-
   private String resultTable;
+
+  private String resourceConn;
 
   private String querySet;
 
