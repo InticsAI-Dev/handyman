@@ -61,7 +61,7 @@ public class FtpUploadAction implements IActionExecution {
     jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
     List<String> uploadedFilePaths = new ArrayList<>();
 
-    FtpUploadInputTable ftpUploadInputTable = getInputTableFromQuerySet(ftpUpload.getQuerySet(), jdbi);
+    FtpUploadInputTable ftpUploadInputTable = getInputTableFromQuerySet(action.getContext().get("ftpUploadQuerySet"), jdbi);
     String userName = ftpUploadInputTable.getUsername();
     String password = ftpUploadInputTable.getPassword();
     String remoteHost = ftpUploadInputTable.getServerAddress();
@@ -94,7 +94,6 @@ public class FtpUploadAction implements IActionExecution {
 
       ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
       ftpClient.changeWorkingDirectory(localDir);
-      FTPFile[] subFiles = ftpClient.listFiles();
 
       String dirToCreate =  sourceDir + File.separator +"Upload";
       directoryCreation(ftpClient, dirToCreate);
@@ -108,7 +107,7 @@ public class FtpUploadAction implements IActionExecution {
             for (File localFile : localFiles) {
               if (localFile.isFile()) {
                 String localFilePath = localFile.getAbsolutePath();
-                String remoteFilePath = sourceDir + "/" + localFile.getName();
+                String remoteFilePath = dirToCreate + File.separator + localFile.getName();
                 uploadSingleFile(ftpClient, localFilePath, sourceDir);
                 uploadedFilePaths.add(remoteFilePath);
               }
@@ -130,9 +129,9 @@ public class FtpUploadAction implements IActionExecution {
                       .message("FTP upload completed")
                       .type(ftp) // Set as needed
                       .lastProcessedOn(LocalDateTime.now())
-                      .ftpFolderPath(sourceDir) // Set the FTP folder path
-                      .destinationPath(localDir) // Set the destination path
-                      .filePath(filePaths)
+                      .ftpDestinationBasePath(sourceDir) // Set the FTP folder path
+                      .localDirectoryFolderPath(localDir) // Set the destination path
+                      .ftpDestinationFilePath(filePaths)
                       .version(1)
                       .executionStatus("COMPLETED")
                       .build();
@@ -150,12 +149,11 @@ public class FtpUploadAction implements IActionExecution {
                       LocalDateTime lastModifiedTime = convertTimestampToLocalDateTime(localFile.lastModified());
                       LocalDateTime uploadTimeDate = LocalDateTime.parse(uploadTime);
                       if (lastModifiedTime.isAfter(uploadTimeDate)) {
-                      if (localFile.isFile()) {
                         String localFilePath = localFile.getAbsolutePath();
-                        String remoteFilePath = sourceDir + "/" + localFile.getName();
+                        String remoteFilePath = dirToCreate + File. separator + localFile.getName();
                         uploadSingleFile(ftpClient, localFilePath, sourceDir);
                         uploadedFilePaths.add(remoteFilePath);
-                      }
+
                     }
                   }
                 }
@@ -172,9 +170,9 @@ public class FtpUploadAction implements IActionExecution {
                           .message("FTP upload completed")
                           .type(ftp)
                           .lastProcessedOn(LocalDateTime.now())
-                          .ftpFolderPath(sourceDir)
-                          .destinationPath(localDir)
-                          .filePath(filePaths)
+                          .ftpDestinationBasePath(sourceDir)
+                          .localDirectoryFolderPath(localDir)
+                          .ftpDestinationFilePath(filePaths)
                           .createdOn(LocalDateTime.now())
                           .createdUserId(tenantId)
                           .lastUpdatedOn(LocalDateTime.now())
@@ -199,8 +197,8 @@ public class FtpUploadAction implements IActionExecution {
               .message(e.getMessage())
               .type(ftp)
               .lastProcessedOn(LocalDateTime.now())
-              .ftpFolderPath(sourceDir)
-              .destinationPath(localDir)
+              .ftpDestinationBasePath(sourceDir)
+              .localDirectoryFolderPath(localDir)
               .createdOn(LocalDateTime.now())
               .createdUserId(tenantId)
               .lastUpdatedOn(LocalDateTime.now())
@@ -225,8 +223,8 @@ public class FtpUploadAction implements IActionExecution {
   private void insertIntoOutputTable(Jdbi jdbi, FtpUploadOutputTable ftpUploadOutputTable) {
     jdbi.useTransaction(handle -> {
       handle.createUpdate("INSERT INTO onboard_wizard_info.ftp_upload_info\n" +
-                      "                (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, destination_path, execution_status, file_path, ftp_folder_path, info, last_processed_on, message, root_pipeline_id, tenant_id, type) " +
-                      "VALUES( :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, :destinationPath, :executionStatus, :filePath::jsonb, :ftpFolderPath, :info, :lastProcessedOn, :message, :rootPipelineId, :tenantId, :type);")
+                      "                (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, local_directory_folder_path, execution_status, ftp_destination_file_Path, ftp_destination_base_path, info, last_processed_on, message, root_pipeline_id, tenant_id, type) " +
+                      "VALUES( :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, :localDirectoryFolderPath, :executionStatus, :ftpDestinationFilePath::jsonb, :ftpDestinationBasePath, :info, :lastProcessedOn, :message, :rootPipelineId, :tenantId, :type);")
               .bindBean(ftpUploadOutputTable).execute();
       log.debug(aMarker, "inserted {} into ftp download info details", ftpUploadOutputTable);
     });
