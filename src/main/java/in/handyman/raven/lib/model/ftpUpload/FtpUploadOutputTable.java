@@ -23,12 +23,11 @@ import java.time.LocalDateTime;
         private String message;
         private String type;
         private LocalDateTime lastProcessedOn;
-        private String ftpFolderPath;
-        private String destinationPath;
-        private String filePath;
+        private String ftpDestinationBasePath;
+        private String localDirectoryFolderPath;
+        private String ftpDestinationFilePath;
         private String executionStatus;
         private Integer version;
         private String info;
-
     }
 
