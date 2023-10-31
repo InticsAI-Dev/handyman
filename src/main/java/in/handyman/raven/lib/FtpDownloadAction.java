@@ -62,7 +62,7 @@ public class FtpDownloadAction implements IActionExecution {
 
         List<String> downloadedFilePaths = new ArrayList<>();
 
-        FtpDownloadInputTable ftpDownloadInputTable = getInputTableFromQuerySet(ftpDownload.getQuerySet(), jdbi);
+        FtpDownloadInputTable ftpDownloadInputTable = getInputTableFromQuerySet(action.getContext().get("ftpDownloadQuerySet"), jdbi);
         String userName = ftpDownloadInputTable.getUsername();
         String password = ftpDownloadInputTable.getPassword();
         String remoteHost = ftpDownloadInputTable.getServerAddress();
@@ -134,8 +134,6 @@ public class FtpDownloadAction implements IActionExecution {
                         insertIntoOutputTable(jdbi, outputTable);
                     }
                 }
-
-
             } else {
 
                 if (subFiles != null) {
