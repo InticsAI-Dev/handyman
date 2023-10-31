@@ -20,7 +20,7 @@ class FtpUploadActionTest {
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("localDir","/home/balasoundarya.thanga@zucisystems.com/Downloads/remdir"),
                 Map.entry("ftpPort","21"),
-                Map.entry("uploadTime","null"),
+                Map.entry("uploadTime","2023-1-31 11:32:10.906"),
                 Map.entry("tenant_id","1")));
 
         FtpUploadAction  ftpUploadAction=new FtpUploadAction(actionExecutionAudit,log,ftpUpload);

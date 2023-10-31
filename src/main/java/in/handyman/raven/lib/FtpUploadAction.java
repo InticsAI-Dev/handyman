@@ -10,7 +10,6 @@ import in.handyman.raven.lib.model.ftpUpload.FtpUploadInputTable;
 import in.handyman.raven.lib.model.ftpUpload.FtpUploadOutputTable;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -28,6 +27,8 @@ import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -120,14 +121,14 @@ public class FtpUploadAction implements IActionExecution {
 
               FtpUploadOutputTable outputTable = FtpUploadOutputTable.builder()
                       .tenantId(tenantId)
-                      .rootPipelineId(rootPipelineId) // Adjust as needed
+                      .rootPipelineId(rootPipelineId)
                       .createdOn(LocalDateTime.now())
-                      .createdUserId(tenantId) // Set as needed
-                      .lastUpdatedUserId(tenantId) // Set as needed
+                      .createdUserId(tenantId)
+                      .lastUpdatedUserId(tenantId)
                       .lastUpdatedOn(LocalDateTime.now())
-                      .status(active) // Set the status as needed
+                      .status(active)
                       .message("FTP upload completed")
-                      .type(ftp) // Set as needed
+                      .type(ftp)
                       .lastProcessedOn(LocalDateTime.now())
                       .ftpDestinationBasePath(sourceDir) // Set the FTP folder path
                       .localDirectoryFolderPath(localDir) // Set the destination path
@@ -147,7 +148,10 @@ public class FtpUploadAction implements IActionExecution {
                   if (localFiles != null) {
                     for (File localFile : localFiles) {
                       LocalDateTime lastModifiedTime = convertTimestampToLocalDateTime(localFile.lastModified());
-                      LocalDateTime uploadTimeDate = LocalDateTime.parse(uploadTime);
+                      DateTimeFormatter formatter = new DateTimeFormatterBuilder().parseCaseInsensitive()
+                              .append(DateTimeFormatter.ofPattern("yyyy-M-dd HH:mm:ss.SSS")).toFormatter();
+                     // DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS");
+                      LocalDateTime uploadTimeDate = LocalDateTime.parse(uploadTime, formatter);
                       if (lastModifiedTime.isAfter(uploadTimeDate)) {
                         String localFilePath = localFile.getAbsolutePath();
                         String remoteFilePath = dirToCreate + File. separator + localFile.getName();
@@ -265,10 +269,9 @@ public class FtpUploadAction implements IActionExecution {
   private void directoryCreation(FTPClient ftpClient, String dirToCreate) throws IOException {
     boolean directoryCreated = ftpClient.makeDirectory(dirToCreate);
     if (directoryCreated) {
-
-      System.out.println("Directory created successfully: " + dirToCreate);
+      log.info(aMarker, "Directory created successfully: {}", dirToCreate);
     } else {
-      System.out.println("Failed to create directory: " + dirToCreate);
+      log.info(aMarker, "Directory failed successfully: {}", dirToCreate);
     }
     boolean isDirectoryChanged = ftpClient.changeWorkingDirectory(dirToCreate);
     log.info("Is Directory switched {}", isDirectoryChanged);
