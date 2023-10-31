@@ -62,7 +62,7 @@ public class FtpUploadAction implements IActionExecution {
     jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
     List<String> uploadedFilePaths = new ArrayList<>();
 
-    FtpUploadInputTable ftpUploadInputTable = getInputTableFromQuerySet(action.getContext().get("ftpUploadQuerySet"), jdbi);
+    FtpUploadInputTable ftpUploadInputTable = getInputTableFromQuerySet(ftpUpload.getQuerySet(), jdbi);
     String userName = ftpUploadInputTable.getUsername();
     String password = ftpUploadInputTable.getPassword();
     String remoteHost = ftpUploadInputTable.getServerAddress();
@@ -148,11 +148,9 @@ public class FtpUploadAction implements IActionExecution {
                   if (localFiles != null) {
                     for (File localFile : localFiles) {
                       LocalDateTime lastModifiedTime = convertTimestampToLocalDateTime(localFile.lastModified());
-                      DateTimeFormatter formatter = new DateTimeFormatterBuilder().parseCaseInsensitive()
-                              .append(DateTimeFormatter.ofPattern("yyyy-M-dd HH:mm:ss.SSS")).toFormatter();
-                     // DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSS");
+                      DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
                       LocalDateTime uploadTimeDate = LocalDateTime.parse(uploadTime, formatter);
-                      if (lastModifiedTime.isAfter(uploadTimeDate)) {
+                      if (lastModifiedTime.isBefore(uploadTimeDate)) {
                         String localFilePath = localFile.getAbsolutePath();
                         String remoteFilePath = dirToCreate + File. separator + localFile.getName();
                         uploadSingleFile(ftpClient, localFilePath, sourceDir);
