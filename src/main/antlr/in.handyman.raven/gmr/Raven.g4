@@ -145,6 +145,7 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
+    |ftpConnectionTest
     );
 
 
@@ -1035,6 +1036,14 @@ outboundTableResponse:
     'using' '{'
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
+
+ftpConnectionTest:
+   'ftpConnectionTest' 'as' name=STRING
+   'result-table' resultTable=STRING
+   'resource-conn' resourceConn=STRING
+   'using' '{'
+           querySet=STRING
+        '}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;
