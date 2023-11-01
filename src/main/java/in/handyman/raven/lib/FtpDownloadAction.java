@@ -68,13 +68,15 @@ public class FtpDownloadAction implements IActionExecution {
         String remoteHost = ftpDownloadInputTable.getServerAddress();
         String sourceDir = ftpDownloadInputTable.getFolderPath();
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        String ftpDownloadRequestJson = objectMapper.writeValueAsString(ftpDownloadInputTable);
+
         final long tenantId = Long.parseLong(action.getContext().get("tenant_id"));
         final Long rootPipelineId = action.getRootPipelineId();
 
         final String remotePort = action.getContext().get("ftpPort");
         final String DestDir = action.getContext().get("destinationPath");
         final String uploadTime = action.getContext().get("uploadTime");
-        final String info = action.getContext().get("ftpDownloadCheckRequest");
         FTPClient ftpClient = new FTPClient();
 
         final String ftp = "FTP";
@@ -125,7 +127,7 @@ public class FtpDownloadAction implements IActionExecution {
                                 .status(active) // Set the status as needed
                                 .message("FTP download completed")
                                 .type(ftp)
-                                .info(info)// Set as needed
+                                .info(ftpDownloadRequestJson)// Set as needed
                                 .lastProcessedOn(LocalDateTime.now())
                                 .ftpFolderPath(sourceDir) // Set the FTP folder path
                                 .destinationPath(DestDir) // Set the destination path
@@ -164,7 +166,7 @@ public class FtpDownloadAction implements IActionExecution {
                                 .status(active)
                                 .message("FTP download completed")
                                 .type(ftp)
-                                .info(info)
+                                .info(ftpDownloadRequestJson)
                                 .lastProcessedOn(LocalDateTime.now())
                                 .ftpFolderPath(sourceDir)
                                 .destinationPath(DestDir)

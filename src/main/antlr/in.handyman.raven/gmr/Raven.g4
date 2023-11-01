@@ -1038,7 +1038,7 @@ outboundTableResponse:
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
 
-ftpDownload:
+    ftpDownload:
             'ftpdownload' 'as' name=STRING
             'resource-conn' resourceConn=STRING
             'result-table' resultTable=STRING
