@@ -191,6 +191,7 @@ public class FtpDownloadAction implements IActionExecution {
                     .status(active)
                     .message(e.getMessage())
                     .type(ftp)
+                    .info(ftpDownloadRequestJson)
                     .lastProcessedOn(LocalDateTime.now())
                     .ftpFolderPath(sourceDir)
                     .destinationPath(DestDir)
