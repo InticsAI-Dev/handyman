@@ -1,10 +1,12 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.FtpConnectionTest;
+import in.handyman.raven.lib.model.ftpConnectionCheck.FtpConnectionCheckInputTable;
 import in.handyman.raven.lib.model.ftpConnectionCheck.FtpConnectionCheckOutputTable;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
@@ -51,25 +53,22 @@ public class FtpConnectionTestAction implements IActionExecution {
     final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(ftpConnectionTest.getResourceConn());
     jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
 
-    final String insertQuery = "INSERT INTO " + ftpConnectionTest.getResultTable() +
-            "(tenant_id, root_pipeline_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, message, type, info, version, last_processed_on, ftp_connected, execution_status) " +
-            "VALUES (:tenantId, :rootPipelineId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :message, :type, :info, :version, :lastProcessedOn, :ftpConnected, :executionStatus)";
 
-
-    log.info(aMarker, "ftpConnectionCheck Insert query {}", insertQuery);
+    FtpConnectionCheckInputTable ftpConnectionCheckInputTable = getInputTableFromQuerySet(action.getContext().get("ftpConnectionCheckQuerySet"), jdbi);
+    String userName = ftpConnectionCheckInputTable.getUsername();
+    String password = ftpConnectionCheckInputTable.getPassword();
+    String remoteHost = ftpConnectionCheckInputTable.getServerAddress();
+    String sourceDir = ftpConnectionCheckInputTable.getFolderPath();
+    ObjectMapper objectMapper = new ObjectMapper();
+    String ftpDownloadRequestJson = objectMapper.writeValueAsString(ftpConnectionCheckInputTable);
 
     final String tenantId = action.getContext().get("tenant_id");
-    final String remoteHost = action.getContext().get("ftpHost");
     final Long rootPipelineId = action.getPipelineId();
-    final String userName = action.getContext().get("ftpUserName");
-    final String password = action.getContext().get("ftpPassword");
     final String remotePort = action.getContext().get("ftpPort");
-    final String destDir = action.getContext().get("ftpSourceDir");
-    final String info = action.getContext().get("ftpConnectionCheckRequest");
 
 
     boolean isFtpConnected = checkFtpConnection(userName,password,remotePort,remoteHost);// Check the FTP connection using credentials (username and password)
-    boolean isDirectoryAccessOk = checkDirectoryAccess(destDir);
+    boolean isDirectoryAccessOk = checkDirectoryAccess(sourceDir);
     String ftpConnectionMessage = isFtpConnected ? "FTP connection successful" : "FTP connection failed";
     String directoryAccessMessage = isDirectoryAccessOk ? "Directory access successful" : "Directory access failed";
     String completed = "COMPLETED";
@@ -85,26 +84,32 @@ public class FtpConnectionTestAction implements IActionExecution {
     data.setMessage((isFtpConnected && isDirectoryAccessOk) ? "FTP connected and credential stored" :
             "FTP connection or directory access failed. " + ftpConnectionMessage + ". " + directoryAccessMessage); // Matches 'message' in the database
     data.setType("FTP"); // Matches 'type' in the database
-    data.setInfo(info);
+    data.setInfo(ftpDownloadRequestJson);
     data.setVersion(1);// Matches 'info' in the database
     data.setLastProcessedOn(LocalDateTime.now()); // Matches 'lastprocessedon' in the database
     data.setFtpConnected(isFtpConnected && isDirectoryAccessOk); // Matches 'isftpconnected' in the database
     data.setExecutionStatus(completed);
+    insertIntoOutputTable(jdbi,data);
+  }
 
-
+  private FtpConnectionCheckInputTable getInputTableFromQuerySet(String querySet, Jdbi jdbi) {
     try (Handle handle = jdbi.open()) {
-      handle.createUpdate(insertQuery)
-              .bindBean(data)
-              .execute();
-      log.info(aMarker, "Data inserted successfully");
-    } catch (Exception e) {
-      log.error("Error inserting data: " + e.getMessage());
+      return handle.createQuery(querySet)
+              .mapToBean(FtpConnectionCheckInputTable.class)
+              .one();
     }
   }
 
 
-
-
+  private void insertIntoOutputTable(Jdbi jdbi, FtpConnectionCheckOutputTable ftpConnectionCheckOutputTable) {
+    jdbi.useTransaction(handle -> {
+      handle.createUpdate("INSERT INTO onboard_wizard_info.ftp_connection_check\n" +
+                      "                (tenant_id, root_pipeline_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, message, type, info, version, last_processed_on, ftp_connected, execution_status) " +
+                      "VALUES (:tenantId, :rootPipelineId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :message, :type, :info, :version, :lastProcessedOn, :ftpConnected, :executionStatus);")
+              .bindBean(ftpConnectionCheckOutputTable).execute();
+      log.debug(aMarker, "inserted {} into ftp connection check info details", ftpConnectionCheckOutputTable);
+    });
+  }
   private boolean checkDirectoryAccess(String destDir) {
     // Convert the directory path to a Path object
     Path directory;
