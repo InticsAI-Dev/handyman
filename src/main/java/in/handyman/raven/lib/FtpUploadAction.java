@@ -57,7 +57,7 @@ public class FtpUploadAction implements IActionExecution {
 
   @Override
   public void execute() throws Exception {
-    log.info(aMarker, "ftp download Action for {} has started", ftpUpload.getName());
+    log.info(aMarker, "ftp upload Action for {} has started", ftpUpload.getName());
     final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(ftpUpload.getResourceConn());
     jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
     List<String> uploadedFilePaths = new ArrayList<>();
@@ -180,12 +180,6 @@ public class FtpUploadAction implements IActionExecution {
       log.debug(aMarker, "inserted {} into ftp download info details", ftpUploadOutputTable);
     });
   }
-
-  private LocalDateTime convertTimestampToLocalDateTime(long timestamp) {
-    Instant instant = Instant.ofEpochMilli(timestamp);
-    return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
-  }
-
 
   private FtpUploadInputTable getInputTableFromQuerySet(String querySet, Jdbi jdbi) {
     try (Handle handle = jdbi.open()) {
