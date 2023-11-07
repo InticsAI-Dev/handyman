@@ -18,7 +18,10 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.sql.Types;
 import java.time.LocalDateTime;
@@ -59,12 +62,14 @@ public class HttpsDownloadAction implements IActionExecution {
     jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
 
 
-    final String tenantId = action.getContext().get("tenant_Id");
-    final String rootPipelineId = action.getContext().get("rootPipelineId");
-    final String userName = action.getContext().get("userName");
-    final String password = action.getContext().get("password");
+
+
+    final String tenantId = action.getContext().get("tenant_id");
+    final String url =action.getContext().get("url");
+    final Long rootPipelineId = action.getRootPipelineId();
+  //  final String userName = action.getContext().get("userName");
+   // final String password = action.getContext().get("password");
     final String savePath = action.getContext().get("savePath");
-    final String url = action.getContext().get("url");
     final String localDestination =action.getContext().get("localDestination");
     final String https = "HTTPS";
     final String active = "ACTIVE";
@@ -108,7 +113,7 @@ public class HttpsDownloadAction implements IActionExecution {
 
               HttpsDownloadOutputTable httpsDownloadOutputTable = HttpsDownloadOutputTable.builder()
                       .tenantId(Long.valueOf(tenantId))
-                      .rootPipelineId(Long.valueOf(rootPipelineId)) // Adjust as needed
+                      .rootPipelineId(rootPipelineId) // Adjust as needed
                       .createdOn(LocalDateTime.now())
                       .createdUserId(Long.valueOf(tenantId)) // Set as needed
                       .lastUpdatedUserId(Long.valueOf(tenantId)) // Set as needed
@@ -131,7 +136,7 @@ public class HttpsDownloadAction implements IActionExecution {
           String completed = "FAILED";
           HttpsDownloadOutputTable httpsDownloadOutputTable = HttpsDownloadOutputTable.builder()
                   .tenantId(Long.valueOf(tenantId))
-                  .rootPipelineId(Long.valueOf(rootPipelineId)) // Adjust as needed
+                  .rootPipelineId(rootPipelineId) // Adjust as needed
                   .createdOn(LocalDateTime.now())
                   .createdUserId(Long.valueOf(tenantId)) // Set as needed
                   .lastUpdatedUserId(Long.valueOf(tenantId)) // Set as needed
@@ -139,7 +144,6 @@ public class HttpsDownloadAction implements IActionExecution {
                   .status(active) // Set the status as needed
                   .message("https download completed")
                   .type(https)
-                  .info("")// Set as needed
                   .lastProcessedOn(LocalDateTime.now())
                   .savePath(savePath) // Set the https folder path
                   .localDestination(localDestination) // Set the destination path
@@ -156,6 +160,7 @@ public class HttpsDownloadAction implements IActionExecution {
       log.error("An error occurred during HTTPS download", e);
     }
   }
+
 
 
 

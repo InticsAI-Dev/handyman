@@ -8,7 +8,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class HttpsDownloadInputTable {
-    private  String userName;
-    private String password;
     private String url;
 }

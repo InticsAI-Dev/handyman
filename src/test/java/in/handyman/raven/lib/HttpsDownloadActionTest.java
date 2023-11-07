@@ -17,6 +17,7 @@ public class HttpsDownloadActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .resultTable("onboard_wizard_info.https_download_info")
+                .querySet("")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();

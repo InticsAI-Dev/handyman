@@ -28,5 +28,7 @@ public class HttpsDownload implements IActionContext {
 
   private String resourceConn;
 
+  private String querySet;
+
   private Boolean condition = true;
 }
