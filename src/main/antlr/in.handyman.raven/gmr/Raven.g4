@@ -145,6 +145,7 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
+    |httpsDownload
     );
 
 
@@ -1035,6 +1036,13 @@ outboundTableResponse:
     'using' '{'
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
+
+httpsDownload:
+    	 'httpsFileTransfer' 'as' name=STRING
+         'result-table' resultTable=STRING
+         'resource-conn' resourceConn=STRING
+         'using' '{'
+            	'}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;
