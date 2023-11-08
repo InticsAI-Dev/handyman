@@ -22,9 +22,9 @@ public class HttpsDownloadOutputTable {
     private String message;
     private String type;
     private LocalDateTime lastProcessedOn;
-    private String savePath;
-    private String localDestination;
-    private String filePaths;
+    private String localFilePath;
+    private String extractedLocalDirectoryPath;
+    private String extractedFilePaths;
     private String executionStatus;
     private Integer version;
     private String info;
