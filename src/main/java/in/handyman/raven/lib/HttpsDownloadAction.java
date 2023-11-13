@@ -69,6 +69,7 @@ public class HttpsDownloadAction implements IActionExecution {
         jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
 
         HttpsDownloadInputTable httpsDownloadInputTable = getInputTableFromQuerySet(action.getContext().get("httpDownloadQuerySet"), jdbi);
+
         String url = httpsDownloadInputTable.getUrl();
         ObjectMapper objectMapper = new ObjectMapper();
         String httpsDownloadRequestJson = objectMapper.writeValueAsString(httpsDownloadInputTable);
