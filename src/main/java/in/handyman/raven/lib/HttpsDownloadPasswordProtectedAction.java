@@ -68,7 +68,7 @@ public class HttpsDownloadPasswordProtectedAction implements IActionExecution {
     final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(httpsDownloadPasswordProtected.getResourceConn());
     jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
 
-  HttpsDownloadPasswordProtectedInputTable httpsPasswordProtectedInputTable = getInputTableFromQuerySet(action.getContext().get(""), jdbi);
+  HttpsDownloadPasswordProtectedInputTable httpsPasswordProtectedInputTable = getInputTableFromQuerySet(action.getContext().get("httpDownloadPasswordProtectedQuerySet"), jdbi);
     String url = httpsPasswordProtectedInputTable.getUrl();
     String username = httpsPasswordProtectedInputTable.getUserName();
     String password = httpsPasswordProtectedInputTable.getPassword();
