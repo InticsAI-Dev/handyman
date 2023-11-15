@@ -146,6 +146,7 @@ action:
     |outboundKvpResponse
     |outboundTableResponse
     |httpsDownload
+    |httpsDownloadPasswordProtected
     );
 
 
@@ -1039,6 +1040,13 @@ outboundTableResponse:
 
 httpsDownload:
     	 'httpsDownload' 'as' name=STRING
+         'result-table' resultTable=STRING
+         'resource-conn' resourceConn=STRING
+         'using' '{'
+             		querySet=STRING
+            	'}' ('on-condition' condition=expression)* ;
+httpsDownloadPasswordProtected:
+         'httpsDownloadPasswordProtected' 'as' name=STRING
          'result-table' resultTable=STRING
          'resource-conn' resourceConn=STRING
          'using' '{'
