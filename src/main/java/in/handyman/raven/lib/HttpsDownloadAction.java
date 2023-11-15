@@ -68,7 +68,7 @@ public class HttpsDownloadAction implements IActionExecution {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(httpsDownload.getResourceConn());
         jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
 
-        HttpsDownloadInputTable httpsDownloadInputTable = getInputTableFromQuerySet(action.getContext().get("httpDownloadPasswordProtectedQuerySet"), jdbi);
+        HttpsDownloadInputTable httpsDownloadInputTable = getInputTableFromQuerySet(action.getContext().get("httpDownloadQuerySet"), jdbi);
 
         String url = httpsDownloadInputTable.getUrl();
         ObjectMapper objectMapper = new ObjectMapper();
