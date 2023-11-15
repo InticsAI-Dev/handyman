@@ -145,6 +145,7 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
+    |cloudDownload
     );
 
 
@@ -1031,6 +1032,13 @@ outboundTableResponse:
     'outboundTableResponse' 'as' name=STRING
     'result-table' resultTable=STRING
     'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+cloudDownload:
+    'cloudDownload' 'as' name=STRING
+    'result-table' resultTable=STRING
     'resource-conn' resourceConn=STRING
     'using' '{'
     		querySet=STRING
