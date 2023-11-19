@@ -96,7 +96,7 @@ public class HttpsDownloadAction implements IActionExecution {
 
             HttpResponse response = httpClient.execute(httpGet);
             HttpEntity entity = response.getEntity();
-            // Check the HTTP response status code
+            // Check the HTTP response status code.;
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 log.info(aMarker, "HTTP response code: {}", response);
                 String localPath = savePath + fileName;
