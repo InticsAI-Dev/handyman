@@ -117,7 +117,6 @@ action:
     |intellimatch
     |checkboxVqa
     |pixelClassifierUrgencyTriage
-    |qrExtraction
     |paperItemizer
     |nerAdapter
     |coproStart
@@ -145,6 +144,8 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
+
+    |integratedNoiseModelApi
     );
 
 
@@ -1035,6 +1036,17 @@ outboundTableResponse:
     'using' '{'
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
+
+
+integratedNoiseModelApi:
+	'qr-extraction' 'as' name=STRING
+	'on-resource-conn' resourceConn=STRING
+	'copro-url' endPoint=STRING
+	'process-id' processId=STRING
+	'output-table' outputTable=STRING
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+
 //rules
 
 resource : STRING;
