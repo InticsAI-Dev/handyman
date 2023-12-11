@@ -55,10 +55,10 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         log.info("copro consumer process started");
        List<NoiseModelOutputEnitity> noiseOutputEntities = new ArrayList<>();
        // List<NoiseModelOutputEnitity> noiseOutputEntity = new ArrayList<>();
-        String filePath = entity.getFilePath();
+        final String filePath = entity.getFilePath();
         final String noiseDetectionModel = "NOISE_DETECTION_MODEL";
-        Long rootPipelineId = action.getRootPipelineId();
-        Long actionId = Long.valueOf(action.getContext().get("actionId"));
+        final Long rootPipelineId = action.getRootPipelineId();
+        final Long actionId = Long.valueOf(action.getContext().get("actionId"));
 
         ObjectMapper objectMapper = new ObjectMapper();
         //payload
@@ -73,7 +73,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         NoiseModelData.setGroupId(entity.getGroupId());
         NoiseModelData.setOutputDir(entity.getOutputDir());
         NoiseModelData.setTenantId(entity.getTenantId());
-        String jsonInputRequest = objectMapper.writeValueAsString(NoiseModelData);
+        final String jsonInputRequest = objectMapper.writeValueAsString(NoiseModelData);
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("NOISE-DETECTION");
@@ -84,21 +84,21 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
-        String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+        final String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
 
         if (log.isInfoEnabled()) {
             log.info("input object node in the consumer process  inputFilePath {}", filePath);
         }
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
+        final String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-        Request Requests = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
+        final Request Requests = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
         if (Objects.equals("false", tritonRequestActivator)) {
-            Request request = new Request.Builder().url(endpoint)
+            final Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
             coproRequestBuilder(entity, request,  objectMapper, rootPipelineId,noiseOutputEntities);
         }
         else {
-            Request request = new Request.Builder().url(endpoint)
+            final Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
             tritonRequestBuilder(entity, request, objectMapper,  rootPipelineId,noiseOutputEntities);
         }
@@ -111,53 +111,51 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
     private void tritonRequestBuilder(NoiseModelInputEntity entity, Request request, ObjectMapper objectMapper,Long rootPipelineId ,List<NoiseModelOutputEnitity> noiseOutputEntities) throws IOException {
-        String originId = entity.getOriginId();
-        Integer paperNo = entity.getPaperNo();
-        Integer groupId = entity.getGroupId();
-        String fileId = entity.getFileId();
-        String filePath = entity.getFilePath();
+        final String originId = entity.getOriginId();
+        final Integer paperNo = entity.getPaperNo();
+        final Integer groupId = entity.getGroupId();
+        final String filePath = entity.getFilePath();
 
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 log.info("Response Details: {}", response);
 
-                String responseBody = Objects.requireNonNull(response.body()).string();
+                final String responseBody = Objects.requireNonNull(response.body()).string();
                 // Parse the JSON string
-                JsonNode dataNode = objectMapper.readTree(responseBody);
+                final JsonNode dataNode = objectMapper.readTree(responseBody);
 
                 if (dataNode != null && !dataNode.isEmpty()) {
-                    JsonNode rootNode = dataNode
+                    final JsonNode rootNode = dataNode
                             .path("outputs")
                             .path(0)
                             .path("data")
                             .path(0);
-                    Integer processId = rootNode.path("processId").asInt();
+                    final Integer processId = rootNode.path("processId").asInt();
 //                    Integer groupId = rootNode.path("groupId").asInt();
-                    Integer tenantId = rootNode.path("tenantId").asInt();
-                    String inputFilePath = rootNode.path("inputFilePath").asText();
-                    String consolidatedClass = rootNode.path("consolidatedClass").asText();
-                    Double consolidatedConfidenceScore = rootNode.path("consolidatedConfidenceScore").asDouble();
-                    String extractedValue = rootNode.path("noiseModelsResult").toString();
+                    final Integer tenantId = rootNode.path("tenantId").asInt();
+                    final String inputFilePath = rootNode.path("inputFilePath").asText();
+                    final String consolidatedClass = rootNode.path("consolidatedClass").asText();
+                    final Double consolidatedConfidenceScore = rootNode.path("consolidatedConfidenceScore").asDouble();
+                    final String extractedValue = rootNode.path("noiseModelsResult").toString();
 
                     //              getting the output of hwnoise model
 
-                    String hwClass = rootNode
+                    final String hwClass = rootNode
                             .path("noiseModelsResult")
                             .path("hwNoiseDetectionOutput").toString();
 
 
-                    String checkBoxClass = rootNode
+                    final String checkBoxClass = rootNode
                             .path("noiseModelsResult")
                             .path("checkNoiseDetectionOutput").toString();
-                    String tickNoiseClass = rootNode
+                    final String tickNoiseClass = rootNode
                             .path("noiseModelsResult")
                             .path("tickNoiseDetectionOutput").toString();
-                    String speckleClass = rootNode
+                    final String speckleClass = rootNode
                             .path("noiseModelsResult")
                             .path("speckleNoiseDetection").toString();
 
                     noiseOutputEntities.add(NoiseModelOutputEnitity.builder()
-                            .fileId(fileId)
                             .originId(originId)
                             .paperNo(paperNo)
                             .groupId(groupId)
@@ -184,7 +182,6 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .originId(originId)
                             .paperNo(paperNo)
                             .groupId(groupId)
-                            .fileId(fileId)
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(rootPipelineId)
                             .status("ABSENT")
@@ -199,7 +196,6 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .originId(originId)
                         .paperNo(paperNo)
                         .groupId(groupId)
-                        .fileId(fileId)
                         .createdOn(LocalDateTime.now())
                         .rootPipelineId(rootPipelineId)
                         .status("ABSENT")
@@ -214,7 +210,6 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                     .originId(originId)
                     .paperNo(paperNo)
                     .groupId(groupId)
-                    .fileId(fileId)
                     .createdOn(LocalDateTime.now())
                     .status("FAILED")
                     .rootPipelineId(rootPipelineId)
@@ -251,10 +246,8 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                 // Parse the JSON string
                 JsonNode rootNode = objectMapper.readTree(responseBody);
 
-
                 if (rootNode != null && !rootNode.isEmpty()) {
                     Integer processId = rootNode.path("processId").asInt();
-//                    Integer groupId = rootNode.path("groupId").asInt();
                     Integer tenantId = rootNode.path("tenantId").asInt();
                     String inputFilePath = rootNode.path("inputFilePath").asText();
                     String consolidatedClass = rootNode.path("consolidatedClass").asText();
