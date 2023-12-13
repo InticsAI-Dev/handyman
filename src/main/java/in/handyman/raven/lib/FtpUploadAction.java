@@ -202,7 +202,41 @@ public class FtpUploadAction implements IActionExecution {
     }
 
   }
-
+//public void uploadSingleFile(FTPClient ftpClient, String localFilePath, String sourceDir) throws IOException {
+//  File localFile = new File(localFilePath);
+//
+//  if (localFile.isFile()) {
+//    // If it's a file, upload it
+//    uploadFile(ftpClient, localFilePath, sourceDir);
+//  } else if (localFile.isDirectory()) {
+//    // If it's a directory, upload all files within the directory recursively
+//    uploadDirectory(ftpClient, localFile, sourceDir);
+//  } else {
+//    // Handle other cases if necessary
+//    log.warn("Unsupported file type: {}", localFilePath);
+//  }
+//}
+//
+//  private void uploadFile(FTPClient ftpClient, String localFilePath, String sourceDir) throws IOException {
+//    try (InputStream inputStream = new FileInputStream(localFilePath)) {
+//      String remoteFilePath = sourceDir + File.separator + "Upload" + File.separator + new File(localFilePath).getName();
+//      boolean isCompleted = ftpClient.storeFile(remoteFilePath, inputStream);
+//      if (isCompleted) {
+//        log.info(aMarker, "Uploaded the file {} to remote path: {}", localFilePath, remoteFilePath);
+//      } else {
+//        log.error(aMarker, "Couldn't complete the file upload: {} to remote path: {}", localFilePath, remoteFilePath);
+//      }
+//    }
+//  }
+//
+//  private void uploadDirectory(FTPClient ftpClient, File localDirectory, String sourceDir) throws IOException {
+//    File[] localFiles = localDirectory.listFiles();
+//    if (localFiles != null) {
+//      for (File localFile : localFiles) {
+//        uploadSingleFile(ftpClient, localFile.getAbsolutePath(), sourceDir);
+//      }
+//    }
+//  }
   private void directoryCreation(FTPClient ftpClient, String dirToCreate) throws IOException {
     boolean directoryCreated = ftpClient.makeDirectory(dirToCreate);
     if (directoryCreated) {

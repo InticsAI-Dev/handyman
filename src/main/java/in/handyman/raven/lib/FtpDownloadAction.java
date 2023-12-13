@@ -78,6 +78,11 @@ public class FtpDownloadAction implements IActionExecution {
         final String DestDir = action.getContext().get("destinationPath");
         final String uploadTime = action.getContext().get("uploadTime");
         FTPClient ftpClient = new FTPClient();
+//        final String remoteHost = action.getContext().get("serverAddress");
+//        final String userName = action.getContext().get("username");
+//        final String password = action.getContext().get("password");
+//        final String sourceDir = action.getContext().get("folderPath");
+
 
         final String ftp = "FTP";
         final String active = "ACTIVE";
@@ -166,7 +171,7 @@ public class FtpDownloadAction implements IActionExecution {
                                 .status(active)
                                 .message("FTP download completed")
                                 .type(ftp)
-                                .info(ftpDownloadRequestJson)
+                                .info("ftpDownloadRequestJson")
                                 .lastProcessedOn(LocalDateTime.now())
                                 .ftpFolderPath(sourceDir)
                                 .destinationPath(DestDir)
@@ -191,7 +196,7 @@ public class FtpDownloadAction implements IActionExecution {
                     .status(active)
                     .message(e.getMessage())
                     .type(ftp)
-                    .info(ftpDownloadRequestJson)
+                    .info("ftpDownloadRequestJson")
                     .lastProcessedOn(LocalDateTime.now())
                     .ftpFolderPath(sourceDir)
                     .destinationPath(DestDir)
