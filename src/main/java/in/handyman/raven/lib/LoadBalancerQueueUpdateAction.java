@@ -109,7 +109,6 @@ public class LoadBalancerQueueUpdateAction implements IActionExecution {
     public static class LoadBalancerQueryResult {
 
         private Long tenantId;
-        private Integer groupId;
         private String transactionId;
         private Long loadBalancerBatchId;
         private Long endpointId;
