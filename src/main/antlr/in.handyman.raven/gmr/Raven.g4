@@ -145,6 +145,7 @@ action:
     |outboundKvpResponse
     |outboundTableResponse
     |integratedNoiseModelApi
+    |loadBalancerQueueUpdate
     );
 
 
@@ -1043,6 +1044,15 @@ integratedNoiseModelApi:
 	'process-id' processId=STRING
 	'output-table' outputTable=STRING
 	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+loadBalancerQueueUpdate:
+    'loadBalancerQueueUpdate' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'load-balancer-ip' ipAddress=STRING
+    'load-balancer-port' port=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 
 
 //rules
