@@ -27,7 +27,7 @@ public class IntegratedNoiseModelApi implements IActionContext {
 
   private String processId;
 
-  private String ouputTable;
+  private String outputTable;
 
   private String querySet;
 
