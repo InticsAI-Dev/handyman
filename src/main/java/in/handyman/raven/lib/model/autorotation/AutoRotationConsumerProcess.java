@@ -58,8 +58,10 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
         List<AutoRotationOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
-
-
+        String originId = entity.getOriginId();
+        Integer groupId = entity.getGroupId();
+        String processId = String.valueOf(entity.getProcessId());
+        Long tenantId=entity.getTenantId();
         String rootpipelineId = String.valueOf(entity.getRootPipelineId());
         String process = "auto rotation";
         String filePath = String.valueOf(entity.getFilePath());
@@ -68,6 +70,10 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
         //payload
         AutoRotationData autoRotationRequest = new AutoRotationData();
+        autoRotationRequest.setProcessId(Long.valueOf(processId));
+        autoRotationRequest.setOriginId(originId);
+        autoRotationRequest.setGroupId(groupId);
+        autoRotationRequest.setTenantId(tenantId);
         autoRotationRequest.setRootPipelineId(Long.valueOf(rootpipelineId));
         autoRotationRequest.setActionId(actionId);
         autoRotationRequest.setProcess(process);
@@ -244,17 +250,17 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
             parentObj.add(AutoRotationOutputTable
                     .builder()
                     .processedFilePath(autoRotationFilePath.getProcessedFilePaths())
-                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                    .groupId(groupId)
-                    .processId(processId)
-                    .tenantId(tenantId)
+                    .originId(autoRotationFilePath.getOriginId())
+                    .groupId(autoRotationFilePath.getGroupId())
+                    .processId(autoRotationFilePath.getProcessId())
+                    .tenantId(autoRotationFilePath.getTenantId())
                     .templateId(templateId)
-                    .paperNo(paperNo)
+                    .paperNo(autoRotationFilePath.getPaperNo())
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(AUTO_ROTATION)
                     .message("Auto rotation macro completed")
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                    .rootPipelineId(rootPipelineId)
+                    .rootPipelineId(autoRotationFilePath.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
                     .build()

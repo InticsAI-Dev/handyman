@@ -10,6 +10,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 public class AutoRotationData {
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
+    private Integer paperNo;
     private Long rootPipelineId;
     private Long actionId;
     private String process;
