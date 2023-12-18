@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.PaperItemizer;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import okhttp3.*;
@@ -41,6 +42,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         this.aMarker = aMarker;
         this.outputDir = outputDir;
         this.action = action;
+
     }
 
     @Override
@@ -51,9 +53,17 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         Long rootPipelineId = entity.getRootPipelineId();
         final String paperItemizerProcessName = "PAPER_ITEMIZER";
         Long actionId = action.getActionId();
+        String originId = entity.getOriginId();
+        Integer groupId = entity.getGroupId();
+        String processId = String.valueOf(entity.getProcessId());
+        Long tenantId=entity.getTenantId();
         ObjectMapper objectMapper = new ObjectMapper();
 //payload
         PaperItemizerData paperitemizerData = new PaperItemizerData();
+        paperitemizerData.setOriginId(originId);
+        paperitemizerData.setGroupId(groupId);
+        paperitemizerData.setProcessId(Long.valueOf(processId));
+        paperitemizerData.setTenantId(tenantId);
         paperitemizerData.setRootPipelineId(rootPipelineId);
         paperitemizerData.setProcess(paperItemizerProcessName);
         paperitemizerData.setInputFilePath(inputFilePath);
