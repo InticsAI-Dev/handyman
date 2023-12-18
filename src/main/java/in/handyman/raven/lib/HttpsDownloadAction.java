@@ -30,6 +30,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -73,11 +75,6 @@ public class HttpsDownloadAction implements IActionExecution {
         String url = httpsDownloadInputTable.getUrl();
         ObjectMapper objectMapper = new ObjectMapper();
         String httpsDownloadRequestJson = objectMapper.writeValueAsString(httpsDownloadInputTable);
-
-
-
-
-
 
         final String tenantId = action.getContext().get("tenant_id");
         final Long rootPipelineId = action.getRootPipelineId();
@@ -222,23 +219,23 @@ public class HttpsDownloadAction implements IActionExecution {
 
     private String extractFileNameFromURL(String url) {
         try {
-            // Create a URI object from the URL string
             URI uri = new URI(url);
-
-            // Get the path component from the URI
             String path = uri.getPath();
-
-            // If the path contains directory structure, extract the file name
             int lastIndex = path.lastIndexOf('/');
             if (lastIndex >= 0 && lastIndex < path.length() - 1) {
                 String fileName = path.substring(lastIndex + 1);
-                return fileName;
-            }
 
-            return null; // No file name found
+                // Remove trailing %22 (double quote)
+                fileName = URLDecoder.decode(fileName, StandardCharsets.UTF_8.toString());
+                fileName = fileName.endsWith("\"") ? fileName.substring(0, fileName.length() - 1) : fileName;
+
+                return fileName;
+            } else {
+                return null;
+            }
         } catch (Exception e) {
             e.printStackTrace();
-            return null; // Handle the exception or return a default value
+            return null;
         }
     }
 
