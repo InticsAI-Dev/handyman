@@ -230,12 +230,12 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String parentResponseObject=extractPageContent(stringDataItem);
         final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
         final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
-        DataExtractionDataItem dataExtractionDataItem = mapper.readValue(contentString, DataExtractionDataItem.class);
-        
+        DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
+
         String templateId = entity.getTemplateId();
         parentObj.add(DataExtractionOutputTable.builder()
                 .filePath(dataExtractionDataItem.getInputFilePath())
-                .extractedText(contentString)
+                .extractedText(dataExtractionDataItem.getPageContent())
                 .originId(dataExtractionDataItem.getOriginId())
                 .groupId(dataExtractionDataItem.getGroupId())
                 .paperNo(dataExtractionDataItem.getPaperNumber())
