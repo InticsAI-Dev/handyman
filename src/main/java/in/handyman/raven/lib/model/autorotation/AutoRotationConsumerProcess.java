@@ -60,7 +60,6 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         String entityFilePath = entity.getFilePath();
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
-        String outputDir = entity.getOutputDir();
         Long processId =entity.getProcessId();
         Long tenantId=entity.getTenantId();
         String rootPipelineId = String.valueOf(entity.getRootPipelineId());
@@ -247,8 +246,6 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         Long rootPipelineId = entity.getRootPipelineId();
         try {
             AutoRotationDataItem autoRotationFilePath = mapper.readValue(autoRotationDataItem, AutoRotationDataItem.class);
-
-
             parentObj.add(AutoRotationOutputTable
                     .builder()
                     .processedFilePath(autoRotationFilePath.getProcessedFilePaths())
