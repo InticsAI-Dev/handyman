@@ -226,7 +226,7 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("stage", "VQA_TRANSACTION")
                                 .bind("modelName", modelName)
                                 .bind("modelVersion", modelVersion)
-                                .bind("tenantId", tenantId)
+                                .bind("tenantId", resultLineItem.getTenantId())
                                 .add();
 
                     });

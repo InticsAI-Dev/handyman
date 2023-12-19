@@ -96,7 +96,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
 
         if(log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} modelPath  {}  outputDir {} ", endpoint,entityFilePath,modelPath,outputDir);
+            log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} modelPath  {}  outputDir {} ", endpoint,entityFilePath,outputDir);
         }
 
         return parentObj;

@@ -11,11 +11,12 @@ import java.util.List;
 @Builder
 @Data
 public class ComparisonPayload {
-
-    private String inputSentence;
-    private List<String> sentence;
+    private Long tenantId;
+    private Long processId;
+    private String originId;
     private Long rootPipelineId;
     private Long actionId;
     private String process;
-
+    private String inputSentence;
+    private List<String> sentence;
 }

@@ -233,7 +233,6 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
     }
 
     private void extractedOutputRequest(List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String qrDataItem, String originId, Integer paperNo, Integer groupId, String fileId, Long tenantId, String modelName,String modelVersion) {
-
         List<QrReader> qrLineItems = null;
         try {
             qrLineItems = mapper.readValue(qrDataItem, new TypeReference<>() {

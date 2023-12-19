@@ -19,6 +19,12 @@ public class TrinityModelResultLineItem {
         private double imageWidth;
         private double imageHeight;
         private String extractedImageUnit;
+        private String paperType;
+        private Integer paperNo;
+        private String originId;
+        private Long processId;
+        private Integer groupId;
+        private Long tenantId;
     }
 
 
