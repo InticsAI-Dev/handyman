@@ -68,7 +68,6 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
             Comparisonpayload.setActionId(actionId);
             Comparisonpayload.setProcessId(action.getProcessId());
             Comparisonpayload.setOriginId(result.getOriginId());
-            Comparisonpayload.setTenantId();
             Comparisonpayload.setProcess(process);
             Comparisonpayload.setInputSentence(inputSentence);
             Comparisonpayload.setSentence(sentence);

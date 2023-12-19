@@ -76,7 +76,6 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         qrExtractionData.setOriginId(entity.getOriginId());
         qrExtractionData.setGroupId(entity.getGroupId());
         qrExtractionData.setTenantId(entity.getTenantId());
-        qrExtractionData.setOutputDir(action.getOutputDir);
 
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
 

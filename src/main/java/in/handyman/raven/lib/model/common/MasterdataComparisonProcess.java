@@ -73,7 +73,6 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Comparisonpayload.setActionId(actionId);
         Comparisonpayload.setProcessId(action.getProcessId());
         Comparisonpayload.setOriginId(result.getOriginId());
-        Comparisonpayload.setTenantId();
         Comparisonpayload.setProcess(process);
         Comparisonpayload.setInputSentence(inputSentence);
         Comparisonpayload.setSentence(sentence);
@@ -259,8 +258,6 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .rootPipelineId(result.getRootPipelineId())
                             .build()
             );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
         }
     }
 }

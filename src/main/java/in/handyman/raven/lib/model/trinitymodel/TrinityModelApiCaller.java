@@ -51,12 +51,6 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setPaperType(paperType);
         trinityModelPayload.setAttributes(questions);
         trinityModelPayload.setInputFilePath(inputPath);
-        trinityModelPayload.setOriginId();
-        trinityModelPayload.setGroupId();
-        trinityModelPayload.setTenantId();
-        trinityModelPayload.setProcessId();
-        trinityModelPayload.setPaperNo();
-
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 

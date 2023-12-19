@@ -55,9 +55,7 @@ public class NameAdapter implements AdapterInterface {
             nerAdapterPayload.setActionId(actionId);
             nerAdapterPayload.setInputString(List.of(patientName));
             nerAdapterPayload.setProcessId(audit.getProcessId());
-            nerAdapterPayload.setOriginId();
-            nerAdapterPayload.setGroupId();
-            nerAdapterPayload.setTenantId();
+
 
             String jsonInputRequest = objectMapper.writeValueAsString(nerAdapterPayload);
 
