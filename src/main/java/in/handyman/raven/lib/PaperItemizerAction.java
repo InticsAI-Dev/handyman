@@ -69,10 +69,8 @@ public class PaperItemizerAction implements IActionExecution {
             log.info(aMarker, "paper itemizer Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
-            String endpoint = paperItemizer.getEndpoint();
-
-            List<URL> urls = Optional.of(endpoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                        try {
+            final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.paper-itemizer.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                try {
                             return new URL(s1);
                         } catch (MalformedURLException e) {
                             log.error("Error in processing the URL ", e);

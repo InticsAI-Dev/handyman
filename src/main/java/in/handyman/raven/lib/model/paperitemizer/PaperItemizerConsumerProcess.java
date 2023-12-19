@@ -1,6 +1,8 @@
 package in.handyman.raven.lib.model.paperitemizer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -57,7 +59,6 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         Integer groupId = entity.getGroupId();
         String processId = String.valueOf(entity.getProcessId());
         Long tenantId=entity.getTenantId();
-        String outputDir = entity.getOutputDir();
         ObjectMapper objectMapper = new ObjectMapper();
 //payload
         PaperItemizerData paperitemizerData = new PaperItemizerData();
@@ -234,52 +235,58 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         Long processId = entity.getProcessId();
         try {
 
-            PaperItemizerDataItem paperItemizeOutputData = objectMapper.readValue(paperItemizerDataItem, PaperItemizerDataItem.class);
-            paperItemizeOutputData.getItemizedPapers().forEach(itemizerPapers -> {
-                Long paperNo = getPaperNobyFileName(itemizerPapers);
+                List<PaperItemizerDataItem> paperItemizeOutputDataList = objectMapper.readValue(
+                        paperItemizerDataItem, new TypeReference<List<PaperItemizerDataItem>>() {
+                        }
+                );
+
+                for (PaperItemizerDataItem paperItemizeOutputData : paperItemizeOutputDataList) {
+                    String itemizedPapers = paperItemizeOutputData.getItemizedPapers();
+                    Long paperNo = getPaperNobyFileName(itemizedPapers);  // Use updated field name
+                    parentObj.add(
+                            PaperItemizerOutputTable
+                                    .builder()
+                                    .processedFilePath(itemizedPapers)
+                                    .originId(paperItemizeOutputData.getOriginId())
+                                    .groupId(paperItemizeOutputData.getGroupId())
+                                    .templateId(templateId)
+                                    .tenantId(paperItemizeOutputData.getTenantId())
+                                    .processId(paperItemizeOutputData.getProcessId())
+                                    .paperNo(paperNo)
+                                    .status("COMPLETED")
+                                    .stage("paperItemizer")
+                                    .message("Paper Itemizer macro completed")
+                                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                    .rootPipelineId(entity.getRootPipelineId())
+                                    .modelName(modelName)
+                                    .modelVersion(modelVersion)
+                                    .build());
+                }
+
+            } catch(JsonProcessingException e){
                 parentObj.add(
                         PaperItemizerOutputTable
                                 .builder()
-                                .processedFilePath(itemizerPapers)
-                                .originId(paperItemizeOutputData.getOriginId())
-                                .groupId(paperItemizeOutputData.getGroupId())
+                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                                .groupId(groupId)
+                                .processId(processId)
                                 .templateId(templateId)
-                                .tenantId(paperItemizeOutputData.getTenantId())
-                                .processId(paperItemizeOutputData.getProcessId())
-                                .paperNo(paperNo)
-                                .status("COMPLETED")
+                                .tenantId(tenantId)
+                                .status("FAILED")
                                 .stage("paperItemizer")
-                                .message("Paper Itemizer macro completed")
+                                .message(e.getMessage())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(entity.getRootPipelineId())
-                                .modelName(modelName)
-                                .modelVersion(modelVersion)
                                 .build());
-            });
-
-        } catch (JsonProcessingException e) {
-            parentObj.add(
-                    PaperItemizerOutputTable
-                            .builder()
-                            .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                            .groupId(groupId)
-                            .processId(processId)
-                            .templateId(templateId)
-                            .tenantId(tenantId)
-                            .status("FAILED")
-                            .stage("paperItemizer")
-                            .message(e.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                            .rootPipelineId(entity.getRootPipelineId())
-                            .build());
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in request {}", e.toString());
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
+                log.error(aMarker, "The Exception occurred in request {}", e.toString());
+            }
         }
-    }
 
 
-    public static Long getPaperNobyFileName(String filePath) {
+
+        public static Long getPaperNobyFileName(String filePath) {
         Long extractedNumber = null;
         File file = new File(filePath);
 
