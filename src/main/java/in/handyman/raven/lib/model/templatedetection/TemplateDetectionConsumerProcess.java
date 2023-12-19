@@ -73,12 +73,15 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         templateDetectionDataInput.setProcess(TEMPLATE_DETECTION);
         templateDetectionDataInput.setOriginId(entity.getOriginId());
         templateDetectionDataInput.setPaperNo(entity.getPaperNo());
+        templateDetectionDataInput.setProcessId(entity.getProcessId());
+        templateDetectionDataInput.setGroupId(entity.getGroupId());
+        templateDetectionDataInput.setTenantId(entity.getTenantId());
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("ERNIE START");
+        requestBody.setName("ARGON VQA START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
