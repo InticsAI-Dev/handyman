@@ -54,9 +54,12 @@ public class NameAdapter implements AdapterInterface {
             nerAdapterPayload.setProcess(process);
             nerAdapterPayload.setActionId(actionId);
             nerAdapterPayload.setInputString(List.of(patientName));
+            nerAdapterPayload.setProcessId(audit.getProcessId());
+            nerAdapterPayload.setOriginId();
+            nerAdapterPayload.setGroupId();
+            nerAdapterPayload.setTenantId();
 
             String jsonInputRequest = objectMapper.writeValueAsString(nerAdapterPayload);
-
 
             TritonRequest requestBody = new TritonRequest();
             requestBody.setName("NER START");

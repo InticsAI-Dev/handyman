@@ -10,8 +10,8 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class PaperItemizerDataItem {
-        private Integer paperNumber;
         private List<String> itemizedPapers;
+        private Integer paperNumber;
         private String originId;
         private Long processId;
         private Integer groupId;

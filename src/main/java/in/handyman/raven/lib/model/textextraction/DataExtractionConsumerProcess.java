@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.autorotation.AutoRotationDataItem;
+import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -54,12 +56,23 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String process = "TEXT_EXTRACTOR";
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
-
+        String originId = entity.getOriginId();
+        Integer groupId = entity.getGroupId();
+        String templateName = "TEXT_EXTRACTOR";
+        Integer paperNumber = entity.getPaperNo();
+        String processId = String.valueOf(entity.getProcessId());
+        Long tenantId=entity.getTenantId();
 
         //payload
         DataExtractionData dataExtractionData = new DataExtractionData();
+        dataExtractionData.setOriginId(originId);
+        dataExtractionData.setGroupId(groupId);
+        dataExtractionData.setProcessId(Long.valueOf(processId));
+        dataExtractionData.setTenantId(tenantId);
         dataExtractionData.setRootPipelineId(rootpipelineId);
         dataExtractionData.setActionId(actionId);
+        dataExtractionData.setPaperNumber(paperNumber);
+        dataExtractionData.setTemplateName(templateName);
         dataExtractionData.setProcess(process);
         dataExtractionData.setInputFilePath(filePath);
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
@@ -80,9 +93,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
-
-        String originId = entity.getOriginId();
-        Integer groupId = entity.getGroupId();
 
         String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
@@ -217,35 +227,28 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private static void extractedOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
-
-
         String parentResponseObject=extractPageContent(stringDataItem);
         final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
         final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
-
-        Integer paperNo = entity.getPaperNo();
-        String filePath = entity.getFilePath();
-        Long tenantId = entity.getTenantId();
+        DataExtractionDataItem dataExtractionDataItem = mapper.readValue(contentString, DataExtractionDataItem.class);
+        
         String templateId = entity.getTemplateId();
-        Long processId = entity.getProcessId();
-        String templateName = entity.getTemplateName();
-        Long rootPipelineId = entity.getRootPipelineId();
         parentObj.add(DataExtractionOutputTable.builder()
-                .filePath(new File(filePath).getAbsolutePath())
+                .filePath(dataExtractionDataItem.getInputFilePath())
                 .extractedText(contentString)
-                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                .groupId(groupId)
-                .paperNo(paperNo)
+                .originId(dataExtractionDataItem.getOriginId())
+                .groupId(dataExtractionDataItem.getGroupId())
+                .paperNo(dataExtractionDataItem.getPaperNumber())
                 .status("COMPLETED")
                 .stage(PROCESS_NAME)
                 .message("Data extraction macro completed")
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                 .isBlankPage(flag)
-                .tenantId(tenantId)
+                .tenantId(dataExtractionDataItem.getTenantId())
                 .templateId(templateId)
-                .processId(processId)
-                .templateName(templateName)
-                .rootPipelineId(rootPipelineId)
+                .processId(dataExtractionDataItem.getProcessId())
+                .templateName(dataExtractionDataItem.getTemplateName())
+                .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
                 .build());

@@ -19,4 +19,8 @@ public class FileMergerPayload {
     private List<String> inputFilePaths;
     private String outputDir;
     private String outputFileName;
+    private String originId;
+    private Long processId;
+    private Long groupId;
+    private Long tenantId;
 }

@@ -24,7 +24,7 @@ public class QrOutputEntity implements CoproProcessor.Entity {
     private Integer qrFormatId;
     private String extractedValue;
     private Timestamp createdOn;
-    private Integer confidenceScore;
+    private Double confidenceScore;
     private Integer angle;
     private String b_box;
     private Long rootPipelineId;

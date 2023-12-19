@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.qrextraction;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.hwdectection.HwDetectionDataItem;
+import in.handyman.raven.lib.model.neradaptors.NerAdapterDataItem;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import okhttp3.*;
@@ -69,6 +72,12 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         qrExtractionData.setProcess(QR_EXTRACTION_PROCESS);
         qrExtractionData.setInputFilePath(filePath);
         qrExtractionData.setActionId(actionId);
+        qrExtractionData.setProcessId(action.getProcessId());
+        qrExtractionData.setOriginId(entity.getOriginId());
+        qrExtractionData.setGroupId(entity.getGroupId());
+        qrExtractionData.setTenantId(entity.getTenantId());
+        qrExtractionData.setOutputDir(action.getOutputDir);
+
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
 
 
@@ -235,12 +244,12 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         AtomicInteger atomicInteger = new AtomicInteger();
         if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
-                JsonNode qrBoundingBox=mapper.valueToTree(qrReader.getBoundingBox());
+                JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
                 qrOutputEntities.add(QrOutputEntity.builder()
                         .angle(qrReader.getAngle())
-                        .originId(originId)
+                        .originId(qrReader.getOriginId())
                         .paperNo(paperNo)
-                        .groupId(groupId)
+                        .groupId(qrReader.getGroupId())
                         .fileId(fileId)
                         .decodeType(qrReader.getDecodeType())
                         .qrFormat(qrReader.getType())
@@ -253,7 +262,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .status("COMPLETED")
                         .stage("QR_EXTRACTION")
                         .message("qr extraction completed")
-                        .tenantId(tenantId)
+                        .tenantId(qrReader.getTenantId())
                         .modelName(modelName)
                         .modelVersion(modelVersion)
                         .build());

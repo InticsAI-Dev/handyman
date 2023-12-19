@@ -47,9 +47,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         Long pipelineId = action.getRootPipelineId();
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
-        Long tenantId=entity.getTenantId();
         Long actionId = action.getActionId();;
         String pageContent = String.valueOf(entity.getPageContent());
+        String process = "PM START";
 
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String,List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
@@ -67,6 +67,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setGroupId(groupId);
         data.setPageContent(pageContent);
         data.setKeysToFilter(keysToFilterObject);
+        data.setProcess(process);
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(data);
@@ -208,12 +209,11 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         Long rootPipelineId = entity.getRootPipelineId();
         try {
            // PharseMatchDataItem pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, PharseMatchDataItem.class);
-            List<PharseMatchDataItem> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<List<PharseMatchDataItem>>() {
+            List<PharseMatchDataItem> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
 
             });
 
             for (PharseMatchDataItem item : pharseMatchOutputData) {
-
                 parentObj.add(
                         PhraseMatchOutputTable
                                 .builder()

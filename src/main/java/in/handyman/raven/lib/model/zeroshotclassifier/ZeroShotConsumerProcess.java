@@ -55,8 +55,7 @@ import java.util.concurrent.TimeUnit;
             String paperNo = String.valueOf(entity.getPaperNo());
             Long actionId = action.getActionId();
             String pageContent = String.valueOf(entity.getPageContent());
-
-
+            String  process = "ZSC START";
             ObjectMapper objectMapper = new ObjectMapper();
             Map<String,List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
             });
@@ -65,6 +64,8 @@ import java.util.concurrent.TimeUnit;
             //payload
 
             ZeroShotClassifierData data = new ZeroShotClassifierData();
+            data.setProcess(process);
+            data.setProcessId(processId);
             data.setRootPipelineId(String.valueOf(rootPipelineId));
             data.setActionId(actionId);
             data.setProcess(entity.getProcessId());
@@ -224,12 +225,12 @@ import java.util.concurrent.TimeUnit;
 
                             parentObj.add(ZeroShotClassifierOutputTable
                                     .builder()
-                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                                .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                                .originId(zeroshotclassifierOutputData.getGroupId())
+                                .groupId(zeroshotclassifierOutputData.getGroupId())
                                 .truthEntity(Optional.ofNullable(truthEntity).map(String::valueOf).orElse(null))
                                 .entity(Optional.ofNullable(key).map(String::valueOf).orElse(null))
                                 .confidenceScore(Optional.of(scoreValue).map(String::valueOf).orElse(null))
-                                .paperNo(paperNo)
+                                .paperNo(zeroshotclassifierOutputData.getPaperNo())
                                 .status("COMPLETED")
                                 .stage(actionName)
                                 .message("Completed API call zero shot classifier")

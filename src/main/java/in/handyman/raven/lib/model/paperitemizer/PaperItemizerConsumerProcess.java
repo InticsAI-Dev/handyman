@@ -57,6 +57,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         Integer groupId = entity.getGroupId();
         String processId = String.valueOf(entity.getProcessId());
         Long tenantId=entity.getTenantId();
+        String outputDir = entity.getOutputDir();
         ObjectMapper objectMapper = new ObjectMapper();
 //payload
         PaperItemizerData paperitemizerData = new PaperItemizerData();

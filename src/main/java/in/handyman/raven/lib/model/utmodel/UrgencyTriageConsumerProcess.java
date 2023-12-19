@@ -57,6 +57,12 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setInputFilePath(entity.getInputFilePath());
         urgencyTriageModelPayload.setActionId(action.getActionId());
         urgencyTriageModelPayload.setOutputDir(outputDir);
+        urgencyTriageModelPayload.setTenantId(entity.getTenantId());
+        urgencyTriageModelPayload.setProcessId(entity.getProcessId());
+        urgencyTriageModelPayload.setGroupId(entity.getGroupId());
+        urgencyTriageModelPayload.setOriginId(entity.getOriginId());
+
+
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
 
 
@@ -161,12 +167,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
     private static void extractedOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
         String createdUserId = entity.getCreatedUserId();
-        String lastUpdatedUserId = entity.getLastUpdatedUserId();
-        Long tenantId = entity.getTenantId();
-        Long processId = entity.getProcessId();
-        Integer groupId = entity.getGroupId();
-        String originId = entity.getOriginId();
-        Integer paperNo = entity.getPaperNo();
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
         try {
@@ -177,11 +177,11 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             parentObj.add(UrgencyTriageOutputTable.builder()
                     .createdUserId(createdUserId)
                     .lastUpdatedUserId(createdUserId)
-                    .tenantId(tenantId)
-                    .processId(processId)
-                    .groupId(groupId)
-                    .originId(originId)
-                    .paperNo(paperNo)
+                    .tenantId(urgencyTriageModelDataItem1.getTenantId())
+                    .processId(urgencyTriageModelDataItem1.getProcessId())
+                    .groupId(urgencyTriageModelDataItem1.getGroupId())
+                    .originId(urgencyTriageModelDataItem1.getOriginId())
+                    .paperNo(urgencyTriageModelDataItem1.getPaperNo())
                     .templateId(templateId)
                     .modelId(modelId)
                     .utResult(paperType)

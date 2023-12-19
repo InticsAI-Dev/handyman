@@ -60,25 +60,28 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         String entityFilePath = entity.getFilePath();
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
-        String processId = String.valueOf(entity.getProcessId());
+        String outputDir = entity.getOutputDir();
+        Long processId =entity.getProcessId();
         Long tenantId=entity.getTenantId();
-        String rootpipelineId = String.valueOf(entity.getRootPipelineId());
+        String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         String process = "auto rotation";
+        Integer paperNo = entity.getPaperNo();
         String filePath = String.valueOf(entity.getFilePath());
         Long actionId = action.getActionId();
 
 
         //payload
         AutoRotationData autoRotationRequest = new AutoRotationData();
-        autoRotationRequest.setProcessId(Long.valueOf(processId));
+        autoRotationRequest.setProcessId(processId);
         autoRotationRequest.setOriginId(originId);
         autoRotationRequest.setGroupId(groupId);
         autoRotationRequest.setTenantId(tenantId);
-        autoRotationRequest.setRootPipelineId(Long.valueOf(rootpipelineId));
+        autoRotationRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         autoRotationRequest.setActionId(actionId);
         autoRotationRequest.setProcess(process);
         autoRotationRequest.setInputFilePath(filePath);
         autoRotationRequest.setOutputDir(outputDir);
+        autoRotationRequest.setPaperNo(paperNo);
         String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
 
 

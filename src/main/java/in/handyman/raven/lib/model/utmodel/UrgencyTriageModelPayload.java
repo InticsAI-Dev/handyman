@@ -10,6 +10,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 public class UrgencyTriageModelPayload {
+    private String originId;
+    private Integer paperNo;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
     private Long rootPipelineId;
     private Long actionId;
     private String process;

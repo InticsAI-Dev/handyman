@@ -71,6 +71,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         templateDetectionDataInput.setRootPipelineId(rootPipelineId);
         templateDetectionDataInput.setActionId(actionId);
         templateDetectionDataInput.setProcess(TEMPLATE_DETECTION);
+        templateDetectionDataInput.setOriginId(entity.getOriginId());
+        templateDetectionDataInput.setPaperNo(entity.getPaperNo());
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 
@@ -260,8 +262,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
                 outputObjectList.add(
                         TemplateDetectionOutputTable.builder()
-                                .processId(processId)
-                                .tenantId(tenantId)
+                                .processId(attribute.getProcessId())
+                                .tenantId(attribute.getTenantId())
                                 .templateId(templateId)
                                 .predictedAttributionValue(predictedAttributionValue)
                                 .question(question)
@@ -271,9 +273,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .imageDPI(templateDetectionDataItem.getImageDPI())
                                 .extractedImageUnit(templateDetectionDataItem.getExtractedImageUnit())
                                 .rootPipelineId(entity.getRootPipelineId())
-                                .groupId(groupId)
-                                .originId(originId)
-                                .paperNo(paperNo)
+                                .groupId(attribute.getGroupId())
+                                .originId(attribute.getOriginId())
+                                .paperNo(attribute.getPaperNo())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .status(ExecutionStatus.COMPLETED.toString())
                                 .stage(TEMPLATE_DETECTION)

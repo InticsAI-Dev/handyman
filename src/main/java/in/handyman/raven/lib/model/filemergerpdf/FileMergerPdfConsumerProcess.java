@@ -86,7 +86,10 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                   fileMergerPayload.setActionId(actionId);
                   fileMergerPayload.setOutputDir(outputDir);
                   fileMergerPayload.setOutputFileName(outputFileName);
-
+                  fileMergerPayload.setProcessId(entity.getProcessId());
+                  fileMergerPayload.setGroupId((entity.getGroupId()));
+                  fileMergerPayload.setOriginId(entity.getOriginId());
+                  fileMergerPayload.setTenantId(entity.getTenantId());
 
                   ObjectMapper objectMapper = new ObjectMapper();
                   String jsonInputRequest = objectMapper.writeValueAsString(fileMergerPayload);
@@ -185,8 +188,6 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
   private void extractedOutputDataRequest(FileMergerpdfInputEntity entity, String fileMergerDataItem, List<FileMergerpdfOutputEntity> parentObj, String modelName, String modelVersion) {
     Long rootPipelineId =entity.getRootPipelineId();
     Long tenantId=entity.getTenantId();
-    Long group_id= entity.getGroupId();
-    String outputFileName = entity.getOutputFileName();
     try {
       FileMergerDataItem fileMergerDataItem1 = mapper.readValue(fileMergerDataItem, new TypeReference<>() {
       });
@@ -195,18 +196,19 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
               .processedFilePath(fileMergerDataItem1.getProcessedFilePath())
               .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
               .stage("fileMerger")
-              .processId(entity.getProcessId())
+              .processId(fileMergerDataItem1.getProcessId())
               .message("file merger macro completed")
               .createdOn(Timestamp.valueOf(LocalDateTime.now()))
               .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
               .rootPipelineId(rootPipelineId)
               .modelName(modelName)
               .tenantId(tenantId)
-              .originId(entity.getOriginId())
-              .groupId(group_id)
+              .originId(fileMergerDataItem1.getOriginId())
+              .groupId(fileMergerDataItem1.getGroupId())
+              .processId(fileMergerDataItem1.getProcessId())
+              .tenantId(fileMergerDataItem1.getTenantId())
               .modelName(modelName)
-              .fileName(outputFileName)
-              .processedFilePath(fileMergerDataItem1.getProcessedFilePath())
+              .fileName(fileMergerDataItem1.getOutputFileName())
               .modelVersion(modelVersion)
               .build());
     } catch (JsonMappingException e) {
