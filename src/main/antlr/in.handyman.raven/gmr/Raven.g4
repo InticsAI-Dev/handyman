@@ -146,6 +146,7 @@ action:
     |outboundTableResponse
     |integratedNoiseModelApi
     |loadBalancerQueueUpdate
+    |multipartUpload
     );
 
 
@@ -1050,6 +1051,14 @@ loadBalancerQueueUpdate:
     'resource-conn' resourceConn=STRING
     'load-balancer-ip' ipAddress=STRING
     'load-balancer-port' port=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+multipartUpload:
+    'multipartUpload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'upload-url' endPoint=STRING
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
