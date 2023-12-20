@@ -44,10 +44,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         List<PhraseMatchOutputTable> parentObj = new ArrayList<>();
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
-        Long pipelineId = action.getRootPipelineId();
-        String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
-        Long actionId = action.getActionId();;
+        Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
         String process = "PM START";
 
@@ -60,7 +58,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         //payload
         PharseMatchData data = new PharseMatchData();
         data.setRootPipelineId(Math.toIntExact(action.getRootPipelineId()));
-        data.setActionId(Math.toIntExact(actionId));
+        data.setActionId(actionId);
         data.setProcess(entity.getProcessId());
         data.setOriginId(originId);
         data.setPaperNo(Long.valueOf(paperNo));
@@ -161,7 +159,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(pharseMatchDataItem -> {
-                            extractedOutputDataRequest(entity, parentObj, pharseMatchDataItem, objectMapper, "", "");
+                            extractedOutputDataRequest(entity, parentObj, pharseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
                         });
                     });
                 } else {
@@ -208,7 +206,6 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
         try {
-           // PharseMatchDataItem pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, PharseMatchDataItem.class);
             List<PharseMatchDataItem> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
 
             });
