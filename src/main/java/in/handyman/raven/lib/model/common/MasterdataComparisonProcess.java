@@ -68,15 +68,17 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         ObjectMapper objectMapper = new ObjectMapper();
 
 //payload
-        ComparisonPayload Comparisonpayload = new ComparisonPayload();
-        Comparisonpayload.setRootPipelineId(rootpipelineId);
-        Comparisonpayload.setActionId(actionId);
-        Comparisonpayload.setProcessId(action.getProcessId());
-        Comparisonpayload.setOriginId(result.getOriginId());
-        Comparisonpayload.setProcess(process);
-        Comparisonpayload.setInputSentence(inputSentence);
-        Comparisonpayload.setSentence(sentence);
-        String jsonInputRequest = objectMapper.writeValueAsString(Comparisonpayload);
+        ComparisonPayload comparisonPayload = new ComparisonPayload();
+        comparisonPayload.setRootPipelineId(rootpipelineId);
+        comparisonPayload.setActionId(actionId);
+        comparisonPayload.setProcessId(action.getProcessId());
+        comparisonPayload.setOriginId(result.getOriginId());
+        comparisonPayload.setProcess(process);
+        comparisonPayload.setInputSentence(inputSentence);
+        comparisonPayload.setSentences(sentence);
+        comparisonPayload.setTenantId(result.getTenantId());
+        comparisonPayload.setGroupId(result.getGroupId());
+        String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("COS START");
@@ -231,7 +233,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .paperNo(paperNo)
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .extractedValue(item.getSentence())
-                        .actualValue(item.getInputSentence())
+                        .actualValue(result.getActualValue())
                         .intelliMatch(item.getSimilarityPercent())
                         .status("COMPLETED")
                         .stage("MASTER-DATA-COMPARISON")
