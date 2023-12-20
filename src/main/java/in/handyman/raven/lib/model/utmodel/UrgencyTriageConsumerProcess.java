@@ -60,6 +60,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setTenantId(entity.getTenantId());
         urgencyTriageModelPayload.setProcessId(entity.getProcessId());
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
+        urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
 
 
