@@ -31,10 +31,10 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
 
-    final OkHttpClient httpclient = new OkHttpClient.Builder()
-            .connectTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
-            .writeTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
-            .readTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
+    private final OkHttpClient httpclient = new OkHttpClient.Builder()
+            .connectTimeout(100, TimeUnit.MINUTES)
+            .writeTimeout(100, TimeUnit.MINUTES)
+            .readTimeout(100, TimeUnit.MINUTES)
             .build();
 
     public HwClassificationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
