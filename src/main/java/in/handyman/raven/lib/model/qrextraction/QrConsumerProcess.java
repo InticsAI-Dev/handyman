@@ -81,7 +81,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("QR START");
+        requestBody.setName("QR EXTRACTION START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -234,8 +234,10 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
     private void extractedOutputRequest(List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String qrDataItem, String originId, Integer paperNo, Integer groupId, String fileId, Long tenantId, String modelName,String modelVersion) {
         List<QrReader> qrLineItems = null;
         try {
-            qrLineItems = mapper.readValue(qrDataItem, new TypeReference<>() {
-            });
+            JsonNode rootNode = mapper.readTree(qrDataItem);
+            JsonNode decodeValueNode = rootNode.get("decode_value");
+            qrLineItems = mapper.convertValue(decodeValueNode, new TypeReference<>() {});
+
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
