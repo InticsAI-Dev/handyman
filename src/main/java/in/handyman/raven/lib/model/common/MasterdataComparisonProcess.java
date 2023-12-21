@@ -1,12 +1,11 @@
 package in.handyman.raven.lib.model.common;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.copro.ComparisonDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -21,8 +20,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static in.handyman.raven.lib.MasterdataComparisonAction.MediaTypeJSON;
 
 public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProcess<MasterDataInputTable, MasterDataOutputTable> {
     private final Logger log;
@@ -132,7 +129,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             log.info("master data comparison response body {}", response.body());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractOuputDataRequest(result, parentObj, responseBody, "", "");
+                extractedCoproOutputResponse(result, parentObj, responseBody, "", "");
             } else {
                 parentObj.add(
                         MasterDataOutputTable.builder()
@@ -245,6 +242,55 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             }
 
             }catch (Exception exception) {
+            parentObj.add(
+                    MasterDataOutputTable.builder()
+                            .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                            .eocIdentifier(eocIdentifier)
+                            .paperNo(paperNo)
+                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .extractedValue(extractedValue)
+                            .actualValue(actualValue)
+                            .intelliMatch(0)
+                            .status("FAILED")
+                            .stage("MASTER-DATA-COMPARISON")
+                            .message("Master data comparison macro failed")
+                            .rootPipelineId(result.getRootPipelineId())
+                            .build()
+            );
+        }
+    }
+    private static void extractedCoproOutputResponse(MasterDataInputTable result, List<MasterDataOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion) {
+        String eocIdentifier = result.getEocIdentifier();
+        String originId = result.getOriginId();
+        Integer paperNo = result.getPaperNo();
+        String extractedValue = result.getExtractedValue();
+        String actualValue = result.getActualValue();
+
+        try {
+            List<ComparisonDataItemCopro> comparisonDataItemCopros = mapper.readValue(
+                    comparisonDataItem, new TypeReference<List<ComparisonDataItemCopro>>() {
+                    });
+
+            for (ComparisonDataItemCopro item: comparisonDataItemCopros) {
+                parentObj.add(MasterDataOutputTable
+                        .builder()
+                        .originId(result.getOriginId())
+                        .eocIdentifier(eocIdentifier)
+                        .paperNo(paperNo)
+                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .extractedValue(item.getSentence())
+                        .actualValue(result.getActualValue())
+                        .intelliMatch(item.getSimilarityPercent())
+                        .status("COMPLETED")
+                        .stage("MASTER-DATA-COMPARISON")
+                        .message("Master data comparison macro completed")
+                        .rootPipelineId(result.getRootPipelineId())
+                        .modelName(modelName)
+                        .modelVersion(modelVersion)
+                        .build());
+            }
+
+        }catch (Exception exception) {
             parentObj.add(
                     MasterDataOutputTable.builder()
                             .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))

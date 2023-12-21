@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.utmodel.copro.UrgencyTriageModelDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -214,7 +215,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             Long modelId = entity.getModelId();
             if (response.isSuccessful()) {
                 log.info("Response Details: {}", response);
-                extractedOutputRequest(entity, responseBody, objectMapper, parentObj, originId, templateId);
+                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj, originId, templateId);
 
             } else {
                 parentObj.add(UrgencyTriageOutputTable.builder()
@@ -264,6 +265,45 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Exception occurred in urgency triage model action for group id - " + groupId + " and originId - " + originId, handymanException, this.action);
+        }
+    }
+    private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
+        String createdUserId = entity.getCreatedUserId();
+        String lastUpdatedUserId = entity.getLastUpdatedUserId();
+        Long tenantId = entity.getTenantId();
+        Long processId = entity.getProcessId();
+        Integer groupId = entity.getGroupId();
+        String originId = entity.getOriginId();
+        Integer paperNo = entity.getPaperNo();
+        String templateId = entity.getTemplateId();
+        Long modelId = entity.getModelId();
+        try {
+            UrgencyTriageModelDataItemCopro urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItemCopro.class);
+            JsonNode qrBoundingBox=objectMapper.valueToTree(urgencyTriageModelDataItem1.getBboxes());
+            Float confScore = urgencyTriageModelDataItem1.getConfidenceScore();
+            String paperType = urgencyTriageModelDataItem1.getPaperType();
+            parentObj.add(UrgencyTriageOutputTable.builder()
+                    .createdUserId(createdUserId)
+                    .lastUpdatedUserId(createdUserId)
+                    .tenantId(tenantId)
+                    .processId(processId)
+                    .groupId(groupId)
+                    .originId(originId)
+                    .paperNo(paperNo)
+                    .templateId(templateId)
+                    .modelId(modelId)
+                    .utResult(paperType)
+                    .confScore(confScore)
+                    .bbox(qrBoundingBox.toString())
+                    .status("COMPLETED")
+                    .stage("URGENCY_TRIAGE_MODEL")
+                    .message("Urgency Triage Finished")
+                    .rootPipelineId(entity.getRootPipelineId())
+                    .modelName(modelName)
+                    .modelVersion(modelVersion)
+                    .build());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 }

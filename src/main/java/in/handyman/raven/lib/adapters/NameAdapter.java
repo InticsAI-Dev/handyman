@@ -9,6 +9,7 @@ import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterDataItem;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterPayload;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterResponse;
+import in.handyman.raven.lib.model.neradaptors.copro.NerAdapterDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import okhttp3.MediaType;
@@ -117,7 +118,7 @@ public class NameAdapter implements AdapterInterface {
             if(response.isSuccessful()){
                 try {
                     if(response.body() != null){
-                        NerAdapterDataItem nerAdapterDataItem1= objectMapper.readValue(response.body().string(), new TypeReference<>() {
+                        NerAdapterDataItemCopro nerAdapterDataItem1= objectMapper.readValue(response.body().string(), new TypeReference<>() {
                         });
                         nerAdapterDataItem1.getPrediction().forEach(nerAdapterPrediction -> {
                             isPredictedLabel=nerAdapterPrediction.isPredictedLabel();

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.hwdectection.copro.HwDetectionDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -116,7 +117,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
                 String responseBody = Objects.requireNonNull(response.body()).string();
 
-                extractOutputDataRequest(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
 
                 parentObj.add(HwClassificationOutputTable.builder()
@@ -254,6 +255,39 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .stage(STAGE)
                 .message("Paper Classification Finished")
                 .processId(hwDetectionDataItem.getProcessId())
+                .rootPipelineId(entity.getRootPipelineId())
+                .modelName(modelName)
+                .modelVersion(modelVersion)
+                .build());
+    }
+
+    private void extractedCoproOutputResponse(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
+        String createdUserId = entity.getCreatedUserId();
+        String lastUpdatedUserId = entity.getLastUpdatedUserId();
+        Long tenantId = entity.getTenantId();
+        String originId = entity.getOriginId();
+        Integer paperNo = entity.getPaperNo();
+        String templateId = entity.getTemplateId();
+        Long modelId = entity.getModelId();
+        Integer groupId = entity.getGroupId();
+        log.info("copro api response body {}", responseBody);
+
+        HwDetectionDataItemCopro hwDetectionDataItem=mapper.readValue(responseBody, new TypeReference<>() {});
+
+        parentObj.add(HwClassificationOutputTable.builder().createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
+                .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
+                .tenantId(Optional.ofNullable(tenantId).map(String::valueOf).map(Long::valueOf).orElse(null))
+                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                .paperNo(Optional.ofNullable(paperNo).map(String::valueOf).map(Integer::parseInt).orElse(null))
+                .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
+                .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Long::parseLong).orElse(null))
+                .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
+                .documentType(hwDetectionDataItem.getDocumentStatus())
+                .confidenceScore(hwDetectionDataItem.getConfidenceScore())
+                .status("COMPLETED")
+                .stage(STAGE)
+                .message("Paper Classification Finished")
+                .groupId(entity.getGroupId())
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)

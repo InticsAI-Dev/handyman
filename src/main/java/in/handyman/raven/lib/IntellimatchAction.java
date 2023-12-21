@@ -81,7 +81,7 @@ public class IntellimatchAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             // build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + intellimatch.getMatchResult() +
-                    " ( file_name,origin_id,group_id,created_on,root_pipeline_id,actual_value, extracted_value,similarity,confidence_score,intelli_match,status,stage,message,model_name,model_version)" +
+                    " (file_name,origin_id,group_id,created_on,root_pipeline_id,actual_value, extracted_value,similarity,confidence_score,intelli_match,status,stage,message,model_name,model_version)" +
                     " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
             log.info(aMarker, "intelli match Insert query {}", insertQuery);
 
@@ -109,8 +109,8 @@ public class IntellimatchAction implements IActionExecution {
             log.info(aMarker, "intelli match startProducer called read batch size {}", action.getContext().get("read.batch.size"));
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
-                    new IntellimatchProcess(log, aMarker, action));
-            log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("intelli.match.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
+                    new IntellimatchConsumerProcess(log, aMarker, action));
+            log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
 
         } catch (Exception ex) {
             log.error(aMarker, "Error in execute method for Drug Match {} ", ExceptionUtil.toString(ex));
@@ -119,193 +119,10 @@ public class IntellimatchAction implements IActionExecution {
         log.info(aMarker, "Intellimatch process for {} has been completed", intellimatch.getName());
     }
 
-
-    public static class IntellimatchProcess implements CoproProcessor.ConsumerProcess<IntellimatchInputTable, IntellimatchOutputTable> {
-        private final Logger log;
-        private final Marker aMarker;
-        public final ActionExecutionAudit action;
-        final ObjectMapper mapper;
-        private final OkHttpClient httpclient = new OkHttpClient.Builder()
-                .connectTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
-                .writeTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
-                .readTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
-                .build();
-
-
-        public IntellimatchProcess(Logger log, Marker aMarker, ActionExecutionAudit action) {
-            this.log = log;
-            this.aMarker = aMarker;
-            this.mapper = new ObjectMapper();
-            this.action = action;
-
-
-        }
-
-        @Override
-        public List<IntellimatchOutputTable> process(URL endpoint, IntellimatchInputTable result) throws Exception {
-            log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, result);
-            List<IntellimatchOutputTable> parentObj = new ArrayList<>();
-            AtomicInteger atomicInteger = new AtomicInteger();
-
-            if (result.getActualValue() != null) {
-                List<String> sentence = Arrays.asList(result.getExtractedValue());
-                final String process = "CONTROL_DATA";
-                Long actionId = action.getActionId();
-                Long rootpipelineId = result.getRootPipelineId();
-                String inputSentence = result.getExtractedValue();
-                ObjectMapper objectMapper = new ObjectMapper();
-
-
-                ComparisonPayload Comparisonpayload = new ComparisonPayload();
-                Comparisonpayload.setRootPipelineId(rootpipelineId);
-                Comparisonpayload.setActionId(actionId);
-                Comparisonpayload.setProcess(process);
-                Comparisonpayload.setInputSentence(inputSentence);
-                Comparisonpayload.setSentence(sentence);
-                String jsonInputRequest = objectMapper.writeValueAsString(Comparisonpayload);
-
-
-
-                ComparisonResquest requests = new ComparisonResquest();
-                TritonRequest requestBody = new TritonRequest();
-                requestBody.setName("COS START");
-                requestBody.setShape(List.of(1, 1));
-                requestBody.setDatatype("BYTES");
-                requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-                //    requestBody.setData(Collections.singletonList(Comparisonpayload));
-
-                TritonInputRequest tritonInputRequest = new TritonInputRequest();
-                tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
-                String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
-
-                final Request request = new Request.Builder().url(endpoint)
-                        .post(RequestBody.create(jsonRequest.toString(), MediaTypeJSON)).build();
-                log.info("intellimatch reqest body {}", request);
-                try (Response response = httpclient.newCall(request).execute()) {
-                    String responseBody = Objects.requireNonNull(response.body()).string();
-
-                    if (response.isSuccessful()) {
-                        List<ControlDataCopro> output = mapper.readValue(responseBody, new TypeReference<>() {
-                        });
-
-                        double matchPercent = output.get(0) != null ? Math.round(output.get(0).getSimilarityPercent() * 100.0) / 100.0 : 0.0;
-                        ObjectMapper objectMappers = new ObjectMapper();
-                        ComparisonResponse Response = objectMappers.readValue(responseBody, ComparisonResponse.class);
-                        if (Response.getOutputs() != null && !Response.getOutputs().isEmpty()) {
-                            Response.getOutputs().forEach(o -> {
-                                o.getData().forEach(ComparisonDataItem -> {
-                                    log.info("copro response body {} ", output);
-                                    double similarityPercent = output.get(0) != null ? Math.round(output.get(0).getSimilarityPercent() * 100.0) / 100.0 : 0.0;
-                                    parentObj.add(IntellimatchOutputTable.builder().
-                                            fileName(result.getFileName()).
-                                            originId(result.getOriginId()).
-                                            groupId(result.getGroupId()).
-                                            createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                                            rootPipelineId(result.getRootPipelineId()).
-                                            actualValue(result.getActualValue()).
-                                            extractedValue(result.getExtractedValue()).
-                                            similarity(result.getSimilarity()).
-                                            confidenceScore(result.getConfidenceScore()).
-                                            intelliMatch(ComparisonDataItem.getSimilarityPercent()).
-                                            status("completed").
-                                            stage("control data").
-                                            message("data insertion is completed").
-                                            modelName(Response.getModelName()).
-                                            modelVersion(Response.getModelVersion()).
-                                            build()
-                                    );
-                                });
-                            });
-                        }
-
-
-                    } else {
-                        parentObj.add(IntellimatchOutputTable.builder().
-                                fileName(result.getFileName()).
-                                originId(result.getOriginId()).
-                                groupId(result.getGroupId()).
-                                createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                                rootPipelineId(result.getRootPipelineId()).
-                                actualValue(result.getActualValue()).
-                                extractedValue(result.getExtractedValue()).
-                                similarity(result.getSimilarity()).
-                                intelliMatch(0.00).
-                                status("failed").
-                                stage("control data").
-                                message("data insertion is failed").
-                                build()
-                        );
-                        log.error(aMarker, "The Exception occurred in control data comparison by {} ", response);
-                        throw new HandymanException(responseBody);
-
-                    }
-                } catch (Exception exception) {
-                    parentObj.add(IntellimatchOutputTable.builder().
-                            fileName(result.getFileName()).
-                            originId(result.getOriginId()).
-                            groupId(result.getGroupId()).
-                            createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                            rootPipelineId(result.getRootPipelineId()).
-                            actualValue(result.getActualValue()).
-                            extractedValue(result.getExtractedValue()).
-                            similarity(result.getSimilarity()).
-                            intelliMatch(0.00).
-                            status("failed").
-                            stage("control data").
-                            message("data insertion is failed").
-                            build()
-                    );
-                    log.error(aMarker, "Exception occurred in copro api for intelli match - {} ", ExceptionUtil.toString(exception));
-                    HandymanException handymanException = new HandymanException(exception);
-                    HandymanException.insertException("control data comparison consumer failed for originId " + result.getOriginId(), handymanException, this.action);
-
-
-                }
-            } else {
-                parentObj.add(IntellimatchOutputTable.builder().
-                        fileName(result.getFileName()).
-                        originId(result.getOriginId()).
-                        groupId(result.getGroupId()).
-                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                        rootPipelineId(result.getRootPipelineId()).
-                        actualValue(result.getActualValue()).
-                        extractedValue(result.getExtractedValue()).
-                        similarity(result.getSimilarity()).
-                        intelliMatch(0.0000).
-                        status("completed").
-                        stage("control data").
-                        message("data insertion is completed").
-                        build()
-                );
-                log.info(aMarker, " control data coproProcessor consumer process with empty actual value entity {}", result);
-
-            }
-            atomicInteger.set(0);
-            log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
-            return parentObj;
-
-        }
-    }
-
-
     @Override
     public boolean executeIf() throws Exception {
-        return intellimatch.getCondition();
+        return false;
     }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ControlDataCopro {
-        String sentence;
-        Double similarityPercent;
-    }
-
 }
 
 

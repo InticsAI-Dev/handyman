@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.copro.ComparisonDataItemCopro;
+import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -128,7 +130,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
             log.info("intelliMatch data comparison response body {}", response.body());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractOuputDataRequest(result, parentObj, responseBody, "", "");
+                extractedCoproOutputResponse(result, parentObj, responseBody, "", "");
             } else {
                 parentObj.add(IntellimatchOutputTable.builder().
                         fileName(result.getFileName()).
@@ -267,8 +269,53 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         }
     }
 
+    private static void extractedCoproOutputResponse(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String
+            modelVersion) {
 
-    private static String formatToJsonArray(String input) {
+        try {
+            List<ComparisonDataItemCopro> comparisonDataItemCopros = mapper.readValue(
+                    comparisonDataItem, new TypeReference<List<ComparisonDataItemCopro>>() {
+                    });
+
+            for (ComparisonDataItemCopro itemCopro : comparisonDataItemCopros) {
+                parentObj.add(IntellimatchOutputTable.builder().
+                        fileName(result.getFileName()).
+                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                        extractedValue(itemCopro.getSentence()).
+                        similarity(result.getSimilarity()).
+                        confidenceScore(result.getConfidenceScore()).
+                        intelliMatch(itemCopro.getSimilarityPercent()).
+                        status("completed").
+                        stage("control data").
+                        message("data insertion is completed").
+                        modelName(modelName).
+                        modelVersion(modelVersion).
+                        build());
+            }
+
+
+            } catch (Exception exception) {
+                parentObj.add(IntellimatchOutputTable.builder().
+                        fileName(result.getFileName()).
+                        originId(result.getOriginId()).
+                        groupId(result.getGroupId()).
+                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                        rootPipelineId(result.getRootPipelineId()).
+                        actualValue(result.getActualValue()).
+                        extractedValue(result.getExtractedValue()).
+                        similarity(result.getSimilarity()).
+                        intelliMatch(0.00).
+                        status("failed").
+                        stage("control data").
+                        message("data insertion is failed").
+                        build()
+                );
+            }
+        }
+
+
+
+        private static String formatToJsonArray(String input) {
         // Remove enclosing square brackets and escape backslashes
         input = input.substring(1, input.length() - 1).replace("\\", "");
 

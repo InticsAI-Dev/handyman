@@ -95,9 +95,10 @@ public class MasterdataComparisonAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(masterdataComparison.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       // build insert prepare statement with output table columns
+
       final String insertQuery = "INSERT INTO " + masterdataComparison.getMatchResult() +
-              " ( origin_id, paper_no,eoc_identifier,created_on, actual_value, extracted_value,intelli_match,status,stage,message, root_pipeline_id,model_name,model_version)" +
-              " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?,?,?);";
+              "(origin_id, paper_no, eoc_identifier, created_on, actual_value, extracted_value, intelli_match, status, stage, message, root_pipeline_id, model_name, model_version) " +
+              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
       log.info(aMarker, "master data comparison Insert query {}", insertQuery);
 
       //3. initiate copro processor and copro urls

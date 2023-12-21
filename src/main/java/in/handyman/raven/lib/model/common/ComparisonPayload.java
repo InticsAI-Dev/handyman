@@ -16,7 +16,8 @@ public class ComparisonPayload {
     private String originId;
     private Long rootPipelineId;
     private Long actionId;
+    private Integer groupId;
     private String process;
     private String inputSentence;
-    private List<String> sentence;
+    private List<String> sentences;
 }
