@@ -6,6 +6,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AutoRotationAction;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.autorotation.copro.AutoRotationDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
@@ -189,7 +190,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(autoRotationDataItem -> {
-                        extractOuputDataRequest(entity, autoRotationDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractedCoproOutputResponse(entity, autoRotationDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
                     }));
 
                 }
@@ -288,6 +289,58 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
                     this.action);
         }
     }
+    private void extractedCoproOutputResponse(AutoRotationInputTable entity, String autoRotationDataItem, List<AutoRotationOutputTable> parentObj, String modelName, String modelVersion) {
+        Integer groupId = entity.getGroupId();
+        Long processId = entity.getProcessId();
+        String templateId = entity.getTemplateId();
+        Long tenantId = entity.getTenantId();
+        Integer paperNo = entity.getPaperNo();
+        Long rootPipelineId = entity.getRootPipelineId();
+        try {
+            AutoRotationDataItemCopro autoRotationFilePath = mapper.readValue(autoRotationDataItem, AutoRotationDataItemCopro.class);
+            parentObj.add(AutoRotationOutputTable
+                    .builder()
+                    .processedFilePath(autoRotationFilePath.getProcessedFilePaths())
+                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                    .groupId(groupId)
+                    .processId(processId)
+                    .tenantId(tenantId)
+                    .templateId(templateId)
+                    .paperNo(paperNo)
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(AUTO_ROTATION)
+                    .message("Auto rotation macro completed")
+                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .rootPipelineId(rootPipelineId)
+                    .modelName(modelName)
+                    .modelVersion(modelVersion)
+                    .build()
+            );
+        } catch (JsonProcessingException e) {
+
+            parentObj.add(
+                    AutoRotationOutputTable
+                            .builder()
+                            .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                            .groupId(groupId)
+                            .processId(processId)
+                            .tenantId(tenantId)
+                            .templateId(templateId)
+                            .paperNo(paperNo)
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .stage(AUTO_ROTATION)
+                            .message(ExceptionUtil.toString(e))
+                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .rootPipelineId(Long.valueOf(rootPipelineId))
+                            .build());
+            log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("AutoRotation consumer failed for batch/group " + groupId,
+                    handymanException,
+                    this.action);
+        }
+    }
+
 
 }
 
