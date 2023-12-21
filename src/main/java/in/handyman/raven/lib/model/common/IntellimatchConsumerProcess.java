@@ -1,7 +1,10 @@
 package in.handyman.raven.lib.model.common;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -53,25 +56,27 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, result);
         List<IntellimatchOutputTable> parentObj = new ArrayList<>();
         AtomicInteger atomicInteger = new AtomicInteger();
+        ObjectMapper objectMapper = new ObjectMapper();
 
         if (result.getActualValue() != null) {
             List<String> sentence = Arrays.asList(result.getExtractedValue());
             final String process = "CONTROL_DATA";
             Long actionId = action.getActionId();
             Long rootpipelineId = result.getRootPipelineId();
-            String inputSentence = result.getExtractedValue();
-            ObjectMapper objectMapper = new ObjectMapper();
+            String inputSentence = result.getActualValue();
 
 
-            ComparisonPayload Comparisonpayload = new ComparisonPayload();
-            Comparisonpayload.setRootPipelineId(rootpipelineId);
-            Comparisonpayload.setActionId(actionId);
-            Comparisonpayload.setProcessId(action.getProcessId());
-            Comparisonpayload.setOriginId(result.getOriginId());
-            Comparisonpayload.setProcess(process);
-            Comparisonpayload.setInputSentence(inputSentence);
-            Comparisonpayload.setSentence(sentence);
-            String jsonInputRequest = objectMapper.writeValueAsString(Comparisonpayload);
+            ComparisonPayload comparisonPayload = new ComparisonPayload();
+            comparisonPayload.setRootPipelineId(rootpipelineId);
+            comparisonPayload.setActionId(actionId);
+            comparisonPayload.setProcessId(action.getProcessId());
+            comparisonPayload.setOriginId(result.getOriginId());
+            comparisonPayload.setProcess(process);
+            comparisonPayload.setInputSentence(inputSentence);
+            comparisonPayload.setSentences(sentence);
+            comparisonPayload.setGroupId(result.getGroupId());
+            comparisonPayload.setTenantId(result.getTenantId());
+            String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
             TritonRequest requestBody = new TritonRequest();
             requestBody.setName("COS START");
@@ -97,91 +102,34 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
             log.info(aMarker, "coproProcessor consumer process with empty actual value entity {}", result);
 
         } else {
-                    parentObj.add(IntellimatchOutputTable.builder().
-                            fileName(result.getFileName()).
-                            originId(result.getOriginId()).
-                            groupId(result.getGroupId()).
-                            createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                            rootPipelineId(result.getRootPipelineId()).
-                            actualValue(result.getActualValue()).
-                            extractedValue(result.getExtractedValue()).
-                            similarity(result.getSimilarity()).
-                            intelliMatch(0.0000).
-                            status("completed").
-                            stage("control data").
-                            message("data insertion is completed").
-                            build()
-                    );
+            parentObj.add(IntellimatchOutputTable.builder().
+                    fileName(result.getFileName()).
+                    originId(result.getOriginId()).
+                    groupId(result.getGroupId()).
+                    createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                    rootPipelineId(result.getRootPipelineId()).
+                    actualValue(result.getActualValue()).
+                    extractedValue(result.getExtractedValue()).
+                    similarity(result.getSimilarity()).
+                    intelliMatch(0.0000).
+                    status("completed").
+                    stage("control data").
+                    message("data insertion is completed").
+                    build()
+            );
         }
         return parentObj;
     }
 
-        private void coproRequestBuider (IntellimatchInputTable result, Request request, List < IntellimatchOutputTable > parentObj) throws
-        IOException {
+    private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) throws
+            IOException {
 
-            try (Response response = httpclient.newCall(request).execute()) {
-                log.info("intelliMatch data comparison response body {}", response.body());
-                if (response.isSuccessful()) {
-                    String responseBody = response.body().string();
-                    extractOuputDataRequest(result, parentObj, responseBody, "", "");
-                } else {
-                    parentObj.add(IntellimatchOutputTable.builder().
-                            fileName(result.getFileName()).
-                            originId(result.getOriginId()).
-                            groupId(result.getGroupId()).
-                            createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                            rootPipelineId(result.getRootPipelineId()).
-                            actualValue(result.getActualValue()).
-                            extractedValue(result.getExtractedValue()).
-                            similarity(result.getSimilarity()).
-                            intelliMatch(0.0000).
-                            status("completed").
-                            stage("control data").
-                            message("data insertion is completed").
-                            build()
-                    );
-
-
-                }
-            }
-        }
-
-
-        private void tritonRequestBuilder (IntellimatchInputTable result, Request request, List < IntellimatchOutputTable > parentObj){
-            String originId = result.getOriginId();
-            try (Response response = httpclient.newCall(request).execute()) {
-                log.info("intelliMatch data comparison response body {}", response.body());
-                String responseBody = Objects.requireNonNull(response.body()).string();
-                if (response.isSuccessful()) {
-                    ObjectMapper objectMappers = new ObjectMapper();
-                    ComparisonResponse Response = objectMappers.readValue(responseBody, ComparisonResponse.class);
-                    if (Response.getOutputs() != null && !Response.getOutputs().isEmpty()) {
-                        Response.getOutputs().forEach(o -> {
-                            o.getData().forEach(comparisonDataItem -> {
-                                extractOuputDataRequest(result, parentObj, comparisonDataItem, Response.getModelName(), Response.getModelVersion());
-                            });
-                        });
-                    }
-                } else {
-                    parentObj.add(IntellimatchOutputTable.builder().
-                            fileName(result.getFileName()).
-                            originId(result.getOriginId()).
-                            groupId(result.getGroupId()).
-                            createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                            rootPipelineId(result.getRootPipelineId()).
-                            actualValue(result.getActualValue()).
-                            extractedValue(result.getExtractedValue()).
-                            similarity(result.getSimilarity()).
-                            intelliMatch(0.00).
-                            status("failed").
-                            stage("control data").
-                            message("data insertion is failed").
-                            build()
-                    );
-                    log.error(aMarker, "The Exception occurred in intelliMatch data comparison by {} ", response);
-                    throw new HandymanException(responseBody);
-                }
-            } catch (Exception exception) {
+        try (Response response = httpclient.newCall(request).execute()) {
+            log.info("intelliMatch data comparison response body {}", response.body());
+            if (response.isSuccessful()) {
+                String responseBody = response.body().string();
+                extractOuputDataRequest(result, parentObj, responseBody, "", "");
+            } else {
                 parentObj.add(IntellimatchOutputTable.builder().
                         fileName(result.getFileName()).
                         originId(result.getOriginId()).
@@ -191,62 +139,148 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         actualValue(result.getActualValue()).
                         extractedValue(result.getExtractedValue()).
                         similarity(result.getSimilarity()).
-                        intelliMatch(0.00).
-                        status("failed").
+                        intelliMatch(0.0000).
+                        status("completed").
                         stage("control data").
-                        message("data insertion is failed").
+                        message("data insertion is completed").
                         build()
                 );
 
-                log.error(aMarker, "Exception occurred in copro api for intelliMatch data comparison - {} ", ExceptionUtil.toString(exception));
-                HandymanException handymanException = new HandymanException(exception);
-                HandymanException.insertException("Paper classification (hw-detection) consumer failed for originId " + originId, handymanException, this.action);
-            }
-        }
 
-
-        private static void extractOuputDataRequest (IntellimatchInputTable result, List < IntellimatchOutputTable > parentObj, String comparisonDataItem, String modelName, String modelVersion){
-
-            try {
-                List<ComparisonDataItem> comparisonDataItem1 = mapper.readValue(comparisonDataItem, new TypeReference<>() {
-                });
-                for (ComparisonDataItem item : comparisonDataItem1) {
-                    parentObj.add(IntellimatchOutputTable.builder().
-                            fileName(result.getFileName()).
-                            originId(item.getOriginId()).
-                            groupId(item.getGroupId()).
-                            createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                            rootPipelineId(item.getRootPipelineId()).
-                            actualValue(item.getInputSentence()).
-                            extractedValue(item.getSentence()).
-                            similarity(result.getSimilarity()).
-                            confidenceScore(result.getConfidenceScore()).
-                            intelliMatch(item.getSimilarityPercent()).
-                            status("completed").
-                            stage("control data").
-                            message("data insertion is completed").
-                            modelName(modelName).
-                            modelVersion(modelVersion).
-                            build());
-                }
-            } catch (Exception exception) {
-                parentObj.add(IntellimatchOutputTable.builder().
-                        fileName(result.getFileName()).
-                        originId(result.getOriginId()).
-                        groupId(result.getGroupId()).
-                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                        rootPipelineId(result.getRootPipelineId()).
-                        actualValue(result.getActualValue()).
-                        extractedValue(result.getExtractedValue()).
-                        similarity(result.getSimilarity()).
-                        intelliMatch(0.00).
-                        status("failed").
-                        stage("control data").
-                        message("data insertion is failed").
-                        build()
-                );
             }
         }
     }
 
 
+    private void tritonRequestBuilder(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) {
+        String originId = result.getOriginId();
+        try (Response response = httpclient.newCall(request).execute()) {
+            log.info("intelliMatch data comparison response body {}", response.body());
+            String responseBody = Objects.requireNonNull(response.body()).string();
+            if (response.isSuccessful()) {
+                ObjectMapper objectMappers = new ObjectMapper();
+                ComparisonResponse Response = objectMappers.readValue(responseBody, ComparisonResponse.class);
+                if (Response.getOutputs() != null && !Response.getOutputs().isEmpty()) {
+                    Response.getOutputs().forEach(o -> {
+                        o.getData().forEach(comparisonDataItem -> {
+                            extractOuputDataRequest(result, parentObj, comparisonDataItem, Response.getModelName(), Response.getModelVersion());
+                        });
+                    });
+                }
+            } else {
+                parentObj.add(IntellimatchOutputTable.builder().
+                        fileName(result.getFileName()).
+                        originId(result.getOriginId()).
+                        groupId(result.getGroupId()).
+                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                        rootPipelineId(result.getRootPipelineId()).
+                        actualValue(result.getActualValue()).
+                        extractedValue(result.getExtractedValue()).
+                        similarity(result.getSimilarity()).
+                        intelliMatch(0.00).
+                        status("failed").
+                        stage("control data").
+                        message("data insertion is failed").
+                        build()
+                );
+                log.error(aMarker, "The Exception occurred in intelliMatch data comparison by {} ", response);
+                throw new HandymanException(responseBody);
+            }
+        } catch (Exception exception) {
+            parentObj.add(IntellimatchOutputTable.builder().
+                    fileName(result.getFileName()).
+                    originId(result.getOriginId()).
+                    groupId(result.getGroupId()).
+                    createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                    rootPipelineId(result.getRootPipelineId()).
+                    actualValue(result.getActualValue()).
+                    extractedValue(result.getExtractedValue()).
+                    similarity(result.getSimilarity()).
+                    intelliMatch(0.00).
+                    status("failed").
+                    stage("control data").
+                    message("data insertion is failed").
+                    build()
+            );
+
+            log.error(aMarker, "Exception occurred in copro api for intelliMatch data comparison - {} ", ExceptionUtil.toString(exception));
+            HandymanException handymanException = new HandymanException(exception);
+            HandymanException.insertException("Paper classification (hw-detection) consumer failed for originId " + originId, handymanException, this.action);
+        }
+    }
+
+
+    private static void extractOuputDataRequest(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion) {
+
+        try {
+            List<ComparisonDataItem> comparisonDataItem1 = mapper.readValue(comparisonDataItem, new TypeReference<>() {
+            });
+            for (ComparisonDataItem item : comparisonDataItem1) {
+
+                // Add square brackets to make it a valid JSON array
+                String sentenceJson = formatToJsonArray(item.getSentence());
+
+
+                JsonNode sentenceNode = mapper.readTree(sentenceJson);
+
+                // Assuming the JSON array contains strings
+                if (sentenceNode.isArray()) {
+                    for (JsonNode wordNode : sentenceNode) {
+                        String word = wordNode.asText().trim();
+                        parentObj.add(IntellimatchOutputTable.builder().
+                                fileName(result.getFileName()).
+                                originId(item.getOriginId()).
+                                groupId(item.getGroupId()).
+                                createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                                rootPipelineId(item.getRootPipelineId()).
+                                actualValue(item.getInputSentence()).
+                                extractedValue(word.trim()).
+                                similarity(result.getSimilarity()).
+                                confidenceScore(result.getConfidenceScore()).
+                                intelliMatch(item.getSimilarityPercent()).
+                                status("completed").
+                                stage("control data").
+                                message("data insertion is completed").
+                                modelName(modelName).
+                                modelVersion(modelVersion).
+                                build());
+                    }
+                }
+
+            }
+        } catch (Exception exception) {
+            parentObj.add(IntellimatchOutputTable.builder().
+                    fileName(result.getFileName()).
+                    originId(result.getOriginId()).
+                    groupId(result.getGroupId()).
+                    createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                    rootPipelineId(result.getRootPipelineId()).
+                    actualValue(result.getActualValue()).
+                    extractedValue(result.getExtractedValue()).
+                    similarity(result.getSimilarity()).
+                    intelliMatch(0.00).
+                    status("failed").
+                    stage("control data").
+                    message("data insertion is failed").
+                    build()
+            );
+        }
+    }
+
+
+    private static String formatToJsonArray(String input) {
+        // Remove enclosing square brackets and escape backslashes
+        input = input.substring(1, input.length() - 1).replace("\\", "");
+
+        // Split the input into words
+        String[] words = input.split("\",\"");
+
+        // Enclose each word in double quotes
+        for (int i = 0; i < words.length; i++) {
+            words[i] = "\"" + words[i].trim() + "\"";
+        }
+
+        // Join the words with commas to form a JSON array
+        return "[" + String.join(",", words) + "]";
+    }
+}
