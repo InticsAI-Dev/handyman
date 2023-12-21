@@ -293,19 +293,18 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         Long processId = entity.getProcessId();
         try {
 
+
             PaperItemizerDataItemCopro paperItemizeOutputData = objectMapper.readValue(paperItemizerDataItem, PaperItemizerDataItemCopro.class);
-            paperItemizeOutputData.getItemizedPapers().forEach(itemizerPapers -> {
-                Long paperNo = getPaperNobyFileName(itemizerPapers);
+            List<String> itemizedPapers = paperItemizeOutputData.getItemizedPapers();
                 parentObj.add(
                         PaperItemizerOutputTable
                                 .builder()
-                                .processedFilePath(itemizerPapers)
+                                .processedFilePath(itemizedPapers.toString())
                                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                                 .groupId(groupId)
                                 .templateId(templateId)
                                 .tenantId(tenantId)
                                 .processId(processId)
-                                .paperNo(paperNo)
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message("Paper Itemizer macro completed")
@@ -314,7 +313,6 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
                                 .build());
-            });
 
         } catch (JsonProcessingException e) {
             parentObj.add(
