@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -172,7 +173,7 @@ import java.util.concurrent.TimeUnit;
             try (Response response = httpclient.newCall(request).execute()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 if (response.isSuccessful()) {
-                    extractedOutputDataRequest(entity,parentObj, responseBody, objectMapper,"","");
+                    extractedCoproOutputResponse(entity,parentObj, responseBody, objectMapper,"","");
 
                 } else {
                     parentObj.add(
@@ -239,6 +240,40 @@ import java.util.concurrent.TimeUnit;
                                 .modelVersion(modelVersion)
                                 .build());
                         });
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        private static void extractedCoproOutputResponse(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+            String originId = entity.getOriginId();
+            String groupId = entity.getGroupId();
+
+            final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
+            Long rootPipelineId = entity.getRootPipelineId();
+
+            try {
+                ZeroShotClassifierDataItemCopro zeroShotClassifierDataItemCopro = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItemCopro.class);
+                zeroShotClassifierDataItemCopro. getEntityConfidenceScore().forEach(score -> {
+                    String truthEntity = score.getTruthEntity();
+                    String key = score.getKey();
+                    double scoreValue = score.getScore();
+
+                    parentObj.add(ZeroShotClassifierOutputTable
+                            .builder()
+                            .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                            .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                            .truthEntity(Optional.ofNullable(truthEntity).map(String::valueOf).orElse(null))
+                            .entity(Optional.ofNullable(key).map(String::valueOf).orElse(null))
+                            .confidenceScore(Optional.of(scoreValue).map(String::valueOf).orElse(null))
+                            .paperNo(paperNo)
+                            .status("COMPLETED")
+                            .stage(actionName)
+                            .message("Completed API call zero shot classifier")
+                            .rootPipelineId(rootPipelineId)
+                            .modelName(modelName)
+                            .modelVersion(modelVersion)
+                            .build());
+                });
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }

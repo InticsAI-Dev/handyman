@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -105,7 +106,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                            extractedOutputDataRequest(entity, parentObj, responseBody, objectMapper, "", "");
+                extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
 
                 } else {
                     parentObj.add(
@@ -211,6 +212,43 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             });
 
             for (PharseMatchDataItem item : pharseMatchOutputData) {
+                parentObj.add(
+                        PhraseMatchOutputTable
+                                .builder()
+                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                                .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                                .paperNo(paperNo)
+                                .status("COMPLETED")
+                                .tenantId(tenantId)
+                                .stage(actionName)
+                                .message("Completed API call zero shot classifier")
+                                .rootPipelineId(rootPipelineId)
+                                .modelName(modelName)
+                                .truthEntity(item.getTruthEntity())
+                                .isKeyPresent(String.valueOf(item.getIsKeyPresent()))
+                                .entity(item.getEntity())
+                                .modelVersion(modelVersion)
+                                .build());
+            }
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+        String originId = entity.getOriginId();
+        String groupId = entity.getGroupId();
+        Long tenantId=entity.getTenantId();
+
+        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
+        Long rootPipelineId = entity.getRootPipelineId();
+        try {
+            List<PharseMatchDataItemCopro> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<List<PharseMatchDataItemCopro>>() {
+
+            });
+
+            for (PharseMatchDataItemCopro item : pharseMatchOutputData) {
+
                 parentObj.add(
                         PhraseMatchOutputTable
                                 .builder()

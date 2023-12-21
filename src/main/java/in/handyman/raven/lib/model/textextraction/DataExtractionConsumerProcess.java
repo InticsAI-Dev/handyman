@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.autorotation.AutoRotationDataItem;
 import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
+import in.handyman.raven.lib.model.textextraction.copro.DataExtractionDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -61,7 +62,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = "TEXT_EXTRACTOR";
         Integer paperNumber = entity.getPaperNo();
         String processId = String.valueOf(entity.getProcessId());
-        Long tenantId=entity.getTenantId();
+        Long tenantId = entity.getTenantId();
 
         //payload
         DataExtractionData dataExtractionData = new DataExtractionData();
@@ -120,7 +121,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
-                extractedOutputDataRequest(entity, responseBody, parentObj, originId, groupId, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "");
 
             } else {
                 parentObj.add(DataExtractionOutputTable.builder()
@@ -227,7 +228,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private static void extractedOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
-        String parentResponseObject=extractPageContent(stringDataItem);
+        String parentResponseObject = extractPageContent(stringDataItem);
         final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
         final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
@@ -256,6 +257,40 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
     }
 
+    private static void extractedCoproOutputResponse(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
+
+        String parentResponseObject = extractPageContent(stringDataItem);
+        final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
+        final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
+        Integer paperNo = entity.getPaperNo();
+        String filePath = entity.getFilePath();
+        Long tenantId = entity.getTenantId();
+        String templateId = entity.getTemplateId();
+        Long processId = entity.getProcessId();
+        String templateName = entity.getTemplateName();
+        Long rootPipelineId = entity.getRootPipelineId();
+        parentObj.add(DataExtractionOutputTable.builder()
+                .filePath(new File(filePath).getAbsolutePath())
+                .extractedText(contentString)
+                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                .groupId(groupId)
+                .paperNo(paperNo)
+                .status("COMPLETED")
+                .stage(PROCESS_NAME)
+                .message("Data extraction macro completed")
+                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .isBlankPage(flag)
+                .tenantId(tenantId)
+                .templateId(templateId)
+                .processId(processId)
+                .templateName(templateName)
+                .rootPipelineId(rootPipelineId)
+                .modelName(modelName)
+                .modelVersion(modelVersion)
+                .build());
+
+
+    }
     private static String extractPageContent(String jsonString) {
         int startIndex = jsonString.indexOf("\"pageContent\":") + "\"pageContent\":".length();
         int endIndex = jsonString.lastIndexOf("}");
