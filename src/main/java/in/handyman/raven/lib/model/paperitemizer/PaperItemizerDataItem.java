@@ -14,12 +14,12 @@ import java.util.List;
 public class PaperItemizerDataItem {
         @JsonProperty("itemizedPath")
         private String itemizedPapers;
-        private Integer paperNumber;
+        private Long paperNumber;
         private String originId;
         private Long processId;
         private Integer groupId;
         private Long tenantId;
-        }
+}
 
 
 
