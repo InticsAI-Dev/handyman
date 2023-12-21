@@ -8,6 +8,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.PaperItemizer;
+import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import okhttp3.*;
@@ -69,7 +70,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         paperitemizerData.setRootPipelineId(rootPipelineId);
         paperitemizerData.setProcess(paperItemizerProcessName);
         paperitemizerData.setInputFilePath(inputFilePath);
-        paperitemizerData.setOutputDir(outputDir);
+        paperitemizerData.setOutputDir(this.outputDir);
         paperitemizerData.setActionId(actionId);
         String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
 
@@ -120,7 +121,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
             }
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedOutputRequest(entity, objectMapper, parentObj, "", "", responseBody);
+                extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody);
 
             } else {
                 parentObj.add(
@@ -150,7 +151,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .templateId(templateId)
                             .tenantId(tenantId)
                             .status("FAILED")
-                            .stage("paperItemizer")
+                            .stage("PAPER_ITEMIZER")
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(entity.getRootPipelineId())
@@ -198,7 +199,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .templateId(templateId)
                                 .tenantId(tenantId)
                                 .status("FAILED")
-                                .stage("paperItemizer")
+                                .stage("PAPER_ITEMIZER")
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(entity.getRootPipelineId())
@@ -216,7 +217,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .templateId(templateId)
                             .tenantId(tenantId)
                             .status("FAILED")
-                            .stage("paperItemizer")
+                            .stage("PAPER_ITEMIZER")
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(entity.getRootPipelineId())
@@ -242,7 +243,6 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
                 for (PaperItemizerDataItem paperItemizeOutputData : paperItemizeOutputDataList) {
                     String itemizedPapers = paperItemizeOutputData.getItemizedPapers();
-                    Long paperNo = getPaperNobyFileName(itemizedPapers);  // Use updated field name
                     parentObj.add(
                             PaperItemizerOutputTable
                                     .builder()
@@ -252,9 +252,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                     .templateId(templateId)
                                     .tenantId(paperItemizeOutputData.getTenantId())
                                     .processId(paperItemizeOutputData.getProcessId())
-                                    .paperNo(paperNo)
+                                    .paperNo(paperItemizeOutputData.getPaperNumber())
                                     .status("COMPLETED")
-                                    .stage("paperItemizer")
+                                    .stage("PAPER_ITEMIZER")
                                     .message("Paper Itemizer macro completed")
                                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                     .rootPipelineId(entity.getRootPipelineId())
@@ -273,7 +273,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .templateId(templateId)
                                 .tenantId(tenantId)
                                 .status("FAILED")
-                                .stage("paperItemizer")
+                                .stage("PAPER_ITEMIZER")
                                 .message(e.getMessage())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(entity.getRootPipelineId())
@@ -285,7 +285,57 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         }
 
 
+    private void extractedCoproOutputResponse(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem) {
+        String originId = entity.getOriginId();
+        Integer groupId = entity.getGroupId();
+        String templateId = entity.getTemplateId();
+        Long tenantId = entity.getTenantId();
+        Long processId = entity.getProcessId();
+        try {
 
+            PaperItemizerDataItemCopro paperItemizeOutputData = objectMapper.readValue(paperItemizerDataItem, PaperItemizerDataItemCopro.class);
+            paperItemizeOutputData.getItemizedPapers().forEach(itemizerPapers -> {
+                Long paperNo = getPaperNobyFileName(itemizerPapers);
+                parentObj.add(
+                        PaperItemizerOutputTable
+                                .builder()
+                                .processedFilePath(itemizerPapers)
+                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                                .groupId(groupId)
+                                .templateId(templateId)
+                                .tenantId(tenantId)
+                                .processId(processId)
+                                .paperNo(paperNo)
+                                .status("COMPLETED")
+                                .stage("paperItemizer")
+                                .message("Paper Itemizer macro completed")
+                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .modelName(modelName)
+                                .modelVersion(modelVersion)
+                                .build());
+            });
+
+        } catch (JsonProcessingException e) {
+            parentObj.add(
+                    PaperItemizerOutputTable
+                            .builder()
+                            .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                            .groupId(groupId)
+                            .processId(processId)
+                            .templateId(templateId)
+                            .tenantId(tenantId)
+                            .status("FAILED")
+                            .stage("paperItemizer")
+                            .message(e.getMessage())
+                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .build());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in request {}", e.toString());
+        }
+    }
         public static Long getPaperNobyFileName(String filePath) {
         Long extractedNumber = null;
         File file = new File(filePath);
