@@ -126,8 +126,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractOuputDataRequest(entity, responseBody, parentObj, "", "");
-
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
                 log.info(aMarker, "Error in getting response {}", response.message());
@@ -155,7 +154,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(autoRotationDataItem -> {
-                        extractedCoproOutputResponse(entity, autoRotationDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractOuputDataRequest(entity, autoRotationDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
                     }));
 
                 }
