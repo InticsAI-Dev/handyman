@@ -59,7 +59,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setRootPipelineId(entity.getRootPipelineId());
         urgencyTriageModelPayload.setProcess("UT");
         urgencyTriageModelPayload.setInputFilePath(entity.getInputFilePath());
-        urgencyTriageModelPayload.setActionId(action.getActionId());
+        urgencyTriageModelPayload.setActionId(1L);
         urgencyTriageModelPayload.setOutputDir(outputDir);
         urgencyTriageModelPayload.setTenantId(entity.getTenantId());
         urgencyTriageModelPayload.setProcessId(entity.getProcessId());
@@ -89,7 +89,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(urgencyTriageModelPayload.toString(), mediaTypeJSON)).build();
+                    .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
             coproRequestBuider(entity, request, objectMapper, parentObj);
         } else {
             Request request = new Request.Builder().url(endpoint)
@@ -218,7 +218,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             Long modelId = entity.getModelId();
             if (response.isSuccessful()) {
                 log.info("Response Details: {}", response);
-                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj, originId, templateId);
+                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj,"", "");
 
             } else {
                 parentObj.add(UrgencyTriageOutputTable.builder()
