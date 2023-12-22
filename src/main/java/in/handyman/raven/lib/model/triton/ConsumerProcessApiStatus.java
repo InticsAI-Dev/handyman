@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 @AllArgsConstructor
 public enum ConsumerProcessApiStatus {
 
-    COMPLETED("COMPLETED"),FAILED("FAILED");
+    COMPLETED("COMPLETED"),FAILED("FAILED"), ABSENT("ABSENT");
     private final String statusDescription;
 
 }
