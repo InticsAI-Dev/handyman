@@ -145,6 +145,7 @@ action:
     |outboundKvpResponse
     |outboundTableResponse
     |integratedNoiseModelApi
+    |qrExtraction
     );
 
 
@@ -792,14 +793,6 @@ pixelClassifierUrgencyTriage:
     'checkbox-image-height' checkboxImageHeight=STRING
     'using'  '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
-qrExtraction:
-	'qr-extraction' 'as' name=STRING
-	'on-resource-conn' resourceConn=STRING
-	'copro-url' endPoint=STRING
-	'process-id' processId=STRING
-	'output-table' outputTable=STRING
-	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
-
 paperItemizer:
 	'paperItemizer' 'as' name=STRING
 	'outputDir' outputDir=STRING
@@ -1043,6 +1036,14 @@ integratedNoiseModelApi:
 	'process-id' processId=STRING
 	'output-table' outputTable=STRING
 	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+qrExtraction:
+    'qr-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endPoint=STRING
+    'process-id' processId=STRING
+    'output-table' outputTable=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 
 //rules

@@ -21,5 +21,6 @@ public class HwDetectionDataItem {
  private String originId;
  private Long processId;
  private Integer groupId;
+ private Integer paperNo;
  private Long tenantId;
 }

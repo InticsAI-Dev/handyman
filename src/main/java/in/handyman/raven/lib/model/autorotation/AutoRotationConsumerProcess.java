@@ -181,7 +181,22 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         Long rootPipelineId = entity.getRootPipelineId();
         try {
             AutoRotationDataItem autoRotationFilePath = mapper.readValue(autoRotationDataItem, AutoRotationDataItem.class);
-            parentObj.add(AutoRotationOutputTable.builder().processedFilePath(autoRotationFilePath.getProcessedFilePaths()).originId(autoRotationFilePath.getOriginId()).groupId(autoRotationFilePath.getGroupId()).processId(autoRotationFilePath.getProcessId()).tenantId(autoRotationFilePath.getTenantId()).templateId(templateId).paperNo(autoRotationFilePath.getPaperNo()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(AUTO_ROTATION).message("Auto rotation macro completed").createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(autoRotationFilePath.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).build());
+            parentObj.add(AutoRotationOutputTable.builder()
+                            .processedFilePath(autoRotationFilePath
+                            .getProcessedFilePaths())
+                            .originId(autoRotationFilePath.getOriginId())
+                            .groupId(autoRotationFilePath.getGroupId())
+                            .processId(autoRotationFilePath.getProcessId())
+                            .tenantId(autoRotationFilePath.getTenantId())
+                            .templateId(templateId)
+                            .paperNo(autoRotationFilePath.getPaperNo())
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .stage(AUTO_ROTATION).message("Auto rotation macro completed")
+                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .rootPipelineId(autoRotationFilePath.getRootPipelineId())
+                            .modelName(modelName)
+                            .modelVersion(modelVersion)
+                        .build());
         } catch (JsonProcessingException e) {
 
             parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
