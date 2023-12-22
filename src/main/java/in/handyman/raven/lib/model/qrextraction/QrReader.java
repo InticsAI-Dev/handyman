@@ -19,6 +19,7 @@ public class QrReader {
     @JsonProperty("decode_type")
     private String decodeType;
     private String originId;
+    private Long paperNo;
     private Long processId;
     private Integer groupId;
     private Long tenantId;

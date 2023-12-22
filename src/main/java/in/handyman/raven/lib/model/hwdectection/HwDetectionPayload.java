@@ -16,6 +16,7 @@ public class HwDetectionPayload {
     private Long tenantId;
     private Long rootPipelineId;
     private String process;
+    private Integer paperNo;
     private String inputFilePath;
     private String outputDir;
     private Long actionId;

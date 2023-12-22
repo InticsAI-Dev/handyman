@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.lib.model.utmodel.copro.UrgencyTriageModelDataItemCopro;
@@ -22,6 +24,7 @@ import static in.handyman.raven.lib.UrgencyTriageModelAction.urgencyTriageModel;
 
 public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProcess<UrgencyTriageInputTable, UrgencyTriageOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String URGENCY_TRIAGE_PROCESS_NAME = PipelineName.URGENCY_TRIAGE.getProcessName();
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -189,8 +192,8 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .utResult(paperType)
                     .confScore(confScore)
                     .bbox(qrBoundingBox.toString())
-                    .status("COMPLETED")
-                    .stage("URGENCY_TRIAGE_MODEL")
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message("Urgency Triage Finished")
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
@@ -229,7 +232,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .templateId(templateId)
                         .modelId(modelId)
                         .status("FAILED")
-                        .stage("URGENCY_TRIAGE_MODEL")
+                        .stage(URGENCY_TRIAGE_PROCESS_NAME)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
                         .build());
@@ -258,7 +261,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .templateId(templateId)
                     .modelId(modelId)
                     .status("FAILED")
-                    .stage("URGENCY_TRIAGE_MODEL")
+                    .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
                     .build());
@@ -295,8 +298,8 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .utResult(paperType)
                     .confScore(confScore)
                     .bbox(qrBoundingBox.toString())
-                    .status("COMPLETED")
-                    .stage("URGENCY_TRIAGE_MODEL")
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message("Urgency Triage Finished")
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)

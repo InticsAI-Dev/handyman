@@ -16,6 +16,6 @@ public class DataExtractionResponse {
     private String modelName;
     @JsonProperty("model_version")
     private String modelVersion;
-        private List<DataExtractionOutput> outputs;
+    private List<DataExtractionOutput> outputs;
     }
 

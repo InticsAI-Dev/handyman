@@ -15,6 +15,7 @@ public class QrExtractionData {
     private Integer groupId;
     private Long tenantId;
     private Long rootPipelineId;
+    private Long paperNo;
     private Long actionId;
     private String process;
     private String inputFilePath;
