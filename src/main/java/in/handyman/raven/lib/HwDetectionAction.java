@@ -61,7 +61,8 @@ public class HwDetectionAction implements IActionExecution {
     Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
     Integer consumerCount = Integer.valueOf(action.getContext().get(PAPER_CLASSIFICATION_CONSUMER_API_COUNT));
     Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-    HwClassificationConsumerProcess hwClassificationConsumerProcess = new HwClassificationConsumerProcess(log, aMarker, action);
+    String outputDir = hwDetection.getDirectoryPath();
+    HwClassificationConsumerProcess hwClassificationConsumerProcess = new HwClassificationConsumerProcess(log, aMarker, action, outputDir);
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(hwDetection.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
