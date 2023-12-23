@@ -10,6 +10,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.FileMergerPdf;
 import in.handyman.raven.lib.model.filemergerpdf.copro.FileMergerDataItemCopro;
+import in.handyman.raven.lib.model.triton.PipelineName;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProcess<FileMergerpdfInputEntity, FileMergerpdfOutputEntity> {
   private static final MediaType mediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
+  public static final String FILE_MERGER_PROCESS_NAME = PipelineName.FILE_MERGER.getProcessName();
   private final ActionExecutionAudit action;
 
   private final Logger log;
@@ -71,7 +73,6 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                   final Long group_id= entity.getGroupId();
                   final String fileId=entity.getFileId();
                   final Long actionId =action.getActionId();
-                  String fileMerger = "FILE_MERGER";
                   final String outputFileName = entity.getOutputFileName();
                   log.info(aMarker, "file path string {}", filePathString);
                   File file = new File(String.valueOf(filePathString));
@@ -82,7 +83,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
 
                   FileMergerPayload fileMergerPayload = new FileMergerPayload();
                   fileMergerPayload.setRootPipelineId(rootPipelineId);
-                  fileMergerPayload.setProcess(fileMerger);
+                  fileMergerPayload.setProcess(FILE_MERGER_PROCESS_NAME);
                   fileMergerPayload.setInputFilePaths(filePathString);
                   fileMergerPayload.setActionId(actionId);
                   fileMergerPayload.setOutputDir(outputDir);
@@ -196,7 +197,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
               .builder()
               .processedFilePath(fileMergerDataItem1.getProcessedFilePath())
               .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-              .stage("fileMerger")
+              .stage(FILE_MERGER_PROCESS_NAME)
               .processId(fileMergerDataItem1.getProcessId())
               .message("file merger macro completed")
               .createdOn(Timestamp.valueOf(LocalDateTime.now()))
@@ -217,7 +218,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
       parentObj.add(FileMergerpdfOutputEntity
               .builder()
               .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-              .stage("fileMerger")
+              .stage(FILE_MERGER_PROCESS_NAME)
               .originId(entity.getOriginId())
               .groupId(entity.getGroupId())
               .message("file merger macro failed")
@@ -233,7 +234,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
       parentObj.add(FileMergerpdfOutputEntity
               .builder()
               .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-              .stage("fileMerger")
+              .stage(FILE_MERGER_PROCESS_NAME)
               .originId(entity.getOriginId())
               .groupId(entity.getGroupId())
               .message("file merger macro failed")
@@ -259,7 +260,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
               .builder()
               .processedFilePath(fileMergerDataItem1.getProcessedFilePath())
               .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-              .stage("fileMerger")
+              .stage(FILE_MERGER_PROCESS_NAME)
               .processId(entity.getProcessId())
               .message("file merger macro completed")
               .createdOn(Timestamp.valueOf(LocalDateTime.now()))
@@ -279,7 +280,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
       parentObj.add(FileMergerpdfOutputEntity
               .builder()
               .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-              .stage("fileMerger")
+              .stage(FILE_MERGER_PROCESS_NAME)
               .originId(entity.getOriginId())
               .groupId(entity.getGroupId())
               .message("file merger macro failed")
@@ -295,7 +296,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
       parentObj.add(FileMergerpdfOutputEntity
               .builder()
               .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-              .stage("fileMerger")
+              .stage(FILE_MERGER_PROCESS_NAME)
               .originId(entity.getOriginId())
               .groupId(entity.getGroupId())
               .message("file merger macro failed")

@@ -27,18 +27,19 @@ import java.util.concurrent.TimeUnit;
 public class NameAdapter implements AdapterInterface {
 
 
-    private boolean isPredictedLabel= false;
+    private boolean isPredictedLabel = false;
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+
     @Override
     public boolean getValidationModel(String sentence, String uri, ActionExecutionAudit audit) throws Exception {
 
-        try{
+        try {
 
 
             MediaType mediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
             String[] patientName = new String[]{sentence};
-            final String trinityProcessName="VQA_VALUATION";
-            final String tritonRequestActivator=audit.getContext().get(TRITON_REQUEST_ACTIVATOR);
+            final String trinityProcessName = "VQA_VALUATION";
+            final String tritonRequestActivator = audit.getContext().get(TRITON_REQUEST_ACTIVATOR);
             OkHttpClient httpclient = new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.MINUTES)
                     .writeTimeout(10, TimeUnit.MINUTES)
@@ -74,13 +75,12 @@ public class NameAdapter implements AdapterInterface {
             if (Objects.equals("false", tritonRequestActivator)) {
                 Request request = new Request.Builder().url(uri)
                         .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-                extractedCoproOutput(httpclient, objectMapper,request);
+                extractedCoproOutput(httpclient, objectMapper, request);
             } else {
                 Request request = new Request.Builder().url(uri)
                         .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-                extractedTritonOutput(httpclient, objectMapper,request);
+                extractedTritonOutput(httpclient, objectMapper, request);
             }
-
 
 
         } catch (Exception ex) {
@@ -89,22 +89,22 @@ public class NameAdapter implements AdapterInterface {
         return isPredictedLabel;
     }
 
-    private void extractedTritonOutput(OkHttpClient httpclient, ObjectMapper objectMapper,Request request) throws IOException {
+    private void extractedTritonOutput(OkHttpClient httpclient, ObjectMapper objectMapper, Request request) throws IOException {
         try (Response response = httpclient.newCall(request).execute()) {
 
-            if(response.isSuccessful()){
-                NerAdapterResponse nerAdapterResponse= objectMapper.readValue(response.body().string(), NerAdapterResponse.class);
+            if (response.isSuccessful()) {
+                NerAdapterResponse nerAdapterResponse = objectMapper.readValue(response.body().string(), NerAdapterResponse.class);
                 nerAdapterResponse.getOutputs().forEach(nerAdapterOutput -> {
                     nerAdapterOutput.getData().forEach(nerAdapterDataItem -> {
                         try {
-                            NerAdapterDataItem nerAdapterDataItem1= objectMapper.readValue(nerAdapterDataItem, new TypeReference<>() {
+                            NerAdapterDataItem nerAdapterDataItem1 = objectMapper.readValue(nerAdapterDataItem, new TypeReference<>() {
                             });
                             nerAdapterDataItem1.getPrediction().forEach(nerAdapterPrediction -> {
-                                    isPredictedLabel=nerAdapterPrediction.isPredictedLabel();
+                                isPredictedLabel = nerAdapterPrediction.isPredictedLabel();
                             });
 
                         } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
+                            throw new HandymanException("Exception in handling the response body of NER adapter", e);
                         }
                     });
                 });
@@ -112,16 +112,16 @@ public class NameAdapter implements AdapterInterface {
         }
     }
 
-    private void extractedCoproOutput(OkHttpClient httpclient, ObjectMapper objectMapper,Request request) throws IOException {
+    private void extractedCoproOutput(OkHttpClient httpclient, ObjectMapper objectMapper, Request request) throws IOException {
         try (Response response = httpclient.newCall(request).execute()) {
 
-            if(response.isSuccessful()){
+            if (response.isSuccessful()) {
                 try {
-                    if(response.body() != null){
-                        NerAdapterDataItemCopro nerAdapterDataItem1= objectMapper.readValue(response.body().string(), new TypeReference<>() {
+                    if (response.body() != null) {
+                        NerAdapterDataItemCopro nerAdapterDataItem1 = objectMapper.readValue(response.body().string(), new TypeReference<>() {
                         });
                         nerAdapterDataItem1.getPrediction().forEach(nerAdapterPrediction -> {
-                            isPredictedLabel=nerAdapterPrediction.isPredictedLabel();
+                            isPredictedLabel = nerAdapterPrediction.isPredictedLabel();
                         });
                     }
 

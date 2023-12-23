@@ -1,26 +1,18 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.Intellimatch;
-import in.handyman.raven.lib.model.common.*;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.common.IntellimatchConsumerProcess;
+import in.handyman.raven.lib.model.common.IntellimatchInputTable;
+import in.handyman.raven.lib.model.common.IntellimatchOutputTable;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.InstanceUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -30,13 +22,12 @@ import org.slf4j.MarkerFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 

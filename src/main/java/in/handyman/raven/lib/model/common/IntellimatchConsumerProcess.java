@@ -1,20 +1,20 @@
 package in.handyman.raven.lib.model.common;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.copro.ComparisonDataItemCopro;
-import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProcess<IntellimatchInputTable,IntellimatchOutputTable> {
+public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProcess<IntellimatchInputTable, IntellimatchOutputTable> {
+    public static final String CONTROL_DATA_PROCESS_NAME = PipelineName.CONTROL_DATA.getProcessName();
     private final Logger log;
     private final Marker aMarker;
     public final ActionExecutionAudit action;
@@ -57,27 +58,10 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     public List<IntellimatchOutputTable> process(URL endpoint, IntellimatchInputTable result) throws Exception {
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, result);
         List<IntellimatchOutputTable> parentObj = new ArrayList<>();
-        AtomicInteger atomicInteger = new AtomicInteger();
         ObjectMapper objectMapper = new ObjectMapper();
 
         if (result.getActualValue() != null) {
-            List<String> sentence = Arrays.asList(result.getExtractedValue());
-            final String process = "CONTROL_DATA";
-            Long actionId = action.getActionId();
-            Long rootpipelineId = result.getRootPipelineId();
-            String inputSentence = result.getActualValue();
-
-
-            ComparisonPayload comparisonPayload = new ComparisonPayload();
-            comparisonPayload.setRootPipelineId(rootpipelineId);
-            comparisonPayload.setActionId(actionId);
-            comparisonPayload.setProcessId(action.getProcessId());
-            comparisonPayload.setOriginId(result.getOriginId());
-            comparisonPayload.setProcess(process);
-            comparisonPayload.setInputSentence(inputSentence);
-            comparisonPayload.setSentences(sentence);
-            comparisonPayload.setGroupId(result.getGroupId());
-            comparisonPayload.setTenantId(result.getTenantId());
+            ComparisonPayload comparisonPayload = getComparisonPayload(result);
             String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
             TritonRequest requestBody = new TritonRequest();
@@ -114,13 +98,35 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     extractedValue(result.getExtractedValue()).
                     similarity(result.getSimilarity()).
                     intelliMatch(0.0000).
-                    status("completed").
-                    stage("control data").
+                    status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
+                    stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is completed").
                     build()
             );
         }
         return parentObj;
+    }
+
+    @NotNull
+    private ComparisonPayload getComparisonPayload(IntellimatchInputTable result) {
+        List<String> sentence = Collections.singletonList(result.getExtractedValue());
+        final String process = "CONTROL_DATA";
+        Long actionId = action.getActionId();
+        Long rootpipelineId = result.getRootPipelineId();
+        String inputSentence = result.getActualValue();
+
+
+        ComparisonPayload comparisonPayload = new ComparisonPayload();
+        comparisonPayload.setRootPipelineId(rootpipelineId);
+        comparisonPayload.setActionId(actionId);
+        comparisonPayload.setProcessId(action.getProcessId());
+        comparisonPayload.setOriginId(result.getOriginId());
+        comparisonPayload.setProcess(process);
+        comparisonPayload.setInputSentence(inputSentence);
+        comparisonPayload.setSentences(sentence);
+        comparisonPayload.setGroupId(result.getGroupId());
+        comparisonPayload.setTenantId(result.getTenantId());
+        return comparisonPayload;
     }
 
     private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) throws
@@ -142,8 +148,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         extractedValue(result.getExtractedValue()).
                         similarity(result.getSimilarity()).
                         intelliMatch(0.0000).
-                        status("completed").
-                        stage("control data").
+                        status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
+                        stage(CONTROL_DATA_PROCESS_NAME).
                         message("data insertion is completed").
                         build()
                 );
@@ -180,8 +186,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         extractedValue(result.getExtractedValue()).
                         similarity(result.getSimilarity()).
                         intelliMatch(0.00).
-                        status("failed").
-                        stage("control data").
+                        status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
+                        stage(CONTROL_DATA_PROCESS_NAME).
                         message("data insertion is failed").
                         build()
                 );
@@ -199,15 +205,14 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     extractedValue(result.getExtractedValue()).
                     similarity(result.getSimilarity()).
                     intelliMatch(0.00).
-                    status("failed").
-                    stage("control data").
+                    status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
+                    stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
                     build()
             );
 
             log.error(aMarker, "Exception occurred in copro api for intelliMatch data comparison - {} ", ExceptionUtil.toString(exception));
-            HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Paper classification (hw-detection) consumer failed for originId " + originId, handymanException, this.action);
+            throw new HandymanException("Paper classification (hw-detection) consumer failed for originId " + originId, exception);
         }
     }
 
@@ -221,7 +226,6 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
 
                 // Add square brackets to make it a valid JSON array
                 String sentenceJson = formatToJsonArray(item.getSentence());
-
 
                 JsonNode sentenceNode = mapper.readTree(sentenceJson);
 
@@ -240,8 +244,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                                 similarity(result.getSimilarity()).
                                 confidenceScore(result.getConfidenceScore()).
                                 intelliMatch(item.getSimilarityPercent()).
-                                status("completed").
-                                stage("control data").
+                                status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
+                                stage(CONTROL_DATA_PROCESS_NAME).
                                 message("data insertion is completed").
                                 modelName(modelName).
                                 modelVersion(modelVersion).
@@ -261,8 +265,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     extractedValue(result.getExtractedValue()).
                     similarity(result.getSimilarity()).
                     intelliMatch(0.00).
-                    status("failed").
-                    stage("control data").
+                    status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
+                    stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
                     build()
             );
@@ -285,8 +289,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         similarity(result.getSimilarity()).
                         confidenceScore(result.getConfidenceScore()).
                         intelliMatch(itemCopro.getSimilarityPercent()).
-                        status("completed").
-                        stage("control data").
+                        status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
+                        stage(CONTROL_DATA_PROCESS_NAME).
                         message("data insertion is completed").
                         modelName(modelName).
                         modelVersion(modelVersion).
@@ -294,28 +298,27 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
             }
 
 
-            } catch (Exception exception) {
-                parentObj.add(IntellimatchOutputTable.builder().
-                        fileName(result.getFileName()).
-                        originId(result.getOriginId()).
-                        groupId(result.getGroupId()).
-                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                        rootPipelineId(result.getRootPipelineId()).
-                        actualValue(result.getActualValue()).
-                        extractedValue(result.getExtractedValue()).
-                        similarity(result.getSimilarity()).
-                        intelliMatch(0.00).
-                        status("failed").
-                        stage("control data").
-                        message("data insertion is failed").
-                        build()
-                );
-            }
+        } catch (Exception exception) {
+            parentObj.add(IntellimatchOutputTable.builder().
+                    fileName(result.getFileName()).
+                    originId(result.getOriginId()).
+                    groupId(result.getGroupId()).
+                    createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                    rootPipelineId(result.getRootPipelineId()).
+                    actualValue(result.getActualValue()).
+                    extractedValue(result.getExtractedValue()).
+                    similarity(result.getSimilarity()).
+                    intelliMatch(0.00).
+                    status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
+                    stage(CONTROL_DATA_PROCESS_NAME).
+                    message("data insertion is failed").
+                    build()
+            );
         }
+    }
 
 
-
-        private static String formatToJsonArray(String input) {
+    private static String formatToJsonArray(String input) {
         // Remove enclosing square brackets and escape backslashes
         input = input.substring(1, input.length() - 1).replace("\\", "");
 

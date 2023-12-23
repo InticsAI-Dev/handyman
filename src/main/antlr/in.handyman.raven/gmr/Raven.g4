@@ -146,6 +146,7 @@ action:
     |outboundTableResponse
     |integratedNoiseModelApi
     |qrExtraction
+    |multipartUpload
     );
 
 
@@ -1045,7 +1046,13 @@ qrExtraction:
     'output-table' outputTable=STRING
     'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
-
+multipartUpload:
+    'multipartUpload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'upload-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;

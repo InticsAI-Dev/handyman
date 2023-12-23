@@ -72,9 +72,9 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         comparisonPayload.setOriginId(result.getOriginId());
         comparisonPayload.setProcess(process);
         comparisonPayload.setInputSentence(inputSentence);
-        comparisonPayload.setSentences(sentence);
-        comparisonPayload.setTenantId(result.getTenantId());
-        comparisonPayload.setGroupId(result.getGroupId());
+//        comparisonPayload.setSentences(sentence);
+//        comparisonPayload.setTenantId(result.getTenantId());
+//        comparisonPayload.setGroupId(result.getGroupId());
         String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
         TritonRequest requestBody = new TritonRequest();
