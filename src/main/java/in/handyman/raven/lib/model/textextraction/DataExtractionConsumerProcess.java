@@ -8,6 +8,7 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.autorotation.AutoRotationDataItem;
 import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
 import in.handyman.raven.lib.model.textextraction.copro.DataExtractionDataItemCopro;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -30,7 +31,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
     public final ActionExecutionAudit action;
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
-    private static final String FAILED_STR = "FAILED";
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
@@ -59,7 +59,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         ObjectMapper objectMapper = new ObjectMapper();
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
-        String templateName = "TEXT_EXTRACTOR";
         Integer paperNumber = entity.getPaperNo();
         String processId = String.valueOf(entity.getProcessId());
         Long tenantId = entity.getTenantId();
@@ -73,7 +72,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         dataExtractionData.setRootPipelineId(rootpipelineId);
         dataExtractionData.setActionId(actionId);
         dataExtractionData.setPaperNumber(paperNumber);
-        dataExtractionData.setTemplateName(templateName);
+        dataExtractionData.setTemplateName(entity.getTemplateName());
         dataExtractionData.setProcess(process);
         dataExtractionData.setInputFilePath(filePath);
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
@@ -128,7 +127,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                         .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                         .groupId(groupId)
                         .paperNo(entity.getPaperNo())
-                        .status(FAILED_STR)
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .tenantId(tenantId)
                         .templateId(templateId)
@@ -145,7 +144,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                     .groupId(groupId)
                     .paperNo(entity.getPaperNo())
-                    .status(FAILED_STR)
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .tenantId(tenantId)
                     .templateId(templateId)
@@ -192,7 +191,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                         .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                         .groupId(groupId)
                         .paperNo(entity.getPaperNo())
-                        .status(FAILED_STR)
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .tenantId(tenantId)
                         .templateId(templateId)
@@ -209,7 +208,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                     .groupId(groupId)
                     .paperNo(entity.getPaperNo())
-                    .status(FAILED_STR)
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .tenantId(tenantId)
                     .templateId(templateId)
@@ -240,7 +239,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 .originId(dataExtractionDataItem.getOriginId())
                 .groupId(dataExtractionDataItem.getGroupId())
                 .paperNo(dataExtractionDataItem.getPaperNumber())
-                .status("COMPLETED")
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .message("Data extraction macro completed")
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
@@ -275,7 +274,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                 .groupId(groupId)
                 .paperNo(paperNo)
-                .status("COMPLETED")
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .message("Data extraction macro completed")
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
