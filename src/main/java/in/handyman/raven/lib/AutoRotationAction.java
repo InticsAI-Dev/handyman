@@ -104,7 +104,8 @@ public class AutoRotationAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(autoRotation.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       log.info(aMarker, "Auto Rotation Action for {} has been started", autoRotation.getName());
-      final List<URL> urls = Optional.ofNullable(autoRotateUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+
+      final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.autorotation.url")).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
         try {
           return new URL(urlItem);
         } catch (MalformedURLException e) {

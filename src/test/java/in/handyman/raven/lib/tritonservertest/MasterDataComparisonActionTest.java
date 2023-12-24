@@ -22,11 +22,12 @@ public class MasterDataComparisonActionTest {
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.masterdata-comparison.url", "https://14b7-116-73-149-54.ngrok-free.app/v2/models/cos-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.masterdata-comparison.url", "http://192.168.10.239:10192/copro/similarity/cos-sim");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.masterdata.API.count", "1"),
-                Map.entry("triton.request.activator", "true"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5")));
 
         MasterdataComparisonAction action1 = new MasterdataComparisonAction(actionExecutionAudit, log, build);

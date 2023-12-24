@@ -52,7 +52,7 @@ class NerAdapterActionTest {
         NerAdapter nerAdapter= NerAdapter.builder()
                 .name("ner")
                 .condition(true)
-                .resourceConn("intics_agadia_db_conn")
+                .resourceConn("intics_zio_db_conn")
                 .resultSet("SELECT 'patient_name' as sor_key, 'what is provider name' as question, 'Christopher' as input_value, 150 as weight, allowed_adapter,restricted_adapter, '12345' as process_id" +
                         " ,word_limit, word_threshold, char_limit, char_threshold ,validator_threshold, allowed_characters, comparable_characters, restricted_adapter_flag,'INT-1' as origin_id ,1 as paper_no ,1 as group_id" +
                         " ,1 as created_user_id, 1 as tenant_id,'{\"left\":\"1234\"}' as b_box from sor_meta.sor_item where sor_item_name='patient_name'")
@@ -60,7 +60,7 @@ class NerAdapterActionTest {
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.text-validation.url","http://192.168.10.245:9100/v2/models/ner-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.text-validation.url","http://192.168.10.239:10190/copro/text-validation/patient");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("validaiton.char-limit-count","1"),
@@ -69,6 +69,9 @@ class NerAdapterActionTest {
                 Map.entry("ner.consumer.API.count","1"),
                 Map.entry("write.batch.size","5"),
                 Map.entry("gen_group_id.group_id","1"),
+                Map.entry("actionId","1"),
+                Map.entry("RootPipelineId","1"),
+                Map.entry("triton.request.activator", "false"),
                 Map.entry("paper.itemizer.consumer.API.count", "1")
                 ));
 

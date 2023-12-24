@@ -66,7 +66,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
         String filePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
-        Long actionId = action.getActionId();
+        //Long actionId = action.getActionId();
+        Long actionId = Long.valueOf(action.getContext().get("actionId"));
 
 
         ObjectMapper objectMapper = new ObjectMapper();

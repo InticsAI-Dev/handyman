@@ -54,9 +54,11 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         Long rootPipelineId = action.getRootPipelineId();
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
-        Long actionId = action.getActionId();
+     //   Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
         ObjectMapper objectMapper = new ObjectMapper();
+        Long actionId = Long.valueOf(action.getContext().get("actionId"));
+
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
 

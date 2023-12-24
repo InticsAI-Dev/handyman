@@ -58,7 +58,8 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Integer paperNo = result.getPaperNo();
         String originId = result.getOriginId();
         String process = "MASTER_DATA";
-        Long actionId = action.getActionId();
+      //  Long actionId = action.getActionId();
+        Long actionId = Long.valueOf(action.getContext().get("actionId"));
         Long rootpipelineId = result.getRootPipelineId();
         String inputSentence = result.getActualValue();
         List<String> sentence = Collections.singletonList(result.getExtractedValue());

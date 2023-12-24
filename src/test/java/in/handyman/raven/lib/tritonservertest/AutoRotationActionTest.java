@@ -44,20 +44,22 @@ class AutoRotationActionTest {
     void tritonServer() throws Exception {
         AutoRotation action = AutoRotation.builder()
                 .name("auto rotation testing after copro optimization")
-                .processId("1389807441")
+                .processId("138980184199100180")
                 .resourceConn("intics_zio_db_conn")
-                .outputDir("/home/christopher.paulraj@zucisystems.com/Pictures/output")
+                .outputDir("/data/output/")
                 .condition(true)
-                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1234 as root_pipeline_id\n" +
+                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
                         "\t\t            FROM info.paper_itemizer a\n" +
-                        "\t\t             where origin_id ='INT-146'")
+                        "\t\t             where origin_id ='INT-1'")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://192.168.10.245:8200/v2/models/auto-rotator-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://192.168.10.239:10181/copro/preprocess/auto-rotation");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "1"),
                 Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("actionId", "1"),
                 Map.entry("auto.rotation.consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
 
