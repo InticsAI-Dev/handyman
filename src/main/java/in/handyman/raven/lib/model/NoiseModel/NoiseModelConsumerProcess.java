@@ -75,7 +75,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         final String jsonInputRequest = objectMapper.writeValueAsString(NoiseModelData);
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("NOISE-DETECTION");
+        requestBody.setName("NOISE MODEL START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
