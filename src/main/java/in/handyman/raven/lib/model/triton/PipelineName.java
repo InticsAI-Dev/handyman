@@ -17,7 +17,8 @@ public enum PipelineName {
     URGENCY_TRIAGE("URGENCY_TRIAGE"),
     VQA_TRANSACTION("VQA_TRANSACTION"),
     CONTROL_DATA("CONTROL_DATA"),
-    FILE_MERGER("FILE_MERGER")
+    FILE_MERGER("FILE_MERGER"),
+    NOISE_DETECTION("NOISE_DETECTION")
     ;
     
     private final String processName;

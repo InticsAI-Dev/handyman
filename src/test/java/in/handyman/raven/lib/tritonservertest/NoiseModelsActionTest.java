@@ -18,13 +18,13 @@ public class NoiseModelsActionTest {
                 .condition(true)
                 .processId("123")
                 .name("noise-detection-model")
-                .endPoint("http://0.0.0.0:10199/copro/Noise-Detection")
+                .endPoint("http://localhost:9400/v2/models/noise-detection-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("integrated_noise_model.noise_model_output_table")
+                .outputTable("noise_model.noise_model_output_table")
                 .querySet("SELECT " +
-                        "'/home/christopher.paulraj@zucisystems.com/Downloads/blank_page.png' as input_file_path, " +
+                        "'/data/output/pdf_to_image/Humana_Form/Humana_Form_0.jpg' as inputFilePath, " +
                         "'INT-1' as origin_id, " +
-                        "'/home/christopher.paulraj@zucisystems.com/Pictures/output' as output_dir ,"+
+                        "'/data/output/' as output_dir ,"+
                         "1 as file_id, " +
                         "1 as group_id, " +
                         "1 as paper_no, " +
@@ -39,7 +39,7 @@ public class NoiseModelsActionTest {
                 Map.entry("noise.consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1"),
                 Map.entry("actionId","1"),
-                Map.entry("triton.request.activator","false"),
+                Map.entry("triton.request.activator","true"),
                 Map.entry("okhttp.client.timeout", "10")));
 
         IntegratedNoiseModelApiAction action1 = new IntegratedNoiseModelApiAction(actionExecutionAudit,log,build);
