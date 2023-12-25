@@ -128,6 +128,9 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                     String consolidatedClass = rootNode.path("consolidatedClass").asText();
                     Double consolidatedConfidenceScore = rootNode.path("consolidatedConfidenceScore").asDouble();
                     String extractedValue = rootNode.path("noiseModelsResult").toString();
+                    String originId1 = rootNode.path("originId").asText();
+                    Integer paperNo1 = rootNode.path("paperNo").asInt();
+                    Integer groupId1 = rootNode.path("groupId").asInt();
 
                     String hwClass = rootNode
                             .path("noiseModelsResult")
@@ -139,15 +142,15 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .path("checkNoiseDetectionOutput").toString();
                     String tickNoiseClass = rootNode
                             .path("noiseModelsResult")
-                            .path("tickNoiseDetectionOutput").toString();
+                            .path("checkboxMarkDetectionOutput").toString();
                     String speckleClass = rootNode
                             .path("noiseModelsResult")
-                            .path("speckleNoiseDetection").toString();
+                            .path("speckleNoiseDetectionOutput").toString();
 
                     noiseOutputEntities.add(NoiseModelOutputEnitity.builder()
-                            .originId(originId)
-                            .paperNo(paperNo)
-                            .groupId(groupId)
+                            .originId(originId1)
+                            .paperNo(paperNo1)
+                            .groupId(groupId1)
                             .processId(processId)
                             .tenantId(tenantId)
                             .inputFilePath(inputFilePath)
