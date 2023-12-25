@@ -19,7 +19,6 @@ public class TrinityModelDataItem {
     private Integer imageWidth;
     private Integer imageHeight;
     private String extractedImageUnit;
-    @JsonIgnore
     private String inputFilePath;
 
 }
