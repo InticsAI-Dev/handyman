@@ -18,5 +18,6 @@ public class TrinityModelDataItem {
     private Integer imageWidth;
     private Integer imageHeight;
     private String extractedImageUnit;
+    private String inputFilePath;
 
 }
