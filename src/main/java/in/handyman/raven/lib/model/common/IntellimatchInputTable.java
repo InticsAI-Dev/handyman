@@ -17,6 +17,7 @@ import java.util.List;
         private String fileName;
         private String originId;
         private Integer groupId;
+        private Long tenantId;
         private Long rootPipelineId;
         private String actualValue;
         private String extractedValue;

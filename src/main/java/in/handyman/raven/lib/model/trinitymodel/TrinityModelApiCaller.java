@@ -52,7 +52,6 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setAttributes(questions);
         trinityModelPayload.setInputFilePath(inputPath);
 
-
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
         TritonRequest tritonRequest = getTritonRequestPaperType(paperType, jsonInputRequest);
@@ -88,12 +87,12 @@ public class TrinityModelApiCaller {
 
         if(Objects.equals(paperType,"Printed")){
             tritonRequest.setShape(List.of(1, 1));
-            tritonRequest.setName("ERNIE START");
+            tritonRequest.setName("ARGON VQA START");
             tritonRequest.setDatatype("BYTES");
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
         } else if (Objects.equals(paperType,"Handwritten")) {
             tritonRequest.setShape(List.of(1, 1));
-            tritonRequest.setName("DONUT START");
+            tritonRequest.setName("XENON VQA START");
             tritonRequest.setDatatype("BYTES");
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
 

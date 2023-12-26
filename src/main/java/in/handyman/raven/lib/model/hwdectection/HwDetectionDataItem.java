@@ -18,5 +18,9 @@ public class HwDetectionDataItem {
  @JsonProperty("confidence_score")
 
  private Float confidenceScore;
-
+ private String originId;
+ private Long processId;
+ private Integer groupId;
+ private Integer paperNo;
+ private Long tenantId;
 }

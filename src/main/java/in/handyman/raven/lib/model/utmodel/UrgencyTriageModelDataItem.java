@@ -17,6 +17,10 @@ public class UrgencyTriageModelDataItem {
     @JsonProperty("confidence_score")
     private Float confidenceScore;
     private UrgencyTriageModelBoundingBox bboxes;
-
+    private String originId;
+    private Integer paperNo;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
 }
 

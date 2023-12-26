@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ExecutionStatus;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.TemplateDetectionAction;
+import in.handyman.raven.lib.model.templatedetection.copro.TemplateDetectionDataItemCopro;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -71,12 +72,17 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         templateDetectionDataInput.setRootPipelineId(rootPipelineId);
         templateDetectionDataInput.setActionId(actionId);
         templateDetectionDataInput.setProcess(TEMPLATE_DETECTION);
+        templateDetectionDataInput.setOriginId(entity.getOriginId());
+        templateDetectionDataInput.setPaperNo(entity.getPaperNo());
+        templateDetectionDataInput.setProcessId(entity.getProcessId());
+        templateDetectionDataInput.setGroupId(entity.getGroupId());
+        templateDetectionDataInput.setTenantId(entity.getTenantId());
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("ERNIE START");
+        requestBody.setName("ARGON VQA START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -114,8 +120,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-
-                extractOutputDataRequest(entity,  responseBody, outputObjectList, "", ",", objectMapper);
+                extractedCoproOutputResponse(entity,  responseBody, outputObjectList, "", ",", objectMapper);
 
             } else {
                 outputObjectList.add(
@@ -260,8 +265,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
                 outputObjectList.add(
                         TemplateDetectionOutputTable.builder()
-                                .processId(processId)
-                                .tenantId(tenantId)
+                                .processId(attribute.getProcessId())
+                                .tenantId(attribute.getTenantId())
                                 .templateId(templateId)
                                 .predictedAttributionValue(predictedAttributionValue)
                                 .question(question)
@@ -270,6 +275,75 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .imageWidth(templateDetectionDataItem.getImageWidth())
                                 .imageDPI(templateDetectionDataItem.getImageDPI())
                                 .extractedImageUnit(templateDetectionDataItem.getExtractedImageUnit())
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .groupId(attribute.getGroupId())
+                                .originId(attribute.getOriginId())
+                                .paperNo(attribute.getPaperNo())
+                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .status(ExecutionStatus.COMPLETED.toString())
+                                .stage(TEMPLATE_DETECTION)
+                                .modelName(modelName)
+                                .modelVersion(modelVersion)
+                                .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
+                                .processedFilePath(entity.getFilePath())
+                                .build()
+                );
+            });
+        } catch (JsonProcessingException e) {
+            outputObjectList.add(
+                    TemplateDetectionOutputTable.builder()
+                            .processId(processId)
+                            .tenantId(tenantId)
+                            .templateId(templateId)
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .groupId(groupId)
+                            .originId(originId)
+                            .paperNo(paperNo)
+                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .status(ExecutionStatus.FAILED.toString())
+                            .stage(TEMPLATE_DETECTION)
+                            .message("Template detection response processing failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
+                            .processedFilePath(entity.getFilePath())
+                            .build()
+            );
+            log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Template detection consumer failed for batch/group " + groupId,
+                    handymanException,
+                    this.action);
+            log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
+
+
+        }
+
+    }
+    private void extractedCoproOutputResponse(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
+        Long processId = entity.getProcessId();
+        String templateId = entity.getTemplateId();
+        Long tenantId = entity.getTenantId();
+        String originId = entity.getOriginId();
+        Integer paperNo = entity.getPaperNo();
+        Integer groupId = entity.getGroupId();
+        try {
+            TemplateDetectionDataItemCopro templateDetectionDataItemCopro = objectMapper.readValue(templateDetectionData, TemplateDetectionDataItemCopro.class);
+            templateDetectionDataItemCopro.getAttributes().forEach(attribute -> {
+                String bboxStr = String.valueOf(attribute.getBboxes());
+                String question = attribute.getQuestion();
+                Float scores = attribute.getScores();
+                String predictedAttributionValue = attribute.getPredictedAttributionValue();
+
+                outputObjectList.add(
+                        TemplateDetectionOutputTable.builder()
+                                .processId(processId)
+                                .tenantId(tenantId)
+                                .templateId(templateId)
+                                .predictedAttributionValue(predictedAttributionValue)
+                                .question(question)
+                                .scores(scores)
+                                .bboxes(bboxStr)
+                                .imageWidth(templateDetectionDataItemCopro.getImageWidth())
+                                .imageDPI(templateDetectionDataItemCopro.getImageDPI())
+                                .extractedImageUnit(templateDetectionDataItemCopro.getExtractedImageUnit())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .groupId(groupId)
                                 .originId(originId)
@@ -310,7 +384,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
 
         }
-
     }
 
-}
+
+    }

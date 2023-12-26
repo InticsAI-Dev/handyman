@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.NoiseModel;
+package in.handyman.raven.lib.model.noiseModel;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

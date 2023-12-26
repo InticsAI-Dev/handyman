@@ -10,10 +10,14 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 public class HwDetectionPayload {
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
     private Long rootPipelineId;
-    private Long actionId;
     private String process;
+    private Integer paperNo;
     private String inputFilePath;
     private String outputDir;
-    private String modelPath;
+    private Long actionId;
 }

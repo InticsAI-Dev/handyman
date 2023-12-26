@@ -17,6 +17,8 @@ import java.util.List;
     public class MasterDataInputTable implements CoproProcessor.Entity {
         String originId;
         Integer paperNo;
+        Integer groupId;
+        Long tenantId;
         String eocIdentifier;
         String extractedValue;
         String actualValue;

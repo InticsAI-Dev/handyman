@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.NoiseModel;
+package in.handyman.raven.lib.model.noiseModel;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import okhttp3.MediaType;
@@ -29,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess<NoiseModelInputEntity, NoiseModelOutputEntity> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String NOISE_DETECTION = PipelineName.NOISE_DETECTION.getProcessName();
 
     private final Logger log;
     private final Marker aMarker;
@@ -56,14 +59,13 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         log.info("copro consumer process started");
         List<NoiseModelOutputEntity> noiseOutputEntities = new ArrayList<>();
         final String filePath = entity.getInputFilePath();
-        final String noiseDetectionModel = "NOISE_DETECTION_MODEL";
         final Long rootPipelineId = entity.getRootPipelineId();
         final Long actionId = action.getActionId();
         final ObjectMapper objectMapper = new ObjectMapper();
         //payload
         final NoiseModelData NoiseModelData = new NoiseModelData();
         NoiseModelData.setRootPipelineId(rootPipelineId);
-        NoiseModelData.setProcess(noiseDetectionModel);
+        NoiseModelData.setProcess(NOISE_DETECTION);
         NoiseModelData.setInputFilePath(filePath);
         NoiseModelData.setActionId(actionId);
         NoiseModelData.setProcessId(action.getProcessId());
@@ -133,11 +135,11 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         NoiseModelOutputEntity
                                 .builder()
                                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                                .groupId(groupId)
+                                .groupId(Long.valueOf(groupId))
                                 .processId(processId)
                                 .tenantId(tenantId)
-                                .status("FAILED")
-                                .stage("NOISE_DETECTION_MODEL")
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .stage(NOISE_DETECTION)
                                 .message(response.message())
                                 .createdOn(LocalDateTime.now())
                                 .rootPipelineId(entity.getRootPipelineId())
@@ -150,11 +152,11 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                     NoiseModelOutputEntity
                             .builder()
                             .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                            .groupId(groupId)
+                            .groupId(Long.valueOf(groupId))
                             .processId(processId)
                             .tenantId(tenantId)
-                            .status("FAILED")
-                            .stage("NOISE_DETECTION_MODEL")
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .stage(NOISE_DETECTION)
                             .message(exception.getMessage())
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(entity.getRootPipelineId())
@@ -181,6 +183,10 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                 String consolidatedClass = rootNode.path("consolidatedClass").asText();
                 Double consolidatedConfidenceScore = rootNode.path("consolidatedConfidenceScore").asDouble();
                 String extractedValue = rootNode.path("noiseModelsResult").toString();
+                String originId1 = rootNode.path("originId").asText();
+                String paperNo1 = rootNode.path("paperNo").asText();
+                int groupId1 = rootNode.path("groupId").asInt();
+
 
                 String hwClass = rootNode
                         .path("noiseModelsResult")
@@ -198,9 +204,9 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .path("speckleNoiseDetectionOutput").toString();
 
                 parentObj.add(NoiseModelOutputEntity.builder()
-                        .originId(originId)
-                        .paperNo(paperNo)
-                        .groupId(groupId)
+                        .originId(originId1)
+                        .paperNo(Long.valueOf(paperNo1))
+                        .groupId(Long.valueOf(groupId1))
                         .processId(processId)
                         .tenantId(tenantId)
                         .inputFilePath(inputFilePath)
@@ -213,8 +219,8 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .speckleNoiseDetectionOutput(speckleClass)
                         .createdOn(LocalDateTime.now())
                         .rootPipelineId(action.getRootPipelineId())
-                        .status("COMPLETED")
-                        .stage("NOISE_DETECTION_MODEL")
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .stage(NOISE_DETECTION)
                         .message("noise detection completed")
                         .modelName(modelName)
                         .modelVersion(modelVersion)
@@ -226,11 +232,12 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                     NoiseModelOutputEntity
                             .builder()
                             .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                            .groupId(groupId)
+                            .paperNo(Long.valueOf(paperNo))
+                            .groupId(Long.valueOf(groupId))
                             .processId(processId)
                             .tenantId(tenantId)
-                            .status("FAILED")
-                            .stage("NOISE_DETECTION_MODEL")
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .stage(NOISE_DETECTION)
                             .message(e.getMessage())
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(entity.getRootPipelineId())
@@ -278,8 +285,8 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
 
                     noiseOutputEntities.add(NoiseModelOutputEntity.builder()
                             .originId(originId)
-                            .paperNo(paperNo)
-                            .groupId(groupId)
+                            .paperNo(Long.valueOf(paperNo))
+                            .groupId(Long.valueOf(groupId))
                             .processId(processId)
                             .tenantId(tenantId)
                             .inputFilePath(inputFilePath)
@@ -292,8 +299,8 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .speckleNoiseDetectionOutput(speckleClass)
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(rootPipelineId)
-                            .status("COMPLETED")
-                            .stage("NOISE_DETECTION_MODEL")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .stage(NOISE_DETECTION)
                             .message("noise detection completed")
                             .build());
 
@@ -301,12 +308,12 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                 } else {
                     noiseOutputEntities.add(NoiseModelOutputEntity.builder()
                             .originId(originId)
-                            .paperNo(paperNo)
-                            .groupId(groupId)
+                            .paperNo(Long.valueOf(paperNo))
+                            .groupId(Long.valueOf(groupId))
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(rootPipelineId)
-                            .status("ABSENT")
-                            .stage("NOISE_DETECTION")
+                            .status(ConsumerProcessApiStatus.ABSENT.getStatusDescription())
+                            .stage(NOISE_DETECTION)
                             .message("noise detection code absent in the given file")
                             .build());
                 }
@@ -314,12 +321,12 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
             } else {
                 noiseOutputEntities.add(NoiseModelOutputEntity.builder()
                         .originId(originId)
-                        .paperNo(paperNo)
-                        .groupId(groupId)
+                        .paperNo(Long.valueOf(paperNo))
+                        .groupId(Long.valueOf(groupId))
                         .createdOn(LocalDateTime.now())
                         .rootPipelineId(rootPipelineId)
-                        .status("FAILED")
-                        .stage("NOISE_DETECTION")
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .stage(NOISE_DETECTION)
                         .message(response.message())
                         .build());
                 log.error(aMarker, "The Exception occurred in episode of coverage in response {}", response);
@@ -328,12 +335,12 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         } catch (Exception e) {
             noiseOutputEntities.add(NoiseModelOutputEntity.builder()
                     .originId(originId)
-                    .paperNo(paperNo)
-                    .groupId(groupId)
+                    .paperNo(Long.valueOf(paperNo))
+                    .groupId(Long.valueOf(groupId))
                     .createdOn(LocalDateTime.now())
-                    .status("FAILED")
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .rootPipelineId(rootPipelineId)
-                    .stage("NOISE_DETECTION")
+                    .stage(NOISE_DETECTION)
                     .message(e.getMessage())
                     .build());
             log.error("Error in the copro process api hit {}", request);

@@ -12,6 +12,11 @@ import java.util.List;
 @Builder
 public class NerAdapterDataItem {
     private List<NerAdapterPrediction> prediction;
-
+    private Long rootPipelineId;
+    private Long actionId;
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
 }
 

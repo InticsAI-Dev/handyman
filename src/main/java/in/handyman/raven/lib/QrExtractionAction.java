@@ -52,9 +52,13 @@ public class QrExtractionAction implements IActionExecution {
 
   @Override
   public void execute() throws Exception {
+
+
     Integer consumerCount = Integer.valueOf(action.getContext().get(QR_CONSUMER_API_COUNT));
     Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-    QrConsumerProcess qrConsumerProcess = new QrConsumerProcess(log, aMarker, action);
+
+    String outputDir=action.getContext().get("target_directory_path") + "/" + action.getContext().get("process-id") + "/qr-extraction/";
+    QrConsumerProcess qrConsumerProcess = new QrConsumerProcess(log, aMarker, action, outputDir);
     Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
 
     try {

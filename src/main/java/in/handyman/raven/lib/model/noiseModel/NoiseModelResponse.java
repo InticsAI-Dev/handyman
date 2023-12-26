@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.NoiseModel;
+package in.handyman.raven.lib.model.noiseModel;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import in.handyman.raven.lib.model.paperitemizer.PaperItemizerOutput;
@@ -15,11 +15,11 @@ import java.util.List;
 @Builder
 public class NoiseModelResponse {
 
-    @JsonProperty("model_name")
-    private String modelName;
+        @JsonProperty("model_name")
+        private String modelName;
 
-    @JsonProperty("model_version")
-    private String modelVersion;
+        @JsonProperty("model_version")
+        private String modelVersion;
 
-    private List<PaperItemizerOutput> outputs;
+        private List<PaperItemizerOutput> outputs;
 }

@@ -103,7 +103,7 @@ class RestApiActionTestExecutionAudit {
                         Map.entry("origin_type","TRANSACTION"),
                         Map.entry("workspace_id","-1"),
                         Map.entry("transaction_id","TND-001"),
-                        Map.entry("document_type","INSURANCE"),
+                        Map.entry("document_type","HEALTH_CARE"),
                         Map.entry("document_id","TMP-AGD-001"),
                         Map.entry("last_updated_user_id","-1"),
                         Map.entry("dir_path","/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/input/SYNT_166838894.pdf"),

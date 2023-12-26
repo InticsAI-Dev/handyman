@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -25,7 +28,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
-    private static final String actionName = "PHRASE_MATCH";
+    private static final String PROCESS_NAME = PipelineName.PHRASE_MATCH.getProcessName();
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
@@ -44,29 +47,26 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         List<PhraseMatchOutputTable> parentObj = new ArrayList<>();
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
-        Long pipelineId = action.getRootPipelineId();
-        String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
-        Long tenantId=entity.getTenantId();
-        Long actionId = action.getActionId();;
+        Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
 
+
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String,List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
+        Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
-
-
 
         //payload
         PharseMatchData data = new PharseMatchData();
         data.setRootPipelineId(Math.toIntExact(action.getRootPipelineId()));
-        data.setActionId(Math.toIntExact(actionId));
+        data.setActionId(actionId);
         data.setProcess(entity.getProcessId());
         data.setOriginId(originId);
         data.setPaperNo(Long.valueOf(paperNo));
         data.setGroupId(groupId);
         data.setPageContent(pageContent);
         data.setKeysToFilter(keysToFilterObject);
+        data.setProcess(PROCESS_NAME);
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(data);
@@ -78,7 +78,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
-        TritonInputRequest tritonInputRequest=new TritonInputRequest();
+        TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
@@ -89,11 +89,11 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity,parentObj, request,objectMapper);
+            coproRequestBuilder(entity, parentObj, request, objectMapper);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity,parentObj,request);
+            tritonRequestBuilder(entity, parentObj, request);
         }
 
         return parentObj;
@@ -101,28 +101,28 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
     private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper) {
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
-        Long tenantId=entity.getTenantId();
+        Long tenantId = entity.getTenantId();
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                            extractedOutputDataRequest(entity, parentObj, responseBody, objectMapper, "", "");
+                extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
 
-                } else {
-                    parentObj.add(
-                            PhraseMatchOutputTable
-                                    .builder()
-                                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                                    .groupId(Optional.ofNullable(entity.getGroupId()).map(String::valueOf).orElse(null))
-                                    .status("FAILED")
-                                    .tenantId(tenantId)
-                                    .paperNo(paperNo)
-                                    .stage(actionName)
-                                    .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
-                                    .rootPipelineId(rootPipelineId)
-                                    .build());
-                    log.info(aMarker, "The Exception occurred in Phrase match API call");
-                }
+            } else {
+                parentObj.add(
+                        PhraseMatchOutputTable
+                                .builder()
+                                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                                .groupId(Optional.ofNullable(entity.getGroupId()).map(String::valueOf).orElse(null))
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .tenantId(tenantId)
+                                .paperNo(paperNo)
+                                .stage(PROCESS_NAME)
+                                .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
+                                .rootPipelineId(rootPipelineId)
+                                .build());
+                log.info(aMarker, "The Exception occurred in Phrase match API call");
+            }
 
         } catch (Exception exception) {
             parentObj.add(
@@ -130,10 +130,10 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .builder()
                             .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                             .groupId(Optional.ofNullable(entity.getGroupId()).map(String::valueOf).orElse(null))
-                            .status("FAILED")
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .paperNo(paperNo)
                             .tenantId(tenantId)
-                            .stage(actionName)
+                            .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .build());
@@ -145,10 +145,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
 
-
-
-    private void tritonRequestBuilder( PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request) {
-        Long tenantId=entity.getTenantId();
+    private void tritonRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request) {
+        Long tenantId = entity.getTenantId();
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
@@ -160,24 +158,24 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(pharseMatchDataItem -> {
-                            extractedOutputDataRequest(entity, parentObj, pharseMatchDataItem, objectMapper, "", "");
+                            extractedOutputDataRequest(entity, parentObj, pharseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
                         });
                     });
                 } else {
-                parentObj.add(
-                        PhraseMatchOutputTable
-                                .builder()
-                                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                                .groupId(Optional.ofNullable(entity.getGroupId()).map(String::valueOf).orElse(null))
-                                .status("FAILED")
-                                .tenantId(tenantId)
-                                .paperNo(paperNo)
-                                .stage(actionName)
-                                .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
-                                .rootPipelineId(rootPipelineId)
-                                .build());
-                log.info(aMarker, "The Exception occurred in Phrase match API call");
-            }
+                    parentObj.add(
+                            PhraseMatchOutputTable
+                                    .builder()
+                                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                                    .groupId(Optional.ofNullable(entity.getGroupId()).map(String::valueOf).orElse(null))
+                                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                    .tenantId(tenantId)
+                                    .paperNo(paperNo)
+                                    .stage(PROCESS_NAME)
+                                    .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
+                                    .rootPipelineId(rootPipelineId)
+                                    .build());
+                    log.info(aMarker, "The Exception occurred in Phrase match API call");
+                }
             }
         } catch (Exception exception) {
             parentObj.add(
@@ -185,10 +183,10 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .builder()
                             .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                             .groupId(Optional.ofNullable(entity.getGroupId()).map(String::valueOf).orElse(null))
-                            .status("FAILED")
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .tenantId(tenantId)
                             .paperNo(paperNo)
-                            .stage(actionName)
+                            .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .build());
@@ -202,27 +200,25 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     private static void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
-        Long tenantId=entity.getTenantId();
+        Long tenantId = entity.getTenantId();
 
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
         try {
-           // PharseMatchDataItem pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, PharseMatchDataItem.class);
-            List<PharseMatchDataItem> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<List<PharseMatchDataItem>>() {
+            List<PharseMatchDataItem> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
 
             });
 
             for (PharseMatchDataItem item : pharseMatchOutputData) {
-
                 parentObj.add(
                         PhraseMatchOutputTable
                                 .builder()
                                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                                 .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
                                 .paperNo(paperNo)
-                                .status("COMPLETED")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .tenantId(tenantId)
-                                .stage(actionName)
+                                .stage(PROCESS_NAME)
                                 .message("Completed API call zero shot classifier")
                                 .rootPipelineId(rootPipelineId)
                                 .modelName(modelName)
@@ -237,5 +233,43 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             throw new RuntimeException(e);
         }
     }
+
+    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+        String originId = entity.getOriginId();
+        String groupId = entity.getGroupId();
+        Long tenantId = entity.getTenantId();
+
+        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
+        Long rootPipelineId = entity.getRootPipelineId();
+        try {
+            List<PharseMatchDataItemCopro> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<List<PharseMatchDataItemCopro>>() {
+
+            });
+
+            for (PharseMatchDataItemCopro item : pharseMatchOutputData) {
+
+                parentObj.add(
+                        PhraseMatchOutputTable
+                                .builder()
+                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                                .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                                .paperNo(paperNo)
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .tenantId(tenantId)
+                                .stage(PROCESS_NAME)
+                                .message("Completed API call zero shot classifier")
+                                .rootPipelineId(rootPipelineId)
+                                .modelName(modelName)
+                                .truthEntity(item.getTruthEntity())
+                                .isKeyPresent(String.valueOf(item.getIsKeyPresent()))
+                                .entity(item.getEntity())
+                                .modelVersion(modelVersion)
+                                .build());
+            }
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
+}
 

@@ -146,6 +146,7 @@ action:
     |outboundTableResponse
     |integratedNoiseModelApi
     |loadBalancerQueueUpdate
+    |qrExtraction
     |multipartUpload
     );
 
@@ -794,14 +795,6 @@ pixelClassifierUrgencyTriage:
     'checkbox-image-height' checkboxImageHeight=STRING
     'using'  '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
-qrExtraction:
-	'qr-extraction' 'as' name=STRING
-	'on-resource-conn' resourceConn=STRING
-	'copro-url' endPoint=STRING
-	'process-id' processId=STRING
-	'output-table' outputTable=STRING
-	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
-
 paperItemizer:
 	'paperItemizer' 'as' name=STRING
 	'outputDir' outputDir=STRING
@@ -1055,6 +1048,14 @@ loadBalancerQueueUpdate:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+qrExtraction:
+    'qr-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endPoint=STRING
+    'process-id' processId=STRING
+    'output-table' outputTable=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
 multipartUpload:
     'multipartUpload' 'as' name=STRING
     'resource-conn' resourceConn=STRING
@@ -1062,8 +1063,6 @@ multipartUpload:
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
-
-
 //rules
 
 resource : STRING;

@@ -25,6 +25,7 @@ import java.util.List;
         private String filePath;
         private Long rootPipelineId;
         private String outputDir;
+        private Long processId;
 
 
 

@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.autorotation.AutoRotationDataItem;
+import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
+import in.handyman.raven.lib.model.textextraction.copro.DataExtractionDataItemCopro;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -27,7 +31,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
     public final ActionExecutionAudit action;
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
-    private static final String FAILED_STR = "FAILED";
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
@@ -54,12 +57,22 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String process = "TEXT_EXTRACTOR";
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
-
+        String originId = entity.getOriginId();
+        Integer groupId = entity.getGroupId();
+        Integer paperNumber = entity.getPaperNo();
+        String processId = String.valueOf(entity.getProcessId());
+        Long tenantId = entity.getTenantId();
 
         //payload
         DataExtractionData dataExtractionData = new DataExtractionData();
+        dataExtractionData.setOriginId(originId);
+        dataExtractionData.setGroupId(groupId);
+        dataExtractionData.setProcessId(Long.valueOf(processId));
+        dataExtractionData.setTenantId(tenantId);
         dataExtractionData.setRootPipelineId(rootpipelineId);
         dataExtractionData.setActionId(actionId);
+        dataExtractionData.setPaperNumber(paperNumber);
+        dataExtractionData.setTemplateName(entity.getTemplateName());
         dataExtractionData.setProcess(process);
         dataExtractionData.setInputFilePath(filePath);
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
@@ -80,9 +93,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
-
-        String originId = entity.getOriginId();
-        Integer groupId = entity.getGroupId();
 
         String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
@@ -110,14 +120,14 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
-                extractedOutputDataRequest(entity, responseBody, parentObj, originId, groupId, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "");
 
             } else {
                 parentObj.add(DataExtractionOutputTable.builder()
                         .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                         .groupId(groupId)
                         .paperNo(entity.getPaperNo())
-                        .status(FAILED_STR)
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .tenantId(tenantId)
                         .templateId(templateId)
@@ -134,7 +144,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                     .groupId(groupId)
                     .paperNo(entity.getPaperNo())
-                    .status(FAILED_STR)
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .tenantId(tenantId)
                     .templateId(templateId)
@@ -181,7 +191,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                         .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                         .groupId(groupId)
                         .paperNo(entity.getPaperNo())
-                        .status(FAILED_STR)
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .tenantId(tenantId)
                         .templateId(templateId)
@@ -198,7 +208,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                     .groupId(groupId)
                     .paperNo(entity.getPaperNo())
-                    .status(FAILED_STR)
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .tenantId(tenantId)
                     .templateId(templateId)
@@ -217,12 +227,40 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private static void extractedOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
-
-
-        String parentResponseObject=extractPageContent(stringDataItem);
+        String parentResponseObject = extractPageContent(stringDataItem);
         final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
         final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
+        DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
 
+        String templateId = entity.getTemplateId();
+        parentObj.add(DataExtractionOutputTable.builder()
+                .filePath(dataExtractionDataItem.getInputFilePath())
+                .extractedText(dataExtractionDataItem.getPageContent())
+                .originId(dataExtractionDataItem.getOriginId())
+                .groupId(dataExtractionDataItem.getGroupId())
+                .paperNo(dataExtractionDataItem.getPaperNumber())
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                .stage(PROCESS_NAME)
+                .message("Data extraction macro completed")
+                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .isBlankPage(flag)
+                .tenantId(dataExtractionDataItem.getTenantId())
+                .templateId(templateId)
+                .processId(dataExtractionDataItem.getProcessId())
+                .templateName(dataExtractionDataItem.getTemplateName())
+                .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
+                .modelName(modelName)
+                .modelVersion(modelVersion)
+                .build());
+
+
+    }
+
+    private static void extractedCoproOutputResponse(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
+
+        String parentResponseObject = extractPageContent(stringDataItem);
+        final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
+        final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
         Integer paperNo = entity.getPaperNo();
         String filePath = entity.getFilePath();
         Long tenantId = entity.getTenantId();
@@ -236,7 +274,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                 .groupId(groupId)
                 .paperNo(paperNo)
-                .status("COMPLETED")
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .message("Data extraction macro completed")
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
@@ -252,7 +290,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     }
-
     private static String extractPageContent(String jsonString) {
         int startIndex = jsonString.indexOf("\"pageContent\":") + "\"pageContent\":".length();
         int endIndex = jsonString.lastIndexOf("}");

@@ -14,7 +14,7 @@ public class ComparisonOutput {
         private String name;
         private String datatype;
         private List<Integer> shape;
-        private List<ComparisonDataItem> data;
+        private List<String> data;
     }
 
 

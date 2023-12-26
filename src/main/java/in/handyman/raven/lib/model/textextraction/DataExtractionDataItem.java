@@ -10,11 +10,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class DataExtractionDataItem {
-
-
     private String pageContent;
-    private String filePath;
-    private String fileName;
+    private String originId;
+    private Integer paperNumber;
+    private String inputFilePath;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
+    private String templateName;
+    private Long rootPipelineId;
 
     }
 

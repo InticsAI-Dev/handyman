@@ -9,11 +9,16 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 public class DataExtractionData {
-
-        private Long rootPipelineId;
-        private Long actionId;
-        private String process;
-        private String inputFilePath;
+    private Long rootPipelineId;
+    private Long actionId;
+    private String process;
+    private String originId;
+    private Integer paperNumber;
+    private Long processId;
+    private String inputFilePath;
+    private Integer groupId;
+    private Long tenantId;
+    private String templateName;
 
     }
 

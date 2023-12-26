@@ -18,13 +18,13 @@ import java.util.stream.Stream;
 public class QrOutputEntity implements CoproProcessor.Entity {
     private String originId;
     private Integer groupId;
-    private Integer paperNo;
+    private Long paperNo;
     private String fileId;
     private String qrFormat;
     private Integer qrFormatId;
     private String extractedValue;
     private Timestamp createdOn;
-    private Integer confidenceScore;
+    private Double confidenceScore;
     private Integer angle;
     private String b_box;
     private Long rootPipelineId;

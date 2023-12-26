@@ -6,9 +6,9 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.IntegratedNoiseModelApi;
-import in.handyman.raven.lib.model.NoiseModel.NoiseModelConsumerProcess;
-import in.handyman.raven.lib.model.NoiseModel.NoiseModelInputEntity;
-import in.handyman.raven.lib.model.NoiseModel.NoiseModelOutputEntity;
+import in.handyman.raven.lib.model.noiseModel.NoiseModelConsumerProcess;
+import in.handyman.raven.lib.model.noiseModel.NoiseModelInputEntity;
+import in.handyman.raven.lib.model.noiseModel.NoiseModelOutputEntity;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
@@ -76,7 +76,6 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
                     "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 
-//        Class<NoiseModelInputEntity> NoiseModelInputEntity = null;
             final CoproProcessor<NoiseModelInputEntity, NoiseModelOutputEntity> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             NoiseModelOutputEntity.class,

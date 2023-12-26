@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.templatedetection;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import in.handyman.raven.lib.agadia.xenon.model.XenonResult;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +18,6 @@ public class TemplateDetectionDataItem {
     private Integer imageWidth;
     private Integer imageHeight;
     private String extractedImageUnit;
-    private List<TemplateDetectionAttributes> attribute;
-
-
+    @JsonIgnore
+    private String inputFilePath;
 }

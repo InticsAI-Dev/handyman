@@ -1,6 +1,6 @@
-package in.handyman.raven.lib.model.NoiseModel;
-
+package in.handyman.raven.lib.model.noiseModel;
 import in.handyman.raven.lib.CoproProcessor;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,9 +18,9 @@ import java.util.stream.Stream;
 
 public class NoiseModelOutputEntity implements CoproProcessor.Entity {
     private String originId;
-    private Integer paperNo;
+    private Long paperNo;
     private Long processId;
-    private Integer groupId;
+    private Long groupId;
     private Long tenantId;
     private String inputFilePath;
     private Double consolidatedConfidenceScore;
@@ -37,14 +37,13 @@ public class NoiseModelOutputEntity implements CoproProcessor.Entity {
     private String message;
     private String modelName;
     private String modelVersion;
-
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.paperNo,
-                this.processId, this.groupId, this.tenantId, this.inputFilePath, this.consolidatedConfidenceScore,
-                this.consolidatedClass, this.noiseModelsResult, this.hwNoiseDetectionOutput,
+        return Stream.of( this.originId, this.paperNo,
+                this.processId, this.groupId, this.tenantId,this.inputFilePath, this.consolidatedConfidenceScore,
+                this.consolidatedClass,this.noiseModelsResult, this.hwNoiseDetectionOutput,
                 this.checkNoiseDetectionOutput, this.checkboxMarkDetectionOutput,
-                this.speckleNoiseDetectionOutput, this.createdOn, this.rootPipelineId,
-                this.status, this.stage, this.message, this.modelName, this.modelVersion).collect(Collectors.toList());
+                this.speckleNoiseDetectionOutput, this.createdOn,this.rootPipelineId,
+                this.status,this.stage,this.message,this.modelName,this.modelVersion).collect(Collectors.toList());
     }
 }

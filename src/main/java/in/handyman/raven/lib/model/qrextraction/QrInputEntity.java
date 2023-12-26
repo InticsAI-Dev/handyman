@@ -17,7 +17,7 @@ public class QrInputEntity implements CoproProcessor.Entity {
     private String filePath;
     private Integer groupId;
     private String originId;
-    private Integer paperNo;
+    private Long paperNo;
     private String fileId;
     private Long rootPipelineId;
     private Long tenantId;

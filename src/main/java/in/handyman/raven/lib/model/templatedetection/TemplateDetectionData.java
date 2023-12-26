@@ -18,5 +18,9 @@ public class TemplateDetectionData {
     private String inputFilePath;
     private List<String> attributes;
     private String paperType;
-
+    private Integer paperNo;
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
 }

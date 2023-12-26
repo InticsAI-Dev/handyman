@@ -13,12 +13,12 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class ZeroShotClassifierDataItem {
-    private String originId;
-    private String groupId;
-    private Integer paperNo;
     @JsonProperty("page_content")
     private String pageContent;
     @JsonProperty("entity_confidence_score")
     private List<ZeroShotClassifierDataEntityConfidenceScore> entityConfidenceScore;
+    private String originId;
+    private String groupId;
+    private Integer paperNo;
 
 }
