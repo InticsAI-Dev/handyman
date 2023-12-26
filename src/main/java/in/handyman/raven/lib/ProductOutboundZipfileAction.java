@@ -96,8 +96,8 @@ public class ProductOutboundZipfileAction implements IActionExecution {
 
             createJsonFile(sourceJsonString, originFolderPath, "productJson");
             createJsonFile(sourceKvpJsonString, originKvpFolderPath, "kvpJson");
-            moveFileIntoOrigin(sourceCleanedPdfPath, originFolderPath);
-            moveFileIntoOrigin(sourceOriginPdfPath, originFolderPath);
+            copyFileIntoOutbound(sourceCleanedPdfPath, originFolderPath);
+            copyFileIntoOutbound(sourceOriginPdfPath, originFolderPath);
             try {
                 String ZipFileNameStr = String.valueOf(outboundInputTableEntity.getRootPipelineId());
                 String outboundZipFilePath = createZipFile(originFolderPath, originZipPath, ZipFileNameStr);
@@ -133,19 +133,17 @@ public class ProductOutboundZipfileAction implements IActionExecution {
 
     public void consumerBatch(final Jdbi jdbi, List<OutboundOutputTableEntity> resultQueue) {
         try {
-            resultQueue.forEach(insert -> {
-                        jdbi.useTransaction(handle -> {
-                            try {
-                                handle.createUpdate("INSERT INTO " + productOutboundZipfile.getResultTable() + "(origin_id, root_pipeline_id,group_id,process_id,cleaned_pdf_path,origin_pdf_path,product_json,kvp_response,table_response,tenant_id,zip_file_path,status,stage,message,file_name)" +
-                                                "VALUES(:originId,:rootPipelineId,:groupId,:processId,:cleanedPdfPath,:originPdfPath,:productJson,:kvpResponse,:tableResponse,:tenantId,:zipFilePath,:status,:stage,:message,:fileName);")
-                                        .bindBean(insert).execute();
-                                log.info(aMarker, "inserted {} into outbound zip file details", insert);
-                            } catch (Throwable t) {
-                                log.error(aMarker, "error inserting result into outbound file details {}", resultQueue, t);
-                            }
+            resultQueue.forEach(insert -> jdbi.useTransaction(handle -> {
+                try {
+                    handle.createUpdate("INSERT INTO " + productOutboundZipfile.getResultTable() + "(origin_id, root_pipeline_id,group_id,process_id,cleaned_pdf_path,origin_pdf_path,product_json,kvp_response,table_response,tenant_id,zip_file_path,status,stage,message,file_name)" +
+                                    "VALUES(:originId,:rootPipelineId,:groupId,:processId,:cleanedPdfPath,:originPdfPath,:productJson,:kvpResponse,:tableResponse,:tenantId,:zipFilePath,:status,:stage,:message,:fileName);")
+                            .bindBean(insert).execute();
+                    log.info(aMarker, "inserted {} into outbound zip file details", insert);
+                } catch (Throwable t) {
+                    log.error(aMarker, "error inserting result into outbound file details {}", resultQueue, t);
+                }
 
-                        });
-                    }
+            })
             );
         } catch (Exception e) {
             log.error(aMarker, "error inserting result {}", resultQueue, e);
@@ -155,7 +153,7 @@ public class ProductOutboundZipfileAction implements IActionExecution {
     }
 
 
-    public void moveFileIntoOrigin(String inputFilePath, String outputDirectory) {
+    public void copyFileIntoOutbound(String inputFilePath, String outputDirectory) {
         Path sourcePath = Path.of(inputFilePath);
 
         File sourceFile = new File(sourcePath.toString());
@@ -169,16 +167,16 @@ public class ProductOutboundZipfileAction implements IActionExecution {
         boolean isFileExists = sourceFile.exists();
         if (isFileExists) {
             try {
-                // Use Files.move() to move the file to the target directory
+                // Use Files.copy() to copy the file to the target directory
                 Path targetPath = targetDirectory.resolve(sourcePath.getFileName());
-                Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-                log.info("File moved from {} to {}", inputFilePath, outputDirectory);
+                log.info("File copied from {} to {}", inputFilePath, outputDirectory);
             } catch (IOException e) {
-                log.error("File moved failed for {} to {}", inputFilePath, outputDirectory);
+                log.error("File copy failed for {} to {}", inputFilePath, outputDirectory);
                 HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("failed in moving the file", handymanException, action);
-                throw new HandymanException("Error in execute method for ner adapter", e, action);
+                HandymanException.insertException("failed in copying the file", handymanException, action);
+                throw new HandymanException("Error in execute method for copying file", e, action);
             }
         } else {
             log.info("File not found from {} to {}", inputFilePath, outputDirectory);

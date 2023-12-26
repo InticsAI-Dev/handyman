@@ -70,7 +70,8 @@ public class MultipartUploadAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Multipart Upload Action for {} has been started", multipartUpload.getName());
             final String insertQuery = "";
-            final List<URL> urls = Optional.ofNullable(action.getContext().get(multipartUpload.getEndPoint())).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String endPoint = multipartUpload.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
