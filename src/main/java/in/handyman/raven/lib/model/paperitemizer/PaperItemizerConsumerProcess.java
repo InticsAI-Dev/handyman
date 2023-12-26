@@ -296,10 +296,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             PaperItemizerDataItemCopro paperItemizeOutputData = objectMapper.readValue(paperItemizerDataItem, PaperItemizerDataItemCopro.class);
             List<String> itemizedPapers = paperItemizeOutputData.getItemizedPapers();
+            itemizedPapers.forEach(itemizedPaper -> {
+                Long paperNo = getPaperNobyFileName(itemizedPaper);
                 parentObj.add(
                         PaperItemizerOutputTable
                                 .builder()
-                                .processedFilePath(itemizedPapers.toString())
+                                .processedFilePath(itemizedPaper)
+                                .paperNo(paperNo)
                                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                                 .groupId(groupId)
                                 .templateId(templateId)
@@ -313,6 +316,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
                                 .build());
+            });
 
         } catch (JsonProcessingException e) {
             parentObj.add(
