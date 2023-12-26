@@ -62,14 +62,14 @@ public class FtpDownloadAction implements IActionExecution {
 
         List<String> downloadedFilePaths = new ArrayList<>();
 
-        FtpDownloadInputTable ftpDownloadInputTable = getInputTableFromQuerySet(action.getContext().get("ftpDownloadQuerySet"), jdbi);
-        String userName = ftpDownloadInputTable.getUsername();
-        String password = ftpDownloadInputTable.getPassword();
-        String remoteHost = ftpDownloadInputTable.getServerAddress();
-        String sourceDir = ftpDownloadInputTable.getFolderPath();
+      //  FtpDownloadInputTable ftpDownloadInputTable = getInputTableFromQuerySet(action.getContext().get("ftpDownloadQuerySet"), jdbi);
+//        String userName = ftpDownloadInputTable.getUsername();
+//        String password = ftpDownloadInputTable.getPassword();
+//        String remoteHost = ftpDownloadInputTable.getServerAddress();
+//        String sourceDir = ftpDownloadInputTable.getFolderPath();
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        String ftpDownloadRequestJson = objectMapper.writeValueAsString(ftpDownloadInputTable);
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        String ftpDownloadRequestJson = objectMapper.writeValueAsString(ftpDownloadInputTable);
 
         final long tenantId = Long.parseLong(action.getContext().get("tenant_id"));
         final Long rootPipelineId = action.getRootPipelineId();
@@ -78,10 +78,10 @@ public class FtpDownloadAction implements IActionExecution {
         final String DestDir = action.getContext().get("destinationPath");
         final String uploadTime = action.getContext().get("uploadTime");
         FTPClient ftpClient = new FTPClient();
-//        final String remoteHost = action.getContext().get("serverAddress");
-//        final String userName = action.getContext().get("username");
-//        final String password = action.getContext().get("password");
-//        final String sourceDir = action.getContext().get("folderPath");
+        final String remoteHost = action.getContext().get("serverAddress");
+        final String userName = action.getContext().get("username");
+        final String password = action.getContext().get("password");
+        final String sourceDir = action.getContext().get("folderPath");
 
 
         final String ftp = "FTP";
@@ -106,17 +106,7 @@ public class FtpDownloadAction implements IActionExecution {
             FTPFile[] subFiles = ftpClient.listFiles();
             String completed = "COMPLETED";
             if (uploadTime.equals("null")) {
-                if (subFiles != null) {
-                    for (FTPFile aFile : subFiles) {
-
-                        if (aFile.isFile()) {
-
-                            String remoteFilePath = sourceDir + "/" + aFile.getName();
-                            String savePath = DestDir + File.separator + aFile.getName();
-                            downloadSingleFile(ftpClient, remoteFilePath, savePath);
-                            downloadedFilePaths.add(savePath);// Add downloaded file path to the list
-                        }
-                    }
+                downloadDirectory(ftpClient, sourceDir, DestDir, "", downloadedFilePaths);
                     if (!downloadedFilePaths.isEmpty()) {
 
                         ObjectMapper mapper = new ObjectMapper();
@@ -132,7 +122,7 @@ public class FtpDownloadAction implements IActionExecution {
                                 .status(active) // Set the status as needed
                                 .message("FTP download completed")
                                 .type(ftp)
-                                .info(ftpDownloadRequestJson)// Set as needed
+                                //.info(ftpDownloadRequestJson)// Set as needed
                                 .lastProcessedOn(LocalDateTime.now())
                                 .ftpFolderPath(sourceDir) // Set the FTP folder path
                                 .destinationPath(DestDir) // Set the destination path
@@ -142,7 +132,7 @@ public class FtpDownloadAction implements IActionExecution {
                                 .build();
                         insertIntoOutputTable(jdbi, outputTable);
                     }
-                }
+
             } else {
 
                 if (subFiles != null) {
@@ -224,6 +214,48 @@ public class FtpDownloadAction implements IActionExecution {
                     .one();
         }
     }
+
+
+//    private void downloadDirectory(FTPClient ftpClient, String sourceDir, String destDir, String currentDir, List<String> filesToDownload) throws IOException {
+//        FTPFile[] files = ftpClient.listFiles(sourceDir + "/" + currentDir);
+//
+//        if (files != null) {
+//            for (FTPFile file : files) {
+//                String remoteFilePath = sourceDir + "/" + currentDir + "/" + file.getName();
+//                String savePath = destDir + File.separator + currentDir + File.separator + file.getName();
+//
+//                if (file.isDirectory()) {
+//                    // If it's a directory, create the local directory and download its contents recursively
+//                    File localDir = new File(savePath);
+//                    localDir.mkdirs();
+//                    downloadDirectory(ftpClient, sourceDir, destDir, currentDir + "/" + file.getName(), filesToDownload);
+//                } else if (filesToDownload.contains(file.getName()) || filesToDownload.isEmpty()) {
+//                    // If it's a file and either the list is empty (download all files) or the file is in the list, download it
+//                    downloadSingleFile(ftpClient, remoteFilePath, savePath);
+//                }
+//            }
+//        }
+//    }
+private void downloadDirectory(FTPClient ftpClient, String sourceDir, String destDir, String currentDir, List<String> filesToDownload) throws IOException {
+    FTPFile[] files = ftpClient.listFiles(sourceDir + "/" + currentDir);
+
+    if (files != null) {
+        for (FTPFile file : files) {
+            String remoteFilePath = sourceDir + "/" + currentDir + "/" + file.getName();
+            String savePath = destDir + File.separator + currentDir + File.separator + file.getName();
+
+            if (file.isDirectory()) {
+                // If it's a directory, create the local directory and download its contents recursively
+                File localDir = new File(savePath);
+                localDir.mkdirs();
+                downloadDirectory(ftpClient, sourceDir, destDir, currentDir + "/" + file.getName(), filesToDownload);
+            } else if (filesToDownload.contains(file.getName()) || filesToDownload.isEmpty()) {
+                // If it's a file and either the list is empty (download all files) or the file is in the list, download it
+                downloadSingleFile(ftpClient, remoteFilePath, savePath);
+            }
+        }
+    }
+}
 
     public void downloadSingleFile(FTPClient ftpClient, String remoteFilePath, String savePath) throws IOException {
         File downloadFile = new File(savePath);

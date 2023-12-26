@@ -15,7 +15,7 @@ import java.util.Map;
                     .condition(true)
                     .resourceConn("intics_zio_db_conn")
                     .resultTable("onboard_wizard_info.ftp_download_info")
-                    .querySet("SELECT 'deploy' as username, '192.168.10.245' as serverAddress, 'deploy@123' as password, '/Downloads/oxygen_finance_v2' as folderPath")
+                    .querySet("SELECT 'deploy' as username, '192.168.10.245' as serverAddress, 'deploy@123' as password, '/Public/Upload' as folderPath")
                     .build();
 
             ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
@@ -28,7 +28,7 @@ import java.util.Map;
                     Map.entry("username","deploy"),
                     Map.entry("serverAddress","192.168.10.245"),
                     Map.entry("password","deploy@123"),
-                    Map.entry("folderPath","/Downloads"),
+                    Map.entry("folderPath","/Public/Upload/Grant Making Final Review Demo-1.pdf"),
 
 
                     Map.entry("ftpPort","21"),
