@@ -213,7 +213,7 @@ public class TrinityModelAction implements IActionExecution {
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
                     resultLineItems.forEach(resultLineItem -> {
-                        batch.bind("filePath", filePath)
+                        batch.bind("filePath", trinityModelDataItem.getInputFilePath())
                                 .bind("question", resultLineItem.getQuestion())
                                 .bind("predictedAttributionValue", resultLineItem.getPredictedAttributionValue())
                                 .bind("scores", resultLineItem.getScores())
