@@ -30,7 +30,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
 
-    private static final String PROCESS_NAME = PipelineName.PHRASE_MATCH.getProcessName();
+    private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
 
     public final ActionExecutionAudit action;
     final OkHttpClient httpclient = new OkHttpClient.Builder()
