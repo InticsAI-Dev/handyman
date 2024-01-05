@@ -148,6 +148,7 @@ action:
     |loadBalancerQueueUpdate
     |qrExtraction
     |multipartUpload
+    |multipartDownload
     );
 
 
@@ -1060,6 +1061,14 @@ multipartUpload:
     'multipartUpload' 'as' name=STRING
     'resource-conn' resourceConn=STRING
     'upload-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+multipartDownload:
+    'multipartDownload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'download-url' endPoint=STRING
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
