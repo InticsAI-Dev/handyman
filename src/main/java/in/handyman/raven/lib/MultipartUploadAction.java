@@ -132,7 +132,7 @@ public class MultipartUploadAction implements IActionExecution {
             }
 
             File file = new File(inputFilePath);
-            MediaType MEDIA_TYPE = MediaType.parse("application/pdf");
+            MediaType MEDIA_TYPE = MediaType.parse("application/*");
 
             RequestBody requestBody = new MultipartBody.Builder()
                     .setType(MultipartBody.FORM)

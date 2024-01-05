@@ -26,10 +26,11 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,11 +121,11 @@ public class MultipartDownloadAction implements IActionExecution {
         public List<MultipartDownloadAction.MultipartDownloadOutputTable> process(URL endpoint, MultipartDownloadAction.DownloadOctetStreamFileInputTable entity) throws Exception {
 
             List<MultipartDownloadAction.MultipartDownloadOutputTable> parentObj = new ArrayList<>();
-            String inputFilePath = entity.getFilepath();
+            String outputFilePath = entity.getFilepath();
 
-            MediaType MEDIA_TYPE = MediaType.parse("application/json");
+            MediaType MEDIA_TYPE = MediaType.parse("application/*");
 
-            URL url = new URL(endpoint.toString() + "?filepath=" + inputFilePath);
+            URL url = new URL(endpoint.toString() + "?filepath=" + outputFilePath);
             Request request = new Request.Builder().url(url)
                     .addHeader("accept", "*/*")
                     .post(RequestBody.create("{}", MEDIA_TYPE))
@@ -133,7 +134,7 @@ public class MultipartDownloadAction implements IActionExecution {
             if (log.isInfoEnabled()) {
                 log.info("Sending request to URL: {}", url);
                 log.info("Request headers: {}", request.headers());
-                log.info(aMarker, "Request has been build with the parameters {} ,inputFilePath : {}", endpoint, inputFilePath);
+                log.info(aMarker, "Request has been build with the parameters {} ,outputFilePath : {}", endpoint, outputFilePath);
             }
 
             try (Response response = httpclient.newCall(request).execute()) {
@@ -144,37 +145,26 @@ public class MultipartDownloadAction implements IActionExecution {
 
 
                     // Create a new file and save the response body into it
-                    File file = new File(inputFilePath);
+                    File file = new File(outputFilePath);
 
                     File parentDir = file.getParentFile();
                     if (!parentDir.exists()) {
                         log.info("Directory created: {}", parentDir.mkdir());
                     }
-                    try (ResponseBody responseBody = response.body();
-                         InputStream inputStream = Objects.requireNonNull(responseBody).byteStream();
-                         FileOutputStream outputStream = new FileOutputStream(file, false)) {
+                    try (ResponseBody responseBody = response.body()) {
+                        final InputStream inputStream = Objects.requireNonNull(responseBody).byteStream();
+                        Files.copy(inputStream, new File(outputFilePath).toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            outputStream.write(buffer, 0, bytesRead);
-                        }
-
-                        // Flush and close the output stream to ensure all data is written
-                        outputStream.flush();
-                        outputStream.close();
-
-                        log.info("File {} downloaded successfully", file.getName());
                     } catch (Exception e) {
                         log.error("Error writing file: {}", e.getMessage());
                         HandymanException handymanException = new HandymanException(e);
-                        HandymanException.insertException("Exception occurred in Writing multipart File for file - " + inputFilePath, handymanException, this.action);
+                        HandymanException.insertException("Exception occurred in Writing multipart File for file - " + outputFilePath, handymanException, this.action);
                     }
                 }
             } catch (Exception e) {
-                log.error(aMarker, "The Exception occurred in Download multipart File for file {} with exception {}", inputFilePath, e.getMessage());
+                log.error(aMarker, "The Exception occurred in Download multipart File for file {} with exception {}", outputFilePath, e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Exception occurred in Download multipart File for file - " + inputFilePath, handymanException, this.action);
+                HandymanException.insertException("Exception occurred in Download multipart File for file - " + outputFilePath, handymanException, this.action);
             }
             return parentObj;
         }

@@ -13,12 +13,16 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.TableExtraction;
 import in.handyman.raven.lib.model.tableextraction.TableOutputResponse;
-import in.handyman.raven.util.UniqueID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.apache.commons.io.FilenameUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
@@ -32,15 +36,22 @@ import org.slf4j.MarkerFactory;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -146,8 +157,6 @@ public class TableExtractionAction implements IActionExecution {
             List<TableExtractionOutputTable> parentObj = new ArrayList<>();
             final ObjectNode objectNode = mapper.createObjectNode();
             String inputFilePath = entity.getFilePath();
-            Long uniqueId = UniqueID.getId();
-            String uniqueIdStr = String.valueOf(uniqueId);
             Long rootPipelineId = action.getRootPipelineId();
             final String tableExtractionProcessName = "TABLE_EXTRACTION";
             Long actionId = action.getActionId();
@@ -155,7 +164,7 @@ public class TableExtractionAction implements IActionExecution {
             objectNode.put("process", tableExtractionProcessName);
             objectNode.put("inputFilePath", inputFilePath);
             objectNode.put("outputDir", outputDir);
-            objectNode.put("actionId", 1);
+            objectNode.put("actionId", actionId);
 
             log.info(aMarker, "coproProcessor mapper object node {}", objectNode);
             Request request = new Request.Builder().url(endpoint)
@@ -164,7 +173,6 @@ public class TableExtractionAction implements IActionExecution {
             if (log.isInfoEnabled()) {
                 log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and outputDir {}", endpoint, inputFilePath, outputDir);
             }
-            AtomicInteger atomicInteger = new AtomicInteger();
             String originId = entity.getOriginId();
             Integer groupId = entity.getGroupId();
             String templateId = entity.templateId;
@@ -179,16 +187,27 @@ public class TableExtractionAction implements IActionExecution {
                 if (response.isSuccessful()) {
                     log.info(aMarker, "coproProcessor consumer process response status {}", response.message());
 
-                    String responseBody = response.body().string();
+                    String responseBody = Objects.requireNonNull(response.body()).string();
                     List<TableOutputResponse> tableOutputResponses = mapper.readValue(responseBody, new TypeReference<>() {
                     });
                     tableOutputResponses.forEach(tableOutputResponse1 -> {
                         String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
-                        String tableResponse = null;
+                        try {
+                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
+                        } catch (MalformedURLException e) {
+                            log.error("Error writing table Response csv file: {}", e.getMessage());
+                        }
+                        String tableResponse;
                         try {
                             tableResponse = tableDataJson(csvTablesPath, action);
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
+                        }
+                        String croppedImagePath = tableOutputResponse1.getCroppedImage();
+                        try {
+                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
+                        } catch (MalformedURLException e) {
+                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
                         }
                         parentObj.add(
                                 TableExtractionOutputTable
@@ -197,7 +216,7 @@ public class TableExtractionAction implements IActionExecution {
                                         .paperNo(entity.getPaperNo())
                                         .tableResponse(tableResponse)
                                         .processedFilePath(tableOutputResponse1.getCsvTablesPath())
-                                        .croppedImage(tableOutputResponse1.getCroppedImage())
+                                        .croppedImage(croppedImagePath)
                                         .bboxes(tableOutputResponse1.getBboxes().asText())
                                         .groupId(groupId)
                                         .processId(processId)
@@ -248,7 +267,6 @@ public class TableExtractionAction implements IActionExecution {
                 HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
                 log.error(aMarker, "The Exception occurred in request {}", request, exception);
             }
-            atomicInteger.set(0);
             log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
             return parentObj;
         }
@@ -256,7 +274,50 @@ public class TableExtractionAction implements IActionExecution {
 
     }
 
-    private static void extractedOutputResponse(String responseParse, List<TableExtractionOutputTable> parentObj, String originId, Integer groupId, String templateId, Long tenantId, Long processId, String tableExtractionProcessName, Long rootPipelineId) {
+    private static void downloadResponseFile(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker) throws MalformedURLException {
+
+        MediaType MEDIA_TYPE = MediaType.parse("application/json");
+        String MultipartDownloadUrlVariable = "table.response.download.url";
+        String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
+
+        URL url = new URL(endPoint + "?filepath=" + outputFilePath);
+        Request request = new Request.Builder().url(url)
+                .addHeader("accept", "*/*")
+                .post(RequestBody.create("{}", MEDIA_TYPE))
+                .build();
+
+        try (Response response = httpclient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+
+                log.info("Response is successful and Response Details: {}", response);
+                log.info("Response is successful and header Details: {}", response.headers());
+
+
+                // Create a new file and save the response body into it
+                File file = new File(outputFilePath);
+
+                File parentDir = file.getParentFile();
+                if (!parentDir.exists()) {
+                    log.info("Directory created: {}", parentDir.mkdir());
+                }
+                try (ResponseBody responseBody = response.body()) {
+                    final InputStream inputStream = Objects.requireNonNull(responseBody).byteStream();
+                    Files.copy(inputStream, new File(outputFilePath).toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+                } catch (Exception e) {
+                    log.error("Error writing file: {}", e.getMessage());
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Exception occurred in Writing multipart File for table response file - " + outputFilePath, handymanException, action);
+                }
+            }
+        } catch (Exception e) {
+            log.error(aMarker, "The Exception occurred in Download multipart File for table response file {} with exception {}", outputFilePath, e.getMessage());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Exception occurred in Download multipart File for table response  file - " + outputFilePath, handymanException, action);
+        }
+    }
+
+//    private static void extractedOutputResponse(String responseParse, List<TableExtractionOutputTable> parentObj, String originId, Integer groupId, String templateId, Long tenantId, Long processId, String tableExtractionProcessName, Long rootPipelineId) {
 //        JSONObject parentResponse = new JSONObject(responseParse);
 //        JSONArray filePathArray = new JSONArray(parentResponse.get("csvTablesPath").toString());
 //
@@ -300,7 +361,7 @@ public class TableExtractionAction implements IActionExecution {
 //                }
 //            });
 //        });
-    }
+//    }
 
     @Override
     public boolean executeIf() throws Exception {
