@@ -148,9 +148,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         extractedValue(result.getExtractedValue()).
                         similarity(result.getSimilarity()).
                         intelliMatch(0.0000).
-                        status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
+                        status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                         stage(CONTROL_DATA_PROCESS_NAME).
-                        message("data insertion is completed").
+                        message(response.message()).
                         build()
                 );
 
@@ -188,7 +188,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         intelliMatch(0.00).
                         status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                         stage(CONTROL_DATA_PROCESS_NAME).
-                        message("data insertion is failed").
+                        message(response.message()).
                         build()
                 );
                 log.error(aMarker, "The Exception occurred in intelliMatch data comparison by {} ", response);
@@ -277,6 +277,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
             modelVersion) {
 
         try {
+
             List<ComparisonDataItemCopro> comparisonDataItemCopros = mapper.readValue(
                     comparisonDataItem, new TypeReference<List<ComparisonDataItemCopro>>() {
                     });
@@ -284,8 +285,12 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
             for (ComparisonDataItemCopro itemCopro : comparisonDataItemCopros) {
                 parentObj.add(IntellimatchOutputTable.builder().
                         fileName(result.getFileName()).
+                        originId(result.getOriginId()).
+                        groupId(result.getGroupId()).
                         createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                        actualValue(result.getActualValue()).
                         extractedValue(itemCopro.getSentence()).
+                        rootPipelineId(result.getRootPipelineId()).
                         similarity(result.getSimilarity()).
                         confidenceScore(result.getConfidenceScore()).
                         intelliMatch(itemCopro.getSimilarityPercent()).

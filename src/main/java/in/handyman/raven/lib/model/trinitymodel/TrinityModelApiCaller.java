@@ -102,8 +102,8 @@ public class TrinityModelApiCaller {
 
     public String computeCopro(final String inputPath, final String paperType, final List<String> questions, ActionExecutionAudit action) throws JsonProcessingException {
 
-        Long actionId = action.getActionId();
-        Long rootpipelineId = action.getRootPipelineId();
+        Long actionId = 1L;
+        Long rootpipelineId = 1L;
         final String trinityProcessName = "VQA_VALUATION";
         ObjectMapper objectMapper = new ObjectMapper();
 

@@ -53,7 +53,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String inputFilePath = entity.getFilePath();
         Long rootpipelineId = entity.getRootPipelineId();
-        Long actionId = action.getActionId();
+       // Long actionId = action.getActionId();
         String process = "TEXT_EXTRACTOR";
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
@@ -62,6 +62,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         Integer paperNumber = entity.getPaperNo();
         String processId = String.valueOf(entity.getProcessId());
         Long tenantId = entity.getTenantId();
+        Long actionId = Long.valueOf(action.getContext().get("actionId"));
+
 
         //payload
         DataExtractionData dataExtractionData = new DataExtractionData();

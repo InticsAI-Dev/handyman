@@ -30,7 +30,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
 
-    private static final String PROCESS_NAME = PipelineName.PHRASE_MATCH.getProcessName();
+    private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
 
     public final ActionExecutionAudit action;
     final OkHttpClient httpclient = new OkHttpClient.Builder()
@@ -54,9 +54,11 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         Long rootPipelineId = action.getRootPipelineId();
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
-        Long actionId = action.getActionId();
+     //   Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
         ObjectMapper objectMapper = new ObjectMapper();
+        Long actionId = Long.valueOf(action.getContext().get("actionId"));
+
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
 

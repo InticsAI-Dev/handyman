@@ -54,9 +54,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         List<HwClassificationOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
         Long rootpipelineId = action.getRootPipelineId();
-        Long  actionId = action.getActionId(); ;
+       // Long  actionId = action.getActionId(); ;
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
+        Long actionId = Long.valueOf(action.getContext().get("actionId"));
+
 
         //payload
         HwDetectionPayload hwDetectionPayload = new HwDetectionPayload();
