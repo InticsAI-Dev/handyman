@@ -45,11 +45,9 @@ public class NameAdapter implements AdapterInterface {
                     .writeTimeout(10, TimeUnit.MINUTES)
                     .readTimeout(10, TimeUnit.MINUTES).build();
 
-           // Long rootPipelineId = audit.getRootPipelineId();
-            Long rootPipelineId = 1L;
-            Long actionId = 1L;
+            Long rootPipelineId = audit.getRootPipelineId();
+            Long actionId = audit.getActionId();
 
-           // Long actionId = audit.getActionId();
             String process = "NER";
             ObjectMapper objectMapper = new ObjectMapper();
 

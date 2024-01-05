@@ -1,6 +1,5 @@
 package in.handyman.raven.lib.model.qrextraction;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -8,14 +7,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.hwdectection.HwDetectionDataItem;
-import in.handyman.raven.lib.model.neradaptors.NerAdapterDataItem;
 import in.handyman.raven.lib.model.qrextraction.copro.QrReaderCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -66,9 +67,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
         String filePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
-        //Long actionId = action.getActionId();
-        Long actionId = Long.valueOf(action.getContext().get("actionId"));
-
+        Long actionId = action.getActionId();
 
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -137,7 +136,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(qrDataItem -> {
-                            extractedOutputRequest(qrOutputEntities, rootPipelineId, qrDataItem, originId, paperNo, groupId, fileId, tenantId, modelResponse.getModelName(),modelResponse.getModelVersion());
+                            extractedOutputRequest(qrOutputEntities, rootPipelineId, qrDataItem, originId, paperNo, groupId, fileId, tenantId, modelResponse.getModelName(), modelResponse.getModelVersion());
                         });
                     });
                 } else {
@@ -201,7 +200,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                extractedCoproOutputResponse(qrOutputEntities, rootPipelineId, responseBody, originId, paperNo, groupId, fileId, tenantId, "","");
+                extractedCoproOutputResponse(qrOutputEntities, rootPipelineId, responseBody, originId, paperNo, groupId, fileId, tenantId, "", "");
 
             } else {
                 qrOutputEntities.add(QrOutputEntity.builder()
@@ -239,12 +238,13 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         }
     }
 
-    private void extractedOutputRequest(List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String qrDataItem, String originId, Long paperNo, Integer groupId, String fileId, Long tenantId, String modelName,String modelVersion) {
+    private void extractedOutputRequest(List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String qrDataItem, String originId, Long paperNo, Integer groupId, String fileId, Long tenantId, String modelName, String modelVersion) {
         List<QrReader> qrLineItems = null;
         try {
             JsonNode rootNode = mapper.readTree(qrDataItem);
             JsonNode decodeValueNode = rootNode.get("decode_value");
-            qrLineItems = mapper.convertValue(decodeValueNode, new TypeReference<>() {});
+            qrLineItems = mapper.convertValue(decodeValueNode, new TypeReference<>() {
+            });
 
         } catch (JsonProcessingException e) {
             throw new HandymanException("Exception in processing the json response using the Json node ", e);
@@ -275,7 +275,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .modelVersion(modelVersion)
                         .build());
             });
-        }else{
+        } else {
             qrOutputEntities.add(QrOutputEntity.builder()
                     .originId(originId)
                     .paperNo(paperNo)
@@ -290,7 +290,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                     .build());
         }
     }
-    private void extractedCoproOutputResponse(List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String qrDataItem, String originId, Long paperNo, Integer groupId, String fileId, Long tenantId, String modelName,String modelVersion) {
+
+    private void extractedCoproOutputResponse(List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String qrDataItem, String originId, Long paperNo, Integer groupId, String fileId, Long tenantId, String modelName, String modelVersion) {
 
         List<QrReaderCopro> qrLineItems = null;
         try {
@@ -302,7 +303,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         AtomicInteger atomicInteger = new AtomicInteger();
         if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
-                JsonNode qrBoundingBox=mapper.valueToTree(qrReader.getBoundingBox());
+                JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
                 qrOutputEntities.add(QrOutputEntity.builder()
                         .angle(qrReader.getAngle())
                         .originId(originId)
@@ -325,7 +326,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .modelVersion(modelVersion)
                         .build());
             });
-        }else{
+        } else {
             qrOutputEntities.add(QrOutputEntity.builder()
                     .originId(originId)
                     .paperNo(paperNo)

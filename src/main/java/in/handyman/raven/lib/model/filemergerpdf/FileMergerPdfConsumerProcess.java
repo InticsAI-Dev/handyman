@@ -72,8 +72,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                   final Long tenantId=entity.getTenantId();
                   final Long group_id= entity.getGroupId();
                   final String fileId=entity.getFileId();
-                 // final Long actionId =action.getActionId();
-                  Long actionId = Long.valueOf(action.getContext().get("actionId"));
+                  final Long actionId = action.getActionId();
                   final String outputFileName = entity.getOutputFileName();
                   log.info(aMarker, "file path string {}", filePathString);
                   File file = new File(String.valueOf(filePathString));

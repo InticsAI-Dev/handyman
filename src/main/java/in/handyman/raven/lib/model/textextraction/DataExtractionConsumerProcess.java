@@ -5,15 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.autorotation.AutoRotationDataItem;
-import in.handyman.raven.lib.model.paperitemizer.PaperItemizerDataItem;
-import in.handyman.raven.lib.model.textextraction.copro.DataExtractionDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.*;
-import org.json.JSONObject;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -21,7 +21,11 @@ import java.io.File;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
@@ -53,7 +57,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String inputFilePath = entity.getFilePath();
         Long rootpipelineId = entity.getRootPipelineId();
-       // Long actionId = action.getActionId();
+        // Long actionId = action.getActionId();
         String process = "TEXT_EXTRACTOR";
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
@@ -62,8 +66,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         Integer paperNumber = entity.getPaperNo();
         String processId = String.valueOf(entity.getProcessId());
         Long tenantId = entity.getTenantId();
-        Long actionId = Long.valueOf(action.getContext().get("actionId"));
-
+        Long actionId = action.getActionId();
 
         //payload
         DataExtractionData dataExtractionData = new DataExtractionData();
@@ -292,6 +295,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     }
+
     private static String extractPageContent(String jsonString) {
         int startIndex = jsonString.indexOf("\"pageContent\":") + "\"pageContent\":".length();
         int endIndex = jsonString.lastIndexOf("}");
