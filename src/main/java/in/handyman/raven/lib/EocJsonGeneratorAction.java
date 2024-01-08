@@ -1,5 +1,7 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -11,7 +13,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -39,6 +40,8 @@ public class EocJsonGeneratorAction implements IActionExecution {
 
     private final Marker aMarker;
     private final String URI;
+    private final ObjectMapper mapper = new ObjectMapper();
+
 
     public EocJsonGeneratorAction(final ActionExecutionAudit action, final Logger log,
                                   final Object eocJsonGenerator) {
@@ -51,58 +54,63 @@ public class EocJsonGeneratorAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-      log.info(aMarker, "Eoc Json Generation Action for {} has been started", eocJsonGenerator.getName());
-      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(eocJsonGenerator.getResourceConn());
-      final OkHttpClient httpclient = InstanceUtil.createOkHttpClient();
-      final String documentId = eocJsonGenerator.getDocumentId();
-      final String eocId = eocJsonGenerator.getEocId();
-      final String originId = eocJsonGenerator.getOriginId();
-      final String groupId = eocJsonGenerator.getGroupId();
-      final long tenantId = Long.parseLong(action.getContext().get("tenant_id"));
+        log.info(aMarker, "Eoc Json Generation Action for {} has been started", eocJsonGenerator.getName());
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(eocJsonGenerator.getResourceConn());
+        final OkHttpClient httpclient = InstanceUtil.createOkHttpClient();
+        final String documentId = eocJsonGenerator.getDocumentId();
+        final String eocId = eocJsonGenerator.getEocId();
+        final String originId = eocJsonGenerator.getOriginId();
+        final String groupId = eocJsonGenerator.getGroupId();
+        final long tenantId = Long.parseLong(action.getContext().get("tenant_id"));
 
-      String apiUrl = urlEncoder(URI + "api/v1/" + documentId + "/docdetaillineitem/" + eocId + "?tenantId=" + tenantId);
+        String apiUrl = urlEncoder(URI + "api/v1/" + documentId + "/docdetaillineitem/" + eocId + "?tenantId=" + tenantId);
 
         String authtoken = eocJsonGenerator.getAuthtoken();
         Request request = new Request.Builder().url(apiUrl)
-              .header("Authorization", "Bearer " + authtoken).build();
+                .header("Authorization", "Bearer " + authtoken).build();
 
-      String name = eocJsonGenerator.getName();
-      if(log.isInfoEnabled()){
-          log.info(aMarker, "The Request Details api url {} authToken {} ", apiUrl,authtoken);
-      }
-      try (Response response = httpclient.newCall(request).execute()) {
-        String responseBody = Objects.requireNonNull(response.body()).string();
-        if (response.isSuccessful()) {
-          log.info(aMarker, "The Successful Response for {} --> {}", name, responseBody);
-
-
-          EocResponse eocResponse = EocResponse.builder()
-                  .documentId(documentId)
-                  .eocId(eocId)
-                  .originId(originId)
-                  .groupId(Integer.valueOf(groupId))
-                  .eocResponse(responseBody).rootPipelineId(action.getRootPipelineId()).build();
-
-          jdbi.useTransaction(handle -> {
-            handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id) " +
-                            "VALUES( :documentId, :eocId, :originId, :groupId, :eocResponse::json, :rootPipelineId);")
-                    .bindBean(eocResponse).execute();
-            log.debug(aMarker, "inserted {} into eoc response details", eocResponse);
-            action.getContext().put(name + ".isSuccessful", String.valueOf(response.isSuccessful()));
-          });
-        } else {
-          log.error(aMarker, "The Failure Response {} --> {}", name, responseBody);
-          action.getContext().put(name.concat(".error"), "true");
-          action.getContext().put(name.concat(".errorMessage"), responseBody);
+        String name = eocJsonGenerator.getName();
+        if (log.isInfoEnabled()) {
+            log.info(aMarker, "The Request Details api url {} authToken {} ", apiUrl, authtoken);
         }
-      } catch (Exception e) {
-        log.error(aMarker, "The Exception occurred ", e);
-        action.getContext().put(name + ".isSuccessful", "false");
-        throw new HandymanException("Failed to execute for groupId- " + groupId + "originId- " + originId + "eocId- " + eocId, e, action);
-      }
-      log.info(aMarker, "Eoc Json Generation Action for {} has been completed for groupId- " + groupId + "originId- " + originId + "eocId- " + eocId, eocJsonGenerator.getName());
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = Objects.requireNonNull(response.body()).string();
+            if (response.isSuccessful()) {
+                AlchemyApiPayload alchemyApiPayload = mapper.readValue(Objects.requireNonNull(response.body()).string(), AlchemyApiPayload.class);
+
+                if (!alchemyApiPayload.getPayload().isEmpty() && !alchemyApiPayload.getPayload().isNull() && alchemyApiPayload.isSuccess()) {
+                    log.info(aMarker, "The Successful Response for {} --> {}", name, responseBody);
+
+                    EocResponse eocResponse = EocResponse.builder()
+                            .documentId(documentId)
+                            .eocId(eocId)
+                            .originId(originId)
+                            .groupId(Integer.valueOf(groupId))
+                            .eocResponse(responseBody).rootPipelineId(action.getRootPipelineId()).build();
+
+                    jdbi.useTransaction(handle -> {
+                        handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id) " +
+                                        "VALUES( :documentId, :eocId, :originId, :groupId, :eocResponse::json, :rootPipelineId);")
+                                .bindBean(eocResponse).execute();
+                        log.debug(aMarker, "inserted {} into eoc response details", eocResponse);
+                        action.getContext().put(name + ".isSuccessful", String.valueOf(response.isSuccessful()));
+                    });
+                }
+
+            } else {
+                log.error(aMarker, "The Failure Response {} --> {}", name, responseBody);
+                action.getContext().put(name.concat(".error"), "true");
+                action.getContext().put(name.concat(".errorMessage"), responseBody);
+            }
+        } catch (Exception e) {
+            log.error(aMarker, "The Exception occurred ", e);
+            action.getContext().put(name + ".isSuccessful", "false");
+            throw new HandymanException("Failed to execute for groupId- " + groupId + "originId- " + originId + "eocId- " + eocId, e, action);
+        }
+        log.info(aMarker, "Eoc Json Generation Action for {} has been completed for groupId- " + groupId + "originId- " + originId + "eocId- " + eocId, eocJsonGenerator.getName());
     }
-    private String urlEncoder(final String encodingUrl){
+
+    private String urlEncoder(final String encodingUrl) {
         String encodedUrl;
         try {
             URL url = new URL(encodingUrl);
@@ -133,4 +141,15 @@ public class EocJsonGeneratorAction implements IActionExecution {
         private String eocResponse;
         private Long rootPipelineId;
     }
+
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    public static class AlchemyApiPayload {
+        private JsonNode payload;
+        private boolean success;
+        private String responseTimeStamp;
+    }
+
 }
