@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.File;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -149,8 +150,11 @@ public class MultipartDownloadAction implements IActionExecution {
                             log.info("Response body is not null and content length is {}, and content type is {}", responseBody.contentLength(), responseBody.contentType());
                             try (InputStream inputStream = responseBody.byteStream()) {
                                 Path path = Paths.get(outputFilePath);
-                                Files.createDirectories(path.getParent());
-                                Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+                                File file = new File(outputFilePath);
+                                if (!file.exists()) {
+                                    Files.createDirectories(path.getParent());
+                                    Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+                                }
                             }
                         }
                         else {
