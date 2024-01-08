@@ -195,18 +195,15 @@ public class TableExtractionAction implements IActionExecution {
                     tableOutputResponses.forEach(tableOutputResponse1 -> {
                         String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
                         String croppedImagePath = tableOutputResponse1.getCroppedImage();
-                        String TABLE_RESPONSE_DOWNLOAD_ACTIVATOR = "table.response.download.activator";
-                        if (action.getContext().get(TABLE_RESPONSE_DOWNLOAD_ACTIVATOR).equals("true")) {
-                            try {
-                                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
-                            } catch (MalformedURLException e) {
-                                log.error("Error writing table Response csv file: {}", e.getMessage());
-                            }
-                            try {
-                                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
-                            } catch (MalformedURLException e) {
-                                log.error("Error writing table Response cropped image file: {}", e.getMessage());
-                            }
+                        try {
+                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
+                        } catch (MalformedURLException e) {
+                            log.error("Error writing table Response csv file: {}", e.getMessage());
+                        }
+                        try {
+                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
+                        } catch (MalformedURLException e) {
+                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
                         }
                         String tableResponse;
                         try {
@@ -298,21 +295,16 @@ public class TableExtractionAction implements IActionExecution {
                 log.info("Response is successful and Response Details: {}", response);
                 log.info("Response is successful and header Details: {}", response.headers());
 
-
-                // Create a new file and save the response body into it
-                File file = new File(outputFilePath);
-
-                File parentDir = file.getParentFile();
-                if (!parentDir.exists()) {
-                    log.info("Directory created: {}", parentDir.mkdir());
-                }
                 try (ResponseBody responseBody = response.body()) {
                     if (responseBody != null) {
                         log.info("Response body is not null and content length is {}, and content type is {}", responseBody.contentLength(), responseBody.contentType());
                         try (InputStream inputStream = responseBody.byteStream()) {
                             Path path = Paths.get(outputFilePath);
-                            Files.createDirectories(path.getParent());
-                            Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+                            File file = new File(outputFilePath);
+                            if (!file.exists()) {
+                                Files.createDirectories(path.getParent());
+                                Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+                            }
                         }
                     } else {
                         log.error("Error writing file response body is null");
