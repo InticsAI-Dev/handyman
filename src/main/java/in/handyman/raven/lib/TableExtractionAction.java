@@ -40,6 +40,8 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -192,10 +194,19 @@ public class TableExtractionAction implements IActionExecution {
                     });
                     tableOutputResponses.forEach(tableOutputResponse1 -> {
                         String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
-                        try {
-                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response csv file: {}", e.getMessage());
+                        String croppedImagePath = tableOutputResponse1.getCroppedImage();
+                        String TABLE_RESPONSE_DOWNLOAD_ACTIVATOR = "table.response.download.activator";
+                        if (action.getContext().get(TABLE_RESPONSE_DOWNLOAD_ACTIVATOR).equals("true")) {
+                            try {
+                                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response csv file: {}", e.getMessage());
+                            }
+                            try {
+                                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                            }
                         }
                         String tableResponse;
                         try {
@@ -203,12 +214,7 @@ public class TableExtractionAction implements IActionExecution {
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
-                        String croppedImagePath = tableOutputResponse1.getCroppedImage();
-                        try {
-                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
-                        }
+
                         parentObj.add(
                                 TableExtractionOutputTable
                                         .builder()
@@ -301,9 +307,18 @@ public class TableExtractionAction implements IActionExecution {
                     log.info("Directory created: {}", parentDir.mkdir());
                 }
                 try (ResponseBody responseBody = response.body()) {
-                    final InputStream inputStream = Objects.requireNonNull(responseBody).byteStream();
-                    Files.copy(inputStream, new File(outputFilePath).toPath(), StandardCopyOption.REPLACE_EXISTING);
-
+                    if (responseBody != null) {
+                        log.info("Response body is not null and content length is {}, and content type is {}", responseBody.contentLength(), responseBody.contentType());
+                        try (InputStream inputStream = responseBody.byteStream()) {
+                            Path path = Paths.get(outputFilePath);
+                            Files.createDirectories(path.getParent());
+                            Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    } else {
+                        log.error("Error writing file response body is null");
+                        HandymanException handymanException = new HandymanException("Error writing file response body is null");
+                        HandymanException.insertException("Exception occurred in Writing multipart File for file - " + outputFilePath, handymanException, action);
+                    }
                 } catch (Exception e) {
                     log.error("Error writing file: {}", e.getMessage());
                     HandymanException handymanException = new HandymanException(e);
