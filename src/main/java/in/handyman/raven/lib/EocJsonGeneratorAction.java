@@ -1,7 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -40,8 +38,6 @@ public class EocJsonGeneratorAction implements IActionExecution {
 
     private final Marker aMarker;
     private final String URI;
-    private final ObjectMapper mapper = new ObjectMapper();
-
 
     public EocJsonGeneratorAction(final ActionExecutionAudit action, final Logger log,
                                   final Object eocJsonGenerator) {
@@ -76,11 +72,8 @@ public class EocJsonGeneratorAction implements IActionExecution {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                AlchemyApiPayload alchemyApiPayload = mapper.readValue(Objects.requireNonNull(response.body()).string(), AlchemyApiPayload.class);
-
-                if (!alchemyApiPayload.getPayload().isEmpty() && !alchemyApiPayload.getPayload().isNull() && alchemyApiPayload.isSuccess()) {
-                    log.info(aMarker, "The Successful Response for {} --> {}", name, responseBody);
-
+                log.info(aMarker, "The Successful Response for {} --> {}", name, responseBody);
+                if (!responseBody.contains("errorCode")) {
                     EocResponse eocResponse = EocResponse.builder()
                             .documentId(documentId)
                             .eocId(eocId)
@@ -96,7 +89,6 @@ public class EocJsonGeneratorAction implements IActionExecution {
                         action.getContext().put(name + ".isSuccessful", String.valueOf(response.isSuccessful()));
                     });
                 }
-
             } else {
                 log.error(aMarker, "The Failure Response {} --> {}", name, responseBody);
                 action.getContext().put(name.concat(".error"), "true");
@@ -141,15 +133,4 @@ public class EocJsonGeneratorAction implements IActionExecution {
         private String eocResponse;
         private Long rootPipelineId;
     }
-
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    public static class AlchemyApiPayload {
-        private JsonNode payload;
-        private boolean success;
-        private String responseTimeStamp;
-    }
-
 }
