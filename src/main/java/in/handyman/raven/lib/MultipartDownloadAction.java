@@ -30,13 +30,14 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -144,17 +145,23 @@ public class MultipartDownloadAction implements IActionExecution {
                     log.info("Response is successful and header Details: {}", response.headers());
 
 
-                    // Create a new file and save the response body into it
-                    File file = new File(outputFilePath);
-
-                    File parentDir = file.getParentFile();
-                    if (!parentDir.exists()) {
-                        log.info("Directory created: {}", parentDir.mkdir());
-                    }
                     try (ResponseBody responseBody = response.body()) {
-                        final InputStream inputStream = Objects.requireNonNull(responseBody).byteStream();
-                        Files.copy(inputStream, new File(outputFilePath).toPath(), StandardCopyOption.REPLACE_EXISTING);
-
+                        if (responseBody != null) {
+                            log.info("Response body is not null and content length is {}, and content type is {}", responseBody.contentLength(), responseBody.contentType());
+                            try (InputStream inputStream = responseBody.byteStream()) {
+                                Path path = Paths.get(outputFilePath);
+                                File file = new File(outputFilePath);
+                                if (!file.exists()) {
+                                    Files.createDirectories(path.getParent());
+                                    Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+                                }
+                            }
+                        }
+                        else {
+                            log.error("Error writing file response body is null");
+                            HandymanException handymanException = new HandymanException("Error writing file response body is null");
+                            HandymanException.insertException("Exception occurred in Writing multipart File for file - " + outputFilePath, handymanException, this.action);
+                        }
                     } catch (Exception e) {
                         log.error("Error writing file: {}", e.getMessage());
                         HandymanException handymanException = new HandymanException(e);
