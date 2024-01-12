@@ -34,7 +34,6 @@ public class HwDetectionAction implements IActionExecution {
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String PAPER_CLASSIFICATION = "paper_classification";
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String PAPER_CLASSIFICATION_RESULT = "paper_classification_result";
   public static final String INSERT_INTO_COLUMNS = "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no, template_id, model_id, document_type, status, stage, message, group_id, root_pipeline_id, confidence_score,model_name,model_version";
   public static final String INSERT_INTO_VALUES = "now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?";
   public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
@@ -58,10 +57,10 @@ public class HwDetectionAction implements IActionExecution {
 
   @Override
   public void execute() throws Exception {
-    Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-    Integer consumerCount = Integer.valueOf(action.getContext().get(PAPER_CLASSIFICATION_CONSUMER_API_COUNT));
-    Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-    HwClassificationConsumerProcess hwClassificationConsumerProcess = new HwClassificationConsumerProcess(log, aMarker, action);
+    Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
+    Integer consumerCount = Integer.valueOf(action.getContext().get("paper.classification.consumer.API.count"));
+    Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
+    HwClassificationConsumerProcess hwClassificationConsumerProcess = new HwClassificationConsumerProcess(log, aMarker, action, hwDetection);
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(hwDetection.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));

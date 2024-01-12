@@ -747,7 +747,6 @@ hwDetection:
     'outputDir' directoryPath=STRING
     'copro-url' endPoint=STRING
     'output-table' outputTable=STRING
-    'modelPath' modelPath=STRING
     'using'  '{'
         querySet=STRING
     '}' ('on-condition' condition=expression)* ;

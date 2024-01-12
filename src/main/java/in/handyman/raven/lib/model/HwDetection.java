@@ -32,8 +32,6 @@ public class HwDetection implements IActionContext {
 
   private String outputTable;
 
-  private String modelPath;
-
   private String querySet;
 
   private Boolean condition = true;

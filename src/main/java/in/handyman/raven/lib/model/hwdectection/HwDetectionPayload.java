@@ -15,5 +15,4 @@ public class HwDetectionPayload {
     private String process;
     private String inputFilePath;
     private String outputDir;
-    private String modelPath;
 }

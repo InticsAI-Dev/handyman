@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.HwDetection;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -31,28 +32,29 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
 
+    public final HwDetection hwDetection;
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
             .writeTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
             .readTimeout(Long.parseLong(httpClientTimeout), TimeUnit.MINUTES)
             .build();
 
-    public HwClassificationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
+    public HwClassificationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, HwDetection hwDetection ) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
+        this.hwDetection = hwDetection;
     }
+
 
     @Override
     public List<HwClassificationOutputTable> process(URL endpoint, HwClassificationInputTable entity) throws Exception {
 
         List<HwClassificationOutputTable> parentObj = new ArrayList<>();
-        String entityFilePath = entity.getFilePath();
         Long rootpipelineId = action.getRootPipelineId();
-        Long  actionId = action.getActionId(); ;
-        String modelPath = action.getModelPath();
+        Long  actionId = action.getActionId();
         String filePath = String.valueOf(entity.getFilePath());
-        String outputDir = String.valueOf(entity.getOutputDir());
+        String outputDir = hwDetection.getDirectoryPath() ;
         ObjectMapper objectMapper = new ObjectMapper();
 
         //payload
@@ -62,7 +64,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         hwDetectionPayload.setProcess(STAGE);
         hwDetectionPayload.setInputFilePath(filePath);
         hwDetectionPayload.setOutputDir(outputDir);
-        hwDetectionPayload.setModelPath(modelPath);
 
         String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
 
@@ -94,7 +95,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
 
         if(log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} modelPath  {}  outputDir {} ", endpoint,entityFilePath,modelPath,outputDir);
+            log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {}  outputDir {} ", endpoint,outputDir);
         }
 
         return parentObj;
@@ -130,7 +131,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .stage(STAGE)
                         .message(response.message())
                         .groupId(entity.getGroupId())
-                        .rootPipelineId(entity.getRootPipelineId())
+                        .rootPipelineId(action.getRootPipelineId())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -150,7 +151,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .stage(STAGE)
                     .message(ExceptionUtil.toString(e))
                     .groupId(entity.getGroupId())
-                    .rootPipelineId(entity.getRootPipelineId())
+                    .rootPipelineId(action.getRootPipelineId())
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -201,7 +202,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .stage(STAGE)
                         .message(response.message())
                         .groupId(entity.getGroupId())
-                        .rootPipelineId(entity.getRootPipelineId())
+                        .rootPipelineId(action.getRootPipelineId())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -219,7 +220,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .stage(STAGE)
                     .message(ExceptionUtil.toString(e))
                     .groupId(entity.getGroupId())
-                    .rootPipelineId(entity.getRootPipelineId())
+                    .rootPipelineId(action.getRootPipelineId())
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -255,7 +256,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .stage(STAGE)
                 .message("Paper Classification Finished")
                 .groupId(entity.getGroupId())
-                .rootPipelineId(entity.getRootPipelineId())
+                .rootPipelineId(action.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
                 .build());

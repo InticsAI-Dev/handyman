@@ -11,19 +11,22 @@ class HwDetectionActionTest {
         HwDetection hwDetection=HwDetection.builder()
                 .name("paper classification macro")
                 .condition(true)
-                .resourceConn("intics_agadia_db_conn")
-                .directoryPath("/home/sanjeeya.v@zucisystems.com/workspace/updated_jupyter/output")
-                .modelPath("/home/sanjeeya.v@zucisystems.com/Documents/agadia/pr2/v1/hw_detection_v2.0.pth")
-                .querySet("SELECT 'INT-1' as originId, '1234567' as preprocessedFileId, 1 as paperNo,'/home/sanjeeya.v@zucisystems.com/workspace/updated_jupyter/Humana_Form_1_1.jpg'  as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as modelScore, 123 as modelId;")
+                .endPoint("http://localhost:10189/copro/paper-classification/hw-detection")
+                .resourceConn("intics_zio_db_conn")
+                .outputTable("paper_classification.paper_classification_result")
+                .directoryPath("/home/christopher.paulraj@zucisystems.com/Music/output/")
+                .querySet("SELECT 'INT-1' as originId, '1234567' as preprocessedFileId, 1 as group_id, 1 as paperNo,'/home/christopher.paulraj@zucisystems.com/Videos/workspace/dev/flow/agadia/dev/data/noise_testing/data/clear_resized/clear_img1.png' as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as confidence_score, 'classification_model' as model_name, 1 as model_version, 1 as model_id;")
                 .build();
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
+        action.setActionId(1L);
         action.getContext().put("copro.hw-detection.url", "http://localhost:10189/copro/paper-classification/hw-detection");
         action.getContext().put("read.batch.size", "1");
-        action.getContext().put("consumer.API.count", "1");
+        action.getContext().put("paper.classification.consumer.API.count", "1");
         action.getContext().put("write.batch.size", "1");
-
+        action.getContext().put("okhttp.client.timeout", "10");
+        action.getContext().put("triton.request.activator","false");
         HwDetectionAction hwDetectionAction=new HwDetectionAction(action,log,hwDetection);
         hwDetectionAction.execute();
     }
@@ -36,7 +39,6 @@ class HwDetectionActionTest {
                 .condition(true)
                 .resourceConn("intics_agadia_db_conn")
                 .directoryPath("/data/output")
-                .modelPath("")
                 .querySet("SELECT 'INT-1' as originId, '1234567' as preprocessedFileId, 1 as paperNo,'/data/input/elixir-2page/SYNT_166838894_c1.pdf'  as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as modelScore, 123 as modelRegistryId;")
                 .build();
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
