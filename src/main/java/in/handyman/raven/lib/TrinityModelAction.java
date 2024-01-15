@@ -101,34 +101,36 @@ public class TrinityModelAction implements IActionExecution {
 
     }
 
-    private void doProcess(final List<TrinityModelLineItem> donutLineItems, List<String> nodes,ObjectMapper mapper) {
-        final int parallelism;
+    private void doProcess(final List<TrinityModelLineItem> assetBatch, List<String> nodes,ObjectMapper mapper) {
+        final int forkBatchSize;
         if (trinityModel.getForkBatchSize() != null) {
-            parallelism = Integer.parseInt(trinityModel.getForkBatchSize());
+            forkBatchSize = Integer.parseInt(trinityModel.getForkBatchSize());
         } else {
-            parallelism = 1;
+            forkBatchSize = 1;
         }
-        final int size = nodes.size();
+        final int coproEndpointNodeCount = nodes.size();
         try {
-            if (size > 0) {
-                final int batchSize = donutLineItems.size() / parallelism;
-                if (parallelism > 1 && size > 1 && batchSize > 0) {
-                    final List<List<TrinityModelLineItem>> donutLineItemPartitions = Lists.partition(donutLineItems, batchSize);
-                    final CountDownLatch countDownLatch = new CountDownLatch(donutLineItemPartitions.size());
-                    final ExecutorService executorService = Executors.newFixedThreadPool(parallelism);
-                    donutLineItemPartitions.forEach(items -> executorService.submit(() -> {
+            if (coproEndpointNodeCount > 0) {
+                int assetBatchSize = assetBatch.size();
+                final int batchCount = (assetBatchSize / forkBatchSize) > 0 ? (assetBatchSize / forkBatchSize) : 1;
+                log.info(aMarker, " batchsize - {}, copro-endpoint-node-size - {}, forkBatchSize - {}, donut-line items {} ",batchCount,coproEndpointNodeCount,forkBatchSize, assetBatchSize);
+                if (forkBatchSize > 1 ) {
 
+                    final List<List<TrinityModelLineItem>> partitionedAssetBatch = Lists.partition(assetBatch, forkBatchSize);
+                    log.info(aMarker, "vqa running in parallel, partitionedAssetBatch {} ", partitionedAssetBatch);
+
+                    partitionedAssetBatch.forEach(assetBatchItem ->  {
                         try {
-                            computeProcess(size, items, nodes,mapper);
-                        } finally {
-                            countDownLatch.countDown();
+                            computeProcess(coproEndpointNodeCount, assetBatchItem, nodes,mapper,forkBatchSize);
+                        } catch (InterruptedException e) {
+                            throw new HandymanException("");
                         }
 
-                    }));
-                    countDownLatch.await();
+                    });
 
                 } else {
-                    computeProcess(size, donutLineItems, nodes,mapper);
+                    log.info(aMarker, "vqa running in sequential, batchsize - {}, copro-endpoint-node-size - {}, forkBatchSize - {}, donut-line items {} ",batchCount,coproEndpointNodeCount,forkBatchSize, assetBatchSize);
+                    computeProcess(coproEndpointNodeCount, assetBatch, nodes,mapper,forkBatchSize);
                 }
 
             }
@@ -140,45 +142,71 @@ public class TrinityModelAction implements IActionExecution {
         }
     }
 
-    private void computeProcess(final int nodeSize, final List<TrinityModelLineItem> donutLineItems, List<String> nodes,ObjectMapper mapper) {
+    private void computeProcess(final int nodeSize, final List<TrinityModelLineItem> assetBatchItem, List<String> nodes,ObjectMapper mapper,int forkBatchSize) throws InterruptedException {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(trinityModel.getResourceConn());
+        final ExecutorService executorService = Executors.newFixedThreadPool(forkBatchSize);
+        final CountDownLatch countDownLatch = new CountDownLatch(assetBatchItem.size());
 
-        donutLineItems.forEach(donutLineItem -> {
-            final String filePath = donutLineItem.getFilePath();
-            final String paperType = donutLineItem.getPaperType();
+        try {
+            log.info("compute process for vqa with assetBatchItem {}",assetBatchItem);
+            assetBatchItem.forEach(asset -> executorService.submit(() -> {
+                try {
 
+                    log.info("submitting new work with thread name {}",Thread.currentThread().getName());
+                    doWork(nodeSize, nodes, mapper, asset, jdbi);
+                }finally {
+                    log.info("completed new work with thread name {}",Thread.currentThread().getName());
 
-            try {
-                final List<String> questions = donutLineItem.getQuestions();
-                final String node = nodes.get(counter.incrementAndGet() % nodeSize);
-
-                if (log.isInfoEnabled()) {
-                    log.info(aMarker, "1. preparing {} for rest api call", questions.size());
-                    log.info(aMarker, "2. info's are {}, {}, {}", filePath, paperType, questions);
-                }
-                String tritonRequestActivator = action.getContext().get("triton.request.activator");
-
-                if (Objects.equals("false", tritonRequestActivator)) {
-
-                    coproRequestBuilder(node,filePath,paperType,questions,jdbi,mapper);
-                } else {
-
-                    tritonRequestBuilder(node,filePath,paperType,questions,jdbi,mapper);
+                    countDownLatch.countDown();
                 }
 
-            } catch (JsonProcessingException e) {
+            }));
 
-                jdbi.useTransaction(handle -> handle.createUpdate("INSERT INTO macro." + trinityModel.getResponseAs() + "_error (file_path,error_message, action_id, root_pipeline_id,process_id) VALUES(:filePath,:errorMessage, " + action.getActionId() + ", " + action.getRootPipelineId() + "," + action.getPipelineId() + ");")
-                        .bind("filePath", filePath)
-                        .bind("errorMessage", e.getMessage())
-                        .execute());
-                log.error(aMarker, "Error in inserting into trinity model action {}", ExceptionUtil.toString(e));
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error in trinity model action", handymanException, action);
+        }finally {
+            countDownLatch.await();
+            log.info("completed batch ");
+
+        }
+        if(!executorService.isShutdown()){
+            executorService.shutdown();
+            log.info("shutting down executor service ");
+        }
+
+    }
+
+    private void doWork(int nodeSize, List<String> nodes, ObjectMapper mapper, TrinityModelLineItem asset, Jdbi jdbi) {
+        final String filePath = asset.getFilePath();
+        final String paperType = asset.getPaperType();
+
+
+        try {
+            final List<String> questions = asset.getQuestions();
+            final String node = nodes.get(counter.incrementAndGet() % nodeSize);
+
+            if (log.isInfoEnabled()) {
+                log.info(aMarker, "1. preparing {} for rest api call ", questions.size());
+                log.info(aMarker, "2. info's are {}, {}, {}", filePath, paperType, questions);
             }
-        });
+            String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
+            if (Objects.equals("false", tritonRequestActivator)) {
 
+                coproRequestBuilder(node,filePath,paperType,questions, jdbi, mapper);
+            } else {
+
+                tritonRequestBuilder(node,filePath,paperType,questions, jdbi, mapper);
+            }
+
+        } catch (JsonProcessingException e) {
+
+            jdbi.useTransaction(handle -> handle.createUpdate("INSERT INTO macro." + trinityModel.getResponseAs() + "_error (file_path,error_message, action_id, root_pipeline_id,process_id) VALUES(:filePath,:errorMessage, " + action.getActionId() + ", " + action.getRootPipelineId() + "," + action.getPipelineId() + ");")
+                    .bind("filePath", filePath)
+                    .bind("errorMessage", e.getMessage())
+                    .execute());
+            log.error(aMarker, "Error in inserting into trinity model action {}", ExceptionUtil.toString(e));
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in trinity model action", handymanException, action);
+        }
     }
 
     private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions, Jdbi jdbi,ObjectMapper objectMapper) throws JsonProcessingException {
@@ -239,50 +267,50 @@ public class TrinityModelAction implements IActionExecution {
             throw new RuntimeException(e);
         }
     }
-        private void extractedCoproOutputResponse (String trinityModelDataItems, Jdbi jdbi, String filePath, Long
-        tenantId, String paperType, String modelName, String modelVersion, ObjectMapper objectMapper)
-        {
+    private void extractedCoproOutputResponse (String trinityModelDataItems, Jdbi jdbi, String filePath, Long
+            tenantId, String paperType, String modelName, String modelVersion, ObjectMapper objectMapper)
+    {
 
-            try {
+        try {
 
-                TrinityModelDataItemCopro trinityModelDataItem = objectMapper.readValue(trinityModelDataItems, new TypeReference<>() {
-                });
+            TrinityModelDataItemCopro trinityModelDataItem = objectMapper.readValue(trinityModelDataItems, new TypeReference<>() {
+            });
 
-                log.info("TrinityModelLineItem size {}", trinityModelDataItem.getAttributes().size());
+            log.info("TrinityModelLineItem size {}", trinityModelDataItem.getAttributes().size());
 
-                log.info(aMarker, "completed {}", trinityModelDataItem.getAttributes().size());
-                jdbi.useTransaction(handle -> {
-                    final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") VALUES(" + action.getPipelineId() + ",:filePath,:question,:predictedAttributionValue, :bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, " + action.getActionId() + "," + action.getRootPipelineId() + ",:status,:stage,:paperType, :scores, :modelName, :modelVersion,:tenantId);");
+            log.info(aMarker, "completed {}", trinityModelDataItem.getAttributes().size());
+            jdbi.useTransaction(handle -> {
+                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") VALUES(" + action.getPipelineId() + ",:filePath,:question,:predictedAttributionValue, :bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, " + action.getActionId() + "," + action.getRootPipelineId() + ",:status,:stage,:paperType, :scores, :modelName, :modelVersion,:tenantId);");
 
-                    Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
-                        log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
-                        resultLineItems.forEach(resultLineItem -> {
-                            batch.bind("filePath", filePath)
-                                    .bind("question", resultLineItem.getQuestion())
-                                    .bind("predictedAttributionValue", resultLineItem.getPredictedAttributionValue())
-                                    .bind("scores", resultLineItem.getScores())
-                                    .bind("paperType", paperType)
-                                    .bind("bBoxes", String.valueOf(resultLineItem.getBboxes()))
-                                    .bind("imageDpi", trinityModelDataItem.getImageDPI())
-                                    .bind("imageWidth", trinityModelDataItem.getImageWidth())
-                                    .bind("imageHeight", trinityModelDataItem.getImageHeight())
-                                    .bind("extractedImageUnit", trinityModelDataItem.getExtractedImageUnit())
-                                    .bind("status", "COMPLETED")
-                                    .bind("stage", "VQA_TRANSACTION")
-                                    .bind("modelName", modelName)
-                                    .bind("modelVersion", modelVersion)
-                                    .bind("tenantId", tenantId)
-                                    .add();
+                Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
+                    log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
+                    resultLineItems.forEach(resultLineItem -> {
+                        batch.bind("filePath", filePath)
+                                .bind("question", resultLineItem.getQuestion())
+                                .bind("predictedAttributionValue", resultLineItem.getPredictedAttributionValue())
+                                .bind("scores", resultLineItem.getScores())
+                                .bind("paperType", paperType)
+                                .bind("bBoxes", String.valueOf(resultLineItem.getBboxes()))
+                                .bind("imageDpi", trinityModelDataItem.getImageDPI())
+                                .bind("imageWidth", trinityModelDataItem.getImageWidth())
+                                .bind("imageHeight", trinityModelDataItem.getImageHeight())
+                                .bind("extractedImageUnit", trinityModelDataItem.getExtractedImageUnit())
+                                .bind("status", "COMPLETED")
+                                .bind("stage", "VQA_TRANSACTION")
+                                .bind("modelName", modelName)
+                                .bind("modelVersion", modelVersion)
+                                .bind("tenantId", tenantId)
+                                .add();
 
-                        });
-                        int[] counts = batch.execute();
-                        log.info(aMarker, " persisted {} in trinity model_action", counts);
                     });
+                    int[] counts = batch.execute();
+                    log.info(aMarker, " persisted {} in trinity model_action", counts);
                 });
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
+            });
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
+    }
 
 
     @Override
