@@ -219,7 +219,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
                 parentObj.add(ZeroShotClassifierOutputTable
                         .builder()
-                        .originId(zeroshotclassifierOutputData.getGroupId())
+                        .originId(zeroshotclassifierOutputData.getOriginId())
                         .groupId(zeroshotclassifierOutputData.getGroupId())
                         .truthEntity(Optional.ofNullable(truthEntity).map(String::valueOf).orElse(null))
                         .entity(Optional.ofNullable(key).map(String::valueOf).orElse(null))
