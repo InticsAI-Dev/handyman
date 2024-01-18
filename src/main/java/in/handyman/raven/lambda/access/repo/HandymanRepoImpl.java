@@ -1,6 +1,7 @@
 package in.handyman.raven.lambda.access.repo;
 
-import in.handyman.raven.exception.HandymanException;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionStatusAudit;
@@ -37,6 +38,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     protected static final String CONFIG_URL = "raven.db.url";
     private static final String CONFIG_PASSWORD = "raven.db.password";
     private static final String CONFIG_USER = "raven.db.user";
+    private static final String MAX_CONNECTION = "raven.max.connection";
+
     private static final Jdbi JDBI;
 
     static {
@@ -44,10 +47,26 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         final String username = PropertyHandler.get(CONFIG_USER);
         final String password = PropertyHandler.get(CONFIG_PASSWORD);
         final String url = PropertyHandler.get(CONFIG_URL);
-        log.info("Connected {} {} {}", url, username, password);
-        JDBI = Jdbi.create(url, username, password);
-        JDBI.installPlugin(new SqlObjectPlugin());
+        final int maxConnection = Integer.parseInt(PropertyHandler.get(MAX_CONNECTION));
 
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(url);
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setMinimumIdle(0);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(35000);
+        config.setMaxLifetime(45000);
+        config.setMaximumPoolSize(maxConnection);
+        HikariDataSource hikariDataSource = new HikariDataSource(config);
+
+        JDBI = Jdbi.create(hikariDataSource);
+        JDBI.installPlugin(new SqlObjectPlugin());
+        try (var ignored = JDBI.open()) {
+            log.info("Connected {} {} {}", url, username, password);
+        } catch (Exception e) {
+            log.error("Error in Connecting database with credentials {} {} {} with exception {}", url, username, password, e.getMessage());
+        }
     }
 
     @Override
