@@ -195,15 +195,19 @@ public class TableExtractionAction implements IActionExecution {
                     tableOutputResponses.forEach(tableOutputResponse1 -> {
                         String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
                         String croppedImagePath = tableOutputResponse1.getCroppedImage();
-                        try {
-                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response csv file: {}", e.getMessage());
-                        }
-                        try {
-                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                        String MultipartUploadActivatorVariable = "multipart.file.upload.activator";
+                        String MultipartUploadActivatorValue = action.getContext().get(MultipartUploadActivatorVariable);
+                        if (MultipartUploadActivatorValue.equalsIgnoreCase("true")) {
+                            try {
+                                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response csv file: {}", e.getMessage());
+                            }
+                            try {
+                                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                            }
                         }
                         String tableResponse;
                         try {
