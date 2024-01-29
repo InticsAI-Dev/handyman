@@ -16,7 +16,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -87,12 +91,6 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
-//        final StatementExecutionAudit audit = StatementExecutionAudit.builder()
-//                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-//                .actionId(actionExecutionAudit.getActionId())
-//                .statementContent("CoproProcessor started producer for " + actionExecutionAudit.getActionName())
-//                .build();
-//        addAudit(audit, startTime);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
@@ -101,14 +99,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                 try {
                     partitions.forEach((integer, ts) -> {
                         queue.addAll(ts);
-                        final StatementExecutionAudit audit2 = StatementExecutionAudit.builder()
-                                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-                                .actionId(actionExecutionAudit.getActionId())
-                                .statementContent("CoproProcessor producer for " + actionExecutionAudit.getActionName())
-                                .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
-                                .rowsRead(ts.size())
-                                .build();
-                        addAudit(audit2, startTime);
+                        insertRowsReadIntoStatementAudit(ts, startTime);
                         logger.info("Partition {} added to the queue", integer);
                         try {
                             Thread.sleep(10);
@@ -118,21 +109,35 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                         }
                     });
                     logger.info("Total Partition added to the queue: {} ", partitions.size());
-                    final StatementExecutionAudit audit3 = StatementExecutionAudit.builder()
-                            .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-                            .actionId(actionExecutionAudit.getActionId())
-                            .statementContent("CoproProcessor producer completed " + actionExecutionAudit.getActionName())
-                            .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
-                            .build();
-                    addAudit(audit3, startTime);
+                    insertCompletionIntoStatementAudit(startTime);
                 } finally {
                     queue.add(stoppingSeed);
                     logger.info("Added stopping seed to the queue");
                 }
-
             });
 
         })));
+    }
+
+    private void insertRowsReadIntoStatementAudit(List<I> ts, LocalDateTime startTime) {
+        final StatementExecutionAudit audit = StatementExecutionAudit.builder()
+                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                .actionId(actionExecutionAudit.getActionId())
+                .statementContent("CoproProcessor producer for " + actionExecutionAudit.getActionName())
+                .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
+                .rowsRead(ts.size())
+                .build();
+        addAudit(audit, startTime);
+    }
+
+    private void insertCompletionIntoStatementAudit(LocalDateTime startTime) {
+        final StatementExecutionAudit audit = StatementExecutionAudit.builder()
+                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                .actionId(actionExecutionAudit.getActionId())
+                .statementContent("CoproProcessor producer completed " + actionExecutionAudit.getActionName())
+                .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
+                .build();
+        addAudit(audit, startTime);
     }
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
@@ -174,14 +179,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                         int[] execute = preparedBatch.execute();
                                         logger.info("Consumer persisted {}", execute);
                                     });
-                                    final StatementExecutionAudit audit = StatementExecutionAudit.builder()
-                                            .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-                                            .actionId(actionExecutionAudit.getActionId())
-                                            .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
-                                            .rowsProcessed(processedEntity.size())
-                                            .statementContent("CoproProcessor consumer for " + actionExecutionAudit.getActionName())
-                                            .build();
-                                    addAudit(audit, startTime);
+                                    insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                                     processedEntity.clear();
                                 }
                             } else {
@@ -197,44 +195,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                             throw new HandymanException("Error at Consumer Process", e, actionExecutionAudit);
                         }
                     }
-                    if (!processedEntity.isEmpty()) {
-                        jdbi.useTransaction(handle -> {
-                            int rowCount = 0;
-                            final Connection connection = handle.getConnection();
-//                            connection.setAutoCommit(false);
-                            try {
-                                try (PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
-                                    for (final O output : processedEntity) {
-                                        final List<Object> rowData = output.getRowData();
-                                        for (int i = 1; i <= rowData.size(); i++) {
-                                            preparedStatement.setObject(i, rowData.get(i - 1));
-                                        }
-                                        preparedStatement.addBatch();
-                                    }
-                                    rowCount = (int) Arrays.stream(preparedStatement.executeBatch()).count();
-                                    final StatementExecutionAudit audit = StatementExecutionAudit.builder()
-                                            .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-                                            .actionId(actionExecutionAudit.getActionId())
-                                            .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
-                                            .rowsProcessed(processedEntity.size())
-                                            .statementContent("CoproProcessor consumer for " + actionExecutionAudit.getActionName())
-                                            .build();
-                                    addAudit(audit, startTime);
-                                }
-                            } catch (Exception e) {
-                                logger.error("Error in executing prepared statement {}", ExceptionUtil.toString(e));
-                                handle.rollback();
-                                throw new HandymanException("Error in executing prepared statement ", e, actionExecutionAudit);
-                            } finally {
-                                if (handle != null && handle.isInTransaction()) {
-//                                    handle.commit();
-                                }
-//                                handle.commit();
-                            }
-                            logger.info("Consumer persisted {}", rowCount);
-                        });
-
-                    }
+                    checkForProcessedEntitySize(insertSql, processedEntity, startTime);
                 } catch (Exception e) {
                     logger.error("Final persistence failed", e);
                 } finally {
@@ -250,6 +211,51 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         } catch (InterruptedException e) {
             logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
         }
+    }
+
+    private void checkForProcessedEntitySize(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
+        if (!processedEntity.isEmpty()) {
+            jdbi.useTransaction(handle -> {
+                int rowCount = 0;
+                final Connection connection = handle.getConnection();
+//                            connection.setAutoCommit(false);
+                try {
+                    try (PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
+                        for (final O output : processedEntity) {
+                            final List<Object> rowData = output.getRowData();
+                            for (int i = 1; i <= rowData.size(); i++) {
+                                preparedStatement.setObject(i, rowData.get(i - 1));
+                            }
+                            preparedStatement.addBatch();
+                        }
+                        rowCount = (int) Arrays.stream(preparedStatement.executeBatch()).count();
+                        insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
+                    }
+                } catch (Exception e) {
+                    logger.error("Error in executing prepared statement {}", ExceptionUtil.toString(e));
+                    handle.rollback();
+                    throw new HandymanException("Error in executing prepared statement ", e, actionExecutionAudit);
+                } finally {
+                    if (handle.isInTransaction()) {
+//                                    handle.commit();
+                    }
+//                                handle.commit();
+                }
+                logger.info("Consumer persisted {}", rowCount);
+            });
+
+        }
+    }
+
+    private void insertRowsProcessedIntoStatementAudit(LocalDateTime startTime, List<O> processedEntity) {
+        final StatementExecutionAudit audit = StatementExecutionAudit.builder()
+                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                .actionId(actionExecutionAudit.getActionId())
+                .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
+                .rowsProcessed(processedEntity.size())
+                .statementContent("CoproProcessor consumer for " + actionExecutionAudit.getActionName())
+                .build();
+        addAudit(audit, startTime);
     }
 
 
