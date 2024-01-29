@@ -73,18 +73,17 @@ class RestApiActionTestExecutionAudit {
 
     @Test
     public void
-    performanceOpt()
-    {
+    performanceOpt() {
         LContext request = LContext.builder()
                 .pipelineName("root.processor#1")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
                 .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
-                        Map.entry("batch_id","TMP-AGD-001"),
-                        Map.entry("tenant_id","TND-001"),
-                        Map.entry("document_id","TMP-AGD-001"),
-                        Map.entry("last_updated_user_id","-1"),
-                        Map.entry("dir_path","/home/balasoundarya.thanga@zucisystems.com/workspace/gitdev/input/1.pdf/"),
-                        Map.entry("target_directory_path","/home/balasoundarya.thanga@zucisystems.com/workspace/gitdev/output")))
+                        Map.entry("batch_id", "TMP-AGD-001"),
+                        Map.entry("tenant_id", "TND-001"),
+                        Map.entry("document_id", "TMP-AGD-001"),
+                        Map.entry("last_updated_user_id", "-1"),
+                        Map.entry("dir_path", "/home/balasoundarya.thanga@zucisystems.com/workspace/gitdev/input/1.pdf/"),
+                        Map.entry("target_directory_path", "/home/balasoundarya.thanga@zucisystems.com/workspace/gitdev/output")))
                 .build();
         log.info(request.toString());
         LambdaEngine.start(request);
@@ -92,44 +91,45 @@ class RestApiActionTestExecutionAudit {
 
     @Test
     public void
-    performanceOptUi()
-    {
+    performanceOptUi() {
         LContext request = LContext.builder()
-                .pipelineName("root.processor#10")
+                .pipelineName("root.processor#8")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
                 .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
-                        Map.entry("batch_id","TMP-AGD-001"),
-                        Map.entry("tenant_id","1"),
-                        Map.entry("origin_type","TRANSACTION"),
-                        Map.entry("workspace_id","-1"),
-                        Map.entry("transaction_id","TND-001"),
-                        Map.entry("document_type","HEALTH_CARE"),
-                        Map.entry("document_id","TMP-AGD-001"),
-                        Map.entry("last_updated_user_id","-1"),
-                        Map.entry("dir_path","/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/input/SYNT_166838894.pdf"),
-                        Map.entry("target_directory_path","/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/output")))
+                        Map.entry("batch_id", "TMP-AGD-001"),
+                        Map.entry("tenant_id", "1"),
+                        Map.entry("origin_type", "TRANSACTION"),
+                        Map.entry("workspace_id", "-1"),
+                        Map.entry("transaction_id", "TND-001"),
+                        Map.entry("document_type", "HEALTH_CARE"),
+                        Map.entry("document_id", "TMP-AGD-001"),
+                        Map.entry("last_updated_user_id", "421"),
+                        Map.entry("gen_group_id.group_id", "421"),
+                        Map.entry("group_id", "421"),
+                        Map.entry("dir_path", "/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/input/SYNT_166838894.pdf"),
+                        Map.entry("target_directory_path", "/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/output")))
                 .build();
         log.info(request.toString());
         LambdaEngine.start(request);
     }
 
     @Test
-    public void qrcode()
-    {
+    public void qrcode() {
         LContext request = LContext.builder()
                 .pipelineName("qr.extraction.processor")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
                 .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
-                        Map.entry("batch_id","TMP-AGD-001"),
-                        Map.entry("tenant_id","TND-001"),
-                        Map.entry("document_id","TMP-AGD-001"),
-                        Map.entry("last_updated_user_id","-1"),
-                        Map.entry("dir_path","/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia/input/"),
-                        Map.entry("target_directory_path","/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia/agadia_output") ))
+                        Map.entry("batch_id", "TMP-AGD-001"),
+                        Map.entry("tenant_id", "TND-001"),
+                        Map.entry("document_id", "TMP-AGD-001"),
+                        Map.entry("last_updated_user_id", "-1"),
+                        Map.entry("dir_path", "/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia/input/"),
+                        Map.entry("target_directory_path", "/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia/agadia_output")))
                 .build();
         log.info(request.toString());
         LambdaEngine.start(request);
     }
+
     @Test
     public void testTruthAttributionSummoning() {
         LContext request = LContext.builder()
@@ -154,24 +154,24 @@ class RestApiActionTestExecutionAudit {
     @Test
     public void shellScript() throws IOException, InterruptedException {
 
-        String homeDir=System.getProperty("user.home");
-        System.out.println("home Directory " +homeDir);
-        boolean IS_WINDOWS=System.getProperty("os.name")
+        String homeDir = System.getProperty("user.home");
+        System.out.println("home Directory " + homeDir);
+        boolean IS_WINDOWS = System.getProperty("os.name")
                 .toLowerCase().startsWith("windows");
-        System.out.println("Is windows " +IS_WINDOWS);
+        System.out.println("Is windows " + IS_WINDOWS);
         Process process;
-        if (IS_WINDOWS){
-            process=Runtime.getRuntime().exec(String.format("cmd.exe /c dir %s", homeDir));
-            System.out.println("Executed for windows " +process);
-        }else {
-            process=Runtime.getRuntime().exec(String.format("/bin/sh -c ls %s", homeDir));
-            System.out.println("Executed for linux " +process);
+        if (IS_WINDOWS) {
+            process = Runtime.getRuntime().exec(String.format("cmd.exe /c dir %s", homeDir));
+            System.out.println("Executed for windows " + process);
+        } else {
+            process = Runtime.getRuntime().exec(String.format("/bin/sh -c ls %s", homeDir));
+            System.out.println("Executed for linux " + process);
         }
         BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream()));
-        StringBuilder stringBuilder=new StringBuilder();
+        StringBuilder stringBuilder = new StringBuilder();
         String line;
-        while ((line = reader.readLine()) != null){
+        while ((line = reader.readLine()) != null) {
             stringBuilder.append(line).append("\n");
             System.out.println(stringBuilder);
         }

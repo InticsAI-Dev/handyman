@@ -19,9 +19,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "TableExtraction"
+    actionName = "TableExtractionHeaders"
 )
-public class TableExtraction implements IActionContext {
+public class TableExtractionHeaders implements IActionContext {
   private String name;
 
   private String endpoint;
