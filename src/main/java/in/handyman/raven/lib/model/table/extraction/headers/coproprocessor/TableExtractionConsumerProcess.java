@@ -215,7 +215,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .stage(tableExtractionProcessName)
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                                .rootPipelineId(rootPipelineId)
+                                .rootPipelineId(action.getRootPipelineId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -232,7 +232,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .stage(tableExtractionProcessName)
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                            .rootPipelineId(rootPipelineId)
+                            .rootPipelineId(action.getRootPipelineId())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);

@@ -127,14 +127,14 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                     .croppedImage(croppedImagePath)
                                     .bboxes(tableOutputResponse1.getBboxes().asText())
                                     .groupId(groupId)
-                                    .processId(processId)
+                                    .processId(action.getProcessId())
                                     .templateId(templateId)
                                     .tenantId(tenantId)
                                     .status("COMPLETED")
                                     .stage(tableExtractionProcessName)
                                     .message(response.message())
                                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                                    .rootPipelineId(rootPipelineId)
+                                    .rootPipelineId(action.getRootPipelineId())
                                     .build());
 
                 });
@@ -145,14 +145,14 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .builder()
                                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                                 .groupId(groupId)
-                                .processId(processId)
+                                .processId(action.getProcessId())
                                 .templateId(templateId)
                                 .tenantId(tenantId)
                                 .status("FAILED")
                                 .stage(tableExtractionProcessName)
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                                .rootPipelineId(rootPipelineId)
+                                .rootPipelineId(action.getRootPipelineId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -162,14 +162,14 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .builder()
                             .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                             .groupId(groupId)
-                            .processId(processId)
+                            .processId(action.getProcessId())
                             .templateId(templateId)
                             .tenantId(tenantId)
                             .status("FAILED")
                             .stage(tableExtractionProcessName)
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                            .rootPipelineId(rootPipelineId)
+                            .rootPipelineId(action.getRootPipelineId())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
