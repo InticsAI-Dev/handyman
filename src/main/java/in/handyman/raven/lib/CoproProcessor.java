@@ -195,7 +195,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                             throw new HandymanException("Error at Consumer Process", e, actionExecutionAudit);
                         }
                     }
-                    checkForProcessedEntitySize(insertSql, processedEntity, startTime);
+                    checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime);
                 } catch (Exception e) {
                     logger.error("Final persistence failed", e);
                 } finally {
@@ -213,7 +213,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         }
     }
 
-    private void checkForProcessedEntitySize(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
+    private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
         if (!processedEntity.isEmpty()) {
             jdbi.useTransaction(handle -> {
                 int rowCount = 0;
