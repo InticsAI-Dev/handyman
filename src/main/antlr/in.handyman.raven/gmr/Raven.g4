@@ -149,6 +149,7 @@ action:
     |qrExtraction
     |multipartUpload
     |multipartDownload
+    |tritonModelLoadUnload
     |tableExtractionHeaders
     );
 
@@ -1074,6 +1075,14 @@ multipartDownload:
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
+
+tritonModelLoadUnload:
+    'tritonModelLoadUnload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'model-url' endPoint=STRING
+    'config-variable' configVariable=STRING
+    'load-type' loadType=STRING
+    'using' '{'  '}' ('on-condition' condition=expression)* ;
 
 
 tableExtractionHeaders:

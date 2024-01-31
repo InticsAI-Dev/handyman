@@ -14,6 +14,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -22,14 +24,19 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.random;
@@ -62,7 +69,7 @@ public class AssetInfoAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
 
-        Long tenantId= Long.valueOf(action.getContext().get("tenant_id"));
+        Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
         try {
             log.info(aMarker, "Asset Info Action for {} has been started", assetInfo.getName());
 
@@ -103,18 +110,18 @@ public class AssetInfoAction implements IActionExecution {
                         }
                         pathList.forEach(path -> {
                             log.info(aMarker, "insert query for each file from dir {}", path);
-                            fileInfos.add(insertQuery(path.toFile(),tenantId));
+                            fileInfos.add(insertQuery(path.toFile(), tenantId));
                         });
                     } else if (file.isFile()) {
                         log.info(aMarker, "insert query for file {}", file);
-                        fileInfos.add(insertQuery(file,tenantId));
+                        fileInfos.add(insertQuery(file, tenantId));
                     }
 
                     if (fileInfos.size() == this.writeBatchSize) {
                         log.info(aMarker, "executing  batch {}", fileInfos.size());
                         consumerBatch(jdbi, fileInfos);
                         log.info(aMarker, "executed  batch {}", fileInfos.size());
-                        insertSummaryAudit(jdbi, tableInfos.size(), fileInfos.size(), 0, "batch inserted",tenantId);
+                        insertSummaryAudit(jdbi, tableInfos.size(), fileInfos.size(), 0, "batch inserted", tenantId);
                         fileInfos.clear();
                         log.info(aMarker, "cleared batch {}", fileInfos.size());
                     }
@@ -128,7 +135,7 @@ public class AssetInfoAction implements IActionExecution {
                 log.info(aMarker, "executing final batch {}", fileInfos.size());
                 consumerBatch(jdbi, fileInfos);
                 log.info(aMarker, "executed final batch {}", fileInfos.size());
-                insertSummaryAudit(jdbi, tableInfos.size(), fileInfos.size(), 0, "final batch inserted",tenantId);
+                insertSummaryAudit(jdbi, tableInfos.size(), fileInfos.size(), 0, "final batch inserted", tenantId);
                 fileInfos.clear();
                 log.info(aMarker, "cleared final batch {}", fileInfos.size());
             }
@@ -141,7 +148,7 @@ public class AssetInfoAction implements IActionExecution {
         log.info(aMarker, "Asset Info Action for {} has been completed", assetInfo.getName());
     }
 
-    public FileInfo insertQuery(File file,Long tenantId) {
+    public FileInfo insertQuery(File file, Long tenantId) {
         FileInfo fileInfoBuilder = new FileInfo();
         try {
             log.info(aMarker, "insert query main caller for the file {}", file);
@@ -155,19 +162,49 @@ public class AssetInfoAction implements IActionExecution {
             log.info(aMarker, "checksum for file {} and its {}", file, sha1Hex);
             var fileSize = file.length() / 1024;
             String fileExtension = FilenameUtils.getExtension(file.getName());
-            String fielAbsolutePath = file.getAbsolutePath();
-            String base64ForPathValue = getBase64ForPath(fielAbsolutePath, fileExtension);
+            String fileAbsolutePath = file.getAbsolutePath();
+            String base64ForPathValue = getBase64ForPath(fileAbsolutePath, fileExtension);
+            float pageWidth = 0f;
+            float pageHeight = 0f;
+            int dpi = 0;
+            if (fileExtension.equalsIgnoreCase("pdf")) {
+                try (PDDocument document = PDDocument.load(file)) {
+
+                    PDPage firstPage = document.getPage(0);
+                    pageWidth = firstPage.getMediaBox().getWidth();
+                    pageHeight = firstPage.getMediaBox().getHeight();
+
+                    float width_inches = pageWidth / 72;
+                    dpi = (int) (pageWidth / width_inches);
+                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
+                } catch (IOException e) {
+                    log.error("Error in calculating width, height, dpi for pdf file with exception {}", e.getMessage());
+                }
+            } else {
+                BufferedImage image = ImageIO.read(file);
+                if (image != null) {
+                    pageWidth = image.getWidth();
+                    pageHeight = image.getHeight();
+                    float width_inches = pageWidth / 72;
+                    dpi = (int) (pageWidth / width_inches);
+                } else {
+                    log.error("Error in calculating width, height, dpi for image");
+                }
+            }
             fileInfoBuilder = FileInfo.builder()
                     .fileId(FilenameUtils.removeExtension(file.getName()) + "_" + ((int) (900000 * random() + 100000)))
                     .tenantId(tenantId)
                     .fileChecksum(sha1Hex)
                     .fileExtension(fileExtension)
                     .fileName(FilenameUtils.removeExtension(file.getName()))
-                    .filePath(fielAbsolutePath)
+                    .filePath(fileAbsolutePath)
                     .fileSize(String.valueOf(fileSize))
                     .rootPipelineId(Long.valueOf(action.getContext().get("pipeline-id")))
                     .processId(Long.valueOf(action.getContext().get("process-id")))
                     .encode(base64ForPathValue)
+                    .width(pageWidth)
+                    .height(pageHeight)
+                    .dpi(dpi)
                     .build();
             log.info(aMarker, "File Info Builder {}", fileInfoBuilder);
         } catch (Exception ex) {
@@ -178,17 +215,17 @@ public class AssetInfoAction implements IActionExecution {
     }
 
     void consumerBatch(final Jdbi jdbi, List<FileInfo> resultQueue) {
-        Long tenantId= Long.valueOf(action.getContext().get("tenant_id"));
+        Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
         try {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
-                                handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id)" +
-                                                "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId);")
+                                handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi)" +
+                                                "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi);")
                                         .bindBean(insert).execute();
                                 log.info(aMarker, "inserted {} into source of origin", insert);
                             } catch (Throwable t) {
-                                insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(),tenantId);
+                                insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(), tenantId);
                                 log.error(aMarker, "error inserting result {}", resultQueue, t);
                             }
 
@@ -196,14 +233,14 @@ public class AssetInfoAction implements IActionExecution {
                     }
             );
         } catch (Exception e) {
-            insertSummaryAudit(jdbi, 0, 0, resultQueue.size(), "failed in batch insert",tenantId);
+            insertSummaryAudit(jdbi, 0, 0, resultQueue.size(), "failed in batch insert", tenantId);
             log.error(aMarker, "error inserting result {}", resultQueue, e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("error inserting result" + resultQueue, handymanException, action);
         }
     }
 
-    void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments,Long tenantId) {
+    void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments, Long tenantId) {
         try {
             SanitarySummary summary = new SanitarySummary().builder()
                     .rowCount(rowCount)
@@ -227,10 +264,10 @@ public class AssetInfoAction implements IActionExecution {
         }
     }
 
-    public String getBase64ForPath(String imagePath,String fileExtension) throws IOException {
+    public String getBase64ForPath(String imagePath, String fileExtension) throws IOException {
         String base64Image = new String();
         try {
-            if(!Objects.equals(fileExtension, "pdf")) {
+            if (!Objects.equals(fileExtension, "pdf")) {
 
                 // Read the image file into a byte array
                 byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
@@ -271,6 +308,9 @@ public class AssetInfoAction implements IActionExecution {
         private String filePath;
         private String fileSize;
         private String encode;
+        private Float width;
+        private Float height;
+        private Integer dpi;
     }
 
     @AllArgsConstructor

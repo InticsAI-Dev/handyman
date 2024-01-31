@@ -53,7 +53,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
+        Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
 
         //payload
