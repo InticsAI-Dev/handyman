@@ -180,4 +180,40 @@ class RestApiActionTestExecutionAudit {
         assert exitCode == 0;
 
     }
+
+
+    @Test
+    public void practiceTrying()
+    {
+        LContext request = LContext.builder()
+                .pipelineName("master.data.caller")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(Map.entry
+                        ("tenant_id","1")))
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
+
+    @Test
+    public void performanceOptUi1()
+    {
+        LContext request = LContext.builder()
+                .pipelineName("root.processor#8")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
+                        Map.entry("batch_id","TMP-AGD-001"),
+                        Map.entry("tenant_id","1"),
+                        Map.entry("origin_type","TRANSACTION"),
+                        Map.entry("workspace_id","-1"),
+                        Map.entry("transaction_id","TND-001"),
+                        Map.entry("document_type","HEALTH_CARE"),
+                        Map.entry("document_id","TMP-AGD-001"),
+                        Map.entry("last_updated_user_id","-1"),
+                        Map.entry("dir_path","/home/iswerya.justin@zucisystems.com/workspace/Dev/Deliverable_May/PAGE-1/1-Page/Elixir/Synthetic_Data/SYNT_166884608.pdf"),
+                        Map.entry("target_directory_path","/home/iswerya.justin@zucisystems.com/workspace/Dev/main'/UT/output")))
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
 }

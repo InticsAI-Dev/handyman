@@ -149,6 +149,7 @@ action:
     |qrExtraction
     |multipartUpload
     |multipartDownload
+    |systemkeyTable
     );
 
 
@@ -1071,6 +1072,13 @@ multipartDownload:
     'download-url' endPoint=STRING
     'using' '{'
     	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+systemkeyTable:
+    'systemkeyTable' 'as' name=STRING
+    'resoruce-conn' resourceConn=STRING
+    'using' '{'
+        querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 //rules
 
