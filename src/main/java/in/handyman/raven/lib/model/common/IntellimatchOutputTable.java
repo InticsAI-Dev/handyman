@@ -22,11 +22,11 @@ import java.util.stream.Stream;
         private String fileName;
         private String originId;
         private Integer groupId;
+        private Long tenantId;
         private Timestamp createdOn;
         private Long rootPipelineId;
         private String actualValue;
         private String extractedValue;
-        private Double similarity;
         private Integer confidenceScore;
         private Double intelliMatch;
         private String status;
@@ -46,14 +46,14 @@ import java.util.stream.Stream;
                     this.rootPipelineId,
                     this.actualValue,
                     this.extractedValue,
-                    this.similarity,
                     this.confidenceScore,
                     this.intelliMatch,
                     this.status,
                     this.stage,
                     this.message,
                     this.modelName,
-                    this.modelVersion
+                    this.modelVersion,
+                    this.tenantId
 
             ).collect(Collectors.toList());
         }

@@ -65,15 +65,15 @@ public class IntellimatchAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "master data comparison process for {} has been started" + intellimatch.getName());
+        log.info(aMarker, "master data comparison process for {} has been started" , intellimatch.getName());
         try {
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(intellimatch.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             // build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + intellimatch.getMatchResult() +
-                    " (file_name,origin_id,group_id,created_on,root_pipeline_id,actual_value, extracted_value,similarity,confidence_score,intelli_match,status,stage,message,model_name,model_version)" +
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+                    " (file_name,origin_id,group_id,created_on,root_pipeline_id,actual_value, extracted_value,confidence_score,intelli_match,status,stage,message,model_name,model_version,tenant_id)" +
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?);";
             log.info(aMarker, "intelli match Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
@@ -96,12 +96,15 @@ public class IntellimatchAction implements IActionExecution {
             log.info(aMarker, "intelli match copro Processor initialization  {}", coproProcessor);
 
             //4. call the method start producer from coproprocessor
-            coproProcessor.startProducer(intellimatch.getInputSet(), Integer.valueOf(action.getContext().get("read.batch.size")));
-            log.info(aMarker, "intelli match startProducer called read batch size {}", action.getContext().get("read.batch.size"));
+            Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
+            coproProcessor.startProducer(intellimatch.getInputSet(), readBatchSize);
+            log.info(aMarker, "intelli match startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
+            Integer consumerCount = Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count"));
+            Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize,
                     new IntellimatchConsumerProcess(log, aMarker, action));
-            log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
+            log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCount, writeBatchSize);
 
         } catch (Exception ex) {
             log.error(aMarker, "Error in execute method for Drug Match {} ", ExceptionUtil.toString(ex));
@@ -112,7 +115,7 @@ public class IntellimatchAction implements IActionExecution {
 
     @Override
     public boolean executeIf() throws Exception {
-        return false;
+        return intellimatch.getCondition();
     }
 }
 

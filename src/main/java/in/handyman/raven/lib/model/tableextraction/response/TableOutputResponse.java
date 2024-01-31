@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.tableextraction;
+package in.handyman.raven.lib.model.tableextraction.response;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,5 +16,6 @@ public class TableOutputResponse {
     private String croppedImage;
     private JsonNode bboxes;
     private JsonNode tableResponse;
+
 
 }
