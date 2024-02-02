@@ -76,12 +76,9 @@ public class TritonModelLoadUnloadAction implements IActionExecution {
             final ObjectNode configNode = objectMapper.createObjectNode();
 
             configNode.put("config", configString);
-            System.out.println(configString);
-
 
             final ObjectNode parameterNode = objectMapper.createObjectNode();
             parameterNode.set("parameters", configNode);
-            System.out.println(objectMapper.writeValueAsString(parameterNode));
 
             request = new Request.Builder().url(endPoint).post(RequestBody.create(objectMapper.writeValueAsString(parameterNode), MEDIA_TYPE)).build();
             if (log.isInfoEnabled()) {

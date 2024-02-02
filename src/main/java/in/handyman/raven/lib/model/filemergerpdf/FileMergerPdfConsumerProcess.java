@@ -421,7 +421,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     private static void downloadResponseFile(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker) throws MalformedURLException {
 
         MediaType MEDIA_TYPE = MediaType.parse("application/json");
-        String MultipartDownloadUrlVariable = "table.response.download.url";
+        String MultipartDownloadUrlVariable = "merger.response.download.url";
         String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
 
         URL url = new URL(endPoint + "?filepath=" + outputFilePath);
