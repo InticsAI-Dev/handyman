@@ -163,7 +163,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj) {
-        try (Response response = new OkHttpClient().newCall(request).execute()) {
+        try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
 
@@ -180,7 +180,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     private void tritonRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj) throws IOException {
-        try (Response response = new OkHttpClient().newCall(request).execute()) {
+        try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
                 FileMergerResponse modelResponse = mapper.readValue(responseBody, FileMergerResponse.class);
@@ -210,6 +210,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             String MultipartUploadActivatorValue = action.getContext().get(MultipartUploadActivatorVariable);
             if (MultipartUploadActivatorValue.equalsIgnoreCase("true")) {
                 try {
+                    log.info("MultipartUploadActivator is true downloading file " + processedFilePath);
                     downloadResponseFile(processedFilePath, action, httpclient, log, aMarker);
                 } catch (MalformedURLException e) {
                     log.error("Error in downloading merger response file with exception: {}", e.getMessage());
