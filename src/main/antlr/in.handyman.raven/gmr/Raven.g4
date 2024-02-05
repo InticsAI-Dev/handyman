@@ -849,9 +849,12 @@ coproStop:
 
  masterdataComparison:
      'masterdataComparison' 'as' name=STRING
-     'on-resource-conn' resourceConn=STRING
      'match-result' matchResult=STRING
-     'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+     'on-resource-conn' resourceConn=STRING
+     'process-id' processId=STRING
+     'copro-url' endPoint=STRING
+     'using' '{' inputSet=STRING '}'
+     ('on-condition' condition=expression)*;
 
 zipBatch:
     'zipBatch' 'as' name=STRING

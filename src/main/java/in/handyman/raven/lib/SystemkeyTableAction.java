@@ -109,6 +109,8 @@ public class SystemkeyTableAction implements IActionExecution {
               "stage varchar null," +
               "message varchar null," +
               "root_pipeline_id int8 null," +
+              "model_name varchar NULL," +
+              "model_version varchar NULL," +
               "tenant_id int8 NULL);" ;
       handle.execute(createTableSQL);
       System.out.println("Table '"+ tableName+ "' has been created.");
