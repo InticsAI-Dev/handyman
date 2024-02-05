@@ -172,31 +172,36 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
 //                        throw new HandymanException(e);
 //                    }
                     try {
-                        String tableResponseStr = objectMapper.writeValueAsString(tableOutputResponse1.getTableResponse().getTableData());
-                        String tableBboxStr = objectMapper.writeValueAsString(tableOutputResponse1.getBboxes());
-                        parentObj.add(
-                                TableExtractionOutputTable
-                                        .builder()
-                                        .originId(entity.getOriginId())
-                                        .paperNo(entity.getPaperNo())
-                                        .tableResponse(tableResponseStr)
-                                        .processedFilePath(tableOutputResponse1.getCsvTablesPath())
-                                        .croppedImage(croppedImagePath)
-                                        .bboxes(tableBboxStr)
-                                        .columnHeaders(tableResponseLineItems.getTableData().getColumnHeaders().toString())
-                                        .truthEntityName(tableOutputResponse1.getTruthEntity())
-                                        .groupId(groupId)
-                                        .processId(action.getProcessId())
-                                        .templateName(entity.getTemplateName())
-                                        .tenantId(tenantId)
-                                        .status("COMPLETED")
-                                        .stage(tableExtractionProcessName)
-                                        .message(response.message())
-                                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                                        .rootPipelineId(action.getRootPipelineId())
-                                        .build());
+                        if(!tableOutputResponse1.getTableResponse().getTableData().getColumnHeaders().isEmpty() && !tableOutputResponse1.getTableResponse().getTableData().getData().isEmpty()){
+
+                            String tableResponseStr = objectMapper.writeValueAsString(tableOutputResponse1.getTableResponse().getTableData());
+                            String tableBboxStr = objectMapper.writeValueAsString(tableOutputResponse1.getBboxes());
+                            parentObj.add(
+                                    TableExtractionOutputTable
+                                            .builder()
+                                            .originId(entity.getOriginId())
+                                            .paperNo(entity.getPaperNo())
+                                            .tableResponse(tableResponseStr)
+                                            .processedFilePath(tableOutputResponse1.getCsvTablesPath())
+                                            .croppedImage(croppedImagePath)
+                                            .bboxes(tableBboxStr)
+                                            .columnHeaders(tableResponseLineItems.getTableData().getColumnHeaders().toString())
+                                            .truthEntityName(tableOutputResponse1.getTruthEntity())
+                                            .groupId(groupId)
+                                            .processId(action.getProcessId())
+                                            .templateName(entity.getTemplateName())
+                                            .tenantId(tenantId)
+                                            .status("COMPLETED")
+                                            .stage(tableExtractionProcessName)
+                                            .message(response.message())
+                                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                            .rootPipelineId(action.getRootPipelineId())
+                                            .modelName(entity.getModelName())
+                                            .build());
+                        }
+
                     } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+                        throw new HandymanException("Cannot process the json input request ",e);
                     }
 
 
@@ -216,6 +221,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(action.getRootPipelineId())
+                                .modelName(entity.getModelName())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -233,6 +239,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(action.getRootPipelineId())
+                            .modelName(entity.getModelName())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
@@ -248,8 +255,8 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     private static void downloadResponseFile(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker) throws MalformedURLException {
 
         MediaType MEDIA_TYPE = MediaType.parse("application/json");
-        String MultipartDownloadUrlVariable = "table.response.download.url";
-        String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
+        String multipartDownloadUrlVariable = "table.response.download.url";
+        String endPoint = action.getContext().get(multipartDownloadUrlVariable);
 
         URL url = new URL(endPoint + "?filepath=" + outputFilePath);
         Request request = new Request.Builder().url(url)

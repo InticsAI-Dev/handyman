@@ -67,7 +67,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         Long rootPipelineId = action.getRootPipelineId();
         final String tableExtractionProcessName = "TABLE_EXTRACTION";
         Long actionId = action.getActionId();
-        objectNode.put("rootPipelineId", 1);
+        objectNode.put("rootPipelineId", action.getRootPipelineId());
         objectNode.put("process", tableExtractionProcessName);
         objectNode.put("inputFilePath", inputFilePath);
         objectNode.put("outputDir", outputDir);
@@ -139,6 +139,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                     .message(response.message())
                                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                     .rootPipelineId(action.getRootPipelineId())
+                                    .modelName(action.getContext().get("NEON_MODEL_NAME"))
                                     .build());
 
                 });
@@ -157,6 +158,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(action.getRootPipelineId())
+                                .modelName(action.getContext().get("NEON_MODEL_NAME"))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -174,6 +176,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(action.getRootPipelineId())
+                            .modelName(action.getContext().get("NEON_MODEL_NAME"))
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
