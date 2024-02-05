@@ -150,7 +150,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 tableOutputResponses.forEach(tableOutputResponse1 -> {
                     String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
                     String croppedImagePath = tableOutputResponse1.getCroppedImage();
-                    String multipartUploadActivatorVariable = "mulipart.file.utpload.activator";
+                    String multipartUploadActivatorVariable = "multipart.file.upload.activator";
                     String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
                     TableResponse tableResponseLineItems = tableOutputResponse1.getTableResponse();
                     if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {

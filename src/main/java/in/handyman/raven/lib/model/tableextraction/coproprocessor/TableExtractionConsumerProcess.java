@@ -100,15 +100,19 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 tableOutputResponses.forEach(tableOutputResponse1 -> {
                     String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
                     String croppedImagePath = tableOutputResponse1.getCroppedImage();
-                    try {
-                        downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
-                    } catch (MalformedURLException e) {
-                        log.error("Error writing table Response csv file: {}", e.getMessage());
-                    }
-                    try {
-                        downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
-                    } catch (MalformedURLException e) {
-                        log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                    String multipartUploadActivatorVariable = "multipart.file.upload.activator";
+                    String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
+                    if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {
+                        try {
+                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
+                        } catch (MalformedURLException e) {
+                            log.error("Error writing table Response csv file: {}", e.getMessage());
+                        }
+                        try {
+                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
+                        } catch (MalformedURLException e) {
+                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                        }
                     }
                     String tableResponse;
                     try {
