@@ -24,7 +24,8 @@ public class MasterDataComparisonActionTest {
                         "                FROM md_lookup_systemKey.provider_address a\n" +
                         "                LEFT JOIN master_data.provider_metadata b\n" +
                         "                ON a.sk_provider_npi=b.provider_npi\n" +
-                        "                and a.sk_provider_name=b.provider_name")
+                        "                and a.sk_provider_name=b.provider_name\n" +
+                        "                WHERE a.group_id='16' and a.tenant_id = 1 and 4 = 4")
 //                .inputSet("SELECT 'INT-1' AS originId, 1 AS paperNo, 1 AS groupId,1 as tenantId, 1 AS eocIdentifier, ARRAY['dinesh kumar', 'dinesh', 'kumar'] AS extractedValue,'dinesh' AS actualValue, 1 AS rootPipelineId")
                 .resourceConn("intics_zio_db_conn")
                 .build();

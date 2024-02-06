@@ -121,6 +121,6 @@ public class MasterdataComparisonAction implements IActionExecution {
    */
   @Override
   public boolean executeIf() throws Exception {
-    return false;
+    return masterdataComparison.getCondition();
   }
 }
