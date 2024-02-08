@@ -178,7 +178,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         JsonNode jsonNode = mapper.readTree(stringDataItem);
         String pageContent = jsonNode.get("pageContent").asText();
         final String contentString = Optional.of(pageContent).map(String::valueOf).orElse(null);
-        final String flag = (!Objects.isNull(contentString) && contentString.length() > 5) ? "no" : "yes";
+        final String flag = (contentString.length() > 5) ? "no" : "yes";
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
         String templateId = entity.getTemplateId();
         parentObj.add(DataExtractionOutputTable.builder().filePath(dataExtractionDataItem.getInputFilePath()).extractedText(dataExtractionDataItem.getPageContent()).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(Timestamp.valueOf(LocalDateTime.now())).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).build());
