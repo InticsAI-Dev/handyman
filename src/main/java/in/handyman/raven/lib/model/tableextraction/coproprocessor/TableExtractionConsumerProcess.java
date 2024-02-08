@@ -108,34 +108,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 tableOutputResponses.forEach(tableOutputResponse1 -> {
                     String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
                     String croppedImagePath = tableOutputResponse1.getCroppedImage();
-                    String multipartUploadActivatorVariable = "multipart.file.upload.activator";
-                    String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
-                    if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {
-                        log.info("MultipartUploadActivator is true");
-                        String MultipartDownloadUrlVariable = "table.response.download.url";
-                        String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
-
-                        final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                            try {
-                                return new URL(s1);
-                            } catch (MalformedURLException e) {
-                                log.error("Error in processing the URL ", e);
-                                throw new RuntimeException(e);
-                            }
-                        }).collect(Collectors.toList())).orElse(Collections.emptyList());
-                        try {
-                            log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
-                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker, urls);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response csv file: {}", e.getMessage());
-                        }
-                        try {
-                            log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
-                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker, urls);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
-                        }
-                    }
+                    doMultipartDownloadCheck(csvTablesPath, croppedImagePath);
                     String tableResponse;
                     try {
                         tableResponse = tableDataJson(csvTablesPath, action);
@@ -206,6 +179,37 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         }
         log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
         return parentObj;
+    }
+
+    private void doMultipartDownloadCheck(String csvTablesPath, String croppedImagePath) {
+        String multipartUploadActivatorVariable = "multipart.file.upload.activator";
+        String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
+        if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {
+            log.info("MultipartUploadActivator is true");
+            String MultipartDownloadUrlVariable = "table.response.download.url";
+            String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
+
+            final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                try {
+                    return new URL(s1);
+                } catch (MalformedURLException e) {
+                    log.error("Error in processing the URL ", e);
+                    throw new RuntimeException(e);
+                }
+            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            try {
+                log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
+                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker, urls);
+            } catch (MalformedURLException e) {
+                log.error("Error writing table Response csv file: {}", e.getMessage());
+            }
+            try {
+                log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
+                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker, urls);
+            } catch (MalformedURLException e) {
+                log.error("Error writing table Response cropped image file: {}", e.getMessage());
+            }
+        }
     }
 
     private static void downloadResponseFile(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker, List<URL> urls) throws MalformedURLException {

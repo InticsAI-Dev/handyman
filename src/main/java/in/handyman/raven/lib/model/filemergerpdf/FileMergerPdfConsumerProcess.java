@@ -207,25 +207,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             String processedFilePath = fileMergerDataItem1.getProcessedFilePath();
             String MultipartUploadActivatorVariable = "multipart.file.upload.activator";
             String MultipartUploadActivatorValue = action.getContext().get(MultipartUploadActivatorVariable);
-            if (MultipartUploadActivatorValue.equalsIgnoreCase("true")) {
-
-                try {
-                    log.info("MultipartUploadActivator is true downloading file " + processedFilePath);
-                    String MultipartDownloadUrlVariable = "merger.response.download.url";
-                    String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
-                    final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                        try {
-                            return new URL(s1);
-                        } catch (MalformedURLException e) {
-                            log.error("Error in processing the URL ", e);
-                            throw new RuntimeException(e);
-                        }
-                    }).collect(Collectors.toList())).orElse(Collections.emptyList());
-                    downloadResponseFile(processedFilePath, action, httpclient, log, aMarker, urls);
-                } catch (MalformedURLException e) {
-                    log.error("Error in downloading merger response file with exception: {}", e.getMessage());
-                }
-            }
+            doMultipartDownloadCheck(MultipartUploadActivatorValue, processedFilePath);
             File file = new File(processedFilePath);
             String fileExtension = FilenameUtils.getExtension(file.getName());
             float pageWidth = 0f;
@@ -319,6 +301,28 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
+    private void doMultipartDownloadCheck(String MultipartUploadActivatorValue, String processedFilePath) {
+        if (MultipartUploadActivatorValue.equalsIgnoreCase("true")) {
+
+            try {
+                log.info("MultipartUploadActivator is true downloading file " + processedFilePath);
+                String MultipartDownloadUrlVariable = "merger.response.download.url";
+                String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
+                final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                    try {
+                        return new URL(s1);
+                    } catch (MalformedURLException e) {
+                        log.error("Error in processing the URL ", e);
+                        throw new RuntimeException(e);
+                    }
+                }).collect(Collectors.toList())).orElse(Collections.emptyList());
+                downloadResponseFile(processedFilePath, action, httpclient, log, aMarker, urls);
+            } catch (MalformedURLException e) {
+                log.error("Error in downloading merger response file with exception: {}", e.getMessage());
+            }
+        }
+    }
+
     private void extractedCoproOutputResponse(FileMergerpdfInputEntity entity, String fileMergerDataItem, List<FileMergerpdfOutputEntity> parentObj, String modelName, String modelVersion) {
         Long rootPipelineId = entity.getRootPipelineId();
         Long tenantId = entity.getTenantId();
@@ -330,24 +334,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             String processedFilePath = fileMergerDataItem1.getProcessedFilePath();
             String MultipartUploadActivatorVariable = "multipart.file.upload.activator";
             String MultipartUploadActivatorValue = action.getContext().get(MultipartUploadActivatorVariable);
-            if (MultipartUploadActivatorValue.equalsIgnoreCase("true")) {
-                try {
-                    log.info("MultipartUploadActivator is true downloading file " + processedFilePath);
-                    String MultipartDownloadUrlVariable = "merger.response.download.url";
-                    String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
-                    final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                        try {
-                            return new URL(s1);
-                        } catch (MalformedURLException e) {
-                            log.error("Error in processing the URL ", e);
-                            throw new RuntimeException(e);
-                        }
-                    }).collect(Collectors.toList())).orElse(Collections.emptyList());
-                    downloadResponseFile(processedFilePath, action, httpclient, log, aMarker, urls);
-                } catch (MalformedURLException e) {
-                    log.error("Error in downloading merger response file with exception: {}", e.getMessage());
-                }
-            }
+            doMultipartDownloadCheck(MultipartUploadActivatorValue, processedFilePath);
             File file = new File(processedFilePath);
             String fileExtension = FilenameUtils.getExtension(file.getName());
             float pageWidth = 0f;
