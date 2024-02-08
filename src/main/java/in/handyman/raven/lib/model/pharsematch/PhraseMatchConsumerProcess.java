@@ -157,8 +157,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 PharseMatchResponse modelResponse = objectMapper.readValue(responseBody, PharseMatchResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
-                        o.getData().forEach(pharseMatchDataItem -> {
-                            extractedOutputDataRequest(entity, parentObj, pharseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        o.getData().forEach(phraseMatchDataItem -> {
+                            extractedOutputDataRequest(entity, parentObj, phraseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
                         });
                     });
                 } else {
@@ -198,24 +198,21 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
     private static void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
-        String originId = entity.getOriginId();
-        String groupId = entity.getGroupId();
         Long tenantId = entity.getTenantId();
 
-        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
         try {
-            List<PharseMatchDataItem> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
+            List<PharseMatchDataItem> phraseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
 
             });
 
-            for (PharseMatchDataItem item : pharseMatchOutputData) {
+            for (PharseMatchDataItem item : phraseMatchOutputData) {
                 parentObj.add(
                         PhraseMatchOutputTable
                                 .builder()
-                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                                .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
-                                .paperNo(paperNo)
+                                .originId(item.getOriginId())
+                                .groupId(item.getGroupId())
+                                .paperNo(item.getPaperNo())
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .tenantId(tenantId)
                                 .stage(PROCESS_NAME)
@@ -251,9 +248,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 parentObj.add(
                         PhraseMatchOutputTable
                                 .builder()
-                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                                .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
-                                .paperNo(paperNo)
+                                .originId(Optional.ofNullable(item.getOriginId()).map(String::valueOf).orElse(null))
+                                .groupId(Optional.ofNullable(item.getGroupId()).map(String::valueOf).orElse(null))
+                                .paperNo(item.getPaperNo())
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .tenantId(tenantId)
                                 .stage(PROCESS_NAME)

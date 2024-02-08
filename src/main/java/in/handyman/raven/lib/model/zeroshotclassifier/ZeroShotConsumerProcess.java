@@ -165,7 +165,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
 
-        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
+        final Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
 
 
@@ -211,20 +211,20 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         Long rootPipelineId = entity.getRootPipelineId();
 
         try {
-            ZeroShotClassifierDataItem zeroshotclassifierOutputData = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItem.class);
-            zeroshotclassifierOutputData.getEntityConfidenceScore().forEach(score -> {
+            ZeroShotClassifierDataItem zeroShotClassifierOutputData = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItem.class);
+            zeroShotClassifierOutputData.getEntityConfidenceScore().forEach(score -> {
                 String truthEntity = score.getTruthEntity();
                 String key = score.getKey();
                 double scoreValue = score.getScore();
 
                 parentObj.add(ZeroShotClassifierOutputTable
                         .builder()
-                        .originId(zeroshotclassifierOutputData.getOriginId())
-                        .groupId(zeroshotclassifierOutputData.getGroupId())
+                        .originId(zeroShotClassifierOutputData.getOriginId())
+                        .groupId(zeroShotClassifierOutputData.getGroupId())
                         .truthEntity(Optional.ofNullable(truthEntity).map(String::valueOf).orElse(null))
                         .entity(Optional.ofNullable(key).map(String::valueOf).orElse(null))
                         .confidenceScore(Optional.of(scoreValue).map(String::valueOf).orElse(null))
-                        .paperNo(zeroshotclassifierOutputData.getPaperNo())
+                        .paperNo(zeroShotClassifierOutputData.getPaperNo())
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .message("Completed API call zero shot classifier")
@@ -239,10 +239,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     }
 
     private static void extractedCoproOutputResponse(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
-        String originId = entity.getOriginId();
-        String groupId = entity.getGroupId();
 
-        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
 
         try {
@@ -254,12 +251,12 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
                 parentObj.add(ZeroShotClassifierOutputTable
                         .builder()
-                        .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
-                        .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                        .originId(Optional.ofNullable(zeroShotClassifierDataItemCopro.getOriginId()).map(String::valueOf).orElse(null))
+                        .groupId(Optional.ofNullable(zeroShotClassifierDataItemCopro.getGroupId()).map(String::valueOf).orElse(null))
                         .truthEntity(Optional.ofNullable(truthEntity).map(String::valueOf).orElse(null))
                         .entity(Optional.ofNullable(key).map(String::valueOf).orElse(null))
                         .confidenceScore(Optional.of(scoreValue).map(String::valueOf).orElse(null))
-                        .paperNo(paperNo)
+                        .paperNo(zeroShotClassifierDataItemCopro.getPaperNo())
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .message("Completed API call zero shot classifier")
