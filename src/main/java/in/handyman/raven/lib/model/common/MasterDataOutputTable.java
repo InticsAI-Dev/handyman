@@ -30,7 +30,7 @@ import java.util.stream.Stream;
         private Long rootPipelineId;
         private String modelName;
         private String modelVersion;
-        private String tenantId;
+        private Long tenantId;
 
 
         @Override
