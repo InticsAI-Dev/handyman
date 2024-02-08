@@ -1,18 +1,13 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultipartUpload;
-import java.lang.Exception;
-import java.lang.Object;
-import java.lang.Override;
-import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import okhttp3.MediaType;
@@ -39,7 +34,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -57,6 +54,11 @@ public class MultipartUploadAction implements IActionExecution {
     private final MultipartUpload multipartUpload;
 
     private final Marker aMarker;
+    final OkHttpClient httpclient = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(10, TimeUnit.MINUTES)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .build();
 
     public MultipartUploadAction(final ActionExecutionAudit action, final Logger log, final Object multipartUpload) {
         this.multipartUpload = (MultipartUpload) multipartUpload;
@@ -68,11 +70,12 @@ public class MultipartUploadAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
 
+        List<MultipartUploadInputTable> multipartUploadInputTables = new ArrayList<>();
+
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multipartUpload.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Multipart Upload Action for {} has been started", multipartUpload.getName());
-            final String insertQuery = "";
             String endPoint = multipartUpload.getEndPoint();
             final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
@@ -83,120 +86,94 @@ public class MultipartUploadAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<MultipartUploadAction.MultipartUploadInputTable, MultipartUploadAction.MultipartUploadOutputTable> coproProcessor =
-                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                            MultipartUploadAction.MultipartUploadOutputTable.class,
-                            MultipartUploadAction.MultipartUploadInputTable.class,
-                            jdbi, log,
-                            new MultipartUploadAction.MultipartUploadInputTable(), urls, action);
-            coproProcessor.startProducer(multipartUpload.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
-            Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new MultipartUploadAction.AlchemyInfoConsumerProcess(log, aMarker, action));
-            log.info(aMarker, "Multipart Upload has been completed {}  ", multipartUpload.getName());
-        } catch (Exception t) {
-            log.error(aMarker, "Error at multipart upload execute method {}", ExceptionUtil.toString(t));
-            throw new HandymanException("Error at multipart upload execute method ", t, action);
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multipartUpload.getQuerySet());
+            formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(MultipartUploadInputTable.class).forEach(multipartUploadInputTables::add)));
+
+            if (!urls.isEmpty()) {
+                int endpointSize = urls.size();
+                log.info("Endpoints are not empty for multipart upload with nodes count {}", endpointSize);
+
+                final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
+                final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
+                log.info("Total consumers {}", countDownLatch.getCount());
+
+                urls.forEach(url -> executorService.submit(() -> multipartUploadInputTables.forEach(multipartUploadInputTable -> {
+                    try {
+                        uploadFile(url, multipartUploadInputTable);
+                    } catch (Exception e) {
+                        String filepath = multipartUploadInputTable.getFilepath();
+                        log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", filepath, e.getMessage());
+                        HandymanException handymanException = new HandymanException(e);
+                        HandymanException.insertException("Exception occurred in multipart upload for file - " + filepath, handymanException, this.action);
+                    } finally {
+                        log.info("Consumer {} completed the process", countDownLatch.getCount());
+                        countDownLatch.countDown();
+                    }
+                })));
+                try {
+                    countDownLatch.await();
+                } catch (InterruptedException e) {
+                    log.error("Consumer Interrupted with exception", e);
+                    throw new HandymanException("Error in Multipart upload execute method for mapping query set", e, action);
+                }
+            } else {
+                log.error(aMarker, "Endpoints for multipart upload is empty");
+            }
+
+        } catch (Exception e) {
+            throw new HandymanException("Error in Multipart upload", e, action);
         }
     }
 
-    public static class AlchemyInfoConsumerProcess implements CoproProcessor.ConsumerProcess<MultipartUploadAction.MultipartUploadInputTable, MultipartUploadAction.MultipartUploadOutputTable> {
-        private final Logger log;
-        private final Marker aMarker;
+    public void uploadFile(URL endpoint, MultipartUploadInputTable entity) throws Exception {
 
-        public final ActionExecutionAudit action;
+        String inputFilePath = entity.getFilepath();
+        String outputDir;
+        if (entity.getOutputDir() != null) {
+            outputDir = entity.getOutputDir();
+        } else {
+            Path path = Paths.get(inputFilePath);
+            Path directory = path.getParent();
+            outputDir = directory.toString();
+        }
 
-        final OkHttpClient httpclient = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.MINUTES)
-                .writeTimeout(10, TimeUnit.MINUTES)
-                .readTimeout(10, TimeUnit.MINUTES)
+        File file = new File(inputFilePath);
+        MediaType MEDIA_TYPE = MediaType.parse("application/*");
+
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.getName(), RequestBody.create(file, MEDIA_TYPE))
                 .build();
 
-        public AlchemyInfoConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
-            this.log = log;
-            this.aMarker = aMarker;
-            this.action = action;
+        URL url = new URL(endpoint.toString() + "/?outputDir=" + outputDir);
+        Request request = new Request.Builder().url(url)
+                .addHeader("accept", "*/*")
+                .post(requestBody)
+                .build();
+
+        if (log.isInfoEnabled()) {
+            log.info(aMarker, "Request has been build with the parameters {} ,inputFilePath : {}", endpoint, inputFilePath);
         }
 
-        @Override
-        public List<MultipartUploadAction.MultipartUploadOutputTable> process(URL endpoint, MultipartUploadAction.MultipartUploadInputTable entity) throws Exception {
-
-            List<MultipartUploadAction.MultipartUploadOutputTable> parentObj = new ArrayList<>();
-            String inputFilePath = entity.getFilepath();
-            String outputDir;
-            if (entity.getOutputDir() != null) {
-                outputDir = entity.getOutputDir();
-            } else {
-                Path path = Paths.get(inputFilePath);
-                Path directory = path.getParent();
-                outputDir = directory.toString();
+        try (Response response = httpclient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                log.info("Response Details: {}", response);
             }
-
-            File file = new File(inputFilePath);
-            MediaType MEDIA_TYPE = MediaType.parse("application/*");
-
-            RequestBody requestBody = new MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("file", file.getName(), RequestBody.create(file, MEDIA_TYPE))
-                    .build();
-
-            URL url = new URL(endpoint.toString() + "/?outputDir=" + outputDir);
-            Request request = new Request.Builder().url(url)
-                    .addHeader("accept", "*/*")
-                    .post(requestBody)
-                    .build();
-
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "Request has been build with the parameters {} ,inputFilePath : {}", endpoint, inputFilePath);
-            }
-
-            try (Response response = httpclient.newCall(request).execute()) {
-                if (response.isSuccessful()) {
-                    log.info("Response Details: {}", response);
-                }
-            } catch (Exception e) {
-                log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", inputFilePath, e.getMessage());
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Exception occurred in multipart upload for file - " + inputFilePath, handymanException, this.action);
-            }
-            return parentObj;
+        } catch (Exception e) {
+            log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", inputFilePath, e.getMessage());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Exception occurred in multipart upload for file - " + inputFilePath, handymanException, this.action);
         }
     }
 
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class MultipartUploadQueryResult {
-
-        private String filepath;
-        private String outputDir;
-
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MultipartUploadInputTable {
-
         private String filepath;
         private String outputDir;
-
     }
 
-
-    @AllArgsConstructor
-    @Data
-    @Builder
-    public static class MultipartUploadOutputTable implements CoproProcessor.Entity {
-
-        @Override
-        public List<Object> getRowData() {
-            return null;
-        }
-    }
 
     @Override
     public boolean executeIf() throws Exception {
