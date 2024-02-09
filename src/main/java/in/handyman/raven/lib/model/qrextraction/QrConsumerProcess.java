@@ -261,7 +261,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .fileId(fileId)
                         .decodeType(qrReader.getDecodeType())
                         .qrFormat(qrReader.getType())
-                        .rootPipelineId(rootPipelineId)
+                        .rootPipelineId(qrReader.getRootPipelineId())
                         .qrFormatId(atomicInteger.incrementAndGet())
                         .extractedValue(qrReader.getValue())
                         .confidenceScore(qrReader.getConfidenceScore())
