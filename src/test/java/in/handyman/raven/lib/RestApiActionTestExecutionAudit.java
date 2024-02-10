@@ -93,7 +93,7 @@ class RestApiActionTestExecutionAudit {
     public void
     performanceOptUi() {
         LContext request = LContext.builder()
-                .pipelineName("root.processor#8")
+                .pipelineName("root.processor#6")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
                 .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
                         Map.entry("batch_id", "TMP-AGD-001"),
@@ -105,7 +105,7 @@ class RestApiActionTestExecutionAudit {
                         Map.entry("document_id", "TMP-AGD-001"),
                         Map.entry("last_updated_user_id", "421"),
                         Map.entry("gen_group_id.group_id", "421"),
-                        Map.entry("group_id", "421"),
+//                        Map.entry("group_id", "421"),
                         Map.entry("dir_path", "/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/input/SYNT_166838894.pdf"),
                         Map.entry("target_directory_path", "/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-ui/testing/output")))
                 .build();

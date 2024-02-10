@@ -151,6 +151,7 @@ action:
     |multipartDownload
     |tritonModelLoadUnload
     |tableExtractionHeaders
+    |tableExtractionOutbound
     );
 
 
@@ -1095,6 +1096,18 @@ tableExtractionHeaders:
 	'using' '{'
 		querySet=STRING
 	'}' ('on-condition' condition=expression)* ;
+
+
+tableExtractionOutbound:
+    'TableExtractionOutbound' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'input-from' inputAttribution=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
 
 //rules
 
