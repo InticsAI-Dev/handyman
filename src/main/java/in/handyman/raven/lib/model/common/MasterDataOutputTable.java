@@ -30,12 +30,13 @@ import java.util.stream.Stream;
         private Long rootPipelineId;
         private String modelName;
         private String modelVersion;
+        private Long tenantId;
 
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.originId, this.paperNo, this.eocIdentifier, this.createdOn, this.actualValue, this.extractedValue,
-                    this.intelliMatch, this.status, this.stage, this.message, this.rootPipelineId,  this.modelName, this.modelVersion
+                    this.intelliMatch, this.status, this.stage, this.message, this.rootPipelineId,  this.modelName, this.modelVersion, this.tenantId
             ).collect(Collectors.toList());
         }
     }

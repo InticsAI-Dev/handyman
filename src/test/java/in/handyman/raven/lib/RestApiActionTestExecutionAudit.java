@@ -180,4 +180,57 @@ class RestApiActionTestExecutionAudit {
         assert exitCode == 0;
 
     }
+
+
+    @Test
+    public void practiceTrying()
+    {
+        LContext request = LContext.builder()
+                .pipelineName("master.data.caller")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(
+                        Map.entry("tenant_id","1"),
+                        Map.entry("copro.intelli-match.url","http://192.168.10.240:9200/v2/models/cos-service/versions/1/infer"),
+                        Map.entry("consumer.masterdata.API.count","1"),
+                        Map.entry("read.batch.size","5"),
+                        Map.entry("triton.request.activator","false"),
+                        Map.entry("actionId","36555"),
+                        Map.entry("group_id","16"),
+                        Map.entry("gen_id.root_pipeline_id","25384"),
+                        Map.entry("gen_group_id.group_id", "16"),
+                        Map.entry("init_process_id.process_id", "12345"),
+                        Map.entry("write.batch.size","5")))
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
+
+    @Test
+    public void performanceOptUi1()
+    {
+        LContext request = LContext.builder()
+                .pipelineName("root.processor#8")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
+                        Map.entry("batch_id","TMP-AGD-001"),
+                        Map.entry("tenant_id","1"),
+                        Map.entry("origin_type","TRANSACTION"),
+                        Map.entry("workspace_id","-1"),
+                        Map.entry("transaction_id","TND-001"),
+                        Map.entry("document_type","HEALTH_CARE"),
+                        Map.entry("document_id","TMP-AGD-001"),
+                        Map.entry("consumer.masterdata.API.count","1"),
+                        Map.entry("read.batch.size","5"),
+                        Map.entry("triton.request.activator","true"),
+                        Map.entry("actionId","1"),
+                        Map.entry("write.batch.size","5"),
+//                        Map.entry("gen_group_id.group_id", "1245"),
+                        Map.entry("last_updated_user_id","-1"),
+                        Map.entry("copro.intelli-match.url","http://192.168.10.240:9200/v2/models/cos-service/versions/1/infer"),
+                        Map.entry("dir_path","/home/iswerya.justin@zucisystems.com/workspace/Dev/Deliverable_May/PAGE-1/1-Page/Elixir/Synthetic_Data/SYNT_166884608.pdf"),
+                        Map.entry("target_directory_path","/home/iswerya.justin@zucisystems.com/workspace/Dev/main_/UT/output")))
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
 }

@@ -58,14 +58,14 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Integer paperNo = result.getPaperNo();
         String originId = result.getOriginId();
         String process = "MASTER_DATA";
-         Long actionId = action.getActionId();
-        Long rootpipelineId = result.getRootPipelineId();
+        Long actionId = action.getActionId();
+        Long rootpipelineId = action.getRootPipelineId();
         String inputSentence = result.getActualValue();
         List<String> sentences = Collections.singletonList(result.getExtractedValue());
         ObjectMapper objectMapper = new ObjectMapper();
 
 //payload
-        ComparisonPayload comparisonPayload = new ComparisonPayload();
+            ComparisonPayload comparisonPayload = new ComparisonPayload();
         comparisonPayload.setRootPipelineId(rootpipelineId);
         comparisonPayload.setActionId(actionId);
         comparisonPayload.setProcessId(action.getProcessId());
@@ -143,7 +143,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .status("FAILED")
                                 .stage("MASTER-DATA-COMPARISON")
                                 .message("Master data comparison macro failed")
-                                .rootPipelineId(result.getRootPipelineId())
+                                .rootPipelineId(action.getRootPipelineId())
                                 .build()
                 );
 
@@ -183,7 +183,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .status("FAILED")
                                 .stage("MASTER-DATA-COMPARISON")
                                 .message("Master data comparison macro failed")
-                                .rootPipelineId(result.getRootPipelineId())
+                                .rootPipelineId(action.getRootPipelineId())
                                 .build()
                 );
                 log.error(aMarker, "The Exception occurred in master data comparison by {} ", response);
@@ -202,7 +202,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .status("FAILED")
                             .stage("MASTER-DATA-COMPARISON")
                             .message("Master data comparison macro failed")
-                            .rootPipelineId(result.getRootPipelineId())
+                            .rootPipelineId(action.getRootPipelineId())
                             .build()
             );
 
@@ -218,6 +218,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Integer paperNo = result.getPaperNo();
         String extractedValue = result.getExtractedValue();
         String actualValue = result.getActualValue();
+        Long tenantId = result.getTenantId();
 
         try {
             List<ComparisonDataItem> comparisonDataItem1 = mapper.readValue(comparisonDataItem, new TypeReference<>() {
@@ -237,6 +238,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .message("Master data comparison macro completed")
                         .rootPipelineId(item.getRootPipelineId())
                         .modelName(modelName)
+                        .tenantId(tenantId)
                         .modelVersion(modelVersion)
                         .build());
             }
@@ -254,6 +256,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .status("FAILED")
                             .stage("MASTER-DATA-COMPARISON")
                             .message("Master data comparison macro failed")
+                            .tenantId(tenantId)
                             .rootPipelineId(result.getRootPipelineId())
                             .build()
             );
@@ -265,6 +268,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Integer paperNo = result.getPaperNo();
         String extractedValue = result.getExtractedValue();
         String actualValue = result.getActualValue();
+        Long tenantId = result.getTenantId();
 
         try {
             List<ComparisonDataItemCopro> comparisonDataItemCopros = mapper.readValue(
@@ -286,6 +290,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .message("Master data comparison macro completed")
                         .rootPipelineId(result.getRootPipelineId())
                         .modelName(modelName)
+                        .tenantId(tenantId)
                         .modelVersion(modelVersion)
                         .build());
             }
@@ -303,6 +308,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .status("FAILED")
                             .stage("MASTER-DATA-COMPARISON")
                             .message("Master data comparison macro failed")
+                            .tenantId(tenantId)
                             .rootPipelineId(result.getRootPipelineId())
                             .build()
             );

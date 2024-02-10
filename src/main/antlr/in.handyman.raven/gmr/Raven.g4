@@ -149,6 +149,7 @@ action:
     |qrExtraction
     |multipartUpload
     |multipartDownload
+    |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
     );
@@ -850,9 +851,12 @@ coproStop:
 
  masterdataComparison:
      'masterdataComparison' 'as' name=STRING
-     'on-resource-conn' resourceConn=STRING
      'match-result' matchResult=STRING
-     'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+     'on-resource-conn' resourceConn=STRING
+     'process-id' processId=STRING
+     'copro-url' endPoint=STRING
+     'using' '{' inputSet=STRING '}'
+     ('on-condition' condition=expression)*;
 
 zipBatch:
     'zipBatch' 'as' name=STRING
@@ -1076,6 +1080,13 @@ multipartDownload:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+systemkeyTable:
+    'systemkeyTable' 'as' name=STRING
+    'resoruce-conn' resourceConn=STRING
+    'using' '{'
+        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+    
 tritonModelLoadUnload:
     'tritonModelLoadUnload' 'as' name=STRING
     'resource-conn' resourceConn=STRING
