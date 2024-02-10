@@ -16,29 +16,28 @@ class NerAdapterActionTest {
         NerAdapter nerAdapter= NerAdapter.builder()
                 .name("ner")
                 .condition(true)
-                .resourceConn("intics_agadia_db_conn")
-                .resultSet("\n" +
-                        "            SELECT dp.sor_item_name as sor_key, dp.sor_question as question, dp.answer as input_value, '12' as weight,\n" +
-                        "                        si.allowed_adapter , si.restricted_adapter ,'124567' as process_id,\n" +
-                        "                        si.word_limit , si.word_threshold ,\n" +
-                        "                        si.char_limit , si.char_threshold ,\n" +
-                        "                        si.validator_threshold , si.allowed_characters ,\n" +
-                        "                        si.comparable_characters, si.restricted_adapter_flag,\n" +
-                        "                        dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-                        "                        dp.created_user_id, dp.tenant_id,dp.b_box\n" +
-                        "                FROM sor_transaction.vqa_transaction dp\n" +
-                        "                JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-                        "                WHERE dp.origin_id IN ('INT-1') AND si.allowed_adapter ='ner'\n")
-                .resultTable("sor_transaction.adapter_result_123456")
+                .resourceConn("intics_zio_db_conn")
+                .resultSet("SELECT 'prescriber_name' as sor_key, 'what is prescriber name' as question, 'anandh' as input_value,150 as weight,'50' as vqa_score,\n" +
+                        "                    'ner' as allowed_adapter , 'numeric_reg' as restricted_adapter ,'123456' as process_id,\n" +
+                        "                    4 as word_limit , 15 as word_threshold ,\n" +
+                        "                    60 as char_limit , 15 as char_threshold ,\n" +
+                        "                    70 as validator_threshold , '-' as allowed_characters ,\n" +
+                        "                    1 as restricted_adapter_flag,\n" +
+                        "                    'INT-1' as origin_id ,1 as paper_no ,1 as group_id,\n" +
+                        "                    1 as created_user_id, 1 as tenant_id,1 as question_id,1 as synonym_id")
+                .resultTable("sor_transaction.adapter_result_12345")
 
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.text-validation.url","http://localhost:10190/copro/text-validation/patient");
+        actionExecutionAudit.getContext().put("copro.text-validation.url","http://192.168.10.239:10190/copro/text-validation/patient");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.setRootPipelineId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
-                Map.entry("consumer.API.count","1"),
+                Map.entry("ner.consumer.API.count","1"),
+                Map.entry("validaiton.char-limit-count","10"),
+                Map.entry("validation.multiverse-mode","true"),
+                Map.entry("validation.restricted-answers","true"),
                 Map.entry("write.batch.size","5")));
 
         NerAdapterAction action=new NerAdapterAction(actionExecutionAudit,log,nerAdapter);

@@ -38,7 +38,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             .build();
 
 
-
     public UrgencyTriageConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
         this.aMarker = aMarker;
@@ -124,7 +123,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(urgencyTriageModelDataItem -> {
 
-                            extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, originId, templateId);
+                            extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
 
                             log.info(aMarker, "Execute for urgency triage {}", response);
                         });
@@ -176,7 +175,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         Long modelId = entity.getModelId();
         try {
             UrgencyTriageModelDataItem urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItem.class);
-            JsonNode qrBoundingBox=objectMapper.valueToTree(urgencyTriageModelDataItem1.getBboxes());
+            JsonNode qrBoundingBox = objectMapper.valueToTree(urgencyTriageModelDataItem1.getBboxes());
             Float confScore = urgencyTriageModelDataItem1.getConfidenceScore();
             String paperType = urgencyTriageModelDataItem1.getPaperType();
             parentObj.add(UrgencyTriageOutputTable.builder()
@@ -218,7 +217,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             Long modelId = entity.getModelId();
             if (response.isSuccessful()) {
                 log.info("Response Details: {}", response);
-                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj,"", "");
+                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj, "", "");
 
             } else {
                 parentObj.add(UrgencyTriageOutputTable.builder()
@@ -270,6 +269,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             HandymanException.insertException("Exception occurred in urgency triage model action for group id - " + groupId + " and originId - " + originId, handymanException, this.action);
         }
     }
+
     private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
@@ -282,7 +282,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         Long modelId = entity.getModelId();
         try {
             UrgencyTriageModelDataItemCopro urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItemCopro.class);
-            JsonNode qrBoundingBox=objectMapper.valueToTree(urgencyTriageModelDataItem1.getBboxes());
+            JsonNode qrBoundingBox = objectMapper.valueToTree(urgencyTriageModelDataItem1.getBboxes());
             Float confScore = urgencyTriageModelDataItem1.getConfidenceScore();
             String paperType = urgencyTriageModelDataItem1.getPaperType();
             parentObj.add(UrgencyTriageOutputTable.builder()

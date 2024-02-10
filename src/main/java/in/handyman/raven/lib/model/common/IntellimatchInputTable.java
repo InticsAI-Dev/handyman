@@ -21,7 +21,6 @@ import java.util.List;
         private Long rootPipelineId;
         private String actualValue;
         private String extractedValue;
-        private Double similarity;
         private Integer confidenceScore;
         @Override
         public List<Object> getRowData() {

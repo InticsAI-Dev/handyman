@@ -1,15 +1,12 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.TableExtraction;
-import in.handyman.raven.lib.model.tableextraction.TableOutputResponse;
+import in.handyman.raven.lib.model.TableExtractionHeaders;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -43,6 +40,34 @@ class TableExtractionActionTest {
     }
 
     @Test
+    void tableExtractionVersion1Test() throws Exception {
+        TableExtractionHeaders tableExtraction = TableExtractionHeaders.builder()
+                .name("Text extraction macro test after copro optimization")
+                .resourceConn("intics_zio_db_conn")
+                .endpoint("http://192.168.10.245:18889/copro/table-attribution-with-header")
+                .condition(true)
+                .processId("999")
+                .resultTable("table_extraction.table_extraction_result")
+                .outputDir("/data/output/")
+                .querySet("select * from macro.table_extraction_line_items_1234")
+                .build();
+
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
+                Map.entry("read.batch.size", "1"),
+                Map.entry("mulipart.file.utpload.activator", "false"),
+                Map.entry("table.extraction.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        TableExtractionHeadersAction tableExtractionAction = new TableExtractionHeadersAction(actionExecutionAudit, log, tableExtraction);
+        tableExtractionAction.execute();
+    }
+
+    @Test
     public void fileNameTest() {
         String input = "filename_2_2__121212_0_1.jpg";
 
@@ -64,15 +89,15 @@ class TableExtractionActionTest {
         }
     }
 
-    @Test
-    void tableCsvTest() throws JsonProcessingException {
-        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        TableExtraction tableExtraction = new TableExtraction();
-
-        TableExtractionAction tableExtractionAction = new TableExtractionAction(actionExecutionAudit, log, tableExtraction);
-
-        String tableExtractionAction2 = tableExtractionAction.tableDataJson("", actionExecutionAudit);
-        System.out.println(tableExtractionAction2);
-    }
+//    @Test
+//    void tableCsvTest() throws JsonProcessingException {
+//        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+//        TableExtraction tableExtraction = new TableExtraction();
+//
+//        TableExtractionAction tableExtractionAction = new TableExtractionAction(actionExecutionAudit, log, tableExtraction);
+//
+//        String tableExtractionAction2 = tableExtractionAction.tableDataJson("", actionExecutionAudit);
+//        System.out.println(tableExtractionAction2);
+//    }
 
 }

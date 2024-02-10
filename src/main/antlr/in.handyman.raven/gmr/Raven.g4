@@ -150,6 +150,8 @@ action:
     |multipartUpload
     |multipartDownload
     |systemkeyTable
+    |tritonModelLoadUnload
+    |tableExtractionHeaders
     );
 
 
@@ -952,6 +954,7 @@ productResponse:
 
 tableExtraction:
 	'tableExtraction' 'as' name=STRING
+	'extraction-url' endpoint=STRING
 	'outputDir' outputDir=STRING
 	'result-table' resultTable=STRING
 	'processId' processId=STRING
@@ -1083,6 +1086,27 @@ systemkeyTable:
     'using' '{'
         querySet=STRING
     '}' ('on-condition' condition=expression)* ;
+    
+tritonModelLoadUnload:
+    'tritonModelLoadUnload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'model-url' endPoint=STRING
+    'config-variable' configVariable=STRING
+    'load-type' loadType=STRING
+    'using' '{'  '}' ('on-condition' condition=expression)* ;
+
+
+tableExtractionHeaders:
+	'tableExtractionVersion2' 'as' name=STRING
+	'extraction-url' endpoint=STRING
+	'outputDir' outputDir=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
 //rules
 
 resource : STRING;

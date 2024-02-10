@@ -19,22 +19,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "TableExtraction"
+    actionName = "TritonModelLoadUnload"
 )
-public class TableExtraction implements IActionContext {
+public class TritonModelLoadUnload implements IActionContext {
   private String name;
-
-  private String endpoint;
-
-  private String outputDir;
-
-  private String resultTable;
-
-  private String processId;
 
   private String resourceConn;
 
-  private String querySet;
+  private String endPoint;
+
+  private String configVariable;
+
+  private String loadType;
 
   private Boolean condition = true;
 }

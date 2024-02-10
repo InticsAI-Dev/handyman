@@ -1,15 +1,14 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultipartDownload;
+import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import okhttp3.MediaType;
@@ -39,7 +38,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -59,6 +60,12 @@ public class MultipartDownloadAction implements IActionExecution {
 
     private final Marker aMarker;
 
+    final OkHttpClient httpclient = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(10, TimeUnit.MINUTES)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .build();
+
     public MultipartDownloadAction(final ActionExecutionAudit action, final Logger log,
                                    final Object multipartDownload) {
         this.multipartDownload = (MultipartDownload) multipartDownload;
@@ -73,7 +80,6 @@ public class MultipartDownloadAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multipartDownload.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Download OctetStream File Action for {} has been started", multipartDownload.getName());
-            final String insertQuery = "";
             String endPoint = multipartDownload.getEndPoint();
             final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
@@ -84,133 +90,108 @@ public class MultipartDownloadAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<MultipartDownloadAction.DownloadOctetStreamFileInputTable, MultipartDownloadAction.MultipartDownloadOutputTable> coproProcessor =
-                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                            MultipartDownloadAction.MultipartDownloadOutputTable.class,
-                            MultipartDownloadAction.DownloadOctetStreamFileInputTable.class,
-                            jdbi, log,
-                            new MultipartDownloadAction.DownloadOctetStreamFileInputTable(), urls, action);
-            coproProcessor.startProducer(multipartDownload.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
-            Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new MultipartDownloadAction.MultipartDownloadConsumerProcess(log, aMarker, action));
-            log.info(aMarker, "Download OctetStream File has been completed {}  ", multipartDownload.getName());
+            List<DownloadOctetStreamFileInputTable> downloadOctetStreamFileInputTables = new ArrayList<>();
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multipartDownload.getQuerySet());
+            formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(DownloadOctetStreamFileInputTable.class).forEach(downloadOctetStreamFileInputTables::add)));
+
+            if (!urls.isEmpty()) {
+                int endpointSize = urls.size();
+
+                log.info("Endpoints are not empty for multipart download with nodes count {}", endpointSize);
+                final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
+                final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
+                log.info("Total consumers {}", countDownLatch.getCount());
+
+                urls.forEach(url -> executorService.submit(() -> downloadOctetStreamFileInputTables.forEach(multipartUploadInputTable -> {
+                    try {
+                        downloadFile(url, multipartUploadInputTable);
+                    } catch (Exception e) {
+                        String filepath = multipartUploadInputTable.getFilepath();
+                        log.error(aMarker, "The Exception occurred in multipart file download for file {} with exception {}", filepath, e.getMessage());
+                        HandymanException handymanException = new HandymanException(e);
+                        HandymanException.insertException("Exception occurred in multipart download for file - " + filepath, handymanException, this.action);
+                    } finally {
+                        log.info("Consumer {} completed the process", countDownLatch.getCount());
+                        countDownLatch.countDown();
+                    }
+                })));
+                try {
+                    countDownLatch.await();
+                } catch (InterruptedException e) {
+                    log.error("Consumer Interrupted with exception", e);
+                }
+            } else {
+                log.error(aMarker, "Endpoints for multipart download is empty");
+            }
         } catch (Exception t) {
             log.error(aMarker, "Error at Download OctetStream File execute method {}", ExceptionUtil.toString(t));
             throw new HandymanException("Error at Download OctetStream File execute method ", t, action);
         }
     }
 
-    public static class MultipartDownloadConsumerProcess implements CoproProcessor.ConsumerProcess<MultipartDownloadAction.DownloadOctetStreamFileInputTable, MultipartDownloadAction.MultipartDownloadOutputTable> {
-        private final Logger log;
-        private final Marker aMarker;
 
-        public final ActionExecutionAudit action;
+    public void downloadFile(URL endpoint, DownloadOctetStreamFileInputTable entity) throws Exception {
 
-        final OkHttpClient httpclient = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.MINUTES)
-                .writeTimeout(10, TimeUnit.MINUTES)
-                .readTimeout(10, TimeUnit.MINUTES)
+        String outputFilePath = entity.getFilepath();
+
+        MediaType MEDIA_TYPE = MediaType.parse("application/*");
+
+        URL url = new URL(endpoint.toString() + "?filepath=" + outputFilePath);
+        Request request = new Request.Builder().url(url)
+                .addHeader("accept", "*/*")
+                .post(RequestBody.create("{}", MEDIA_TYPE))
                 .build();
 
-        public MultipartDownloadConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
-            this.log = log;
-            this.aMarker = aMarker;
-            this.action = action;
+        if (log.isInfoEnabled()) {
+            log.info("Sending request to URL: {}", url);
+            log.info("Request headers: {}", request.headers());
+            log.info(aMarker, "Request has been build with the parameters {} ,outputFilePath : {}", endpoint, outputFilePath);
         }
 
-        @Override
-        public List<MultipartDownloadAction.MultipartDownloadOutputTable> process(URL endpoint, MultipartDownloadAction.DownloadOctetStreamFileInputTable entity) throws Exception {
+        try (Response response = httpclient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
 
-            List<MultipartDownloadAction.MultipartDownloadOutputTable> parentObj = new ArrayList<>();
-            String outputFilePath = entity.getFilepath();
+                log.info("Response is successful and Response Details: {}", response);
+                log.info("Response is successful and header Details: {}", response.headers());
 
-            MediaType MEDIA_TYPE = MediaType.parse("application/*");
-
-            URL url = new URL(endpoint.toString() + "?filepath=" + outputFilePath);
-            Request request = new Request.Builder().url(url)
-                    .addHeader("accept", "*/*")
-                    .post(RequestBody.create("{}", MEDIA_TYPE))
-                    .build();
-
-            if (log.isInfoEnabled()) {
-                log.info("Sending request to URL: {}", url);
-                log.info("Request headers: {}", request.headers());
-                log.info(aMarker, "Request has been build with the parameters {} ,outputFilePath : {}", endpoint, outputFilePath);
-            }
-
-            try (Response response = httpclient.newCall(request).execute()) {
-                if (response.isSuccessful()) {
-
-                    log.info("Response is successful and Response Details: {}", response);
-                    log.info("Response is successful and header Details: {}", response.headers());
-
-
-                    try (ResponseBody responseBody = response.body()) {
-                        if (responseBody != null) {
-                            log.info("Response body is not null and content length is {}, and content type is {}", responseBody.contentLength(), responseBody.contentType());
-                            try (InputStream inputStream = responseBody.byteStream()) {
-                                Path path = Paths.get(outputFilePath);
-                                File file = new File(outputFilePath);
-                                if (!file.exists()) {
-                                    Files.createDirectories(path.getParent());
-                                    Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
-                                }
+                try (ResponseBody responseBody = response.body()) {
+                    if (responseBody != null) {
+                        log.info("Response body is not null and content length is {}, and content type is {}", responseBody.contentLength(), responseBody.contentType());
+                        try (InputStream inputStream = responseBody.byteStream()) {
+                            Path path = Paths.get(outputFilePath);
+                            File file = new File(outputFilePath);
+                            if (!file.exists()) {
+                                Files.createDirectories(path.getParent());
+                                Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
                             }
                         }
-                        else {
-                            log.error("Error writing file response body is null");
-                            HandymanException handymanException = new HandymanException("Error writing file response body is null");
-                            HandymanException.insertException("Exception occurred in Writing multipart File for file - " + outputFilePath, handymanException, this.action);
-                        }
-                    } catch (Exception e) {
-                        log.error("Error writing file: {}", e.getMessage());
-                        HandymanException handymanException = new HandymanException(e);
+                    } else {
+                        log.error("Error writing file response body is null");
+                        HandymanException handymanException = new HandymanException("Error writing file response body is null");
                         HandymanException.insertException("Exception occurred in Writing multipart File for file - " + outputFilePath, handymanException, this.action);
                     }
+                } catch (Exception e) {
+                    log.error("Error writing file: {}", e.getMessage());
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Exception occurred in Writing multipart File for file - " + outputFilePath, handymanException, this.action);
                 }
-            } catch (Exception e) {
-                log.error(aMarker, "The Exception occurred in Download multipart File for file {} with exception {}", outputFilePath, e.getMessage());
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Exception occurred in Download multipart File for file - " + outputFilePath, handymanException, this.action);
             }
-            return parentObj;
+        } catch (Exception e) {
+            log.error(aMarker, "The Exception occurred in Download multipart File for file {} with exception {}", outputFilePath, e.getMessage());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Exception occurred in Download multipart File for file - " + outputFilePath, handymanException, this.action);
         }
     }
 
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class DownloadOctetStreamFileQueryResult {
-
-        private String filepath;
-
-    }
 
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DownloadOctetStreamFileInputTable {
 
         private String filepath;
 
     }
-
-
-    @AllArgsConstructor
-    @Data
-    @Builder
-    public static class MultipartDownloadOutputTable implements CoproProcessor.Entity {
-
-        @Override
-        public List<Object> getRowData() {
-            return null;
-        }
-    }
-
 
     @Override
     public boolean executeIf() throws Exception {
