@@ -19,20 +19,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "MasterdataComparison"
+    actionName = "SystemkeyTable"
 )
-public class MasterdataComparison implements IActionContext {
+public class SystemkeyTable implements IActionContext {
   private String name;
-
-  private String matchResult;
 
   private String resourceConn;
 
-  private String processId;
-
-  private String endPoint;
-
-  private String inputSet;
+  private String querySet;
 
   private Boolean condition = true;
 }
