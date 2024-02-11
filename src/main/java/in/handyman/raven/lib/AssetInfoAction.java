@@ -206,7 +206,7 @@ public class AssetInfoAction implements IActionExecution {
                     .height(pageHeight)
                     .dpi(dpi)
                     .build();
-            log.info(aMarker, "File Info Builder {}", fileInfoBuilder);
+            log.info(aMarker, "File Info Builder {}", fileInfoBuilder.getFileName());
         } catch (Exception ex) {
             log.error(aMarker, "error occurred in builder {}", ExceptionUtil.toString(ex));
             throw new HandymanException("Failed to execute {} ", ex, action);
