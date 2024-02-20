@@ -22,14 +22,14 @@ class ScalarAdapterActionTest {
     "                     si.validator_threshold , si.allowed_characters ,\n" +
     "                     si.comparable_characters, si.restricted_adapter_flag,\n" +
     "                     dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-    "                     dp.created_user_id, dp.tenant_id,dp.b_box\n" +
+    "                     dp.created_user_id, dp.tenant_id,dp.b_box,dp.model_registry\n" +
     "                     FROM sor_transaction.vqa_transaction dp\n" +
     "                     JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-    "                     WHERE dp.group_id = '1' AND si.allowed_adapter ='ner' AND dp.answer is not null" +
+    "                     WHERE dp.group_id = '27' AND si.allowed_adapter ='ner' AND dp.answer is not null" +
                         " AND dp.sor_item_name ='patient_name';\n" +
     "   ")
 
-                .resourceConn("intics_agadia_db_conn")
+                .resourceConn("intics_zio_db_conn")
 
                 .build();
 
@@ -39,6 +39,7 @@ class ScalarAdapterActionTest {
         action.setRootPipelineId(11011L);
         action.getContext().put("validation.multiverse-mode","true");
         action.getContext().put("validation.restricted-answers","No,None of the above");
+        action.getContext().put("validaiton.char-limit-count","1");
         //action.getContext().put("copro.text-validation.url", "http://localhost:10189/copro/text-validation/patient");
         final ScalarAdapterAction scalarAdapterAction = new ScalarAdapterAction(action, log, build);
         scalarAdapterAction.execute();
