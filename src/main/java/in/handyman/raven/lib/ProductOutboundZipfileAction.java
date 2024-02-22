@@ -5,7 +5,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.ProductOutboundZipFile;
+import in.handyman.raven.lib.model.ProductOutboundZipfile;
 import in.handyman.raven.lib.model.outbound.OutboundInputTableEntity;
 import in.handyman.raven.lib.model.outbound.OutboundOutputTableEntity;
 import in.handyman.raven.util.CommonQueryUtil;
@@ -40,13 +40,13 @@ public class ProductOutboundZipfileAction implements IActionExecution {
 
     private final Logger log;
 
-    private final ProductOutboundZipFile productOutboundZipfile;
+    private final ProductOutboundZipfile productOutboundZipfile;
 
     private final Marker aMarker;
 
     public ProductOutboundZipfileAction(final ActionExecutionAudit action, final Logger log,
                                         final Object productOutboundZipfile) {
-        this.productOutboundZipfile = (ProductOutboundZipFile) productOutboundZipfile;
+        this.productOutboundZipfile = (ProductOutboundZipfile) productOutboundZipfile;
         this.action = action;
         this.log = log;
         this.aMarker = MarkerFactory.getMarker(" ProductOutboundZipfile:" + this.productOutboundZipfile.getName());
