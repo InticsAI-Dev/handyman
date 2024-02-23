@@ -24,8 +24,8 @@ class TableExtractionHeadersActionTest {
                 .outputDir("/data/output/")
                 .querySet(" SELECT 1 as tenant_id,1 as root_pipeline_id, 1 as group_id,'ORIGIN-1' as origin_id,1 as paper_no," +
                         "'PRINTED' as document_type,'KRYPTON' as template_name," +
-                        "'/data/output/870/preprocess/autorotation/auto_rotationtable_extraction/2023-10-7T14_28_42 Payment Processing GenSales-4_0/table/detection/3_2023-10-7T14_28_42 Payment Processing GenSales-4_0.jpg' as file_path," +
-                        "'[{\"TruthEntity\": \"INTERCONNECTIONS\", \"columnHeaders\": [\"Description\", \"QTY\", \"Date Completed\", \"PO #\", \"Amount\", \"Case #\", \"Month\"]}, {\"TruthEntity\": \"LICENSE FEES\", \"columnHeaders\": [\"Description\", \"PO #\", \"Month\", \"Amount\"]}]' as table_headers,'KRYPTON' as model_name;")
+                        "'/data/output/86/preprocess/paper_itemizer/pdf_to_image/2023-10-7T14_28_42 Payment Processing GenSales-4/2023-10-7T14_28_42 Payment Processing GenSales-4_0.jpg' as file_path," +
+                        "'[{\"columnHeaders\": [\"Number of Credits\", \"Amount of Credits\", \"Average Ticket\", \"Disc %\", \"Discount Due\", \"Disk P/I\", \"Net sales\", \"Plan code\", \"Amount of Sales\", \"Number of Sales\"], \"TruthEntity\": \"PLAN_SUMMARY\"}]' as table_headers,'KRYPTON' as model_name;")
                 .build();
 
 
@@ -34,6 +34,7 @@ class TableExtractionHeadersActionTest {
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url.v1", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
                 Map.entry("read.batch.size", "1"),
                 Map.entry("table.extraction.consumer.API.count", "1"),
+                Map.entry("multipart.file.upload.activator", "false"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));

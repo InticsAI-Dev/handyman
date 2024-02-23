@@ -163,6 +163,13 @@ public class AlchemyResponseAction implements IActionExecution {
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
                 alchemyRequestTable.setTableData(tableNode);
             }
+            if(feature.equals("TABLE_EXTRACT_AGGREGATE")){
+                JsonNode tableAggregateNode = mapper.readTree(entity.getTableAggregateNode());
+                JsonNode tableNode = mapper.readTree(entity.getTableData());
+                alchemyRequestTable.setTableData(tableNode);
+                alchemyRequestTable.setAggregateJson(tableAggregateNode);
+                alchemyRequestTable.setSorItemId(entity.sorItemId);
+            }
 
 
             Request request = new Request.Builder().url(endpoint + "/" + originId + "/?tenantId=" + this.tenantId)
@@ -209,6 +216,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private String feature;
         private String state;
         private String tableData;
+        private String tableAggregateNode;
+        private Long sorItemId;
 
         @Override
         public List<Object> getRowData() {
@@ -231,6 +240,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private String feature;
         private String state;
         private JsonNode tableData;
+        private JsonNode aggregateJson;
+        private Long sorItemId;
     }
 
     @AllArgsConstructor

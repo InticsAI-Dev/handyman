@@ -31,6 +31,7 @@ public class TableExtractionOutboundOutput {
     private String columnHeader;
     private String truthEntityName;
     private String modelName;
+    private String tableAggregateFunction;
     private String aggregatedJson;
     private Long sorItemId;
 

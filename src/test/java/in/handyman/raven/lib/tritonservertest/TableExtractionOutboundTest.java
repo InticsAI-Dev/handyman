@@ -16,21 +16,16 @@ public class TableExtractionOutboundTest {
     @Test
     public void tableExtractionTest() throws Exception {
 
-        TableExtractionOutbound tableExtractionOutbound= TableExtractionOutbound.builder()
+        TableExtractionOutbound tableExtractionOutbound = TableExtractionOutbound.builder()
                 .name("table extraction outbound")
                 .condition(true)
                 .resultTable("table_extraction.table_extraction_outbound_output_audit")
                 .processId(String.valueOf(1))
-                .querySet(" SELECT a.process_id, a.group_id, a.tenant_id, a.template_id, a.origin_id, a.paper_no,\n" +
-                        "                    a.processed_file_path, a.table_response, a.status, a.stage, a.message, a.created_on,\n" +
-                        "                    a.root_pipeline_id, a.bboxes, a.croppedimage, st.synonym as column_header, a.truth_entity_name, a.model_name,si.sor_item_id \n" +
-                        "                    FROM table_extraction.table_extraction_result a\n" +
-                        "                    join info.source_of_truth sot on sot.origin_id = a.origin_id and sot.paper_no =a.paper_no \n" +
-                        "                    join sor_meta.asset_info ai on lower(ai.template_name)=lower(sot.template_name) and a.tenant_id  = ai.tenant_id\n" +
-                        "                    join sor_meta.truth_entity te on ai.asset_id = te.asset_id and te.tenant_id  = a.tenant_id\n" +
-                        "                    join sor_meta.sor_tsynonym st on st.truth_entity_id =te.truth_entity_id \n" +
-                        "                    join sor_meta.sor_item si on si.sor_item_id =st.sor_item_id \n" +
-                        "                    where si.table_aggregate_function = 'SUM' and a.tenant_id =69 and te.sip_type ='TABLE_SIP'; ")
+                .querySet(" SELECT 1 as process_id,1 as group_id,1 as tenant_id,1 as template_id, 'ORIGIN-1' as origin_id,1 as paper_no,\n" +
+                        "                    '/data/output/76/table_extraction-v2/table_extraction/2022-10-26T9_58_10 Dooliquor LLC_0/csv/2_2022-10-26T9_58_10 Dooliquor LLC_0.csv' as processed_file_path," +
+                        "'' as table_response,'' as status,'' as stage, '' as message, '2024-02-19 21:10:45.828' as created_on,\n" +
+                        "                    1 as root_pipeline_id, '' as bboxes, '' as croppedimage, 'Number of Sales' as column_header, 'PLAN_SUMMARY' as truth_entity_name, 'KRYPTON' as model_name,1 as sor_item_id \n" +
+                        "                     ")
                 .resourceConn("intics_zio_db_conn")
                 .inputAttribution("csv")
                 .build();
@@ -42,7 +37,8 @@ public class TableExtractionOutboundTest {
 
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
                 Map.entry("read.batch.size", "1"),
-                Map.entry("mulipart.file.utpload.activator", "false"),
+                Map.entry("multipart.file.upload.activator", "false"),
+                Map.entry("last.row.value.total.check", "false"),
                 Map.entry("table.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("consumer.API.count", "1"),
@@ -53,7 +49,40 @@ public class TableExtractionOutboundTest {
 
     }
 
+    @Test
+    public void tableExtractionTest2() throws Exception {
 
+        TableExtractionOutbound tableExtractionOutbound = TableExtractionOutbound.builder()
+                .name("table extraction outbound")
+                .condition(true)
+                .resultTable("table_extraction.table_extraction_outbound_output_audit")
+                .processId(String.valueOf(1))
+                .querySet(" SELECT 1 as process_id,1 as group_id,1 as tenant_id,1 as template_id, 'ORIGIN-1' as origin_id,1 as paper_no,\n" +
+                        "                    '/data/output/106/table_extraction-v2/table_extraction/2023-5-2T21_49_22 Payment Processing Master Tax Services LI LLC_0/csv/1_2023-5-2T21_49_22 Payment Processing Master Tax Services LI LLC_0.csv' as processed_file_path," +
+                        "'' as table_response,'' as status,'' as stage, '' as message, '2024-02-19 21:10:45.828' as created_on,\n" +
+                        "                    1 as root_pipeline_id, '' as bboxes, '' as croppedimage, '# SALES' as column_header, '# SALES' as truth_entity_name, 'KRYPTON' as model_name,1 as sor_item_id \n" +
+                        "                     ")
+                .resourceConn("intics_zio_db_conn")
+                .inputAttribution("csv")
+                .build();
 
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.setRootPipelineId(1L);
+        actionExecutionAudit.setProcessId(1L);
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
+                Map.entry("read.batch.size", "1"),
+                Map.entry("multipart.file.upload.activator", "false"),
+                Map.entry("last.row.value.total.check", "false"),
+                Map.entry("table.extraction.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        TableExtractionOutboundAction tableExtractionAction = new TableExtractionOutboundAction(actionExecutionAudit, log, tableExtractionOutbound);
+        tableExtractionAction.execute();
+
+    }
 
 }

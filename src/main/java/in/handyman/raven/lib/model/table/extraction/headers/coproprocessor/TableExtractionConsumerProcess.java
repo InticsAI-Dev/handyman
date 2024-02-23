@@ -14,8 +14,13 @@ import in.handyman.raven.lib.model.tableextraction.TableHeader;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import okhttp3.*;
 import org.apache.commons.io.FilenameUtils;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -149,11 +154,13 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 });
                 tableOutputResponses.forEach(tableOutputResponse1 -> {
                     String csvTablesPath = tableOutputResponse1.getCsvTablesPath();
+                    String csvTableName = getCsvFilePathName(tableOutputResponse1.getCsvTablesPath());
                     String croppedImagePath = tableOutputResponse1.getCroppedImage();
                     String multipartUploadActivatorVariable = "multipart.file.upload.activator";
                     String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
                     TableResponse tableResponseLineItems = tableOutputResponse1.getTableResponse();
-                    if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {
+                    log.info("Csv file path empty so skipped the response file writing in local {}", csvTablesPath);
+                    if (multipartUploadActivatorValue.equalsIgnoreCase("true") && !csvTablesPath.isEmpty() && !csvTablesPath.isBlank()) {
                         try {
                             downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
                         } catch (MalformedURLException e) {
@@ -172,9 +179,10 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
 //                        throw new HandymanException(e);
 //                    }
                     try {
-                        if(!tableOutputResponse1.getTableResponse().getTableData().getColumnHeaders().isEmpty() && !tableOutputResponse1.getTableResponse().getTableData().getData().isEmpty()){
+                        if (!tableOutputResponse1.getTableResponse().getTableData().getColumnHeaders().isEmpty() && !tableOutputResponse1.getTableResponse().getTableData().getData().isEmpty()) {
 
-                            String tableResponseStr = objectMapper.writeValueAsString(tableOutputResponse1.getTableResponse().getTableData());
+                            TableDataTableResponse tableDataTableResponse = getTableDataTableResponse( tableOutputResponse1, csvTablesPath, csvTableName,tableOutputResponse1.getTableResponse().getTableData().getData());
+                            String tableResponseStr = objectMapper.writeValueAsString(tableDataTableResponse);
                             String tableBboxStr = objectMapper.writeValueAsString(tableOutputResponse1.getBboxes());
                             parentObj.add(
                                     TableExtractionOutputTable
@@ -201,7 +209,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                         }
 
                     } catch (JsonProcessingException e) {
-                        throw new HandymanException("Cannot process the json input request ",e);
+                        throw new HandymanException("Cannot process the json input request ", e);
                     }
 
 
@@ -247,8 +255,41 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         }
     }
 
+    private static TableDataTableResponse getTableDataTableResponse(TableResponseOutputRoot tableOutputResponse1, String csvTablesPath, String csvTableName,List<List<String>> tableDate) throws JsonProcessingException {
+        TableDataTableResponse tableDataTableResponse=TableDataTableResponse.builder()
+                .csvFilePath(csvTablesPath)
+                .columnHeaders(tableOutputResponse1.getTableResponse().getTableData().getColumnHeaders())
+                .csvFileName(csvTableName)
+                .data(tableDate)
+                .build();
+        return tableDataTableResponse;
+    }
+
 
     public void coproRequestBuilder() {
+
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class TableDataInnerObject{
+        private List<String> columnHeaders;
+        private List<List<String>> data;
+
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class TableDataTableResponse{
+        private List<String> columnHeaders;
+        private List<List<String>> encode;
+        private String csvFilePath;
+        private String csvFileName;
+        private List<List<String>> data;
 
     }
 
@@ -297,6 +338,13 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Exception occurred in Download multipart File for table response  file - " + outputFilePath, handymanException, action);
         }
+    }
+    @NotNull
+    private static String getCsvFilePathName(String filePath) {
+        File file = new File(filePath);
+
+        String fileNameStr = FilenameUtils.removeExtension(file.getName());
+        return fileNameStr;
     }
 
     public static String tableDataJson(String filePath, ActionExecutionAudit action) throws JsonProcessingException {

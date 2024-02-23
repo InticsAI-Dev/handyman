@@ -114,7 +114,6 @@ action:
     |eocJsonGenerator
     |zipContentList
     |hwDetection
-    |intellimatch
     |checkboxVqa
     |pixelClassifierUrgencyTriage
     |paperItemizer
@@ -760,11 +759,6 @@ hwDetection:
     '}' ('on-condition' condition=expression)* ;
 
 
-intellimatch:
-     'intellimatch' 'as' name=STRING
-     'on-resource-conn' resourceConn=STRING
-     'match-result' matchResult=STRING
-     'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
 
 checkboxVqa:
     'checkbox-vqa' 'as' name=STRING

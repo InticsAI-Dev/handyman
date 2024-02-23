@@ -13,4 +13,5 @@ public class TableExtractionAggregatedJson {
 
     private String columnHeaderKey;
     private String columnHeaderValue;
+    private String aggregateFunction;
 }

@@ -32,5 +32,6 @@ public class TableExtractionOutboundInput {
     private String truthEntityName;
     private String modelName;
     private Long sorItemId;
+    private String tableAggregateFunction;
 
 }
