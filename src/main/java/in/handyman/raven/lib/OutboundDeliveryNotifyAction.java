@@ -97,6 +97,7 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
             tableInfos.forEach(tableInputQuerySet -> {
 
                 String response = doOutboundApiCall(tableInputQuerySet.getOutboundCondition(), tableInputQuerySet);
+                log.info( "Response {} for Outbound Delivery Notification Action", response);
 
 
             });

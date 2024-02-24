@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 public class OutboundAdapterProduct implements OutboundInterface {
@@ -38,9 +40,19 @@ public class OutboundAdapterProduct implements OutboundInterface {
         String responseBody;
         log.info( "Outbound Delivery Notification Action has been started for document id - {}", tableInputQuerySet.getDocumentId());
         final OkHttpClient httpclient = InstanceUtil.createOkHttpClient();
+        ObjectNode payloadJson = objectMapper.createObjectNode();
         final ObjectNode objectNode = outboundFileOptions(tableInputQuerySet);
+        payloadJson.put("payload",objectNode);
+        if(objectNode.isObject()){
+            payloadJson.put("success", true);
+        }else{
+            payloadJson.put("success", false);
+        }
 
-        RequestBody requestBody = RequestBody.create(objectNode.toString(), MediaTypeJSON);
+        payloadJson.put("responseTimeStamp", String.valueOf(LocalDateTime.now(Clock.systemDefaultZone())));
+
+
+        RequestBody requestBody = RequestBody.create(payloadJson.toString(), MediaTypeJSON);
         Request request = new Request.Builder()
                 .url(tableInputQuerySet.getEndpoint())
                 .post(requestBody)
@@ -66,7 +78,9 @@ public class OutboundAdapterProduct implements OutboundInterface {
 
     @Override
     public ObjectNode outboundFileOptions(OutboundDeliveryNotifyAction.TableInputQuerySet tableInputQuerySet) {
+
         ObjectNode outputJson = objectMapper.createObjectNode();
+
         try{
             outputJson = readJsonFileToString(tableInputQuerySet.getOutboundJson());
         }catch(IOException e){
@@ -78,13 +92,17 @@ public class OutboundAdapterProduct implements OutboundInterface {
 
     }
 
-    public static ObjectNode  readJsonFileToString(String filePath) throws IOException {
+    public static ObjectNode  readJsonFileToString(String Outboundjson) throws IOException {
         // Read all bytes from the file and convert to string
         ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(Outboundjson);
 
+        if (jsonNode.isObject()) {
+            return (ObjectNode) jsonNode;
+        }else{
+            return objectMapper.createObjectNode();
+        }
         // Read JSON content from file and parse into JsonNode
-        byte[] bytes = Files.readAllBytes(Paths.get(filePath));
-        return (ObjectNode) objectMapper.readTree(bytes);
     }
 
 
