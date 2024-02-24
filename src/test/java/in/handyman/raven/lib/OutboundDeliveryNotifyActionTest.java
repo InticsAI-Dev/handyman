@@ -13,7 +13,7 @@ class OutboundDeliveryNotifyActionTest {
     @Test
     void execute() throws Exception {
 
-        OutboundDeliveryNotify fileMerger= OutboundDeliveryNotify.builder()
+        OutboundDeliveryNotify outboundDeliveryNotify= OutboundDeliveryNotify.builder()
                 .name("file merger ")
                 .condition(true)
                 .documentId("166730399_C1")
@@ -32,7 +32,7 @@ class OutboundDeliveryNotifyActionTest {
                 Map.entry("consumer.API.count","1"),
                 Map.entry("write.batch.size","1")));
 
-        OutboundDeliveryNotifyAction  deliveryNotifyAction = new OutboundDeliveryNotifyAction(actionExecutionAudit,log,fileMerger);
+        OutboundDeliveryNotifyAction  deliveryNotifyAction = new OutboundDeliveryNotifyAction(actionExecutionAudit,log,outboundDeliveryNotify);
         deliveryNotifyAction.execute();
     }
 }
