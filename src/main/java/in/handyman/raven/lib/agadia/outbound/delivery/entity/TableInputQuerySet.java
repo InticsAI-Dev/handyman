@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public  class TableInputQuerySet {
+public class TableInputQuerySet {
     private String fileName;
     private String fileUri;
     private String zipFileCheckSum;
