@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.OutboundDeliveryNotifyAction;
+import in.handyman.raven.lib.agadia.outbound.delivery.entity.TableInputQuerySet;
 import in.handyman.raven.lib.agadia.outbound.delivery.interfaces.OutboundInterface;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.*;
@@ -33,7 +34,7 @@ public class OutboundAdapter implements OutboundInterface {
     }
 
     @Override
-    public String requestApiCaller(final OutboundDeliveryNotifyAction.TableInputQuerySet tableInputQuerySet ) {
+    public String requestApiCaller(final TableInputQuerySet tableInputQuerySet ) {
 
 
         String responseBody;
@@ -76,7 +77,7 @@ public class OutboundAdapter implements OutboundInterface {
     }
 
     @Override
-    public ObjectNode outboundFileOptions(OutboundDeliveryNotifyAction.TableInputQuerySet tableInputQuerySet) {
+    public ObjectNode outboundFileOptions(TableInputQuerySet tableInputQuerySet) {
         final ObjectNode objectNode = objectMapper.createObjectNode();
         objectNode.put("documentId", tableInputQuerySet.getDocumentId());
         objectNode.put("inticsZipUri", tableInputQuerySet.getFileUri());

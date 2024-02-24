@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.OutboundDeliveryNotifyAction;
+import in.handyman.raven.lib.agadia.outbound.delivery.entity.TableInputQuerySet;
 import in.handyman.raven.lib.agadia.outbound.delivery.interfaces.OutboundInterface;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.*;
@@ -34,7 +35,7 @@ public class OutboundAdapterProduct implements OutboundInterface {
     }
 
     @Override
-    public String requestApiCaller(final OutboundDeliveryNotifyAction.TableInputQuerySet tableInputQuerySet ) {
+    public String requestApiCaller(final TableInputQuerySet tableInputQuerySet ) {
 
 
         String responseBody;
@@ -77,7 +78,7 @@ public class OutboundAdapterProduct implements OutboundInterface {
     }
 
     @Override
-    public ObjectNode outboundFileOptions(OutboundDeliveryNotifyAction.TableInputQuerySet tableInputQuerySet) {
+    public ObjectNode outboundFileOptions(TableInputQuerySet tableInputQuerySet) {
 
         ObjectNode outputJson = objectMapper.createObjectNode();
 

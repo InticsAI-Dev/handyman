@@ -1,8 +1,6 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -10,19 +8,10 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.agadia.outbound.delivery.adapters.OutboundAdapter;
 import in.handyman.raven.lib.agadia.outbound.delivery.adapters.OutboundAdapterProduct;
+import in.handyman.raven.lib.agadia.outbound.delivery.entity.TableInputQuerySet;
 import in.handyman.raven.lib.model.OutboundDeliveryNotify;
 import in.handyman.raven.util.CommonQueryUtil;
-import in.handyman.raven.util.InstanceUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import org.apache.pdfbox.util.Hex;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -30,12 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -68,8 +53,8 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
         this.appId = action.getContext().get("agadia.appId");
         this.appKeyId = action.getContext().get("agadia.appKeyId");
         this.deliveryNotifyUrl = action.getContext().get("doc.delivery.notify.url");
-        this.outboundAdapter = new OutboundAdapter(log,objectMapper,action);
-        this.outboundAdapterProduct = new OutboundAdapterProduct(log,objectMapper,action);
+        this.outboundAdapter = new OutboundAdapter(log, objectMapper, action);
+        this.outboundAdapterProduct = new OutboundAdapterProduct(log, objectMapper, action);
         this.aMarker = MarkerFactory.getMarker(" OutboundDeliveryNotify:" + this.outboundDeliveryNotify.getName());
     }
 
@@ -97,7 +82,7 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
             tableInfos.forEach(tableInputQuerySet -> {
 
                 String response = doOutboundApiCall(tableInputQuerySet.getOutboundCondition(), tableInputQuerySet);
-                log.info( "Response {} for Outbound Delivery Notification Action", response);
+                log.info("Response {} for Outbound Delivery Notification Action", response);
 
 
             });
@@ -114,11 +99,11 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
         return outboundDeliveryNotify.getCondition();
     }
 
-    public String doOutboundApiCall(final String outboundCondition,TableInputQuerySet tableInputQuerySet){
+    public String doOutboundApiCall(final String outboundCondition, TableInputQuerySet tableInputQuerySet) {
         String response = null;
         switch (outboundCondition) {
             case "Agadia":
-                response= this.outboundAdapter.requestApiCaller(tableInputQuerySet);
+                response = this.outboundAdapter.requestApiCaller(tableInputQuerySet);
                 break;
             case "Product":
                 response = this.outboundAdapterProduct.requestApiCaller(tableInputQuerySet);
@@ -126,24 +111,8 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
 
         }
         return response;
-        
+
     }
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class TableInputQuerySet{
-        private String fileName;
-        private String fileUri;
-        private String zipFileCheckSum;
-        private String endpoint;
-        private String appId;
-        private String appSecretKey;
-        private String bearerToken;
-        private String documentId;
-        private String outboundCondition;
-        private String outboundJson;
-        private String outboundZip;
-    }
+
 }
