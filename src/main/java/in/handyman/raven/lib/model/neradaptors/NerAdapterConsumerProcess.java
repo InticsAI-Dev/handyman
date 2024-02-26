@@ -114,6 +114,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         int weight = result.getWeight();
         float vqaScore = result.getVqaScore();
         String createdUserId = result.getCreatedUserId();
+        String modelRegistry = result.getModelRegistry();
+        Long rootPipelineId = result.getRootPipelineId();
         log.info(aMarker, "Build 19-validator vqa score {}", vqaScore);
 
 
@@ -147,6 +149,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .status("COMPLETED")
                             .stage("SCALAR_VALIDATION")
                             .message("Ner validation macro completed")
+                            .modelRegistry(modelRegistry)
+                            .rootPipelineId(rootPipelineId)
                             .build());
 
 
@@ -180,6 +184,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .status("FAILED")
                             .stage("SCALAR_VALIDATION")
                             .message("Confidence Score is less than 0")
+                            .modelRegistry(result.getModelRegistry())
+                            .rootPipelineId(rootPipelineId)
                             .build());
             log.error(aMarker, "The Exception occurred in confidence score validation by {} ", valConfidenceScore);
         }

@@ -20,10 +20,11 @@ class TrinityModelActionTest {
                 .requestUrl("http://192.168.10.239:10189/copro/attribution/kvp-docnet")
                 .resourceConn("intics_agadia_db_conn")
                 .forkBatchSize("1")
-                .questionSql("   SELECT a.question, a.file_path, a.document_type as paperType FROM\n" +
-                        "\t                   macro.sor_transaction_tqa_49254 a\n" +
-                        "\t                     join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id\n" +
-                        "\t                        where a.document_type='Handwritten';      ")
+                .questionSql("  SELECT a.question, a.file_path, a.document_type as paperType, a.model_registry  FROM\n" +
+                        "macro.sor_transaction_tqa_audit a\n" +
+                        "join sor_transaction.sor_transaction_pipeline_audit st on st.group_id =a.group_id \n" +
+                        "where a.document_type='Printed' and a.model_registry = 'xenon'\n" +
+                        "and a.tenant_id = 1 and st.group_id='43'; ")
                 .responseAs("sor_transaction_tqa_49254")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
