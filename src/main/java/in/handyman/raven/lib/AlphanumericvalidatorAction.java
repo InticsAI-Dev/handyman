@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.AlphaNumericAdapter;
+import in.handyman.raven.lib.adapters.ValidationPurger;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Alphanumericvalidator;
 import in.handyman.raven.lib.model.Validator;
@@ -40,6 +41,9 @@ public class AlphanumericvalidatorAction implements IActionExecution {
 
     public int getAlphaNumericScore(Validator adapter) {
         try {
+            if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                adapter.setInputValue(ValidationPurger.purgerForAlpha(adapter.getInputValue()));
+            }
             boolean validator = alphaNumericAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;
         } catch (Exception ex) {

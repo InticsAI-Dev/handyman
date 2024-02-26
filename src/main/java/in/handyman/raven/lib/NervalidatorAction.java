@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.AlphaAdapter;
 import in.handyman.raven.lib.adapters.NameAdapter;
+import in.handyman.raven.lib.adapters.ValidationPurger;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Nervalidator;
 import in.handyman.raven.lib.model.Validator;
@@ -49,6 +50,9 @@ public class NervalidatorAction implements IActionExecution {
     public int getNerScore(Validator adapter, String uri) {
         int confidenceScore = 0;
         try {
+            if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                adapter.setInputValue(ValidationPurger.purgerForNer(adapter.getInputValue()));
+            }
             boolean alphaValidator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             if (alphaValidator) {
                 boolean validator = nameAdapter.getValidationModel(adapter.getInputValue(), uri, action);

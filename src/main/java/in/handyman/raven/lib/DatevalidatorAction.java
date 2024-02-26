@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.DateAdapter;
+import in.handyman.raven.lib.adapters.ValidationPurger;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Datevalidator;
 import in.handyman.raven.lib.model.Validator;
@@ -42,6 +43,9 @@ public class DatevalidatorAction implements IActionExecution {
 
     public int getDateScore(Validator adapter) {
         try {
+            if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                adapter.setInputValue(ValidationPurger.purgerForDate(adapter.getInputValue()));
+            }
             int currentYear = Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date()));
             int comparableYear;
             if(Optional.ofNullable(adapter.getComparableChar()).isPresent())
