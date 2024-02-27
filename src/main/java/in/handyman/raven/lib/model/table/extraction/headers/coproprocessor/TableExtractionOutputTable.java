@@ -37,6 +37,9 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private String columnHeaders;
     private String truthEntityName;
     private String modelName;
+    private String truthEntityId;
+    private Long sorContainerId;
+    private Long channelId;
 
     @Override
     public List<Object> getRowData() {

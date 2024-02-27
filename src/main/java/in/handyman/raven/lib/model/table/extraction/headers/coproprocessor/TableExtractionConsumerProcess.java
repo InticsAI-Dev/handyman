@@ -197,6 +197,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                             .rootPipelineId(action.getRootPipelineId())
                                             .modelName(entity.getModelName())
+                                            .truthEntityId(entity.getTruthEntityId())
+                                            .sorContainerId(entity.getSorContainerId())
+                                            .channelId(entity.getChannelId())
                                             .build());
                         }
 
@@ -222,6 +225,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(action.getRootPipelineId())
                                 .modelName(entity.getModelName())
+                                .truthEntityId(entity.getTruthEntityId())
+                                .sorContainerId(entity.getSorContainerId())
+                                .channelId(entity.getChannelId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -240,6 +246,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(action.getRootPipelineId())
                             .modelName(entity.getModelName())
+                            .truthEntityId(entity.getTruthEntityId())
+                            .sorContainerId(entity.getSorContainerId())
+                            .channelId(entity.getChannelId())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
