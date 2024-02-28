@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class GreyScaleConversionConsumerProcess implements CoproProcessor.ConsumerProcess<GreyScaleConversionInputQuerySet, GreyScaleConversionOutputQuerySet> {
-    public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String TRITON_REQUEST_ACTIVATOR = "triton.grey.scale.conversion.request.activator";
     public static final String PROCESS_NAME = PipelineName.GREY_SCALE_CONVERSION.getProcessName();
 
     private final Logger log;

@@ -233,4 +233,18 @@ class RestApiActionTestExecutionAudit {
         log.info(request.toString());
         LambdaEngine.start(request);
     }
+
+
+
+
+    @Test
+    public void testAdpter(){
+        String inputValue="0/01/1973Gender";
+        String pattern = "[^\\d/-]";
+
+        // Use String.replaceAll() to replace all unwanted characters with an empty string
+        inputValue = inputValue.replaceAll(pattern, "");
+        System.out.println(inputValue);
+
+    }
 }

@@ -134,6 +134,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                     .message(response.message())
                                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                     .rootPipelineId(action.getRootPipelineId())
+                                    .truthEntityId(entity.getTruthEntityId())
+                                    .sorContainerId(entity.getSorContainerId())
+                                    .channelId(entity.getChannelId())
                                     .modelName(action.getContext().get("NEON_MODEL_NAME"))
                                     .build());
 

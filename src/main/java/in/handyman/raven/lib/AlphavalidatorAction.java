@@ -5,7 +5,6 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.AlphaAdapter;
-import in.handyman.raven.lib.adapters.ValidationPurger;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Alphavalidator;
 import in.handyman.raven.lib.model.Validator;
@@ -40,9 +39,6 @@ public class AlphavalidatorAction implements IActionExecution {
 
     public int getAlphaScore(Validator adapter) {
         try {
-            if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
-                adapter.setInputValue(ValidationPurger.purgerForAlphaNumeric(adapter.getInputValue()));
-            }
             boolean validator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;
         } catch (Exception ex) {

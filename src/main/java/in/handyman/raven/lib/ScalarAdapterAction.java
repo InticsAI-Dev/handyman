@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.adapters.ValidationPurger;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -290,22 +291,51 @@ public class ScalarAdapterAction implements IActionExecution {
         try {
             switch (inputDetail.getAdapter()) {
                 case "alpha":
-                    confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+                    if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                        inputDetail.setInputValue(ValidationPurger.purgerForAlpha(inputDetail.getInputValue()));
+                        confidenceScore = inputDetail.getThreshold();
+                    }else{
+                        confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+
+                    }
                     break;
                 case "alphanumeric":
-                    confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+                    if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                        inputDetail.setInputValue(ValidationPurger.purgerForAlphaNumeric(inputDetail.getInputValue()));
+                        confidenceScore = inputDetail.getThreshold();
+                    }else{
+                        confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+
+                    }
                     break;
                 case "numeric":
-                    confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                        inputDetail.setInputValue(ValidationPurger.purgerForNumeric(inputDetail.getInputValue()));
+                        confidenceScore = inputDetail.getThreshold();
+                    }else{
+                        confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    }
                     break;
                 case "date":
+                    if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                    inputDetail.setInputValue(ValidationPurger.purgerForDate(inputDetail.getInputValue()));
+                    confidenceScore = inputDetail.getThreshold();
+                }else{
                     confidenceScore = this.dateAction.getDateScore(inputDetail);
+
+                }
                     break;
                 case "phone_reg":
-                    confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
+                        inputDetail.setInputValue(ValidationPurger.purgerForNumeric(inputDetail.getInputValue()));
+                        confidenceScore = inputDetail.getThreshold();
+                    }else{
+                        confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    }
                     break;
                 case "numeric_reg":
-                    confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+                        confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+
                     break;
             }
         } catch (Exception t) {
