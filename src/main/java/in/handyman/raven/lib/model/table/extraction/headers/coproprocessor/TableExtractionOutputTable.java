@@ -23,7 +23,6 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private Long groupId;
     private Long tenantId;
     private Long processId;
-    private String templateName;
     private String processedFilePath;
     private String croppedImage;
     private String bboxes;
@@ -37,13 +36,14 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private String columnHeaders;
     private String truthEntityName;
     private String modelName;
-    private String truthEntityId;
+    private Long truthEntityId;
     private Long sorContainerId;
     private Long channelId;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.tenantId, this.processedFilePath,
-                this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId, this.tableResponse, this.bboxes, this.croppedImage,this.columnHeaders,this.truthEntityName,this.modelName,this.truthEntityId, this.sorContainerId, this.channelId).collect(Collectors.toList());
+        return Stream.of(this.originId, this.groupId, this.tenantId,  this.processedFilePath,
+                this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId, this.tableResponse, this.bboxes, this.croppedImage,this.columnHeaders,this.truthEntityName,this.modelName, this.truthEntityId,
+                this.sorContainerId, this.channelId).collect(Collectors.toList());
     }
 }

@@ -1,15 +1,12 @@
 package in.handyman.raven.lib.model.table.extraction.headers.coproprocessor;
 
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.table.extraction.headers.copro.legacy.response.TableData;
-import in.handyman.raven.lib.model.table.extraction.headers.copro.legacy.response.TableResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
 
 //1. input pojo from select query, which implements CoproProcessor.Entity
 @Data
@@ -27,7 +24,7 @@ public class TableExtractionInputTable implements CoproProcessor.Entity {
     private String filePath;
     private String tableHeaders;
     private String modelName;
-    private String truthEntityId;
+    private Long truthEntityId;
     private Long sorContainerId;
     private Long channelId;
 

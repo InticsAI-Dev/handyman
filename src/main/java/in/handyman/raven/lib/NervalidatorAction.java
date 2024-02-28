@@ -50,9 +50,6 @@ public class NervalidatorAction implements IActionExecution {
     public int getNerScore(Validator adapter, String uri) {
         int confidenceScore = 0;
         try {
-            if(action.getContext().get("validation.purger.scalar.activator").equals("true")){
-                adapter.setInputValue(ValidationPurger.purgerForNer(adapter.getInputValue()));
-            }
             boolean alphaValidator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             if (alphaValidator) {
                 boolean validator = nameAdapter.getValidationModel(adapter.getInputValue(), uri, action);

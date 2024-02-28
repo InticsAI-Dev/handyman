@@ -162,6 +162,8 @@ public class AlchemyResponseAction implements IActionExecution {
             if(feature.equals("TABLE_EXTRACT")){
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
                 alchemyRequestTable.setTableData(tableNode);
+                alchemyRequestTable.setCsvFilePath(entity.getCsvFilePath());
+                alchemyRequestTable.setTruthEntityId(entity.getTruthEntityId());
             }
 
 
@@ -209,6 +211,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private String feature;
         private String state;
         private String tableData;
+        private String csvFilePath;
+        private Long truthEntityId;
 
         @Override
         public List<Object> getRowData() {
@@ -230,6 +234,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private Long rootPipelineId;
         private String feature;
         private String state;
+        private String csvFilePath;
+        private Long truthEntityId;
         private JsonNode tableData;
     }
 
