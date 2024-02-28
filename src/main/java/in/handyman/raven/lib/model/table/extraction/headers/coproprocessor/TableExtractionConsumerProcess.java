@@ -41,7 +41,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     private final Logger log;
     private final Marker aMarker;
     final String TABLE_EXTRACTION_PROCESS_NAME = PipelineName.TABLE_EXTRACTION.getProcessName();
-    public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.table.headers.activator";
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType mediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");

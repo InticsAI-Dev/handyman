@@ -205,6 +205,7 @@ public class ScalarAdapterAction implements IActionExecution {
                 result.setCharScore(charScore);
                 result.setValidatorScore(validatorScore);
                 result.setValidatorNegativeScore(validatorNegativeScore);
+                result.setRootPipeLineId(action.getRootPipelineId());
                 result.setConfidenceScore(valConfidenceScore);
                 result.setProcessId(String.valueOf(action.getProcessId()));
                 result.setStatus("COMPLETED");
@@ -269,6 +270,8 @@ public class ScalarAdapterAction implements IActionExecution {
                             try {
                                 String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question,question_id, synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,root_pipeline_id,model_name,model_version, model_registry";
                                 String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:questionId, :synonymId, :inputValue,:vqaScore, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:rootPipelineId,:modelName,:modelVersion, :modelRegistry";
+                                String COLUMN_LIST = "root_pipeline_id, origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question, answer, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,vqa_score,question_id,synonym_id";
+                                String COLUMN_BINDED_LIST = ":rootPipeLineId, :originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:inputValue, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:vqaScore,:questionId,:synonymId";
                                 Update update = handle.createUpdate("  INSERT INTO sor_transaction.adapter_result_" + scalarAdapter.getProcessID() +
                                         " ( " + COLUMN_LIST + ") " +
                                         " VALUES( " + COLUMN_BINDED_LIST + ");" +
@@ -377,7 +380,6 @@ public class ScalarAdapterAction implements IActionExecution {
 
     }
 
-
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
@@ -387,6 +389,7 @@ public class ScalarAdapterAction implements IActionExecution {
         private String originId;
         private int paperNo;
         private Integer groupId;
+        private Long rootPipeLineId;
         private String ProcessId;
         private int sorId;
         private int sorItemId;
