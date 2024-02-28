@@ -36,7 +36,7 @@ public class TrinityModelApiCaller {
                 .build();
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeTriton(final String inputPath, final String paperType, final List<String> questions,final String modelRegistryName, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
@@ -51,10 +51,11 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setPaperType(paperType);
         trinityModelPayload.setAttributes(questions);
         trinityModelPayload.setInputFilePath(inputPath);
+        trinityModelPayload.setModelRegistryName(modelRegistryName);
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
-        TritonRequest tritonRequest = getTritonRequestPaperType(paperType, jsonInputRequest);
+        TritonRequest tritonRequest = getTritonRequestPaperType(paperType,modelRegistryName, jsonInputRequest);
 
 
         TrinityModelRequest trinityModelRequest = new TrinityModelRequest();
@@ -82,14 +83,18 @@ public class TrinityModelApiCaller {
     }
 
     @NotNull
-    private static TritonRequest getTritonRequestPaperType(String paperType, String jsonInputRequest) {
+    private static TritonRequest getTritonRequestPaperType(String paperType,String modelRegistryName, String jsonInputRequest) {
         TritonRequest tritonRequest = new TritonRequest();
 
         if(Objects.equals(paperType,"Printed")){
             tritonRequest.setShape(List.of(1, 1));
-            tritonRequest.setName("ARGON VQA START");
             tritonRequest.setDatatype("BYTES");
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
+            if (Objects.equals(modelRegistryName, "argon")) {
+                tritonRequest.setName("ARGON VQA START");
+            } else if (Objects.equals(modelRegistryName, "xenon")){
+                tritonRequest.setName("XENON VQA START");
+            }
         } else if (Objects.equals(paperType,"Handwritten")) {
             tritonRequest.setShape(List.of(1, 1));
             tritonRequest.setName("XENON VQA START");
@@ -100,7 +105,7 @@ public class TrinityModelApiCaller {
         return tritonRequest;
     }
 
-    public String computeCopro(final String inputPath, final String paperType, final List<String> questions, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeCopro(final String inputPath, final String paperType, final List<String> questions,final String modelRegistryName, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootPipelineId = action.getRootPipelineId();
@@ -115,6 +120,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setPaperType(paperType);
         trinityModelPayload.setAttributes(questions);
         trinityModelPayload.setInputFilePath(inputPath);
+        trinityModelPayload.setModelRegistryName(modelRegistryName);
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);

@@ -49,20 +49,23 @@ class TrinityModelActionTest {
                 .name("DIE model testing")
                 .condition(true)
                 .outputDir("dir")
-                .requestUrl("http://copro.impira:10193/copro/attribution/kvp-attribution-dqa-new")
-                .resourceConn("intics_agadia_db_conn")
+                .requestUrl("http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer")
+                .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("   SELECT a.question, a.file_path, a.document_type as paperType FROM\n" +
-                        "\t                   macro.sor_transaction_tqa_${init_process_id.process_id} a\n" +
-                        "\t                     join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id\n" +
-                        "\t                        where a.document_type='Printed';      ")
-                .responseAs("macro.sor_transaction_tqa_49254")
+                .questionSql(
+                        "SELECT distinct a.question, a.file_path, a.document_type as paperType,a.model_registry FROM\n" +
+                        "                   macro.sor_transaction_tqa_audit a\n" +
+                        "                   join sor_transaction.sor_transaction_pipeline_audit st on st.root_pipeline_id=a.root_pipeline_id\n" +
+                        "                   where a.document_type='Printed' and a.model_registry = 'xenon'" +
+                                "and a.root_pipeline_id = '1993'")
+                .responseAs("sor_transaction_tqa_49254")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.trinity-attribution.printed.url","http://copro.impira:10193/copro/attribution/kvp-attribution-dqa-new");
+        actionExecutionAudit.getContext().put("copro.trinity-attribution.handwritten.url","http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer");
         actionExecutionAudit.getContext().put("okhttp.client.timeout","20");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
-        actionExecutionAudit.setProcessId(138980079308730208L);
+        actionExecutionAudit.getContext().put("tenant_id", "1");
+        actionExecutionAudit.setProcessId(49254L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
                 Map.entry("write.batch.size","5")));

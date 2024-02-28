@@ -18,6 +18,7 @@ public class TrinityModelLineItem {
     private String filePath;
     private List<String> questions;
     private String paperType;
+    private String modelRegistryName;
 
 
 }

@@ -16,5 +16,6 @@ public class TrinityModelQueryResult {
     private String filePath;
     private String question;
     private String paperType;
+    private String modelRegistryName;
 
 }

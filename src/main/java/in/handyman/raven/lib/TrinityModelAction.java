@@ -177,6 +177,8 @@ public class TrinityModelAction implements IActionExecution {
     private void doWork(int nodeSize, List<String> nodes, ObjectMapper mapper, TrinityModelLineItem asset, Jdbi jdbi) {
         final String filePath = asset.getFilePath();
         final String paperType = asset.getPaperType();
+        final String modelRegistryName = asset.getModelRegistryName();
+
 
 
         try {
@@ -185,16 +187,16 @@ public class TrinityModelAction implements IActionExecution {
 
             if (log.isInfoEnabled()) {
                 log.info(aMarker, "1. preparing {} for rest api call ", questions.size());
-                log.info(aMarker, "2. info's are {}, {}, {}", filePath, paperType, questions);
+                log.info(aMarker, "2. info's are {}, {}, {}, {}", filePath, paperType, questions, modelRegistryName);
             }
             String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
             if (Objects.equals("false", tritonRequestActivator)) {
 
-                coproRequestBuilder(node,filePath,paperType,questions, jdbi, mapper);
+                coproRequestBuilder(node,filePath,paperType,questions,modelRegistryName, jdbi, mapper);
             } else {
 
-                tritonRequestBuilder(node,filePath,paperType,questions, jdbi, mapper);
+                tritonRequestBuilder(node,filePath,paperType,questions,modelRegistryName, jdbi, mapper);
             }
 
         } catch (JsonProcessingException e) {
@@ -209,8 +211,8 @@ public class TrinityModelAction implements IActionExecution {
         }
     }
 
-    private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions, Jdbi jdbi,ObjectMapper objectMapper) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node).computeTriton(filePath, paperType, questions, action);
+    private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions,String modelRegistryName, Jdbi jdbi,ObjectMapper objectMapper) throws JsonProcessingException {
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node).computeTriton(filePath, paperType, questions, modelRegistryName, action);
         TrinityModelResponse trinityModelResponse = objectMapper.readValue(trinityModelResultLineItems, new TypeReference<>() {
         });
         trinityModelResponse.getOutputs().forEach(trinityModelOutput -> trinityModelOutput.getData().forEach(trinityModelResultLineItem -> {
@@ -219,9 +221,9 @@ public class TrinityModelAction implements IActionExecution {
         }));
     }
 
-    private void coproRequestBuilder(String node, String filePath, String paperType, List<String> questions, Jdbi jdbi,ObjectMapper mapper) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node).computeCopro(filePath, paperType, questions, action);
-        extractedCoproOutputResponse(trinityModelResultLineItems, jdbi, filePath, tenantId,paperType,"","",mapper);
+    private void coproRequestBuilder(String node, String filePath, String paperType, List<String> questions,String modelRegistryName, Jdbi jdbi,ObjectMapper mapper) throws JsonProcessingException {
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node).computeCopro(filePath, paperType, questions,modelRegistryName, action);
+        extractedCoproOutputResponse(trinityModelResultLineItems, jdbi, filePath, tenantId,paperType,modelRegistryName,"","",mapper);
 
     }
 
@@ -268,7 +270,7 @@ public class TrinityModelAction implements IActionExecution {
         }
     }
     private void extractedCoproOutputResponse (String trinityModelDataItems, Jdbi jdbi, String filePath, Long
-            tenantId, String paperType, String modelName, String modelVersion, ObjectMapper objectMapper)
+            tenantId, String paperType, String modelRegistryName, String modelName, String modelVersion, ObjectMapper objectMapper)
     {
 
         try {
@@ -280,7 +282,7 @@ public class TrinityModelAction implements IActionExecution {
 
             log.info(aMarker, "completed {}", trinityModelDataItem.getAttributes().size());
             jdbi.useTransaction(handle -> {
-                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") VALUES(" + action.getPipelineId() + ",:filePath,:question,:predictedAttributionValue, :bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, " + action.getActionId() + "," + action.getRootPipelineId() + ",:status,:stage,:paperType, :scores, :modelName, :modelVersion,:tenantId);");
+                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") VALUES(" + action.getPipelineId() + ",:filePath,:question,:predictedAttributionValue, :bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, " + action.getActionId() + "," + action.getRootPipelineId() + ",:status,:stage,:paperType, :scores, :modelName, :modelVersion,:tenantId, :modelRegistryName);");
 
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
@@ -290,6 +292,7 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("predictedAttributionValue", resultLineItem.getPredictedAttributionValue())
                                 .bind("scores", resultLineItem.getScores())
                                 .bind("paperType", paperType)
+                                .bind("model_registry", modelRegistryName)
                                 .bind("bBoxes", String.valueOf(resultLineItem.getBboxes()))
                                 .bind("imageDpi", trinityModelDataItem.getImageDPI())
                                 .bind("imageWidth", trinityModelDataItem.getImageWidth())
