@@ -34,7 +34,7 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String tableResponse;
     private String modelName;
-    private String truthEntityId;
+    private Long truthEntityId;
     private Long sorContainerId;
     private Long channelId;
 

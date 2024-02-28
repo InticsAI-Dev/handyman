@@ -24,7 +24,7 @@ public class TableExtractionInputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private Long paperNo;
     private String modelName;
-    private String truthEntityId;
+    private Long truthEntityId;
     private Long sorContainerId;
     private Long channelId;
 
