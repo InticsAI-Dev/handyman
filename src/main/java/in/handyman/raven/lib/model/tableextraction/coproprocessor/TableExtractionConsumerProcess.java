@@ -206,17 +206,21 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                     throw new RuntimeException(e);
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
-            try {
-                log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
-                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker, urls);
-            } catch (MalformedURLException e) {
-                log.error("Error writing table Response csv file: {}", e.getMessage());
+            if (csvTablesPath != null && !csvTablesPath.isEmpty()) {
+                try {
+                    log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
+                    downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker, urls);
+                } catch (MalformedURLException e) {
+                    log.error("Error writing table Response csv file: {}", e.getMessage());
+                }
             }
-            try {
-                log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
-                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker, urls);
-            } catch (MalformedURLException e) {
-                log.error("Error writing table Response cropped image file: {}", e.getMessage());
+            if (croppedImagePath != null && !croppedImagePath.isEmpty()) {
+                try {
+                    log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
+                    downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker, urls);
+                } catch (MalformedURLException e) {
+                    log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                }
             }
         }
     }

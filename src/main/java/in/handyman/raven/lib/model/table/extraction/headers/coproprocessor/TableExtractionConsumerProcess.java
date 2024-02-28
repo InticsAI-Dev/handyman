@@ -154,15 +154,19 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                     String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
                     TableResponse tableResponseLineItems = tableOutputResponse1.getTableResponse();
                     if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {
-                        try {
-                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response csv file: {}", e.getMessage());
+                        if (csvTablesPath != null && !csvTablesPath.isEmpty()){
+                            try {
+                                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response csv file: {}", e.getMessage());
+                            }
                         }
-                        try {
-                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                        if (croppedImagePath != null && !croppedImagePath.isEmpty()){
+                            try {
+                                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                            }
                         }
                     }
 //                    String tableResponse;
@@ -189,7 +193,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                             .truthEntityName(tableOutputResponse1.getTruthEntity())
                                             .groupId(groupId)
                                             .processId(action.getProcessId())
-                                            .templateName(entity.getTemplateName())
                                             .tenantId(tenantId)
                                             .status("COMPLETED")
                                             .stage(tableExtractionProcessName)
@@ -217,7 +220,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                                 .groupId(groupId)
                                 .processId(action.getProcessId())
-                                .templateName(entity.getTemplateName())
                                 .tenantId(tenantId)
                                 .status("FAILED")
                                 .stage(tableExtractionProcessName)
@@ -238,7 +240,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                             .groupId(groupId)
                             .processId(action.getProcessId())
-                            .templateName(entity.getTemplateName())
                             .tenantId(tenantId)
                             .status("FAILED")
                             .stage(tableExtractionProcessName)
