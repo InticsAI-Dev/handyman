@@ -53,18 +53,20 @@ class TrinityModelActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
                 .questionSql(
-                        "SELECT distinct a.question, a.file_path, a.document_type as paperType,a.model_registry FROM\n" +
+                        "SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,  a.model_registry as model_registry, a.tenant_id FROM\n" +
                         "                   macro.sor_transaction_tqa_audit a\n" +
-                        "                   join sor_transaction.sor_transaction_pipeline_audit st on st.root_pipeline_id=a.root_pipeline_id\n" +
                         "                   where a.document_type='Printed' and a.model_registry = 'xenon'" +
-                                "and a.root_pipeline_id = '1993'")
-                .responseAs("sor_transaction_tqa_49254")
+                                "and a.root_pipeline_id = '1993' group by a.file_path, paper_type, a.model_registry, a.tenant_id")
+                .responseAs("docnet_attribution_response_123")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.trinity-attribution.handwritten.url","http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer");
         actionExecutionAudit.getContext().put("okhttp.client.timeout","20");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
         actionExecutionAudit.getContext().put("tenant_id", "1");
+        actionExecutionAudit.setActionId(12L);
+        actionExecutionAudit.setRootPipelineId(1993L);
+        actionExecutionAudit.setPipelineId(12345L);
         actionExecutionAudit.setProcessId(49254L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
