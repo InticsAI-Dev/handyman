@@ -205,7 +205,7 @@ public class ScalarAdapterAction implements IActionExecution {
                 result.setCharScore(charScore);
                 result.setValidatorScore(validatorScore);
                 result.setValidatorNegativeScore(validatorNegativeScore);
-                result.setRootPipeLineId(action.getRootPipelineId());
+                result.setRootPipelineId(action.getRootPipelineId());
                 result.setConfidenceScore(valConfidenceScore);
                 result.setProcessId(String.valueOf(action.getProcessId()));
                 result.setStatus("COMPLETED");
@@ -268,8 +268,8 @@ public class ScalarAdapterAction implements IActionExecution {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
-                                String COLUMN_LIST = "root_pipeline_id, origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question, answer, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,vqa_score,question_id,synonym_id";
-                                String COLUMN_BINDED_LIST = ":rootPipeLineId, :originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:inputValue, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:vqaScore,:questionId,:synonymId";
+                                String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question,question_id, synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,root_pipeline_id,model_name,model_version, model_registry";
+                                String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:questionId, :synonymId, :inputValue,:vqaScore, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:rootPipelineId,:modelName,:modelVersion, :modelRegistry";
                                 Update update = handle.createUpdate("  INSERT INTO sor_transaction.adapter_result_" + scalarAdapter.getProcessID() +
                                         " ( " + COLUMN_LIST + ") " +
                                         " VALUES( " + COLUMN_BINDED_LIST + ");" +
@@ -384,27 +384,19 @@ public class ScalarAdapterAction implements IActionExecution {
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ValidatorConfigurationDetail {
-        private int sorId;
         private String originId;
-        private Long rootPipeLineId;
-        private String ProcessId;
-        private String sorKey;
-        private String question;
-        private String inputValue;
-        private String allowedAdapter;
-        private String restrictedAdapter;
-        private int wordLimit;
-        private int wordThreshold;
-        private int charLimit;
-        private int charThreshold;
-        private int validatorThreshold;
-        private String allowedCharacters;
-        private String comparableCharacters;
-        private int restrictedAdapterFlag;
         private int paperNo;
         private Integer groupId;
-        private String bbox;
+        private String ProcessId;
+        private int sorId;
         private int sorItemId;
+        private String sorKey;
+        private String question;
+        private Integer questionId;
+        private Integer synonymId;
+        private String inputValue;
+        private float vqaScore;
+        private int weight;
         private String createdUserId;
         private Long tenantId;
         private double wordScore;
@@ -412,14 +404,26 @@ public class ScalarAdapterAction implements IActionExecution {
         private double validatorScore;
         private double validatorNegativeScore;
         private double confidenceScore;
-        private String sorItemName;
-        private float vqaScore;
-        private int weight;
+        private String allowedAdapter;
+        private String restrictedAdapter;
+        private String bbox;
         private String status;
         private String stage;
         private String message;
-        private Integer synonymId;
-        private Integer questionId;
+        private Long rootPipelineId;
+        private String modelName;
+        private String modelVersion;
+        private String modelRegistry;
+
+            private int wordLimit;
+            private int wordThreshold;
+            private int charLimit;
+            private int charThreshold;
+            private int validatorThreshold;
+            private String allowedCharacters;
+            private String comparableCharacters;
+            private int restrictedAdapterFlag;
+            private String sorItemName;
     }
 
 }

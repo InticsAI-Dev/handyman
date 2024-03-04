@@ -233,4 +233,26 @@ class RestApiActionTestExecutionAudit {
         log.info(request.toString());
         LambdaEngine.start(request);
     }
+
+
+    @Test
+    public void modelIdTest(){
+        LContext request = LContext.builder()
+                .pipelineName("sor.transaction.main")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(
+                        Map.entry("tenant_id", "1"),
+                        Map.entry("gen_group_id.group_id", "2"),
+                        Map.entry("created_user_id", "-11"),
+                        Map.entry("batch_id","TMP-AGD-011"),
+                        Map.entry("document_id","TMP-AGD-111"),
+                        Map.entry("last_updated_user_id","111"),
+                        Map.entry("origin_type","TRANSACTION"),
+                        Map.entry("transaction_id","TRZ-111"),
+                        Map.entry("init_process_id.process_id", "15"))
+                )
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
 }
