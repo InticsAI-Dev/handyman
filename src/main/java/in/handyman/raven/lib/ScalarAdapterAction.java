@@ -205,7 +205,7 @@ public class ScalarAdapterAction implements IActionExecution {
                 result.setCharScore(charScore);
                 result.setValidatorScore(validatorScore);
                 result.setValidatorNegativeScore(validatorNegativeScore);
-                result.setRootPipeLineId(action.getRootPipelineId());
+                result.setRootPipelineId(action.getRootPipelineId());
                 result.setConfidenceScore(valConfidenceScore);
                 result.setProcessId(String.valueOf(action.getProcessId()));
                 result.setStatus("COMPLETED");
@@ -387,7 +387,6 @@ public class ScalarAdapterAction implements IActionExecution {
         private String originId;
         private int paperNo;
         private Integer groupId;
-        private Long rootPipeLineId;
         private String ProcessId;
         private int sorId;
         private int sorItemId;
