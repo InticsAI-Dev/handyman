@@ -23,6 +23,7 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private Long groupId;
     private Long tenantId;
     private Long processId;
+    private String templateName;
     private String processedFilePath;
     private String croppedImage;
     private String bboxes;
