@@ -203,9 +203,11 @@ public class TrinityModelAction implements IActionExecution {
             String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
             if (Objects.equals("false", tritonRequestActivator)) {
+                log.info("Triton request activator : {} , Copro API running in legacy mode",tritonRequestActivator);
 
                 coproRequestBuilder(node,filePath,paperType,questions,modelRegistry, jdbi, mapper);
             } else {
+                log.info("Triton request activator : {} , Copro API running in legacy mode",tritonRequestActivator);
 
                 tritonRequestBuilder(node,filePath,paperType,questions,modelRegistry, jdbi, mapper);
             }

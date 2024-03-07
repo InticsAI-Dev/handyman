@@ -163,6 +163,12 @@ public class AlchemyResponseAction implements IActionExecution {
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
                 alchemyRequestTable.setTableData(tableNode);
             }
+            if(feature.equals("CURRENCY_DETECTION")){
+                alchemyRequestTable.setDetectedValue(entity.getDetectedValue());
+                alchemyRequestTable.setDetectedAsciiValue(entity.getDetectedAsciiValue());
+                alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
+            }
+
 
 
             Request request = new Request.Builder().url(endpoint + "/" + originId + "/?tenantId=" + this.tenantId)
@@ -209,11 +215,25 @@ public class AlchemyResponseAction implements IActionExecution {
         private String feature;
         private String state;
         private String tableData;
+        private String detectedValue;
+        private String detectedAsciiValue;
 
         @Override
         public List<Object> getRowData() {
             return null;
         }
+    }
+
+
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    @Builder
+    public static class AlchemyCurrencyResponse{
+        private String detectedValue;
+        private String detectedAsciiValue;
+        private String confidenceScore;
     }
 
     @AllArgsConstructor
@@ -231,6 +251,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private String feature;
         private String state;
         private JsonNode tableData;
+        private String detectedValue;
+        private String detectedAsciiValue;
     }
 
     @AllArgsConstructor
