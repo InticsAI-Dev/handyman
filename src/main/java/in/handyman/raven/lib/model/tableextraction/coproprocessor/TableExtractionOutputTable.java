@@ -34,10 +34,15 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String tableResponse;
     private String modelName;
+    private Long truthEntityId;
+    private Long sorContainerId;
+    private Long channelId;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processedFilePath,
-                this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId, this.tableResponse, this.bboxes, this.croppedImage,this.modelName).collect(Collectors.toList());
+                this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId,
+                this.rootPipelineId, this.tableResponse, this.bboxes, this.croppedImage, this.modelName,
+                this.truthEntityId, this.sorContainerId, this.channelId).collect(Collectors.toList());
     }
 }
