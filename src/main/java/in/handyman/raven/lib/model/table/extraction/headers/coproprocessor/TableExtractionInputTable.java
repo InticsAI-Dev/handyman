@@ -27,6 +27,9 @@ public class TableExtractionInputTable implements CoproProcessor.Entity {
     private String filePath;
     private String tableHeaders;
     private String modelName;
+    private Long truthEntityId;
+    private Long sorContainerId;
+    private Long channelId;
 
 
     @Override

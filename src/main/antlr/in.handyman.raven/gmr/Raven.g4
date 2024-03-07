@@ -153,6 +153,7 @@ action:
     |tritonModelLoadUnload
     |tableExtractionHeaders
     |currencyDetection
+    |greyScaleConversion
     );
 
 
@@ -1117,6 +1118,17 @@ currencyDetection:
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
 
+
+
+greyScaleConversion:
+    'greyScaleConversion' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'process-id' processId=STRING
+    'copro-url' endPoint=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
 
 //rules
 
