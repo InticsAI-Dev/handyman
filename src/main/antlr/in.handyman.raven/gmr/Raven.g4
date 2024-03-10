@@ -154,6 +154,7 @@ action:
     |tableExtractionHeaders
     |currencyDetection
     |greyScaleConversion
+    |tableExtractionOutbound
     );
 
 
@@ -1088,7 +1089,7 @@ systemkeyTable:
     'using' '{'
         querySet=STRING
     '}' ('on-condition' condition=expression)* ;
-    
+
 tritonModelLoadUnload:
     'tritonModelLoadUnload' 'as' name=STRING
     'resource-conn' resourceConn=STRING
@@ -1129,6 +1130,18 @@ greyScaleConversion:
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
+
+
+tableExtractionOutbound:
+    'TableExtractionOutbound' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'input-from' inputAttribution=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
 
 //rules
 

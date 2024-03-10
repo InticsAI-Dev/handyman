@@ -17,25 +17,24 @@ class TrinityModelActionTest {
         TrinityModel trinityModel=TrinityModel.builder()
                 .name("DIE model testing")
                 .condition(true)
-                .outputDir("dir")
-                .requestUrl("http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer")
+                .outputDir("/data/output/")
+                .requestUrl("http://triton.copro.valuation.handwritten:9000/v2/models/xenon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("   SELECT a.question, a.file_path, a.document_type as paperType  FROM\n" +
-                        "macro.sor_transaction_tqa_audit a\n" +
-                        "join sor_transaction.sor_transaction_pipeline_audit st on st.group_id =a.group_id \n" +
-                        "where a.document_type='Printed' and a.model_registry = 'xenon'\n" +
-                        "and a.tenant_id = 1 and st.group_id='43'; ")
-                .responseAs("sor_transaction_tqa_49254")
+                .questionSql("SELECT 'what is group number' as question, '/data/output/749/preprocess/autorotation/auto_rotation/Rachel_David_1.jpg' as file_path,'Handwritten' as paperType;")
+                .responseAs("sor_transaction_tqa_123456")
                 .build();
+
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.trinity-attribution.handwritten.url","http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.trinity-attribution.printed.url","http://triton.copro.valuation.handwritten:9000/v2/models/xenon-vqa-service/versions/1/infer");
         actionExecutionAudit.getContext().put("okhttp.client.timeout","20");
-        actionExecutionAudit.getContext().put("gen_group_id.group_id","49254");
-        actionExecutionAudit.getContext().put("tenant_id", "1");
-        actionExecutionAudit.setProcessId(43L);
+        actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
+        actionExecutionAudit.setProcessId(138980079308730208L);
+        actionExecutionAudit.setRootPipelineId(12345678L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
+                Map.entry("tenant_id","1"),
+                Map.entry("triton.request.activator","true"),
                 Map.entry("write.batch.size","5")));
 
         TrinityModelAction trinityModelAction=new TrinityModelAction(actionExecutionAudit,log,trinityModel);
@@ -50,25 +49,24 @@ class TrinityModelActionTest {
         TrinityModel trinityModel=TrinityModel.builder()
                 .name("DIE model testing")
                 .condition(true)
-                .outputDir("dir")
-                .requestUrl("http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer")
+                .outputDir("/data/output/")
+                .requestUrl("http://triton.copro.valuation.printed:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("   SELECT a.question, a.file_path, a.document_type as paperType  FROM\n" +
-                        "macro.sor_transaction_tqa_audit a\n" +
-                        "join sor_transaction.sor_transaction_pipeline_audit st on st.group_id =a.group_id \n" +
-                        "where a.document_type='Printed' and a.model_registry = 'xenon'\n" +
-                        "and a.tenant_id = 1 and st.group_id='43'; ")
-                .responseAs("sor_transaction_tqa_49254")
+                .questionSql("SELECT 'what is name' as question, '/data/resized.jpg' as file_path,'Printed' as paperType;")
+                .responseAs("sor_transaction_tqa_123456")
                 .build();
+
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.trinity-attribution.handwritten.url","http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.trinity-attribution.printed.url","http://triton.copro.valuation.printed:8900/v2/models/argon-vqa-service/versions/1/infer");
         actionExecutionAudit.getContext().put("okhttp.client.timeout","20");
-        actionExecutionAudit.getContext().put("gen_group_id.group_id","49254");
-        actionExecutionAudit.getContext().put("tenant_id", "1");
-        actionExecutionAudit.setProcessId(43L);
+        actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
+        actionExecutionAudit.setProcessId(138980079308730208L);
+        actionExecutionAudit.setRootPipelineId(12345678L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
+                Map.entry("tenant_id","1"),
+                Map.entry("triton.request.activator","true"),
                 Map.entry("write.batch.size","5")));
 
         TrinityModelAction trinityModelAction=new TrinityModelAction(actionExecutionAudit,log,trinityModel);

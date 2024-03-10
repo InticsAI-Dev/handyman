@@ -170,6 +170,14 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setDetectedAsciiValue(entity.getDetectedAsciiValue());
                 alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
             }
+            if(feature.equals("TABLE_EXTRACT_AGGREGATE")){
+                JsonNode tableAggregateNode = mapper.readTree(entity.getTableAggregateNode());
+                JsonNode tableNode = mapper.readTree(entity.getTableData());
+                alchemyRequestTable.setTableData(tableNode);
+                alchemyRequestTable.setAggregateJson(tableAggregateNode);
+                alchemyRequestTable.setSorItemId(entity.sorItemId);
+            }
+
 
 
 
@@ -221,15 +229,14 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedAsciiValue;
         private String csvFilePath;
         private Long truthEntityId;
+        private String tableAggregateNode;
+        private Long sorItemId;
 
         @Override
         public List<Object> getRowData() {
             return null;
         }
     }
-
-
-
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
@@ -239,7 +246,6 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedAsciiValue;
         private String confidenceScore;
     }
-
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
@@ -259,6 +265,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private JsonNode tableData;
         private String detectedValue;
         private String detectedAsciiValue;
+        private JsonNode aggregateJson;
+        private Long sorItemId;
     }
 
     @AllArgsConstructor
