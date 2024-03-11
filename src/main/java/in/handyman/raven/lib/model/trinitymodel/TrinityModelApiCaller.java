@@ -91,9 +91,9 @@ public class TrinityModelApiCaller {
             tritonRequest.setShape(List.of(1, 1));
             tritonRequest.setDatatype("BYTES");
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
-            if (Objects.equals(modelRegistry, "argon")) {
+            if (Objects.equals(modelRegistry, "ARGON")) {
                 tritonRequest.setName("ARGON VQA START");
-            } else if (Objects.equals(modelRegistry, "xenon")){
+            } else if (Objects.equals(modelRegistry, "XENON")){
                 tritonRequest.setName("XENON VQA START");
             }
         }else if (Objects.equals(paperType,"Handwritten")) {
