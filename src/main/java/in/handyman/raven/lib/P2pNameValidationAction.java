@@ -8,8 +8,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.P2pNameValidation;
 import in.handyman.raven.lib.model.p2pNameValidation.P2PNameValidationInputTable;
 import in.handyman.raven.lib.model.p2pNameValidation.P2PNameValidationOutputTable;
-import in.handyman.raven.util.CommonQueryUtil;
-import org.checkerframework.checker.index.qual.PolyUpperBound;
+import in.handyman.raven.lib.model.p2pNameValidation.P2pNameValidationConsumerProcess;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -18,10 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Types;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 /**
@@ -33,84 +36,86 @@ public class P2pNameValidationAction implements IActionExecution {
     private final Logger log;
     private final P2pNameValidation p2pNameValidation;
     public static final String INSERT_INTO = "INSERT INTO";
-    public static final String COLUMN_LIST = "";
-    public static final String SCHEMA_NAME = "voting";
-    public static final String VAL_STRING_LIST = "";
-    public static final String P2P_VALIDATION_TABLE = "cumulative_result_p2p_result_table_";
+    public static final String COLUMN_LIST = "origin_id, group_id, b_box, confidence_score, filter_score, maximum_score, extracted_value, paper_no, root_pipeline_id, tenant_id, sor_item_name";
+    public static final String SCHEMA_NAME = "p2p.schema.name";
+    public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+    public static final String P2P_VALIDATION_TABLE = "p2p.output.table";
+    public static final String READ_BATCH_SIZE = "read.batch.size";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
+    public static final String THREAD_SLEEP_TIME = "1000";
+    public static final String P2P_URL = "p2p.url";
+    public static final String CONSUMER_API_COUNT = "p2p.name.concat.consumer.API.count";
     private final Marker aMarker;
+    private final Integer threadSleepTime;
+    private final Integer readBatchSize;
+    private final Integer writeBatchSize;
+    private final String insertQuery;
+    private final Integer consumerApiCount;
+    private final String p2pUrl;
+    private final String tableName;
+    private final String schemaName;
 
-    public P2pNameValidationAction(final ActionExecutionAudit actionExecutionAudit, final Logger log, final Object p2pNameValidation, String insertInto) {
+    public P2pNameValidationAction(final ActionExecutionAudit actionExecutionAudit, final Logger log, final Object p2pNameValidation) {
         this.p2pNameValidation = (P2pNameValidation) p2pNameValidation;
         this.actionExecutionAudit = actionExecutionAudit;
         this.log = log;
+        this.threadSleepTime = Integer.parseInt(THREAD_SLEEP_TIME);
+        String writeBatchSizeStr = this.actionExecutionAudit.getContext().get(WRITE_BATCH_SIZE);
+        this.writeBatchSize = Integer.valueOf(writeBatchSizeStr);
+        String consumerApiCountStr = this.actionExecutionAudit.getContext().get(CONSUMER_API_COUNT);
+        consumerApiCount = Integer.valueOf(consumerApiCountStr);
+        this.p2pUrl = actionExecutionAudit.getContext().get(P2P_URL);
+        this.tableName = actionExecutionAudit.getContext().get(P2P_VALIDATION_TABLE);
+        this.schemaName = actionExecutionAudit.getContext().get(SCHEMA_NAME);
+        this.readBatchSize = Integer.valueOf(actionExecutionAudit.getContext().get(READ_BATCH_SIZE));
         this.aMarker = MarkerFactory.getMarker(" P2pNameValidation:" + this.p2pNameValidation.getName());
-        String insertQuery = INSERT_INTO + " " + SCHEMA_NAME + "." + P2P_VALIDATION_TABLE + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
+        insertQuery = INSERT_INTO + " " + schemaName + "." + tableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
     }
 
     @Override
     public void execute() throws Exception {
+        try {
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(p2pNameValidation.getResourceConn());
+            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+            log.info(aMarker, "p2p name concatenation action {} has been started", p2pNameValidation.getName());
 
-        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(p2pNameValidation.getResourceConn());
-        jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-        log.info(aMarker, "p2p name validation action {} has been started", p2pNameValidation.getName());
+            final List<URL> urls = Optional.ofNullable(p2pUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+                try {
+                    return new URL(urlItem);
+                } catch (MalformedURLException e) {
+                    log.error("Error in processing the URL " + urlItem, e);
+                    throw new HandymanException("Error in processing the URL", e, actionExecutionAudit);
+                }
+            }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-        final List<P2PNameValidationInputTable> p2PNameValidationInputs = new ArrayList<>();
+            final CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> coproProcessor = getP2PNameValidationInputTableP2PNameValidationOutputTableCoproProcessor(jdbi, urls);
+            Thread.sleep(threadSleepTime);
 
-        jdbi.useTransaction(handle -> {
-            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(p2pNameValidation.getQuerySet());
-            formattedQuery.forEach(sqlToExecute -> p2PNameValidationInputs.addAll(handle.createQuery(sqlToExecute).mapToBean(P2PNameValidationInputTable.class).stream().collect(Collectors.toList())));
-        });
-
-        p2PNameValidationInputs.forEach(p2PNameValidationInput -> {
-            try {
-                log.info(aMarker, "executing for the file {}", p2PNameValidationInput);
-                final String p2pBboxFinal = p2PNameValidationInput.getP2pFirstNameBBox();
-
-                final String p2pFirstName = cleanAndExtractAlphabets(p2PNameValidationInput.getP2pFirstName());
-                final String p2pLastName = cleanAndExtractAlphabets(p2PNameValidationInput.getP2pLastName());
-
-                final Double p2pFistNameCfScore = p2PNameValidationInput.getP2pFirstNameConfidenceScore();
-                final Double p2pLastNameCfScore = p2PNameValidationInput.getP2pLastNameConfidenceScore();
-                final Double finalConfidenceScore = (p2pFistNameCfScore + p2pLastNameCfScore) / 2;
-
-                final Double p2pFirstNameMaxScore = p2PNameValidationInput.getP2pFirstNameMaximumScore();
-                final Double p2pLastNameMaxScore = p2PNameValidationInput.getP2pLastNameMaximumScore();
-                final Double finalMaxScore = (p2pFirstNameMaxScore + p2pLastNameMaxScore) / 2;
-
-                final Double p2pFirstNameFilterScore = p2PNameValidationInput.getP2pFirstNameFilterScore();
-                final Double p2pLastNameFilterScore = p2PNameValidationInput.getP2pLastNameFilterScore();
-                final Double finaFilterScore = (p2pFirstNameFilterScore + p2pLastNameFilterScore) / 2;
-
-                final List<P2PNameValidationOutputTable> p2PNameValidationOutputTables = new ArrayList<>();
-
-                String finalConcatenatedName = getConcatenatedName(p2pFirstName, p2pLastName);
-                p2PNameValidationOutputTables.add(P2PNameValidationOutputTable.builder().p2pConcatenatedName(finalConcatenatedName).groupId(p2PNameValidationInput.getGroupId()).rootPipelineId(p2PNameValidationInput.getRootPipelineId()).paperNo(p2PNameValidationInput.getPaperNo()).originId(Optional.ofNullable(p2PNameValidationInput.getOriginId()).map(String::valueOf).orElse(null)).p2pBbox(p2pBboxFinal).p2pConfidenceScore(finalConfidenceScore).p2pFilterScore(finaFilterScore).p2pMaximumScore(finalMaxScore).build());
-            } catch (Exception exception) {
-                log.error(aMarker, "error in execute method for name concatenate action ", exception);
-                throw new HandymanException(exception);
-            }
-        });
+            final P2pNameValidationConsumerProcess p2pNameValidationConsumerProcess = new P2pNameValidationConsumerProcess(log, aMarker, this);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, p2pNameValidationConsumerProcess);
+            log.info(aMarker, "P2P name concatenation action has been completed {}  ", p2pNameValidation.getName());
+        } catch (Exception e) {
+            actionExecutionAudit.getContext().put(p2pNameValidation.getName() + ".isSuccessful", "false");
+            log.error(aMarker, "error in execute method for p2p name concatenation ", e);
+            throw new HandymanException("error in execute method for p2p name concatenation", e, actionExecutionAudit);
+        }
     }
 
     @NotNull
-    private static String getConcatenatedName(String p2pFirstName, String p2pLastName) {
-        String finalConcatenatedName;
+    private CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> getP2PNameValidationInputTableP2PNameValidationOutputTableCoproProcessor(Jdbi jdbi, List<URL> urls) {
+        P2PNameValidationInputTable p2PNameValidationInputTable = new P2PNameValidationInputTable();
 
-        if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
-            finalConcatenatedName = p2pFirstName;
-        } else if (p2pFirstName.contains(p2pLastName)) {
-            finalConcatenatedName = p2pFirstName;
-        } else if (p2pLastName.contains(p2pFirstName)) {
-            finalConcatenatedName = p2pLastName;
-        } else {
-            finalConcatenatedName = p2pLastName + " " + p2pLastName;
-        }
-        return finalConcatenatedName;
+        final CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> coproProcessor =
+                new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                        P2PNameValidationOutputTable.class,
+                        P2PNameValidationInputTable.class,
+                        jdbi, log,
+                        p2PNameValidationInputTable, urls, actionExecutionAudit);
+
+        coproProcessor.startProducer(p2pNameValidation.getQuerySet(), readBatchSize);
+        return coproProcessor;
     }
 
-    private String cleanAndExtractAlphabets(String value) {
-        return value.replaceAll("[^a-zA-Z]+", "");
-    }
 
     @Override
     public boolean executeIf() throws Exception {

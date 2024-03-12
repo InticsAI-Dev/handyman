@@ -1,0 +1,85 @@
+package in.handyman.raven.lib.model.p2pNameValidation;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.P2pNameValidationAction;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.Marker;
+
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+public class P2pNameValidationConsumerProcess implements CoproProcessor.ConsumerProcess<P2PNameValidationInputTable, P2PNameValidationOutputTable> {
+    private final Logger log;
+    private final Marker aMarker;
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public P2pNameValidationConsumerProcess(Logger log, Marker aMarker, P2pNameValidationAction p2pNameValidationAction) {
+        this.log = log;
+        this.aMarker = aMarker;
+    }
+
+    @Override
+    public List<P2PNameValidationOutputTable> process(URL endpoint, P2PNameValidationInputTable entity) throws Exception {
+        System.out.println(entity);
+        final List<P2PNameValidationOutputTable> p2PNameValidationOutputTableArrayList = new ArrayList<>();
+        try {
+            log.info(aMarker, "mapping inputs for the results {}", entity);
+            final String p2pBboxFinal = entity.getP2pFirstNameBbox();
+
+            final String p2pFirstName = cleanAndExtractAlphabets(entity.getP2pFirstName());
+            final String p2pLastName = cleanAndExtractAlphabets(entity.getP2pLastName());
+
+            final Double p2pFistNameCfScore = entity.getP2pFirstNameConfidenceScore();
+            final Double p2pLastNameCfScore = entity.getP2pLastNameConfidenceScore();
+            final Double finalConfidenceScore = (p2pFistNameCfScore + p2pLastNameCfScore) / 2;
+
+            final Double p2pFirstNameMaxScore = entity.getP2pFirstNameMaximumScore();
+            final Double p2pLastNameMaxScore = entity.getP2pLastNameMaximumScore();
+            final Double finalMaxScore = (p2pFirstNameMaxScore + p2pLastNameMaxScore) / 2;
+
+            final Double p2pFirstNameFilterScore = entity.getP2pFirstNameFilterScore();
+            final Double p2pLastNameFilterScore = entity.getP2pLastNameFilterScore();
+            final Double finalFilterScore = (p2pFirstNameFilterScore + p2pLastNameFilterScore) / 2;
+
+            String finalConcatenatedName = null;
+            String sorItemName = null;
+            if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
+                finalConcatenatedName = p2pFirstName;
+            } else if (p2pFirstName.contains(p2pLastName)) {
+                finalConcatenatedName = p2pFirstName;
+            } else if (p2pLastName.contains(p2pFirstName)) {
+                finalConcatenatedName = p2pLastName;
+            } else {
+                finalConcatenatedName = p2pFirstName + " " + p2pLastName;
+            }
+            p2PNameValidationOutputTableArrayList.add(P2PNameValidationOutputTable.builder()
+                    .p2pConcatenatedName(finalConcatenatedName)
+                    .groupId(entity.getGroupId())
+                    .rootPipelineId(entity.getRootPipelineId())
+                    .paperNo(entity.getPaperNo())
+                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                    .p2pBbox(p2pBboxFinal)
+                    .p2pConfidenceScore(finalConfidenceScore)
+                    .p2pFilterScore(finalFilterScore)
+                    .p2pMaximumScore(finalMaxScore)
+                    .tenantId(entity.getTenantId())
+                    .sorItemName(entity.getSorItemName())
+                    .build());
+        } catch (Exception e) {
+            log.error(aMarker, "error in execute method for p2p name concatenation ", e);
+            throw new HandymanException("error in execute method for p2p name concatenation", e);
+        }
+
+        return p2PNameValidationOutputTableArrayList;
+    }
+
+    private String cleanAndExtractAlphabets(String value) {
+        return value.replaceAll("[^a-zA-Z]+", "");
+    }
+}

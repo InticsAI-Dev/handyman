@@ -2,8 +2,10 @@ package in.handyman.raven.lib.model;
 
 import in.handyman.raven.lambda.action.ActionContext;
 import in.handyman.raven.lambda.action.IActionContext;
+
 import java.lang.Boolean;
 import java.lang.String;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,20 +21,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "P2pNameValidation"
+        actionName = "P2pNameValidation"
 )
 public class P2pNameValidation implements IActionContext {
-  private String name;
+    private String name;
 
-  private String processId;
+    private String processId;
 
-  private String inputTable;
+    private String inputTable;
 
-  private String outputTable;
+    private String outputTable;
 
-  private String resourceConn;
+    private String resourceConn;
 
-  private String querySet;
+    private String querySet;
 
-  private Boolean condition = true;
+    private Boolean condition = true;
 }
