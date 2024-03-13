@@ -155,6 +155,8 @@ action:
     |currencyDetection
     |greyScaleConversion
     |tableExtractionOutbound
+    |paragraphExtraction
+    |bulletInExtraction
     );
 
 
@@ -1141,6 +1143,26 @@ tableExtractionOutbound:
     'using' '{'
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
+
+paragraphExtraction:
+    'paragraph-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+bulletInExtraction:
+    'bulletin-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 
 
 //rules

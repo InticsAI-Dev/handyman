@@ -177,6 +177,11 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setAggregateJson(tableAggregateNode);
                 alchemyRequestTable.setSorItemId(entity.sorItemId);
             }
+            if(feature.equals("BULLETIN_EXTRACTION")){
+                alchemyRequestTable.setBulletinPoints(entity.getBulletinPoints());
+                alchemyRequestTable.setBulletinHeader(entity.getBulletinHeader());
+                alchemyRequestTable.setSynonymId(entity.getSynonymId());
+            }
 
 
 
@@ -231,6 +236,9 @@ public class AlchemyResponseAction implements IActionExecution {
         private Long truthEntityId;
         private String tableAggregateNode;
         private Long sorItemId;
+        private String bulletinHeader;
+        private String bulletinPoints;
+
 
         @Override
         public List<Object> getRowData() {
@@ -267,6 +275,8 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedAsciiValue;
         private JsonNode aggregateJson;
         private Long sorItemId;
+        private String bulletinHeader;
+        private String bulletinPoints;
     }
 
     @AllArgsConstructor
