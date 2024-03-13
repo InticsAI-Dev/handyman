@@ -35,20 +35,19 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             final String p2pFirstName = cleanAndExtractAlphabets(entity.getP2pFirstName());
             final String p2pLastName = cleanAndExtractAlphabets(entity.getP2pLastName());
 
-            final Double p2pFistNameCfScore = entity.getP2pFirstNameConfidenceScore();
-            final Double p2pLastNameCfScore = entity.getP2pLastNameConfidenceScore();
+            final Double p2pFistNameCfScore = entity.getP2pFirstNameConfidenceScore() != null ? entity.getP2pFirstNameConfidenceScore() : 0;
+            final Double p2pLastNameCfScore = entity.getP2pLastNameConfidenceScore() != null ? entity.getP2pLastNameConfidenceScore() : 0;
             final Double finalConfidenceScore = (p2pFistNameCfScore + p2pLastNameCfScore) / 2;
 
-            final Double p2pFirstNameMaxScore = entity.getP2pFirstNameMaximumScore();
-            final Double p2pLastNameMaxScore = entity.getP2pLastNameMaximumScore();
+            final Double p2pFirstNameMaxScore = entity.getP2pFirstNameMaximumScore() != null ? entity.getP2pFirstNameMaximumScore() : 0;
+            final Double p2pLastNameMaxScore = entity.getP2pLastNameMaximumScore() != null ? entity.getP2pLastNameMaximumScore() : 0;
             final Double finalMaxScore = (p2pFirstNameMaxScore + p2pLastNameMaxScore) / 2;
 
-            final Double p2pFirstNameFilterScore = entity.getP2pFirstNameFilterScore();
-            final Double p2pLastNameFilterScore = entity.getP2pLastNameFilterScore();
+            final Double p2pFirstNameFilterScore = entity.getP2pFirstNameFilterScore() != null ? entity.getP2pFirstNameFilterScore() : 0;
+            final Double p2pLastNameFilterScore = entity.getP2pLastNameFilterScore() != null ? entity.getP2pLastNameFilterScore() : 0;
             final Double finalFilterScore = (p2pFirstNameFilterScore + p2pLastNameFilterScore) / 2;
 
             String finalConcatenatedName = null;
-            String sorItemName = null;
             if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
                 finalConcatenatedName = p2pFirstName;
             } else if (p2pFirstName.contains(p2pLastName)) {
@@ -58,12 +57,13 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             } else {
                 finalConcatenatedName = p2pFirstName + " " + p2pLastName;
             }
+            log.info(aMarker, "p2PNameValidationOutputTableArrayList", p2PNameValidationOutputTableArrayList);
             p2PNameValidationOutputTableArrayList.add(P2PNameValidationOutputTable.builder()
                     .p2pConcatenatedName(finalConcatenatedName)
                     .groupId(entity.getGroupId())
                     .rootPipelineId(entity.getRootPipelineId())
                     .paperNo(entity.getPaperNo())
-                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                    .originId(entity.getOriginId())
                     .p2pBbox(p2pBboxFinal)
                     .p2pConfidenceScore(finalConfidenceScore)
                     .p2pFilterScore(finalFilterScore)
@@ -71,6 +71,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                     .tenantId(entity.getTenantId())
                     .sorItemName(entity.getSorItemName())
                     .build());
+            log.info(aMarker, "p2PNameValidationOutputTableArrayList", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {
             log.error(aMarker, "error in execute method for p2p name concatenation ", e);
             throw new HandymanException("error in execute method for p2p name concatenation", e);
