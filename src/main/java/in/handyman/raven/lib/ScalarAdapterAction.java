@@ -301,7 +301,8 @@ public class ScalarAdapterAction implements IActionExecution {
                     confidenceScore = this.numericAction.getNumericScore(inputDetail);
                     break;
                 case "date":
-                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+//                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+                    confidenceScore = inputDetail.getThreshold();
                     break;
                 case "phone_reg":
                     confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
