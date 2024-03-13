@@ -152,6 +152,7 @@ action:
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
+    |currencyDetection
     |greyScaleConversion
     |p2pNameValidation
     );
@@ -1108,6 +1109,16 @@ tableExtractionHeaders:
 	'using' '{'
 		querySet=STRING
 	'}' ('on-condition' condition=expression)* ;
+
+currencyDetection:
+    'currencyDetection' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'process-id' processId=STRING
+    'copro-url' endPoint=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
 
 
 greyScaleConversion:
