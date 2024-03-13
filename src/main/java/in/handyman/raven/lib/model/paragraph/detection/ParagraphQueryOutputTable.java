@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.paragraph.detection;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,16 +35,17 @@ public class ParagraphQueryOutputTable  implements CoproProcessor.Entity{
     private String modelName;
     private String modelVersion;
     private Timestamp createdOn;
-    private String bulletinHeader;
-    private String bulletinPoints;
     private Integer synonymId;
+    private String paragraphSection;
+    private String paragraphPoints;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.paperNo, this.groupId, this.filePath, this.tenantId,
-                this.processId, this.outputDir, this.rootPipelineId, this.process, this.status, this.stage, this.message,
-                this.modelName, this.modelVersion,this.bulletinHeader,this.bulletinPoints,this.synonymId).collect(Collectors.toList());
+                this.processId, this.outputDir, this.rootPipelineId, this.process, this.status,
+                this.stage, this.message,this.modelName, this.modelVersion,this.synonymId,
+                this.paragraphSection,this.paragraphPoints).collect(Collectors.toList());
 
 
     }

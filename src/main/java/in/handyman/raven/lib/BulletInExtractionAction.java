@@ -58,8 +58,14 @@ public class BulletInExtractionAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "bulletin_extraction";
   public static final String BULLETIN_RESULT_TABLR = "bulletin_extraction_result";
-  public static final String COLUMN_LIST = "origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, status, stage, message, model_name, model_version, bulletin_header, bulletin_points, synonym_id";
-  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+  public static final String COLUMN_LIST = "origin_id, paper_no, group_id, file_path, tenant_id, " +
+                                            "process_id, output_dir, root_pipeline_id, process, status, " +
+                                            "stage, message, model_name, model_version, synonym_id," +
+                                            "bulletin_section,bulletin_points";
+  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?" +
+                                                      ",?,?,?,?,?," +
+                                                      "?,?,?,?,?," +
+                                                      "?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   private final int threadSleepTime;
   private final Integer consumerApiCount;

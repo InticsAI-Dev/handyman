@@ -178,8 +178,15 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setSorItemId(entity.sorItemId);
             }
             if(feature.equals("BULLETIN_EXTRACTION")){
-                alchemyRequestTable.setBulletinPoints(entity.getBulletinPoints());
-                alchemyRequestTable.setBulletinHeader(entity.getBulletinHeader());
+                JsonNode bulletinOutput = mapper.readTree(entity.getBulletinPoints());
+                alchemyRequestTable.setBulletinPoints(bulletinOutput);
+                alchemyRequestTable.setBulletinSection(entity.getBulletinSection());
+                alchemyRequestTable.setSynonymId(entity.getSynonymId());
+            }
+            if(feature.equals("PARAGRAPH_EXTRACTION")){
+                JsonNode paragraphOutput = mapper.readTree(entity.getParagraphPoints());
+                alchemyRequestTable.setParagraphPoints(paragraphOutput);
+                alchemyRequestTable.setParagraphSection(entity.getParagraphSection());
                 alchemyRequestTable.setSynonymId(entity.getSynonymId());
             }
 
@@ -236,8 +243,10 @@ public class AlchemyResponseAction implements IActionExecution {
         private Long truthEntityId;
         private String tableAggregateNode;
         private Long sorItemId;
-        private String bulletinHeader;
+        private String bulletinSection;
         private String bulletinPoints;
+        private String paragraphSection;
+        private String paragraphPoints;
 
 
         @Override
@@ -275,8 +284,10 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedAsciiValue;
         private JsonNode aggregateJson;
         private Long sorItemId;
-        private String bulletinHeader;
-        private String bulletinPoints;
+        private String bulletinSection;
+        private JsonNode bulletinPoints;
+        private String paragraphSection;
+        private JsonNode paragraphPoints;
     }
 
     @AllArgsConstructor

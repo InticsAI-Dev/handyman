@@ -13,6 +13,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class BulletinExtractionResponse {
-    private String bulletinHeader;
-    private List<String> bulletinPoints;
+    private String sectionHeader;
+    private List<String> sectionPoints;
 }

@@ -13,6 +13,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class ParagraphExtractionResponse {
-    private String paragraphHeader;
-    private List<String> paragraphPoints;
+    private String sectionHeader;
+    private List<String> sectionPoints;
 }

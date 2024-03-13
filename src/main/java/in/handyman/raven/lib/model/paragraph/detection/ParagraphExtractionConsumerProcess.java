@@ -7,6 +7,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.ParagraphExtractionAction;
+import in.handyman.raven.lib.model.bulletin.detection.BulletinExtractionLineItems;
 import in.handyman.raven.lib.model.paragraph.detection.triton.ParagraphExtractionModelResponse;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -67,16 +68,16 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         paragraphExtractionRequest.setActionId(actionId);
         paragraphExtractionRequest.setProcess(PROCESS_NAME);
         paragraphExtractionRequest.setFilePath(filePath);
+        paragraphExtractionRequest.setOutputDir(entity.getOutputDir());
 
-        ParagraphExtractionLineItems paragraphExtractionLineItems=new ParagraphExtractionLineItems();
-        List<ParagraphExtractionLineItems> paragraphExtractionLineItems1=new ArrayList<>();
+        List<ParagraphExtractionLineItems> paragraphExtractionLineItems=new ArrayList<>();
+        ParagraphExtractionLineItems  paragraphExtractionLineItems1=new ParagraphExtractionLineItems();
+        paragraphExtractionLineItems1.setSectionHeader(entity.getSectionHeader());
+        paragraphExtractionLineItems1.setPrompt(entity.getPrompt());
 
-        paragraphExtractionLineItems.setPrompt(entity.getPrompt());
-        paragraphExtractionLineItems.setSectionHeader(entity.getSectionHeader());
+        paragraphExtractionLineItems.add(paragraphExtractionLineItems1);
 
-        paragraphExtractionLineItems1.add(paragraphExtractionLineItems);
-        paragraphExtractionRequest.setPrompt(paragraphExtractionLineItems1);
-
+        paragraphExtractionRequest.setPrompt(paragraphExtractionLineItems);
 
         String jsonInputRequest = mapper.writeValueAsString(paragraphExtractionRequest);
 
@@ -104,11 +105,11 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
 
 
         if (Objects.equals("false", tritonRequestActivator)) {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
+            log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator,jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
             coproResponseBuider(entity, request, parentObj);
         } else {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
+            log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator,jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
             tritonRequestBuilder(entity, request, parentObj);
         }
@@ -229,7 +230,8 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
             List<ParagraphExtractionResponse> detectionDataItem = mapper.readValue(paragraphResponseDataItem, new TypeReference<>() {
             });
             detectionDataItem.forEach(paragraphExtractionResponse -> {
-                paragraphExtractionResponse.getParagraphPoints().forEach(s -> {
+                try {
+                    String paragraphExtractionResponseStr=mapper.writeValueAsString(paragraphExtractionResponse.getSectionPoints());
                     parentObj.add(ParagraphQueryOutputTable.builder()
                             .synonymId(entity.getSynonymId())
                             .filePath(processedFilePaths)
@@ -245,13 +247,18 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                             .rootPipelineId(rootPipelineId)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
-                            .bulletinHeader(paragraphExtractionResponse.getParagraphHeader())
-                            .bulletinPoints(s)
+                            .paragraphSection(paragraphExtractionResponse.getSectionHeader())
+                            .paragraphPoints(paragraphExtractionResponseStr)
                             .process(entity.getProcess())
                             .processId(entity.getProcessId())
                             .outputDir(entity.getOutputDir())
                             .build());
-                });
+
+
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+
             });
 
         } catch (JsonProcessingException e) {
@@ -287,7 +294,8 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
             List<ParagraphExtractionResponse> detectionDataItem = mapper.readValue(paragraphResponseDataItem, new TypeReference<>() {
             });
             detectionDataItem.forEach(paragraphExtractionResponse -> {
-                paragraphExtractionResponse.getParagraphPoints().forEach(s -> {
+                try {
+                    String paragraphExtractionResponseStr=mapper.writeValueAsString(paragraphExtractionResponse.getSectionPoints());
                     parentObj.add(ParagraphQueryOutputTable.builder()
                             .synonymId(entity.getSynonymId())
                             .filePath(processedFilePaths)
@@ -303,14 +311,19 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                             .rootPipelineId(rootPipelineId)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
-                            .bulletinHeader(paragraphExtractionResponse.getParagraphHeader())
-                            .bulletinPoints(s)
+                            .paragraphSection(paragraphExtractionResponse.getSectionHeader())
+                            .paragraphPoints(paragraphExtractionResponseStr)
                             .process(entity.getProcess())
                             .processId(entity.getProcessId())
                             .outputDir(entity.getOutputDir())
                             .build());
-                });
-                });
+
+
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+
+            });
 
 
         } catch (JsonProcessingException e) {

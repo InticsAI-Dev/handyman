@@ -21,7 +21,7 @@ class BulletInExtractionActionTest {
                 .outputDir("/data/")
                 .outputTable("bulletin_extraction.bulletin_extraction_result")
                 .querySet("SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header\n" +
-                        "FROM bulletin_extraction.bulletin_extraction_input_table_1234;")
+                        "FROM bulletin_extraction.bulletin_extraction_input_table_12345;")
                 .build();
 
         ActionExecutionAudit ac=new ActionExecutionAudit();

@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.bulletin.detection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -235,7 +236,8 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
             List<BulletinExtractionResponse> detectionDataItem = mapper.readValue(bulletinResponseDataItem, new TypeReference<>() {
             });
             detectionDataItem.forEach(bulletinExtractionResponse -> {
-                bulletinExtractionResponse.getBulletinPoints().forEach(s -> {
+                try {
+                    String bulletInLineItemsNode = mapper.writeValueAsString(bulletinExtractionResponse);
                     parentObj.add(BulletinQueryOutputTable.builder()
                             .synonymId(entity.getSynonymId())
                             .filePath(processedFilePaths)
@@ -249,17 +251,19 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                             .message("bulletin Extraction macro completed")
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(rootPipelineId)
+                            .bulletinSection(bulletinExtractionResponse.getSectionHeader())
+                            .bulletinPoints(bulletInLineItemsNode)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
-                            .bulletinHeader(bulletinExtractionResponse.getBulletinHeader())
-                            .bulletinPoints(s)
-                            .process(entity.getProcess())
-                            .processId(entity.getProcessId())
-                            .outputDir(entity.getOutputDir())
                             .build());
-                });
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+
+
 
             });
+
 
         } catch (JsonProcessingException e) {
             parentObj.add(BulletinQueryOutputTable.builder()
@@ -295,7 +299,8 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
             List<BulletinExtractionResponse> detectionDataItem = mapper.readValue(bulletinResponseDataItem, new TypeReference<>() {
             });
             detectionDataItem.forEach(bulletinExtractionResponse -> {
-                bulletinExtractionResponse.getBulletinPoints().forEach(s -> {
+                try {
+                    String bulletInLineItemsNode = mapper.writeValueAsString(bulletinExtractionResponse.getSectionPoints());
                     parentObj.add(BulletinQueryOutputTable.builder()
                             .synonymId(entity.getSynonymId())
                             .filePath(processedFilePaths)
@@ -309,12 +314,16 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                             .message("bulletin Extraction macro completed")
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(rootPipelineId)
+                            .bulletinSection(bulletinExtractionResponse.getSectionHeader())
+                            .bulletinPoints(bulletInLineItemsNode)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
-                            .bulletinHeader(bulletinExtractionResponse.getBulletinHeader())
-                            .bulletinPoints(s)
                             .build());
-                });
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+
+
 
             });
 

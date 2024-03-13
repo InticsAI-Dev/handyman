@@ -61,8 +61,14 @@ public class ParagraphExtractionAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "paragraph_extraction";
   public static final String PARAGRAPH_EXTRACTION = "paragraph_extraction_result";
-  public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,input_file_path,detected_value,detected_ascii_value,confidence_score";
-  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,  ?,?,  ?)";
+  public static final String COLUMN_LIST = "origin_id, paper_no, group_id, file_path, tenant_id, " +
+          "process_id, output_dir, root_pipeline_id, process, status, " +
+          "stage, message, model_name, model_version, synonym_id," +
+          "paragraph_section,paragraph_points";
+  public static final String VAL_STRING_LIST = "VALUES( ?,?,?,?,?," +
+                                                      "?,?,?,?,?" +
+                                                      ",?,?,?,?,?," +
+                                                      "?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   private final int threadSleepTime;
   private final Integer consumerApiCount;
