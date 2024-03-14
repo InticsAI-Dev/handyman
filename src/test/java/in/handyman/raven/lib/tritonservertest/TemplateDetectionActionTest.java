@@ -23,9 +23,9 @@ class TemplateDetectionActionTest {
                 .resourceConn("intics_agadia_db_conn")
                 .processId("12345")
                 .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/pdf_to_image/SYNT_166838894_c1/SYNT_166838894_c1_0.jpg' as file_path,'TNT-1' as tenant_id\n" +
-                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , '{\"what is patient name\"}'  as questions\n"
+                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , '1' as batch_id, '{\"what is patient name\"}'  as questions\n"
                 )
-                                                                                        .build();
+                .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.template.detection.url","http://localhost:10182/copro/preprocess/text_extraction");
@@ -44,13 +44,13 @@ class TemplateDetectionActionTest {
         TemplateDetection templateDetection=TemplateDetection.builder()
                 .condition(true)
                 .name("template detection")
-                .coproUrl("http://192.168.10.239:10193/copro/attribution/kvp-printed")
+                .coproUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .inputTable("info.auto_rotation")
-                .ouputTable("macro.template_detection_response_12345")
+                .ouputTable("macro.template_detection_response_1234543536777898")
                 .resourceConn("intics_zio_db_conn")
                 .processId("12345")
-                .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path,1 as tenant_id\n" +
-                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , ARRAY['what is logo']  as questions" )
+                .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/input/resized_image.png' as file_path,1 as tenant_id\n" +
+                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id, '1' as batch_id , ARRAY['what is logo']  as questions" )
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
@@ -58,7 +58,7 @@ class TemplateDetectionActionTest {
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size","5")));
 

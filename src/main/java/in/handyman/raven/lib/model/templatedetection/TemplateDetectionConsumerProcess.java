@@ -137,6 +137,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .stage(TEMPLATE_DETECTION)
                                 .message("Template detection completed and response is empty for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
+                                .batchId(entity.getBatchId())
                                 .build()
                 );
             }
@@ -155,6 +156,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
                             .processedFilePath(entity.getFilePath())
+                            .batchId(entity.getBatchId())
                             .build()
             );
             HandymanException handymanException = new HandymanException(e);
@@ -201,6 +203,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                     .stage(TEMPLATE_DETECTION)
                                     .message("Template detection completed and response is empty for group_id " + groupId + " and origin_id " + originId)
                                     .processedFilePath(entity.getFilePath())
+                                    .batchId(entity.getBatchId())
                                     .build()
                     );
                 }
@@ -219,6 +222,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .stage(TEMPLATE_DETECTION)
                                 .message("Template detection failed for group_id " + groupId + " and origin_id " + originId + " and Exception")
                                 .processedFilePath(entity.getFilePath())
+                                .batchId(entity.getBatchId())
                                 .build()
                 );
             }
@@ -237,6 +241,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
                             .processedFilePath(entity.getFilePath())
+                            .batchId(entity.getBatchId())
                             .build()
             );
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
@@ -286,6 +291,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .modelVersion(modelVersion)
                                 .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
+                                .batchId(entity.getBatchId())
                                 .build()
                 );
             });
@@ -304,6 +310,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection response processing failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
                             .processedFilePath(entity.getFilePath())
+                            .batchId(entity.getBatchId())
                             .build()
             );
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
@@ -355,6 +362,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .modelVersion(modelVersion)
                                 .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
+                                .batchId(entity.getBatchId())
                                 .build()
                 );
             });
@@ -373,6 +381,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection response processing failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
                             .processedFilePath(entity.getFilePath())
+                            .batchId(entity.getBatchId())
                             .build()
             );
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
