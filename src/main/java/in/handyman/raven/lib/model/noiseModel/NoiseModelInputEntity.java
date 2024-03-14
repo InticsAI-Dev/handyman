@@ -25,6 +25,7 @@ public class NoiseModelInputEntity implements CoproProcessor.Entity {
     private String fileId;
     private Long tenantId;
     private String outputDir;
+    private String batchId;
     @Override
     public List<Object> getRowData() {
         return null;

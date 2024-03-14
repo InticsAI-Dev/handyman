@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.DataTruncation;
 import java.util.List;
 
 @Data
@@ -21,6 +22,7 @@ public class QrInputEntity implements CoproProcessor.Entity {
     private String fileId;
     private Long rootPipelineId;
     private Long tenantId;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

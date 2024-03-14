@@ -144,6 +144,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .stage("URGENCY_TRIAGE_MODEL")
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
@@ -162,6 +163,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .stage("URGENCY_TRIAGE_MODEL")
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -197,6 +199,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -234,6 +237,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .stage(URGENCY_TRIAGE_PROCESS_NAME)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
@@ -263,6 +267,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -304,6 +309,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

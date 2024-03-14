@@ -66,8 +66,8 @@ public class UrgencyTriageModelAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(urgencyTriageModel.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Urgency Triage Action for {} has been started", urgencyTriageModel.getName());
-            final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+" (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version)" +
-                    "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?)";
+            final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+" (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version,batch_id)" +
+                    "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?)";
             final List<URL> urls = Optional.ofNullable(urgencyTriageModel.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
