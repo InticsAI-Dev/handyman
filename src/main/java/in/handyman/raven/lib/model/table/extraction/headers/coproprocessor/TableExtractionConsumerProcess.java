@@ -35,6 +35,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<TableExtractionInputTable, TableExtractionOutputTable> {
 
@@ -154,15 +155,33 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                     String multipartUploadActivatorValue = action.getContext().get(multipartUploadActivatorVariable);
                     TableResponse tableResponseLineItems = tableOutputResponse1.getTableResponse();
                     if (multipartUploadActivatorValue.equalsIgnoreCase("true")) {
-                        try {
-                            downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response csv file: {}", e.getMessage());
+                        log.info("MultipartUploadActivator is true");
+                        String MultipartDownloadUrlVariable = "table.response.download.url";
+                        String endPoint = action.getContext().get(MultipartDownloadUrlVariable);
+
+                        final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                            try {
+                                return new URL(s1);
+                            } catch (MalformedURLException e) {
+                                log.error("Error in processing the URL ", e);
+                                throw new RuntimeException(e);
+                            }
+                        }).collect(Collectors.toList())).orElse(Collections.emptyList());
+                        if (csvTablesPath != null && !csvTablesPath.isEmpty()) {
+                            try {
+                                log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
+                                downloadResponseFile(csvTablesPath, action, httpclient, log, aMarker, urls);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response csv file: {}", e.getMessage());
+                            }
                         }
-                        try {
-                            downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker);
-                        } catch (MalformedURLException e) {
-                            log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                        if (croppedImagePath != null && !croppedImagePath.isEmpty()) {
+                            try {
+                                log.info("MultipartUploadActivator is true downloading file " + csvTablesPath);
+                                downloadResponseFile(croppedImagePath, action, httpclient, log, aMarker, urls);
+                            } catch (MalformedURLException e) {
+                                log.error("Error writing table Response cropped image file: {}", e.getMessage());
+                            }
                         }
                     }
 //                    String tableResponse;
@@ -197,6 +216,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                             .rootPipelineId(action.getRootPipelineId())
                                             .modelName(entity.getModelName())
+                                            .truthEntityId(entity.getTruthEntityId())
+                                            .sorContainerId(entity.getSorContainerId())
+                                            .channelId(entity.getChannelId())
                                             .build());
                         }
 
@@ -222,6 +244,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(action.getRootPipelineId())
                                 .modelName(entity.getModelName())
+                                .truthEntityId(entity.getTruthEntityId())
+                                .sorContainerId(entity.getSorContainerId())
+                                .channelId(entity.getChannelId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -240,6 +265,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(action.getRootPipelineId())
                             .modelName(entity.getModelName())
+                            .truthEntityId(entity.getTruthEntityId())
+                            .sorContainerId(entity.getSorContainerId())
+                            .channelId(entity.getChannelId())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
@@ -252,12 +280,31 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
 
     }
 
-    private static void downloadResponseFile(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker) throws MalformedURLException {
+    private static void downloadResponseFile(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker, List<URL> urls) throws MalformedURLException {
 
         MediaType MEDIA_TYPE = MediaType.parse("application/json");
-        String multipartDownloadUrlVariable = "table.response.download.url";
-        String endPoint = action.getContext().get(multipartDownloadUrlVariable);
 
+        if (!urls.isEmpty()) {
+
+            int endpointSize = urls.size();
+            log.info("Endpoints are not empty for multipart download with nodes count {}", endpointSize);
+
+            urls.forEach(url -> {
+                try {
+                    downloadResponseFileFromServer(outputFilePath, action, httpclient, log, aMarker, url.toString(), MEDIA_TYPE);
+                } catch (Exception e) {
+                    log.error(aMarker, "The Exception occurred in multipart file download for file {} with exception {}", outputFilePath, e.getMessage());
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Exception occurred in multipart download for file - " + outputFilePath, handymanException, action);
+                }
+            });
+        } else {
+            log.error(aMarker, "Endpoints for multipart download is empty");
+        }
+
+    }
+
+    private static void downloadResponseFileFromServer(String outputFilePath, ActionExecutionAudit action, OkHttpClient httpclient, Logger log, Marker aMarker, String endPoint, MediaType MEDIA_TYPE) throws MalformedURLException {
         URL url = new URL(endPoint + "?filepath=" + outputFilePath);
         Request request = new Request.Builder().url(url)
                 .addHeader("accept", "*/*")

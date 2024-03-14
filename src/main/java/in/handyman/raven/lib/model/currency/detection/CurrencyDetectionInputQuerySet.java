@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.tableextraction.coproprocessor;
+package in.handyman.raven.lib.model.currency.detection;
 
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
@@ -8,29 +8,29 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-//1. input pojo from select query, which implements CoproProcessor.Entity
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class TableExtractionInputTable implements CoproProcessor.Entity {
+public class CurrencyDetectionInputQuerySet implements CoproProcessor.Entity {
     private String originId;
-    private Long processId;
+    private Integer paperNo;
     private Integer groupId;
+    private String filePath;
     private Long tenantId;
     private String templateId;
-    private String filePath;
+    private Long processId;
     private String outputDir;
     private Long rootPipelineId;
-    private Long paperNo;
-    private String modelName;
-    private Long truthEntityId;
-    private Long sorContainerId;
-    private Long channelId;
-
+    private String process;
 
     @Override
     public List<Object> getRowData() {
         return null;
     }
+
+
+
 }
+

@@ -176,8 +176,14 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                             }
                                             preparedBatch.add();
                                         }
-                                        int[] execute = preparedBatch.execute();
-                                        logger.info("Consumer persisted {}", execute);
+
+                                        try {
+                                            int[] execute = preparedBatch.execute();
+                                            logger.info("Consumer persisted {}", execute);
+                                        }catch(Exception e){
+                                            logger.error("exception in prepared batch {}", e);
+                                        }
+
                                     });
                                     insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                                     processedEntity.clear();
