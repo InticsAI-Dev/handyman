@@ -154,6 +154,7 @@ action:
     |tableExtractionHeaders
     |currencyDetection
     |greyScaleConversion
+    |p2pNameValidation
     );
 
 
@@ -1125,6 +1126,16 @@ greyScaleConversion:
     'output-dir' outputDir=STRING
     'process-id' processId=STRING
     'copro-url' endPoint=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+
+p2pNameValidation:
+    'p2pNameValidation' 'as' name=STRING
+    'process-id' processId=STRING
+    'input-table' inputTable=STRING
     'output-table' outputTable=STRING
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
