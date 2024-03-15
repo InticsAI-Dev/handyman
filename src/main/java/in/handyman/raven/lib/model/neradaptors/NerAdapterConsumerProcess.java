@@ -151,6 +151,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message("Ner validation macro completed")
                             .modelRegistry(modelRegistry)
                             .rootPipelineId(rootPipelineId)
+                            .batchId(result.getBatchId())
                             .build());
 
 
@@ -186,6 +187,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message("Confidence Score is less than 0")
                             .modelRegistry(result.getModelRegistry())
                             .rootPipelineId(rootPipelineId)
+                            .batchId(result.getBatchId())
                             .build());
             log.error(aMarker, "The Exception occurred in confidence score validation by {} ", valConfidenceScore);
         }

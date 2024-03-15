@@ -48,13 +48,14 @@ public class NerOutputTable implements CoproProcessor.Entity {
     private String modelName;
     private String modelVersion;
     private String modelRegistry;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.paperNo, this.groupId, this.processId, this.sorId, this.sorItemId, this.sorItemName,
                 this.question, this.questionId,this.synonymId,this.answer,this.vqaScore, this.weight, this.createdUserId, this.tenantId, this.createdOn, this.wordScore, this.charScore,
                 this.validatorScoreAllowed, this.validatorScoreNegative, this.confidenceScore, this.validationName, this.bBox,
-                this.status, this.stage, this.message, this.rootPipelineId, this.modelName, this.modelVersion, this.modelRegistry
+                this.status, this.stage, this.message, this.rootPipelineId, this.modelName, this.modelVersion, this.modelRegistry,this.batchId
         ).collect(Collectors.toList());
     }
 
