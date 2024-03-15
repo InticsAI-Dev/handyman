@@ -20,6 +20,7 @@ public class TrinityModelLineItem {
     private String paperType;
     private String modelRegistry;
     private Long tenantId;
+    private String batchId;
 
 
 }
