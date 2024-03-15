@@ -301,6 +301,10 @@ public class ScalarAdapterAction implements IActionExecution {
                     confidenceScore = this.numericAction.getNumericScore(inputDetail);
                     break;
                 case "date":
+                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+//                    confidenceScore = inputDetail.getThreshold();
+                    break;
+                case "date-reg":
 //                    confidenceScore = this.dateAction.getDateScore(inputDetail);
                     confidenceScore = inputDetail.getThreshold();
                     break;
@@ -383,7 +387,7 @@ public class ScalarAdapterAction implements IActionExecution {
 
     private Validator scrubbingInput(Validator validator, String regix) {
         if (validator.getInputValue() != null) {
-            String correctedValue = validator.getInputValue().replaceAll("[^a-zA-Z0-9]", "");
+            String correctedValue = validator.getInputValue().replaceAll(regix, "");
             validator.setInputValue(correctedValue);
         }
         return validator;
