@@ -14,20 +14,24 @@ class ScalarAdapterActionTest {
         final ScalarAdapter build = ScalarAdapter.builder()
                 .condition(true)
                 .name("Test ScalarAdapter")
-                .processID("138968829607360172")
-                .resultSet(" SELECT distinct dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
-    "                     si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'${init_process_id.process_id}' as process_id,\n" +
-    "                     si.word_limit , si.word_threshold ,\n" +
-    "                     si.char_limit , si.char_threshold ,\n" +
-    "                     si.validator_threshold , si.allowed_characters ,\n" +
-    "                     si.comparable_characters, si.restricted_adapter_flag,\n" +
-    "                     dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-    "                     dp.created_user_id, dp.root_pipeline_id, dp.tenant_id,dp.b_box,dp.model_registry\n" +
-    "                     FROM sor_transaction.vqa_transaction dp\n" +
-    "                     JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-    "                     WHERE dp.group_id = '23' AND si.allowed_adapter ='ner' AND dp.answer is not null" +
-                        " AND dp.sor_item_name ='patient_name';\n" +
-    "   ")
+                .processID("1234567")
+                .resultSet("\n" +
+                        "SELECT distinct dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, \n" +
+                        "dp.answer as input_value,\n" +
+                        "dp.weight,dp.vqa_score,\n" +
+                        "si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, \n" +
+                        "dp.question_id,'${init_process_id.process_id}' as process_id,\n" +
+                        "si.word_limit , si.word_threshold ,\n" +
+                        "si.char_limit , si.char_threshold ,\n" +
+                        "si.validator_threshold , si.allowed_characters ,\n" +
+                        "si.comparable_characters, si.restricted_adapter_flag,\n" +
+                        "dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
+                        "dp.created_user_id, dp.root_pipeline_id, dp.tenant_id,dp.b_box,dp.model_registry, 'test_batch' as batch_id \n" +
+                        "FROM sor_transaction.vqa_transaction dp\n" +
+                        "JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
+                        "WHERE dp.group_id = '23' AND si.allowed_adapter ='ner' AND dp.answer is not null\n" +
+                        "AND dp.sor_item_name ='patient_name' and length(dp.model_registry) >0 ;\n" +
+                        "                       ")
 
                 .resourceConn("intics_zio_db_conn")
 

@@ -188,7 +188,9 @@ public class EpisodeOfCoverageAction implements IActionExecution {
 
 
     public void OutputQueryExecutor(Jdbi jdbi, String sorItem, Map<String, List<Integer>> stringListMap) {
-        Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
+        Long tenantId = 1L;
+        String batchId = "batch_1";
+
         stringListMap.forEach((s, integers) -> {
             for (Integer integer : integers) {
                 CoverageEntity coverageEntity = CoverageEntity.builder()
@@ -199,12 +201,13 @@ public class EpisodeOfCoverageAction implements IActionExecution {
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .sourceOfPahub(sorItem)
                         .tenantId(tenantId)
+                        .batchId(batchId)
                         .build();
                 try {
                     jdbi.useTransaction(handle -> {
                         handle.createUpdate("INSERT INTO " + episodeOfCoverage.getOutputTable() +
-                                        "(pahub_id, origin_id, source_of_pahub,group_id,created_on, paper_no,status,stage,message,tenant_id)" +
-                                        "VALUES (:pahubId , :originId, :sourceOfPahub ,:groupId,:createdOn, :paperNo, 'COMPLETED', 'SOR_GROUPING', 'sor grouping completed',:tenantId)")
+                                        "(pahub_id, origin_id, source_of_pahub,group_id,created_on, paper_no,status,stage,message,tenant_id,batch_id)" +
+                                        "VALUES (:pahubId , :originId, :sourceOfPahub ,:groupId,:createdOn, :paperNo, 'COMPLETED', 'SOR_GROUPING', 'sor grouping completed',:tenantId, :batchId)")
                                 .bindBean(coverageEntity).execute();
                     });
                     log.info(aMarker, "Completed insert for the patient instance {}", coverageEntity);
@@ -230,9 +233,10 @@ public class EpisodeOfCoverageAction implements IActionExecution {
         private String fileId;
         private Timestamp createdOn;
         private String sourceOfPahub;
-
+        private String batchId;
         private Integer paperNo;
         private Long tenantId;
+
     }
 
 
