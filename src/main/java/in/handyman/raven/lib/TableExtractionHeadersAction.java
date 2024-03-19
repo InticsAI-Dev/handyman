@@ -66,8 +66,8 @@ public class TableExtractionHeadersAction implements IActionExecution {
             log.info(aMarker, "Table Extraction Action output directory {}", outputDir);
             //5. build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + tableExtractionHeaders.getResultTable() +
-                    "(origin_id,group_id,tenant_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,table_response, bboxes, croppedImage,column_headers,truth_entity_name, model_name,truth_entity_id,sor_container_id,channel_id) " +
-                    " VALUES(?,?, ?, ?,?, ?,?,?,? ,?,  ?, ? , ?, ?,?,?,  ? ,?,  ?,  ?)";
+                    "(origin_id,group_id,tenant_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,table_response, bboxes, croppedImage,column_headers,truth_entity_name, model_name,truth_entity_id,sor_container_id,channel_id,batch_id) " +
+                    " VALUES(?,?, ?, ?,?, ?,?,?,? ,?,  ?, ? , ?, ?,?,?,  ? ,?,  ?,  ?,?)";
             log.info(aMarker, "table extraction Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls

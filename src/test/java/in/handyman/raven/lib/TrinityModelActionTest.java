@@ -18,7 +18,7 @@ class TrinityModelActionTest {
                 .condition(true)
                 .outputDir("/home/christopher.paulraj@zucisystems.com/Downloads/data/")
                 .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
-                .resourceConn("intics_agadia_db_conn")
+                .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
                 .questionSql(" SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
                         "a.model_registry as model_registry, a.tenant_id, a.batch_id \n" +

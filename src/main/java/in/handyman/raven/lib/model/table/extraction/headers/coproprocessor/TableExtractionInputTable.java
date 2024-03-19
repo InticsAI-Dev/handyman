@@ -30,7 +30,7 @@ public class TableExtractionInputTable implements CoproProcessor.Entity {
     private Long truthEntityId;
     private Long sorContainerId;
     private Long channelId;
-
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

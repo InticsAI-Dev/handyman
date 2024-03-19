@@ -139,6 +139,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
+                                .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -154,6 +155,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -247,6 +249,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .rootPipelineId(rootPipelineId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build()));
         } catch (JsonProcessingException e) {
 
@@ -261,6 +264,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .stage(PROCESS_NAME).message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -299,6 +303,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
+                        .batchId(entity.getBatchId())
                         .build());
             });
 
