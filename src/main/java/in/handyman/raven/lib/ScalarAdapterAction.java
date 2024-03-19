@@ -167,17 +167,19 @@ public class ScalarAdapterAction implements IActionExecution {
                 log.info(aMarker, "Build 19- scalar executing  validator {}", result);
 
                 String inputValue = result.getInputValue();
-                int wordScore = wordcountAction.getWordCount(inputValue,
-                        result.getWordLimit(), result.getWordThreshold());
-                int charScore = charactercountAction.getCharCount(inputValue,
-                        result.getCharLimit(), result.getCharThreshold());
-                Validator configurationDetails = Validator.builder()
+                Validator scrubbingInput = Validator.builder()
                         .inputValue(inputValue)
                         .adapter(result.getAllowedAdapter())
                         .allowedSpecialChar(result.getAllowedCharacters())
                         .comparableChar(result.getComparableCharacters())
                         .threshold(result.getValidatorThreshold())
                         .build();
+
+                Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
+                int wordScore = wordcountAction.getWordCount(inputValue,
+                        result.getWordLimit(), result.getWordThreshold());
+                int charScore = charactercountAction.getCharCount(inputValue,
+                        result.getCharLimit(), result.getCharThreshold());
 
                 int validatorScore = computeAdapterScore(configurationDetails);
                 int validatorNegativeScore = 0;
@@ -300,6 +302,11 @@ public class ScalarAdapterAction implements IActionExecution {
                     break;
                 case "date":
                     confidenceScore = this.dateAction.getDateScore(inputDetail);
+//                    confidenceScore = inputDetail.getThreshold();
+                    break;
+                case "date-reg":
+//                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+                    confidenceScore = inputDetail.getThreshold();
                     break;
                 case "phone_reg":
                     confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
@@ -315,6 +322,31 @@ public class ScalarAdapterAction implements IActionExecution {
         }
         return confidenceScore;
 
+    }
+
+    Validator computeScrubbingForValue(Validator inputDetail) {
+        try {
+            switch (inputDetail.getAdapter()) {
+                case "alpha":
+                    //Special character removed
+                    inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9]");
+                    break;
+                case "numeric":
+                    //Special character and alphabets removed
+                    inputDetail = scrubbingInput(inputDetail, "[^0-9]");
+                    break;
+                case "date-reg":
+                    //Remove alphabets
+                    // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
+                    inputDetail = scrubbingDate(inputDetail);
+                    break;
+            }
+        } catch (Exception t) {
+            log.error(aMarker, "error adpater validation{}", inputDetail, t);
+            HandymanException handymanException = new HandymanException(t);
+            HandymanException.insertException("Exception occurred in computing adapter score", handymanException, action);
+        }
+        return inputDetail;
     }
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount) {
@@ -335,14 +367,14 @@ public class ScalarAdapterAction implements IActionExecution {
 
     private int regValidator(Validator validator, String regForm) {
         String inputValue = validator.getInputValue();
-        inputValue = replaceSplChars(validator.getAllowedSpecialChar(), inputValue);
+        inputValue = replaceAllowedChars(validator.getAllowedSpecialChar(), inputValue);
         Pattern pattern = Pattern.compile(regForm);
         Matcher matcher = pattern.matcher(inputValue);
         boolean matchValue = matcher.matches();
         return matchValue ? validator.getThreshold() : 0;
     }
 
-    private String replaceSplChars(final String specialCharacters, String input) {
+    private String replaceAllowedChars(final String specialCharacters, String input) {
         if (specialCharacters != null) {
             for (int i = 0; i < specialCharacters.length(); i++) {
                 if (input.contains(Character.toString(specialCharacters.charAt(i)))) {
@@ -351,6 +383,37 @@ public class ScalarAdapterAction implements IActionExecution {
             }
         }
         return input;
+    }
+
+    private Validator scrubbingInput(Validator validator, String regix) {
+        if (validator.getInputValue() != null) {
+            String correctedValue = validator.getInputValue().replaceAll(regix, "");
+            validator.setInputValue(correctedValue);
+        }
+        return validator;
+    }
+
+    private Validator scrubbingDate(Validator validator) {
+        if (validator.getInputValue().length() > 2) {
+            String originalString = validator.getInputValue();
+            StringBuilder modifiedString = new StringBuilder(originalString);
+
+            // Remove last alphabet character
+            while (Character.isAlphabetic(modifiedString.charAt(modifiedString.length() - 1))) {
+                modifiedString.deleteCharAt(modifiedString.length() - 1);
+            }
+
+            // Remove first alphabet character
+            while (Character.isAlphabetic(modifiedString.charAt(0))) {
+                modifiedString.deleteCharAt(0);
+            }
+
+
+            String replacedString = modifiedString.toString().replaceAll("[a-zA-Z]", "/");
+            validator.setInputValue(replacedString);
+
+        }
+        return validator;
     }
 
     @Override
@@ -406,16 +469,15 @@ public class ScalarAdapterAction implements IActionExecution {
         private String modelName;
         private String modelVersion;
         private String modelRegistry;
-
-            private int wordLimit;
-            private int wordThreshold;
-            private int charLimit;
-            private int charThreshold;
-            private int validatorThreshold;
-            private String allowedCharacters;
-            private String comparableCharacters;
-            private int restrictedAdapterFlag;
-            private String sorItemName;
+        private int wordLimit;
+        private int wordThreshold;
+        private int charLimit;
+        private int charThreshold;
+        private int validatorThreshold;
+        private String allowedCharacters;
+        private String comparableCharacters;
+        private int restrictedAdapterFlag;
+        private String sorItemName;
     }
 
 }

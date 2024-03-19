@@ -157,6 +157,7 @@ action:
     |tableExtractionOutbound
     |paragraphExtraction
     |bulletInExtraction
+    |p2pNameValidation
     );
 
 
@@ -1164,6 +1165,15 @@ bulletInExtraction:
             querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+
+p2pNameValidation:
+    'p2pNameValidation' 'as' name=STRING
+    'process-id' processId=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
 
 //rules
 
