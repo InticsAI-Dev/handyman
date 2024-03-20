@@ -166,9 +166,9 @@ public class ScalarAdapterAction implements IActionExecution {
             for (ValidatorConfigurationDetail result : listOfDetails) {
                 log.info(aMarker, "Build 19- scalar executing  validator {}", result);
 
-                String inputValue = result.getInputValue();
+//                String inputValue = result.getInputValue();
                 Validator scrubbingInput = Validator.builder()
-                        .inputValue(inputValue)
+                        .inputValue(result.getInputValue())
                         .adapter(result.getAllowedAdapter())
                         .allowedSpecialChar(result.getAllowedCharacters())
                         .comparableChar(result.getComparableCharacters())
@@ -176,6 +176,7 @@ public class ScalarAdapterAction implements IActionExecution {
                         .build();
 
                 Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
+                String inputValue = configurationDetails.getInputValue();
                 int wordScore = wordcountAction.getWordCount(inputValue,
                         result.getWordLimit(), result.getWordThreshold());
                 int charScore = charactercountAction.getCharCount(inputValue,
