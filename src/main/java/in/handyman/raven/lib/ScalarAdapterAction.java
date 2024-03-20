@@ -305,7 +305,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     confidenceScore = this.dateAction.getDateScore(inputDetail);
 //                    confidenceScore = inputDetail.getThreshold();
                     break;
-                case "date-reg":
+                case "date_reg":
 //                    confidenceScore = this.dateAction.getDateScore(inputDetail);
                     confidenceScore = inputDetail.getThreshold();
                     break;
@@ -336,7 +336,11 @@ public class ScalarAdapterAction implements IActionExecution {
                     //Special character and alphabets removed
                     inputDetail = scrubbingInput(inputDetail, "[^0-9]");
                     break;
-                case "date-reg":
+                case "numeric_reg":
+                    //Special character and alphabets removed
+                    inputDetail = scrubbingInput(inputDetail, "[^0-9]");
+                    break;
+                case "date_reg":
                     //Remove alphabets
                     // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
                     inputDetail = scrubbingDate(inputDetail);
