@@ -1,13 +1,25 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.TableExtraction;
 import in.handyman.raven.lib.model.TableExtractionHeaders;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 class TableExtractionActionTest {
@@ -89,6 +101,131 @@ class TableExtractionActionTest {
         } else {
             System.out.println("Invalid input format");
         }
+    }
+
+    @Test
+    public void tableExtractionCsvRead(){
+
+        String filePath = "";
+        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
+            String removeFirstRow = "true";
+            if (Objects.equals("true", removeFirstRow)) {
+                reader.readNext();
+            }
+
+            String[] headers = reader.readNext(); // Read the headers
+
+            JSONArray dataArray = new JSONArray(); // Array for data rows
+            JSONArray headersArray = new JSONArray(); // Array for column headers
+
+            // Convert headers to JSON
+            for (String header : headers) {
+                headersArray.put(header);
+            }
+
+            String[] row;
+
+            while ((row = reader.readNext()) != null) {
+                JSONArray rowArray = new JSONArray();
+
+                // Convert data row to JSON
+                for (int i = 0; i < headers.length; i++) {
+                    rowArray.put(row[i]);
+                }
+                dataArray.put(rowArray);
+            }
+
+            // Create the main JSON object
+            JSONObject json = new JSONObject();
+            json.put("csvFilePath", filePath);
+            json.put("data", dataArray);
+            json.put("columnHeaders", headersArray);
+            String outputResult = json.toString();
+
+
+        } catch (CsvValidationException | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void readColumn(){
+
+        // Path to your CSV file
+        String filePath = "/home/anandh.andrews@zucisystems.com/intics-workspace/Demo/spendly/output/output/v2/2023-10-7T14_28_42 Payment Processing GenSales-4/Table/1/1_2023-10-7T14_28_42 Payment Processing GenSales-4_0.csv";
+
+        // Column name to calculate sum
+        String columnName = "Number of Sales";
+
+        try {
+            // Create a reader for the CSV file
+
+            Long rowCount=extractRowCount(filePath);
+            extractedFromFilepath(filePath, columnName,rowCount);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void extractedFromFilepath(String filePath, String columnName,Long rowCount) throws IOException {
+        Reader reader = Files.newBufferedReader(Paths.get(filePath));
+
+        // Create a CSVParser object
+        CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader());
+
+
+        double columnSum = 0.0;
+
+        // Iterate through each record in the CSV file
+        for (CSVRecord csvRecord : csvParser) {
+            // Parse the value of the specified column as a double and add it to the sum
+
+            Long totalRowCount = csvParser.getRecordNumber();
+
+            String cellValue = csvRecord.get(columnName) != null & !csvRecord.get(columnName).isEmpty() ? csvRecord.get(columnName) : "0";
+            double value = Double.parseDouble(cellValue);
+            if (rowCount != totalRowCount) {
+
+                String indexValue = csvRecord.get(1);
+                columnSum += value;
+            } else {
+                if (columnSum == value) {
+                    break;
+                }
+
+            }
+
+
+        }
+
+
+        // Calculate the sum of values in the specified column
+
+
+        // Close the CSVParser
+        csvParser.close();
+
+        // Print the sum of the specified column
+        System.out.println("Sum of values in column '" + columnName + "': " + columnSum);
+    }
+
+    public Long extractRowCount(String filePath) throws IOException {
+
+        Reader reader = Files.newBufferedReader(Paths.get(filePath));
+
+        // Create a CSVParser object
+        CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader());
+
+        Long rowCount = 0L;
+        for (CSVRecord record : csvParser) {
+            rowCount++;
+        }
+
+        // Close the CSVParser
+        csvParser.close();
+
+        return rowCount;
+
     }
 
 //    @Test

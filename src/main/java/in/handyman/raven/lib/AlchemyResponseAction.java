@@ -173,6 +173,26 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setDetectedAsciiValue(entity.getDetectedAsciiValue());
                 alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
             }
+            if(feature.equals("TABLE_EXTRACT_AGGREGATE")){
+                JsonNode tableAggregateNode = mapper.readTree(entity.getTableAggregateNode());
+                JsonNode tableNode = mapper.readTree(entity.getTableData());
+                alchemyRequestTable.setTableData(tableNode);
+                alchemyRequestTable.setAggregateJson(tableAggregateNode);
+                alchemyRequestTable.setSorItemId(entity.sorItemId);
+            }
+            if(feature.equals("BULLETIN_EXTRACTION")){
+                JsonNode bulletinOutput = mapper.readTree(entity.getBulletinPoints());
+                alchemyRequestTable.setBulletinPoints(bulletinOutput);
+                alchemyRequestTable.setBulletinSection(entity.getBulletinSection());
+                alchemyRequestTable.setSynonymId(entity.getSynonymId());
+            }
+            if(feature.equals("PARAGRAPH_EXTRACTION")){
+                JsonNode paragraphOutput = mapper.readTree(entity.getParagraphPoints());
+                alchemyRequestTable.setParagraphPoints(paragraphOutput);
+                alchemyRequestTable.setParagraphSection(entity.getParagraphSection());
+                alchemyRequestTable.setSynonymId(entity.getSynonymId());
+            }
+
 
 
 
@@ -225,6 +245,13 @@ public class AlchemyResponseAction implements IActionExecution {
         private String csvFilePath;
         private Long truthEntityId;
         private String batchId;
+        private String tableAggregateNode;
+        private Long sorItemId;
+        private String bulletinSection;
+        private String bulletinPoints;
+        private String paragraphSection;
+        private String paragraphPoints;
+
 
         @Override
         public List<Object> getRowData() {
@@ -264,6 +291,12 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedValue;
         private String detectedAsciiValue;
         private String batchId;
+        private JsonNode aggregateJson;
+        private Long sorItemId;
+        private String bulletinSection;
+        private JsonNode bulletinPoints;
+        private String paragraphSection;
+        private JsonNode paragraphPoints;
     }
 
     @AllArgsConstructor

@@ -17,6 +17,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.commons.io.FilenameUtils;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -295,6 +296,8 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     }
 
     public static String tableDataJson(String filePath, ActionExecutionAudit action) throws JsonProcessingException {
+        String fileNameStr = getCsvFilePathName(filePath);
+
         try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
             String removeFirstRow = action.getContext().get("table.extraction.header.exclude");
             if (Objects.equals("true", removeFirstRow)) {
@@ -326,6 +329,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
             // Create the main JSON object
             JSONObject json = new JSONObject();
             json.put("csvFilePath", filePath);
+            json.put("csvFileName", fileNameStr);
             json.put("data", dataArray);
             json.put("columnHeaders", headersArray);
             return json.toString();
@@ -336,11 +340,17 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         }
     }
 
-    public static Long getPaperNobyFileName(String filePath) {
-        Long extractedNumber = null;
+    @NotNull
+    private static String getCsvFilePathName(String filePath) {
         File file = new File(filePath);
 
         String fileNameStr = FilenameUtils.removeExtension(file.getName());
+        return fileNameStr;
+    }
+
+    public static Long getPaperNobyFileName(String filePath) {
+        Long extractedNumber = null;
+        String fileNameStr = getCsvFilePathName(filePath);
 
         String[] parts = fileNameStr.split("_");
 
