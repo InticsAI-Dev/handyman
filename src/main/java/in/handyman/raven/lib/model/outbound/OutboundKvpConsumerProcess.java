@@ -89,6 +89,7 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
                             .rootPipelineId(rootPipelineId)
                             .fileName(entity.getFileName())
                             .stage("PRODUCT_OUBOUND").status("COMPLETED").message("alchemy kvp response completed for origin_id - " + entity.getAlchemyOriginId())
+                            .batchId(entity.getBatchId())
                             .build());
                 }
             } else {
@@ -100,6 +101,7 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
                         .alchemyOriginId(entity.getAlchemyOriginId())
                         .pipelineOriginId(entity.getPipelineOriginId())
                         .rootPipelineId(rootPipelineId)
+                        .batchId(entity.getBatchId())
                         .stage("PRODUCT_OUBOUND").status("FAILED").message("alchemy kvp response failed for origin_id - " + entity.getAlchemyOriginId())
                         .build());
             }

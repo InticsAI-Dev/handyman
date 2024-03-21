@@ -117,6 +117,7 @@ public class ProductOutboundZipfileAction implements IActionExecution {
                         .fileName(fileNameStr)
                         .stage("PRODUCT_OUTBOUND")
                         .status("COMPLETED")
+                        .batchId(outboundInputTableEntity.getBatchId())
                         .message("completed for the outbound zip file creation ")
                         .build();
                 outboundOutputTableEntities.add(outboundOutputTableEntity);
@@ -135,8 +136,8 @@ public class ProductOutboundZipfileAction implements IActionExecution {
         try {
             resultQueue.forEach(insert -> jdbi.useTransaction(handle -> {
                 try {
-                    handle.createUpdate("INSERT INTO " + productOutboundZipfile.getResultTable() + "(origin_id, root_pipeline_id,group_id,process_id,cleaned_pdf_path,origin_pdf_path,product_json,kvp_response,table_response,tenant_id,zip_file_path,status,stage,message,file_name)" +
-                                    "VALUES(:originId,:rootPipelineId,:groupId,:processId,:cleanedPdfPath,:originPdfPath,:productJson,:kvpResponse,:tableResponse,:tenantId,:zipFilePath,:status,:stage,:message,:fileName);")
+                    handle.createUpdate("INSERT INTO " + productOutboundZipfile.getResultTable() + "(origin_id, root_pipeline_id,group_id,process_id,cleaned_pdf_path,origin_pdf_path,product_json,kvp_response,table_response,tenant_id,zip_file_path,status,stage,message,file_name,batch_id)" +
+                                    "VALUES(:originId,:rootPipelineId,:groupId,:processId,:cleanedPdfPath,:originPdfPath,:productJson,:kvpResponse,:tableResponse,:tenantId,:zipFilePath,:status,:stage,:message,:fileName,:batchId);")
                             .bindBean(insert).execute();
                     log.info(aMarker, "inserted {} into outbound zip file details", insert);
                 } catch (Throwable t) {

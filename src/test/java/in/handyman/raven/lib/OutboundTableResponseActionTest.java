@@ -21,11 +21,11 @@ class OutboundTableResponseActionTest {
                 .resultTable("alchemy_response.alchemy_table_response")
                 .condition(true)
                 .processId("12345")
-                .querySet("SELECT ampq.producer_process_id as process_id, ap.group_id, ap.tenant_id, ap.root_pipeline_id, " +
-                        "ap.alchemy_origin_id, ap.pipeline_origin_id ,ap.paper_no " +
-                                "FROM product_outbound.product_outbound_payload_queue ampq " +
-                        "join alchemy_migration.alchemy_papers ap on ampq.origin_id = ap.pipeline_origin_id " +
-                                "where status = 'IN_PROGRESS' and ampq.group_id = 1;")
+                .querySet(" SELECT ampq.producer_process_id as process_id, ap.group_id, 2 as tenant_id, ap.root_pipeline_id,\n" +
+                        "ap.origin_id  as alchemy_origin_id, ap.origin_id  as pipeline_origin_id ,ap.paper_no, 'batch_1' as batch_id\n" +
+                        "FROM product_outbound.product_outbound_payload_queue ampq\n" +
+                        "join info.source_of_truth ap on ampq.origin_id = ap.origin_id\n" +
+                        "limit 1")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
