@@ -176,6 +176,7 @@ public class ScalarAdapterAction implements IActionExecution {
 
                 Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
                 String inputValue = configurationDetails.getInputValue();
+                result.setInputValue(inputValue);
                 int wordScore = wordcountAction.getWordCount(inputValue,
                         result.getWordLimit(), result.getWordThreshold());
                 int charScore = charactercountAction.getCharCount(inputValue,
@@ -412,9 +413,8 @@ public class ScalarAdapterAction implements IActionExecution {
                 modifiedString.deleteCharAt(0);
             }
 
-
-            String replacedString = modifiedString.toString().replaceAll("[a-zA-Z]", "/");
-            validator.setInputValue(replacedString);
+//            String replacedString = modifiedString.toString().replaceAll("[a-zA-Z]", "/");
+            validator.setInputValue(modifiedString.toString());
 
         }
         return validator;
