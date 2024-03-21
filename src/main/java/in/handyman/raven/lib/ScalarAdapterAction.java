@@ -165,9 +165,9 @@ public class ScalarAdapterAction implements IActionExecution {
             for (ValidatorConfigurationDetail result : listOfDetails) {
                 log.info(aMarker, "Build 19- scalar executing  validator {}", result);
 
-                String inputValue = result.getInputValue();
+//                String inputValue = result.getInputValue();
                 Validator scrubbingInput = Validator.builder()
-                        .inputValue(inputValue)
+                        .inputValue(result.getInputValue())
                         .adapter(result.getAllowedAdapter())
                         .allowedSpecialChar(result.getAllowedCharacters())
                         .comparableChar(result.getComparableCharacters())
@@ -175,6 +175,7 @@ public class ScalarAdapterAction implements IActionExecution {
                         .build();
 
                 Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
+                String inputValue = configurationDetails.getInputValue();
                 int wordScore = wordcountAction.getWordCount(inputValue,
                         result.getWordLimit(), result.getWordThreshold());
                 int charScore = charactercountAction.getCharCount(inputValue,
@@ -303,7 +304,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     confidenceScore = this.dateAction.getDateScore(inputDetail);
 //                    confidenceScore = inputDetail.getThreshold();
                     break;
-                case "date-reg":
+                case "date_reg":
 //                    confidenceScore = this.dateAction.getDateScore(inputDetail);
                     confidenceScore = inputDetail.getThreshold();
                     break;
@@ -334,7 +335,11 @@ public class ScalarAdapterAction implements IActionExecution {
                     //Special character and alphabets removed
                     inputDetail = scrubbingInput(inputDetail, "[^0-9]");
                     break;
-                case "date-reg":
+                case "numeric_reg":
+                    //Special character and alphabets removed
+                    inputDetail = scrubbingInput(inputDetail, "[^0-9]");
+                    break;
+                case "date_reg":
                     //Remove alphabets
                     // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
                     inputDetail = scrubbingDate(inputDetail);
