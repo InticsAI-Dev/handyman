@@ -154,6 +154,9 @@ action:
     |tableExtractionHeaders
     |currencyDetection
     |greyScaleConversion
+    |tableExtractionOutbound
+    |paragraphExtraction
+    |bulletInExtraction
     |p2pNameValidation
     );
 
@@ -1089,7 +1092,7 @@ systemkeyTable:
     'using' '{'
         querySet=STRING
     '}' ('on-condition' condition=expression)* ;
-    
+
 tritonModelLoadUnload:
     'tritonModelLoadUnload' 'as' name=STRING
     'resource-conn' resourceConn=STRING
@@ -1130,6 +1133,37 @@ greyScaleConversion:
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
+
+
+tableExtractionOutbound:
+    'TableExtractionOutbound' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'input-from' inputAttribution=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+paragraphExtraction:
+    'paragraph-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+bulletInExtraction:
+    'bulletin-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 
 
 p2pNameValidation:
