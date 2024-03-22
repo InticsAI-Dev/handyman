@@ -15,7 +15,8 @@ public class ParagraphExtractionRequest {
     private Long rootPipelineId;
     private Long actionId;
     private String process;
-    private String filePath;
+    private String input;
+    private String task;
     private String outputDir;
     private List<ParagraphExtractionLineItems> prompt;
 
