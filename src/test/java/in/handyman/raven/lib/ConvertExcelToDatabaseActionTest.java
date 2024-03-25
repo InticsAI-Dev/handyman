@@ -17,7 +17,7 @@ class ConvertExcelToDatabaseActionTest {
                 .fileType("Excel")
                 .resourceConn("intics_zio_db_conn")
                 .querySet("SELECT migration_id, group_id, tenant_id, file_path,root_pipeline_id\n" +
-                        "FROM meta_bootstraping.import_excel_input_table;")
+                        "FROM meta_bootstraping.import_excel_input_table where tenant_id=1012;")
                 .targetConn("intics_zio_db_conn")
                 .build();
 
@@ -25,6 +25,7 @@ class ConvertExcelToDatabaseActionTest {
         actionExecutionAudit.setActionId(1234L);
         actionExecutionAudit.setRootPipelineId(1234L);
         actionExecutionAudit.getContext().put("", "");
+        actionExecutionAudit.getContext().put("tenant_id","1");
 
         ConvertExcelToDatabaseAction convertExcelToDatabaseAction = new ConvertExcelToDatabaseAction(actionExecutionAudit, log, convertExcelToDatabase);
         convertExcelToDatabaseAction.execute();
