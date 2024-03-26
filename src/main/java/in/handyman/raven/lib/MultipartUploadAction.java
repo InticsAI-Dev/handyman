@@ -116,6 +116,9 @@ public class MultipartUploadAction implements IActionExecution {
                     log.error("Consumer Interrupted with exception", e);
                     throw new HandymanException("Error in Multipart upload execute method for mapping query set", e, action);
                 }
+                finally {
+                    executorService.shutdown();
+                }
             } else {
                 log.error(aMarker, "Endpoints for multipart upload is empty");
             }
