@@ -188,8 +188,8 @@ public class EpisodeOfCoverageAction implements IActionExecution {
 
 
     public void OutputQueryExecutor(Jdbi jdbi, String sorItem, Map<String, List<Integer>> stringListMap) {
-        Long tenantId = 1L;
-        String batchId = "batch_1";
+        Long tenantId = 2L;
+        String batchId = "BATCH-1_0";
 
         stringListMap.forEach((s, integers) -> {
             for (Integer integer : integers) {

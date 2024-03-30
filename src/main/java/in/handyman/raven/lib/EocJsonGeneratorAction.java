@@ -82,8 +82,8 @@ public class EocJsonGeneratorAction implements IActionExecution {
                             .eocResponse(responseBody).rootPipelineId(action.getRootPipelineId()).build();
 
                     jdbi.useTransaction(handle -> {
-                        handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id) " +
-                                        "VALUES( :documentId, :eocId, :originId, :groupId, :eocResponse::json, :rootPipelineId);")
+                        handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id, batch_id) " +
+                                        "VALUES( :documentId, :eocId, :originId, :groupId, :eocResponse::json, :rootPipelineId, :batchId);")
                                 .bindBean(eocResponse).execute();
                         log.debug(aMarker, "inserted {} into eoc response details", eocResponse);
                         action.getContext().put(name + ".isSuccessful", String.valueOf(response.isSuccessful()));
@@ -93,6 +93,7 @@ public class EocJsonGeneratorAction implements IActionExecution {
                 log.error(aMarker, "The Failure Response {} --> {}", name, responseBody);
                 action.getContext().put(name.concat(".error"), "true");
                 action.getContext().put(name.concat(".errorMessage"), responseBody);
+
             }
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);

@@ -16,10 +16,10 @@ class ParagraphExtractionActionTest {
                 .condition(true)
                 .endpoint("http://192.168.10.240:10195/copro/mistral_llm_based_on_image")
                 .resourceConn("intics_zio_db_conn")
-                .outputDir("/data/")
+                .outputDir("/home/mars/intics-build/data/")
                 .outputTable("paragraph_extraction.paragraph_extraction_result")
-                .querySet("SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header\n" +
-                        "FROM paragraph_extraction.paragraph_extraction_input_table_audit where root_pipeline_id=2050;")
+                .querySet("SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header, 'batch_1' as batch_id\n" +
+                        "FROM paragraph_extraction.paragraph_extraction_input_table_audit;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

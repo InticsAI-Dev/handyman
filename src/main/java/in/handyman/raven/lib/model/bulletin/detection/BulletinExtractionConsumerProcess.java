@@ -144,6 +144,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                                 .process(entity.getProcess())
                                 .processId(entity.getProcessId())
                                 .outputDir(entity.getOutputDir())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -160,6 +161,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -199,6 +201,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
+                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -215,6 +218,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -255,6 +259,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                             .bulletinPoints(bulletInLineItemsNode)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
+                            .batchId(entity.getBatchId())
                             .build());
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
@@ -278,6 +283,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -318,6 +324,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                             .bulletinPoints(bulletInLineItemsNode)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
+                            .batchId(entity.getBatchId())
                             .build());
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
@@ -340,6 +347,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
