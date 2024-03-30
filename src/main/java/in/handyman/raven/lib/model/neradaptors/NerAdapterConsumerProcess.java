@@ -132,7 +132,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .sorItemId(sorItemId)
                             .sorItemName(sorKey)
                             .question(question)
-                            .answer(inputValue)
+                            .answer(result.getInputValue())
                             .vqaScore(vqaScore)
                             .weight(weight)
                             .createdUserId(createdUserId)
@@ -167,7 +167,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .sorItemId(sorItemId)
                             .sorItemName(sorKey)
                             .question(question)
-                            .answer(inputValue)
+                            .answer(result.getInputValue())
                             .vqaScore(vqaScore)
                             .weight(weight)
                             .createdUserId(createdUserId)
@@ -204,7 +204,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                 case "ner":
                     confidenceScore = this.nerAction.getNerScore(inputDetail, URI);
                     break;
-                case "alpha":
+               /* case "alpha":
                     confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
                     break;
                 case "alphanumeric":
@@ -221,7 +221,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                     break;
                 case "numeric_reg":
                     confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
-                    break;
+                    break;*/
             }
 
         } catch (Throwable t) {
