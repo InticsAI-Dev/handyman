@@ -244,17 +244,19 @@ public class AssetInfoAction implements IActionExecution {
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments, Long tenantId) {
         try {
+            String batchId=action.getContext().get("batch_id");
             SanitarySummary summary = new SanitarySummary().builder()
                     .rowCount(rowCount)
                     .correctRowCount(executeCount)
                     .errorRowCount(errorCount)
                     .comments(comments)
                     .tenantId(tenantId)
+                    .batchId(batchId)
                     .build();
             jdbi.useTransaction(handle -> {
                 Update update = handle.createUpdate("  INSERT INTO " + assetInfo.getAuditTable() +
-                        " ( row_count, correct_row_count, error_row_count,comments, created_at,tenant_id) " +
-                        " VALUES(:rowCount, :correctRowCount, :errorRowCount, :comments, NOW(),:tenantId);");
+                        " ( row_count, correct_row_count, error_row_count,comments, created_at,tenant_id,batch_id) " +
+                        " VALUES(:rowCount, :correctRowCount, :errorRowCount, :comments, NOW(),:tenantId,:batchId);");
                 Update bindBean = update.bindBean(summary);
                 bindBean.execute();
             });
@@ -327,6 +329,7 @@ public class AssetInfoAction implements IActionExecution {
         private int errorRowCount;
         private String comments;
         private Long tenantId;
+        private String batchId;
 
     }
 
