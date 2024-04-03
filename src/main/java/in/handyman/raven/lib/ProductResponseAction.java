@@ -1,6 +1,9 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -101,7 +104,10 @@ public class ProductResponseAction implements IActionExecution {
 
         private final Long tenantId;
         private final String authToken;
-        private final ObjectMapper mapper = new ObjectMapper();
+        private final ObjectMapper mapper = JsonMapper.builder()
+                .configure(SerializationFeature.INDENT_OUTPUT, true)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .build().registerModule(new JavaTimeModule());
         final OkHttpClient httpclient = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.MINUTES)
                 .writeTimeout(10, TimeUnit.MINUTES)
@@ -135,7 +141,8 @@ public class ProductResponseAction implements IActionExecution {
 
             try (Response response = httpclient.newCall(request).execute()) {
                 if (response.isSuccessful()) {
-                    AlchemyApiPayload alchemyApiPayload = mapper.readValue(Objects.requireNonNull(response.body()).string(), AlchemyApiPayload.class);
+                    String responseBody = Objects.requireNonNull(response.body()).string();
+                    AlchemyApiPayload alchemyApiPayload = mapper.readValue(responseBody, AlchemyApiPayload.class);
 
                     if (!alchemyApiPayload.getPayload().isEmpty() && !alchemyApiPayload.getPayload().isNull() && alchemyApiPayload.isSuccess()) {
 

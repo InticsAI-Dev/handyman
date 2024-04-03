@@ -16,5 +16,5 @@ import java.time.LocalDateTime;
 public class AlchemyApiPayload {
     private JsonNode payload;
     private boolean success;
-    private String responseTimeStamp;
+    private LocalDateTime responseTimeStamp;
 }

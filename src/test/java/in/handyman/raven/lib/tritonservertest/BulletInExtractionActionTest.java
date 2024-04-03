@@ -22,6 +22,9 @@ class BulletInExtractionActionTest {
                 .outputTable("bulletin_extraction.bulletin_extraction_result")
                 .querySet("SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header, 'batch_1' as batch_id\n" +
                         "FROM bulletin_extraction.bulletin_extraction_input_table_audit;")
+                .querySet("SELECT 'ORIGIN-1' as origin_id, '1' as paper_no,1 as group_id,'/data/output/68/87/3126/autorotation/auto_rotation/2022-10-26T9_58_10-Dooliquor-LLC_1.jpg' file_path, " +
+                        "1 as tenant_id,1 as process_id,'/data/output/' output_dir,1 as root_pipeline_id,'bulletin' as process,1 as synonym_id,'extract all the key value pairs' prompt,'KVP' as section_header\n"
+                        )
                 .build();
 
         ActionExecutionAudit ac=new ActionExecutionAudit();

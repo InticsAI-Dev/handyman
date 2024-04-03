@@ -333,16 +333,15 @@ public class ScalarAdapterAction implements IActionExecution {
                     inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9]");
                     break;
                 case "numeric":
-                    //Special character and alphabets removed
-                    inputDetail = scrubbingInput(inputDetail, "[^0-9]");
-                    break;
                 case "numeric_reg":
                     //Special character and alphabets removed
+                    inputDetail = removePrefixAndSuffix(inputDetail);
                     inputDetail = scrubbingInput(inputDetail, "[^0-9]");
                     break;
                 case "date_reg":
-                    //Remove alphabets
+                    //Remove prefix and suffix alphabets
                     // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
+                    inputDetail = removePrefixAndSuffix(inputDetail);
                     inputDetail = scrubbingDate(inputDetail);
                     break;
             }
@@ -398,24 +397,52 @@ public class ScalarAdapterAction implements IActionExecution {
         return validator;
     }
 
-    private Validator scrubbingDate(Validator validator) {
+    private Validator removePrefixAndSuffix(Validator validator) {
         if (validator.getInputValue().length() > 2) {
             String originalString = validator.getInputValue();
             StringBuilder modifiedString = new StringBuilder(originalString);
-
             // Remove last alphabet character
             while (Character.isAlphabetic(modifiedString.charAt(modifiedString.length() - 1))) {
                 modifiedString.deleteCharAt(modifiedString.length() - 1);
             }
-
             // Remove first alphabet character
             while (Character.isAlphabetic(modifiedString.charAt(0))) {
                 modifiedString.deleteCharAt(0);
             }
-
-//            String replacedString = modifiedString.toString().replaceAll("[a-zA-Z]", "/");
             validator.setInputValue(modifiedString.toString());
+        }
+        return validator;
+    }
 
+    private Validator scrubbingDate(Validator validator) {
+        if (validator.getInputValue() != null) {
+            // Define regex pattern to match date format "MM dd yyy"
+            String regexPattern = "(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})";
+            // Create pattern object
+            Pattern pattern = Pattern.compile(regexPattern);
+            // Create matcher object
+            Matcher matcher = pattern.matcher(validator.getInputValue());
+
+            if (matcher.find()) {
+                // Extract matched groups (month, separator, day, year)
+                String month = matcher.group(1);
+                String separator = matcher.group(2);
+                String day = matcher.group(3);
+                String separator2 = matcher.group(4);
+                String year = matcher.group(5);
+                String inputValue="";
+                // Insert a default separator if it's missing
+                if (separator.trim().isEmpty()) {
+                    separator = "-";
+                    inputValue = inputValue.concat(month + separator + day + separator +year);
+                    validator.setInputValue(inputValue);
+                    log.info("With Formatted date: " + month + separator + day + separator +year );
+                } else{
+                    inputValue = inputValue.concat(month + separator + day + separator2 +year);
+                    validator.setInputValue(inputValue);
+                    log.info("Extracted date: " + month + separator + day + separator2 +year );
+                }
+            }
         }
         return validator;
     }

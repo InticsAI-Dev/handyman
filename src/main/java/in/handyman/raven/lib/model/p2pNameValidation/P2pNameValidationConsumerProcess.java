@@ -26,11 +26,12 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
 
     @Override
     public List<P2PNameValidationOutputTable> process(URL endpoint, P2PNameValidationInputTable entity) throws Exception {
-        System.out.println(entity);
+        log.info("p2p input entity: ",entity);
         final List<P2PNameValidationOutputTable> p2PNameValidationOutputTableArrayList = new ArrayList<>();
         try {
             log.info(aMarker, "mapping inputs for the results {}", entity);
             final String p2pBboxFinal = entity.getP2pFirstNameBbox();
+            final String p2pFullName = entity.getP2pFullName();
 
             final String p2pFirstName = cleanAndExtractAlphabets(entity.getP2pFirstName());
             final String p2pLastName = cleanAndExtractAlphabets(entity.getP2pLastName());
@@ -57,7 +58,13 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             } else {
                 finalConcatenatedName = p2pFirstName + " " + p2pLastName;
             }
-            log.info(aMarker, "p2PNameValidationOutputTableArrayList", p2PNameValidationOutputTableArrayList);
+
+            log.info(aMarker, "Concatenated Name before Full name validation", finalConcatenatedName);
+            if(!p2pFullName.contains(finalConcatenatedName)) {
+                finalConcatenatedName= p2pFullName;
+            }
+            log.info(aMarker, "Concatenated Name after Full name validation", finalConcatenatedName);
+
             p2PNameValidationOutputTableArrayList.add(P2PNameValidationOutputTable.builder()
                     .p2pConcatenatedName(finalConcatenatedName)
                     .groupId(entity.getGroupId())

@@ -56,7 +56,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         List<BulletinQueryOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
 
-        String filePath = String.valueOf(entity.getFilePath());
+        String filePath = entity.getFilePath();
         Long actionId = action.getActionId();
 
 
@@ -67,7 +67,8 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         bulletinExtractionRequest.setRootPipelineId(action.getRootPipelineId());
         bulletinExtractionRequest.setActionId(actionId);
         bulletinExtractionRequest.setProcess(PROCESS_NAME);
-        bulletinExtractionRequest.setFilePath(filePath);
+        bulletinExtractionRequest.setInput(filePath);
+        bulletinExtractionRequest.setTask("Bulletin");
         bulletinExtractionRequest.setOutputDir(entity.getOutputDir());
         List<BulletinExtractionLineItems> bulletinExtractionRequestLineItem=new ArrayList<>();
         BulletinExtractionLineItems bulletinExtractionLineItems1=new BulletinExtractionLineItems();

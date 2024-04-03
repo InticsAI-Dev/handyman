@@ -22,6 +22,7 @@ public class P2PNameValidationInputTable implements CoproProcessor.Entity {
     private Double p2pLastNameConfidenceScore;
     private String p2pFirstName;
     private String p2pLastName;
+    private String p2pFullName;
     private Double p2pFirstNameFilterScore;
     private Double p2pLastNameFilterScore;
     private Integer groupId;
