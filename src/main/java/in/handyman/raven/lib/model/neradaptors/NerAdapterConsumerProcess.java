@@ -3,6 +3,9 @@ package in.handyman.raven.lib.model.neradaptors;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
+import in.handyman.raven.lib.adapters.AlphaAdapter;
+import in.handyman.raven.lib.adapters.NameAdapter;
+import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
@@ -31,6 +34,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     private final Marker aMarker;
     private final NervalidatorAction nerAction;
     private final WordcountAction wordcountAction;
+    AdapterInterface alphaAdapter;
+    AdapterInterface nameAdapter;
     private final CharactercountAction charactercountAction;
     private final AlphavalidatorAction alphaAction;
     private final NumericvalidatorAction numericAction;
@@ -46,6 +51,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     boolean multiverseValidator;
     String[] restrictedAnswers;
     String URI;
+    final String NAME_NUMBER_REGEX = "^(.+?)\\s*(\\d+)$";
 
     public NerAdapterConsumerProcess(Logger log, Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
@@ -58,6 +64,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         this.numericAction = new NumericvalidatorAction(action, log, Numericvalidator.builder().build());
         this.alphaNumericAction = new AlphanumericvalidatorAction(action, log, Alphanumericvalidator.builder().build());
         this.dateAction = new DatevalidatorAction(action, log, Datevalidator.builder().build());
+        this.alphaAdapter = new AlphaAdapter();
+        this.nameAdapter = new NameAdapter();
     }
 
     private static void updateEmptyValueAndCf(NerInputTable result) {
@@ -85,11 +93,11 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                 .threshold(result.getValidatorThreshold())
                 .build();
 
-        int validatorScore = computeAdapterScore(configurationDetails);
+        int validatorScore = getNerScore(configurationDetails,URI);
         int validatorNegativeScore;
         if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
             configurationDetails.setAdapter(result.getRestrictedAdapter());
-            validatorNegativeScore = computeAdapterScore(configurationDetails);
+            validatorNegativeScore = getNerScore(configurationDetails,URI );
         } else {
             validatorNegativeScore = 0;
         }
@@ -198,41 +206,25 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         return parentObj;
     }
 
-    int computeAdapterScore(Validator inputDetail) {
+    public int getNerScore(Validator adapter, String uri) {
         int confidenceScore = 0;
         try {
-
-            switch (inputDetail.getAdapter()) {
-                case "ner":
-                    confidenceScore = this.nerAction.getNerScore(inputDetail, URI);
-                    break;
-                case "alpha":
-                    confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
-                    break;
-                case "alphanumeric":
-                    confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
-                    break;
-                case "numeric":
-                    confidenceScore = this.numericAction.getNumericScore(inputDetail);
-                    break;
-                case "date":
-                    confidenceScore = this.dateAction.getDateScore(inputDetail);
-                    break;
-                case "phone_reg":
-                    confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
-                    break;
-                case "numeric_reg":
-                    confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
-                    break;
+            boolean alphaValidator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
+            if (alphaValidator) {
+                boolean validator = nameAdapter.getNameValidationModel(adapter, uri, action);
+                confidenceScore = validator ? adapter.getThreshold() : 0;
+            } else {
+                Pattern pattern = Pattern.compile(NAME_NUMBER_REGEX);
+                Matcher matcher = pattern.matcher(adapter.getInputValue());
+                if (matcher.matches()) {
+                    String name = matcher.group(1);
+                    boolean validator = nameAdapter.getValidationModel(name, uri, action);
+                    confidenceScore = validator ? adapter.getThreshold() : 0;
+                }
             }
-
-        } catch (Throwable t) {
-            log.error(aMarker, "error adapter validation{}", inputDetail, t);
-            action.getContext().put(this.action.getActionName().concat(".error"), "true");
-            log.error(aMarker, "Exception occurred in Scalar Computation {}", ExceptionUtil.toString(t));
-            HandymanException handymanException = new HandymanException("Error in execute method for ner adapter", t, action);
-            HandymanException.insertException("Exception occurred in NER Computation", handymanException, action);
-            throw new HandymanException("Error in execute method for ner adapter", t, action);
+        } catch (Exception ex) {
+            log.error("Error in getting ner score {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute", ex, action);
         }
         return confidenceScore;
     }

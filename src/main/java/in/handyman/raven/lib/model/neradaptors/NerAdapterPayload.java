@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.awt.event.WindowStateListener;
 import java.util.List;
 
 @AllArgsConstructor
@@ -21,4 +22,6 @@ public class NerAdapterPayload {
         private Long processId;
         private Integer groupId;
         private Long tenantId;
+        private String batchId;
+        private Integer paperNo;
 }

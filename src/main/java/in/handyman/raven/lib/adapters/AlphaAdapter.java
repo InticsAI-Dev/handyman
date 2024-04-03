@@ -2,6 +2,7 @@ package in.handyman.raven.lib.adapters;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
+import in.handyman.raven.lib.model.Validator;
 import org.apache.commons.lang3.StringUtils;
 
 public class AlphaAdapter implements AdapterInterface {
@@ -9,6 +10,11 @@ public class AlphaAdapter implements AdapterInterface {
     public boolean getValidationModel(String input, String allowedCharacters, ActionExecutionAudit audit) throws Exception {
         input = validateSpecialCharacters(allowedCharacters, input);
         return StringUtils.isAlpha(input);
+    }
+
+    @Override
+    public boolean getNameValidationModel(Validator input, String uri, ActionExecutionAudit audit) throws Exception {
+        return false;
     }
 
     String validateSpecialCharacters(String specialCharacters, String input) {
