@@ -67,7 +67,7 @@ class TrinityModelActionTest {
                 Map.entry("consumer.API.count","1"),
                 Map.entry("tenant_id","1"),
                 Map.entry("triton.request.activator","true"),
-                Map.entry("write.batch.size","5")));
+                 Map.entry("write.batch.size","5")));
 
         TrinityModelAction trinityModelAction=new TrinityModelAction(actionExecutionAudit,log,trinityModel);
         trinityModelAction.execute();

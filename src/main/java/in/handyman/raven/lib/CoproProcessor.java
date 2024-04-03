@@ -4,13 +4,13 @@ import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionInputQuerySet;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionOutputQuerySet;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
+import org.jdbi.v3.core.statement.Update;
 import org.slf4j.Logger;
 
 import java.net.URL;
@@ -182,7 +182,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                         try {
                                             int[] execute = preparedBatch.execute();
                                             logger.info("Consumer persisted {}", execute);
-                                        }catch(Exception e){
+                                        } catch (Exception e) {
                                             logger.error("exception in prepared batch {}", e);
                                         }
 
@@ -204,6 +204,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                         }
                     }
                     checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime);
+                    final List<ProcessAuditOutputTable> auditResults = callable.processAudit();
+                    insertRowsProcessedIntoProcessAudit(jdbi, auditResults);
                 } catch (Exception e) {
                     logger.error("Final persistence failed", e);
                 } finally {
@@ -220,6 +222,26 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
         }
     }
+
+    private void insertRowsProcessedIntoProcessAudit(Jdbi jdbi, List<ProcessAuditOutputTable> auditResults) throws Exception {
+        try {
+            jdbi.useTransaction(handle -> {
+                for (ProcessAuditOutputTable auditResult : auditResults) {
+                    handle.createUpdate("INSERT INTO audit.process_audit_output" +
+                                    " (tenant_id, batch_id, root_pipeline_id, origin_id, created_on, request, response, status, stage, message) " +
+                                    "VALUES(:tenantId, :batchId, :rootPipelineId, :originId, now(), :request, :response, :status, :stage, :message)")
+                            .bindBean(auditResult)
+                            .execute();
+                }
+            });
+        } catch (Exception exception) {
+            log.error("Error inserting into batch insert audit {}", ExceptionUtil.toString(exception));
+            HandymanException handymanException = new HandymanException(exception);
+            HandymanException.insertException("Error inserting into batch insert audit", handymanException, actionExecutionAudit);
+        }
+    }
+
+
 
     private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
         if (!processedEntity.isEmpty()) {
@@ -270,6 +292,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     public interface ConsumerProcess<I, O extends Entity> {
 
         List<O> process(final URL endpoint, final I entity) throws Exception;
+
+        List<ProcessAuditOutputTable> processAudit() throws Exception;
 
     }
 

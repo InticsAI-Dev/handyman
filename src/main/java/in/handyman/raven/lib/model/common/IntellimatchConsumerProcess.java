@@ -235,7 +235,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                                 extractedValue(item.getSentence()).
                                 confidenceScore(result.getConfidenceScore()).
                                 intelliMatch(item.getSimilarityPercent()).
-                                tenantId(result.getTenantId()).
+                                tenantId(item.getTenantId()).
                                 status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
                                 stage(CONTROL_DATA_PROCESS_NAME).
                                 message("data insertion is completed").
