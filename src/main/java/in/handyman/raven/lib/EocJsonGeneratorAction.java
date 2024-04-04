@@ -79,6 +79,7 @@ public class EocJsonGeneratorAction implements IActionExecution {
                             .eocId(eocId)
                             .originId(originId)
                             .groupId(Integer.valueOf(groupId))
+                            .batchId(batchId)
                             .eocResponse(responseBody).rootPipelineId(action.getRootPipelineId()).build();
 
                     jdbi.useTransaction(handle -> {
@@ -133,5 +134,6 @@ public class EocJsonGeneratorAction implements IActionExecution {
         private Integer groupId;
         private String eocResponse;
         private Long rootPipelineId;
+        private String batchId;
     }
 }
