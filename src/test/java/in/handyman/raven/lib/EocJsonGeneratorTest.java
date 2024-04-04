@@ -4,7 +4,6 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.EocJsonGenerator;
 import org.junit.jupiter.api.Test;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 
 import java.util.Map;
 
@@ -18,11 +17,11 @@ public class EocJsonGeneratorTest {
         EocJsonGenerator eocJsonGenerator = EocJsonGenerator.builder()
                     .name("eoc json generator")
                 .resourceConn("intics_zio_db_conn")
-                .documentId("TMP-AGD-001")
+                .documentId("SYNT_166529664")
                 .eocId("H67100435")
                 .originId("ORIGIN-1")
                 .groupId("1")
-                .authtoken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzExODEwNDA5LCJpYXQiOjE3MTE3MjQwMDksImVtYWlsIjoiZGVtb0BpbnRpY3MuYWkifQ.SPTVYQMF_IqX5aN6plDJupHcGkW9S-dOJPL8gduEzSU")
+                .authtoken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJHYXRlS2VlcGVyIiwiZXhwIjoxNzEyMjU5NTk1LCJpYXQiOjE3MTIxNzMxOTUsImVtYWlsIjoiZGVtb0BpbnRpY3MuYWkifQ.W0bEOwS2MHlpJUH0c6oB1zP1nCBUd9CvkbDNQb733qs")
 
                 .build();
 

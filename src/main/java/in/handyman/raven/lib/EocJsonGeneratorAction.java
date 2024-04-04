@@ -58,7 +58,7 @@ public class EocJsonGeneratorAction implements IActionExecution {
         final String originId = eocJsonGenerator.getOriginId();
         final String groupId = eocJsonGenerator.getGroupId();
         final long tenantId = Long.parseLong(action.getContext().get("tenant_id"));
-
+        final String batchId = action.getContext().get("batch_id");
         String apiUrl = urlEncoder(URI + "api/v1/" + documentId + "/docdetaillineitem/" + eocId + "?tenantId=" + tenantId);
 
         String authtoken = eocJsonGenerator.getAuthtoken();
