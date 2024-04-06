@@ -402,7 +402,7 @@ public class ScalarAdapterAction implements IActionExecution {
             String originalString = validator.getInputValue();
             StringBuilder modifiedString = new StringBuilder(originalString);
             // Remove last alphabet character
-            while (Character.isAlphabetic(modifiedString.charAt(modifiedString.length() - 1))) {
+            while (modifiedString.length() > 0 && Character.isAlphabetic(modifiedString.charAt(modifiedString.length() - 1))) {
                 modifiedString.deleteCharAt(modifiedString.length() - 1);
             }
             // Remove first alphabet character
