@@ -2,7 +2,6 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -77,15 +76,17 @@ public class AlchemyResponseAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+            Integer consumerApiCount = 5;
+
             final CoproProcessor<AlchemyResponseAction.AlchemyResponseInputTable, AlchemyResponseAction.AlchemyResponseOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AlchemyResponseAction.AlchemyResponseOutputTable.class,
                             AlchemyResponseAction.AlchemyResponseInputTable.class,
                             jdbi, log,
-                            new AlchemyResponseAction.AlchemyResponseInputTable(), urls, action);
+                            new AlchemyResponseAction.AlchemyResponseInputTable(), urls, action, consumerApiCount);
             coproProcessor.startProducer(alchemyResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action));
             log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyResponse.getName());
         } catch (Exception t) {
             action.getContext().put(alchemyResponse.getName() + ".isSuccessful", "false");

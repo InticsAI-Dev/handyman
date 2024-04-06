@@ -57,7 +57,7 @@ public class TableExtractionHeadersAction implements IActionExecution {
             final String readBatchSizeStr = action.getContext().get("read.batch.size");
             final String tableExtractionApiConsumerCountStr = action.getContext().get("table.extraction.consumer.API.count");
             final String writeBatchSizeStr = action.getContext().get("write.batch.size");
-            final Integer consumerCountInt = Integer.valueOf(tableExtractionApiConsumerCountStr);
+            final Integer consumerApiCount = Integer.valueOf(tableExtractionApiConsumerCountStr);
             final Integer writeBatchSizeInt = Integer.valueOf(writeBatchSizeStr);
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(tableExtractionHeaders.getResourceConn());
             final String outputDir = Optional.ofNullable(tableExtractionHeaders.getOutputDir()).map(String::valueOf).orElse(null);
@@ -85,7 +85,7 @@ public class TableExtractionHeadersAction implements IActionExecution {
                             TableExtractionOutputTable.class,
                             TableExtractionInputTable.class,
                             jdbi, log,
-                            new TableExtractionInputTable(), urls, action);
+                            new TableExtractionInputTable(), urls, action, consumerApiCount);
 
             log.info(aMarker, "table extraction copro coproProcessor initialization  {}", coproProcessor);
 
@@ -95,8 +95,8 @@ public class TableExtractionHeadersAction implements IActionExecution {
             log.info(aMarker, "table extraction copro coproProcessor startProducer called read batch size {}", readBatchSizeStr);
             Thread.sleep(1000);
             TableExtractionConsumerProcess tableExtractionConsumerProcess = new TableExtractionConsumerProcess(log, aMarker, outputDir, action);
-            coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, tableExtractionConsumerProcess);
-            log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCountInt, writeBatchSizeInt);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSizeInt, tableExtractionConsumerProcess);
+            log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSizeInt);
 
 
         } catch (Exception ex) {

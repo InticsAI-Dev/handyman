@@ -100,7 +100,7 @@ public class P2pNameValidationAction implements IActionExecution {
     private CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> getP2PNameValidationInputTableP2PNameValidationOutputTableCoproProcessor(Jdbi jdbi, List<URL> urls) {
         P2PNameValidationInputTable p2PNameValidationInputTable = new P2PNameValidationInputTable();
 
-        final CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), P2PNameValidationOutputTable.class, P2PNameValidationInputTable.class, jdbi, log, p2PNameValidationInputTable, urls, actionExecutionAudit);
+        final CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), P2PNameValidationOutputTable.class, P2PNameValidationInputTable.class, jdbi, log, p2PNameValidationInputTable, urls, actionExecutionAudit, consumerApiCount);
 
         coproProcessor.startProducer(p2pNameValidation.getQuerySet(), readBatchSize);
         return coproProcessor;

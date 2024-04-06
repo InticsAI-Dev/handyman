@@ -120,7 +120,7 @@ public class AutoRotationAction implements IActionExecution {
                       AutoRotationOutputTable.class,
                       AutoRotationInputTable.class,
                       jdbi, log,
-                      autoRotationInputTable, urls, action);
+                      autoRotationInputTable, urls, action, consumerApiCount);
 
       coproProcessor.startProducer(autoRotation.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);

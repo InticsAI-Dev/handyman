@@ -78,19 +78,19 @@ public class PaperItemizerAction implements IActionExecution {
                         }
                     }).collect(Collectors.toList())).orElse(Collections.emptyList());
             log.info(aMarker, "paper itemizer copro urls {}", urls);;
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get(PAPER_ITEMIZER_CONSUMER_API_COUNT));
 
             final CoproProcessor<PaperItemizerInputTable, PaperItemizerOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             PaperItemizerOutputTable.class,
                             PaperItemizerInputTable.class,
                             jdbi, log,
-                            new PaperItemizerInputTable(), urls, action);
+                            new PaperItemizerInputTable(), urls, action, consumerApiCount);
 
             log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);
 
             //4. call the method start producer from coproprocessor
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-            Integer consumerApiCount = Integer.valueOf(action.getContext().get(PAPER_ITEMIZER_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
 
             coproProcessor.startProducer(paperItemizer.getQuerySet(), readBatchSize);

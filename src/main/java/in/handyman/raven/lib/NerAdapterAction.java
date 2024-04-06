@@ -75,12 +75,14 @@ public class NerAdapterAction implements IActionExecution {
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
             log.info(aMarker, "ner adapter copro urls {}", urls);
 
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get("ner.consumer.API.count"));
+
             final CoproProcessor<NerInputTable, NerOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             NerOutputTable.class,
                             NerInputTable.class,
                             jdbi, log,
-                            new NerInputTable(), urls, action);
+                            new NerInputTable(), urls, action, consumerApiCount);
 
             log.info(aMarker, "ner adapter copro coproProcessor initialization  {}", coproProcessor);
 
@@ -88,9 +90,9 @@ public class NerAdapterAction implements IActionExecution {
             coproProcessor.startProducer(nerAdapter.getResultSet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             log.info(aMarker, "ner adapter copro coproProcessor startProducer called read batch size {}", action.getContext().get("read.batch.size"));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("ner.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")),
                     new NerAdapterConsumerProcess(log, aMarker, action));
-            log.info(aMarker, "ner adapter copro coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("ner.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
+            log.info(aMarker, "ner adapter copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")));
 
 
         } catch (Exception ex) {

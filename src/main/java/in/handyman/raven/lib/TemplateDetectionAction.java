@@ -134,7 +134,7 @@ public class TemplateDetectionAction implements IActionExecution {
                         TemplateDetectionOutputTable.class,
                         TemplateDetectionInputTable.class,
                         jdbi, log,
-                        templateDetectionInputTable, urls, action);
+                        templateDetectionInputTable, urls, action, consumerApiCount);
 
 
         coproProcessor.startProducer(querysetStr, readBatchSize);

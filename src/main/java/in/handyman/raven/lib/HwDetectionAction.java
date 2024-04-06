@@ -59,7 +59,7 @@ public class HwDetectionAction implements IActionExecution {
   @Override
   public void execute() throws Exception {
     Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-    Integer consumerCount = Integer.valueOf(action.getContext().get(PAPER_CLASSIFICATION_CONSUMER_API_COUNT));
+    Integer consumerApiCount = Integer.valueOf(action.getContext().get(PAPER_CLASSIFICATION_CONSUMER_API_COUNT));
     Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
     String outputDir = hwDetection.getDirectoryPath();
     HwClassificationConsumerProcess hwClassificationConsumerProcess = new HwClassificationConsumerProcess(log, aMarker, action, outputDir);
@@ -84,13 +84,13 @@ public class HwDetectionAction implements IActionExecution {
                       HwClassificationOutputTable.class,
                       HwClassificationInputTable.class,
                       jdbi, log,
-                      new HwClassificationInputTable(), urls, action);
+                      new HwClassificationInputTable(), urls, action, consumerApiCount);
 
       coproProcessor.startProducer(hwDetection.getQuerySet(), readBatchSize);
       log.info("hwdetection read batch size {} and queryset from macro {} ", readBatchSize, hwDetection.getQuerySet());
       Thread.sleep(1000);
 
-      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, hwClassificationConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, hwClassificationConsumerProcess);
       log.info(aMarker, " Handwritten Classification has been completed {}  ", hwDetection.getName());
     } catch (Exception e) {
       action.getContext().put(hwDetection.getName() + ".isSuccessful", "false");

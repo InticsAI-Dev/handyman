@@ -70,16 +70,17 @@ public class CheckboxVqaAction implements IActionExecution {
           throw new HandymanException("Error in processing the URL", e, action);
         }
       }).collect(Collectors.toList())).orElse(Collections.emptyList());
+      Integer consumerApiCount = Integer.valueOf(action.getContext().get("ut.consumer.API.count"));
 
       final CoproProcessor<CheckboxVqaInputTable, CheckboxVqaOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       CheckboxVqaOutputTable.class,
                       CheckboxVqaInputTable.class,
                       jdbi, log,
-                      new CheckboxVqaInputTable(), urls, action);
+                      new CheckboxVqaInputTable(), urls, action, consumerApiCount);
       coproProcessor.startProducer(checkboxVqa.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery,  Integer.valueOf(action.getContext().get("ut.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new CheckboxVqaConsumerProcess(log, aMarker, action));
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")), new CheckboxVqaConsumerProcess(log, aMarker, action));
       log.info(aMarker, " Urgency Triage has been completed {}  ", checkboxVqa.getName());
     } catch (Exception t) {
       action.getContext().put(checkboxVqa.getName() + ".isSuccessful", "false");

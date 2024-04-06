@@ -4,8 +4,6 @@ import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionInputQuerySet;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionOutputQuerySet;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -55,12 +53,12 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     public CoproProcessor(final BlockingQueue<I> queue, final Class<O> outputTargetClass,
                           final Class<I> inputTargetClass, final Jdbi jdbi, final Logger logger,
                           final I stoppingSeed, final List<URL> coproNodes,
-                          final ActionExecutionAudit actionExecutionAudit) {
+                          final ActionExecutionAudit actionExecutionAudit, Integer consumerApiCount) {
         this.queue = queue;
         this.inputTargetClass = inputTargetClass;
         this.stoppingSeed = stoppingSeed;
         this.nodes = coproNodes;
-        this.executorService = Executors.newWorkStealingPool();
+        this.executorService = Executors.newFixedThreadPool(consumerApiCount);;
         this.outputTargetClass = outputTargetClass;
         this.jdbi = jdbi;
         this.logger = logger;

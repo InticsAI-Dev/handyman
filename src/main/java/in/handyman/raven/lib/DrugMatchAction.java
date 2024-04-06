@@ -81,13 +81,14 @@ public class DrugMatchAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
             log.info(aMarker, "Drug Match copro urls {}", urls);
+      Integer consumerApiCount = Integer.valueOf(action.getContext().get("consumer.masterdata.API.count"));
 
       final CoproProcessor<DrugMatchInputTable, DrugMatchOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       DrugMatchOutputTable.class,
                       DrugMatchInputTable.class,
                       jdbi, log,
-                      new DrugMatchInputTable(), urls, action);
+                      new DrugMatchInputTable(), urls, action, consumerApiCount);
 
       log.info(aMarker, "Drug Match coproProcessor initialization  {}", coproProcessor);
 
@@ -95,7 +96,7 @@ public class DrugMatchAction implements IActionExecution {
       coproProcessor.startProducer(drugMatch.getInputSet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       log.info(aMarker, "Drug Match coproProcessor startProducer called read batch size {}", action.getContext().get("read.batch.size"));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("consumer.masterdata.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")),
               new DrugMatchConsumerProcess(log, aMarker, action));
       log.info(aMarker, "Drug Match coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
 

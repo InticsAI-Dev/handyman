@@ -59,7 +59,7 @@ public class UrgencyTriageModelAction implements IActionExecution {
     public void execute() throws Exception {
         try {
             Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
-            Integer consumerCount = Integer.valueOf(action.getContext().get("ut.consumer.API.count"));
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get("ut.consumer.API.count"));
             Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
             String outputDir = urgencyTriageModel.getOutputDir();
             UrgencyTriageConsumerProcess urgencyTriageConsumerProcess = new UrgencyTriageConsumerProcess(log, aMarker, action);
@@ -82,11 +82,11 @@ public class UrgencyTriageModelAction implements IActionExecution {
                             UrgencyTriageOutputTable.class,
                             UrgencyTriageInputTable.class,
                             jdbi, log,
-                            new UrgencyTriageInputTable(), urls, action);
+                            new UrgencyTriageInputTable(), urls, action, consumerApiCount);
 
             coproProcessor.startProducer(urgencyTriageModel.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, urgencyTriageConsumerProcess);
             log.info(aMarker, "Urgency Triage has been completed {}  ", urgencyTriageModel.getName());
         } catch (Exception t) {
             action.getContext().put(urgencyTriageModel.getName() + ".isSuccessful", "false");

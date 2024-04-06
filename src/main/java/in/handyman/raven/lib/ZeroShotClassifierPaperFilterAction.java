@@ -71,15 +71,16 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+            Integer consumerApiCount = Integer.parseInt(zeroShotClassifierPaperFilter.getThreadCount());
             final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             ZeroShotClassifierOutputTable.class,
                             ZeroShotClassifierInputTable.class,
                             jdbi, log,
-                            new ZeroShotClassifierInputTable(), urls, action);
+                            new ZeroShotClassifierInputTable(), urls, action, consumerApiCount);
             coproProcessor.startProducer(zeroShotClassifierPaperFilter.getQuerySet(), Integer.parseInt(zeroShotClassifierPaperFilter.getReadBatchSize()));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.parseInt(zeroShotClassifierPaperFilter.getThreadCount()),
+            coproProcessor.startConsumer(insertQuery, consumerApiCount,
                     Integer.parseInt(zeroShotClassifierPaperFilter.getWriteBatchSize()),
                     new ZeroShotConsumerProcess(log, aMarker, action));
             log.info(aMarker, " Zero shot classifier has been completed {}  ", zeroShotClassifierPaperFilter.getName());

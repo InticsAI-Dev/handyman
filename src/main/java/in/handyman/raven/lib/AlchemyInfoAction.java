@@ -73,15 +73,16 @@ public class AlchemyInfoAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+            Integer consumerApiCount = 1;
             final CoproProcessor<AlchemyInfoAction.AlchemyInfoInputTable, AlchemyInfoAction.AlchemyInfoOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AlchemyInfoAction.AlchemyInfoOutputTable.class,
                             AlchemyInfoAction.AlchemyInfoInputTable.class,
                             jdbi, log,
-                            new AlchemyInfoAction.AlchemyInfoInputTable(), urls, action);
+                            new AlchemyInfoAction.AlchemyInfoInputTable(), urls, action, consumerApiCount);
             coproProcessor.startProducer(alchemyInfo.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1,  Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyInfoAction.AlchemyInfoConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount,  Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyInfoAction.AlchemyInfoConsumerProcess(log, aMarker, action));
             log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyInfo.getName());
         } catch (Exception t) {
             action.getContext().put(alchemyInfo.getName() + ".isSuccessful", "false");
@@ -129,7 +130,7 @@ public class AlchemyInfoAction implements IActionExecution {
 
             RequestBody requestBody = new MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
-                    .addFormDataPart("file", file.getName(), RequestBody.create(mediaType, file))
+                    .addFormDataPart("file", file.getName(), RequestBody.create(file,mediaType))
                     .build();
 
             URL url = new URL(endpoint.toString() + "/" + entity.getRootPipelineId() + "/?tenantId=" + this.tenantId);

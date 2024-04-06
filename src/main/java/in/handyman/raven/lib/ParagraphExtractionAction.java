@@ -20,9 +20,6 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionConsumerProcess;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionInputQuerySet;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionOutputQuerySet;
 import in.handyman.raven.lib.model.paragraph.detection.ParagraphExtractionConsumerProcess;
 import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryInputTable;
 import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryOutputTable;
@@ -136,7 +133,7 @@ public class ParagraphExtractionAction implements IActionExecution {
                       ParagraphQueryOutputTable.class,
                       ParagraphQueryInputTable.class,
                       jdbi, log,
-                      paragraphQueryInputTable, urls, action);
+                      paragraphQueryInputTable, urls, action, consumerApiCount);
 
       coproProcessor.startProducer(paragraphExtraction.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);

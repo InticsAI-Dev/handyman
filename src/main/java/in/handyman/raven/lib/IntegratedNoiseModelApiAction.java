@@ -75,20 +75,21 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
                     " created_on, root_pipeline_id,status,stage,message,model_name,model_version)" +
                     "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get("noise.consumer.API.count"));
 
             final CoproProcessor<NoiseModelInputEntity, NoiseModelOutputEntity> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             NoiseModelOutputEntity.class,
                             NoiseModelInputEntity.class,
                             jdbi, log,
-                            new NoiseModelInputEntity(), urls, action);
+                            new NoiseModelInputEntity(), urls, action, consumerApiCount);
 
             coproProcessor.startProducer(integratedNoiseModelApi.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             log.info("start producer method from copro processor ");
             Thread.sleep(1000);
 
             //8. call the method start consumer from coproprocessor
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("noise.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new NoiseModelConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")), new NoiseModelConsumerProcess(log, aMarker, action));
             log.info("start consumer method from copro processor ");
 
 

@@ -54,7 +54,7 @@ public class QrExtractionAction implements IActionExecution {
   public void execute() throws Exception {
 
 
-    Integer consumerCount = Integer.valueOf(action.getContext().get(QR_CONSUMER_API_COUNT));
+    Integer consumerApiCount = Integer.valueOf(action.getContext().get(QR_CONSUMER_API_COUNT));
     Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
 
     String outputDir=action.getContext().get("target_directory_path") + "/" + action.getContext().get("process-id") + "/qr-extraction/";
@@ -86,14 +86,14 @@ public class QrExtractionAction implements IActionExecution {
                       QrOutputEntity.class,
                       QrInputEntity.class,
                       jdbi, log,
-                      new QrInputEntity(), urls, action);
+                      new QrInputEntity(), urls, action, consumerApiCount);
 
       //4. call the method start producer from coproprocessor
       coproProcessor.startProducer(qrExtraction.getQuerySet(), readBatchSize);
       log.info("start producer method from copro processor ");
       Thread.sleep(1000);
       //8. call the method start consumer from coproprocessor
-      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, qrConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, qrConsumerProcess);
       log.info("start consumer method from copro processor ");
 
 

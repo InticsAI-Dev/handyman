@@ -75,12 +75,14 @@ public class TableExtractionAction implements IActionExecution {
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
             log.info(aMarker, "table extraction copro urls {}", urls);
 
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get("table.extraction.consumer.API.count"));
+
             final CoproProcessor<TableExtractionInputTable, TableExtractionOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             TableExtractionOutputTable.class,
                             TableExtractionInputTable.class,
                             jdbi, log,
-                            new TableExtractionInputTable(), urls, action);
+                            new TableExtractionInputTable(), urls, action, consumerApiCount);
 
             log.info(aMarker, "table extraction copro coproProcessor initialization  {}", coproProcessor);
 
@@ -88,8 +90,8 @@ public class TableExtractionAction implements IActionExecution {
             coproProcessor.startProducer(tableExtraction.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             log.info(aMarker, "table extraction copro coproProcessor startProducer called read batch size {}", action.getContext().get("read.batch.size"));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("table.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new TableExtractionConsumerProcess(log, aMarker, outputDir, action));
-            log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("table.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")), new TableExtractionConsumerProcess(log, aMarker, outputDir, action));
+            log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")));
 
 
         } catch (Exception ex) {

@@ -1,7 +1,6 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -15,7 +14,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -67,6 +65,8 @@ public class DataExtractionAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Data Extraction Action for {} has been started", dataExtraction.getName());
 
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));
+
             String outputTableName = dataExtraction.getResultTable();
             final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) " + INSERT_INTO_VALUES;
             final List<URL> urls = Optional.ofNullable(dataExtraction.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
@@ -78,10 +78,9 @@ public class DataExtractionAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<DataExtractionInputTable, DataExtractionOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DataExtractionOutputTable.class, DataExtractionInputTable.class, jdbi, log, new DataExtractionInputTable(), urls, action);
+            final CoproProcessor<DataExtractionInputTable, DataExtractionOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DataExtractionOutputTable.class, DataExtractionInputTable.class, jdbi, log, new DataExtractionInputTable(), urls, action, consumerApiCount);
 
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-            Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
             DataExtractionConsumerProcess dataExtractionConsumerProcess = new DataExtractionConsumerProcess(log, aMarker, action);
 

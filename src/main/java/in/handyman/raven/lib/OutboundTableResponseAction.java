@@ -20,9 +20,6 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.outbound.AlchemyKvpInputEntity;
-import in.handyman.raven.lib.model.outbound.AlchemyKvpOutputEntity;
-import in.handyman.raven.lib.model.outbound.OutboundKvpConsumerProcess;
 import in.handyman.raven.lib.model.outbound.table.AlchemyTableInputEntity;
 import in.handyman.raven.lib.model.outbound.table.AlchemyTableOutputEntity;
 import in.handyman.raven.lib.model.outbound.table.OutboundTableConsumerProcess;
@@ -84,12 +81,14 @@ public class OutboundTableResponseAction implements IActionExecution {
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
             log.info(aMarker, "alchemy table copro urls {}", urls);
 
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get("alchemy.table.consumer.API.count"));
+
             final CoproProcessor<AlchemyTableInputEntity, AlchemyTableOutputEntity> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AlchemyTableOutputEntity.class,
                             AlchemyTableInputEntity.class,
                             jdbi, log,
-                            new AlchemyTableInputEntity(), urls, action);
+                            new AlchemyTableInputEntity(), urls, action, consumerApiCount);
 
             log.info(aMarker, "alchemy table copro coproProcessor initialization  {}", coproProcessor);
 
@@ -98,8 +97,8 @@ public class OutboundTableResponseAction implements IActionExecution {
             coproProcessor.startProducer(outboundTableResponse.getQuerySet(), Integer.valueOf(readBatchSize));
             log.info(aMarker, "product outbound copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("alchemy.table.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new OutboundTableConsumerProcess(log, aMarker, action, this));
-            log.info(aMarker, "product outbound coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("alchemy.table.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")), new OutboundTableConsumerProcess(log, aMarker, action, this));
+            log.info(aMarker, "product outbound coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")));
 
 
         } catch (Exception ex) {

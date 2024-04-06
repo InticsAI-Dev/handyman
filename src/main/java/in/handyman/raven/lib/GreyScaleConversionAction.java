@@ -134,7 +134,7 @@ public class GreyScaleConversionAction implements IActionExecution {
                         GreyScaleConversionOutputQuerySet.class,
                         GreyScaleConversionInputQuerySet.class,
                         jdbi, log,
-                        greyScaleConversionInputTable, urls, action);
+                        greyScaleConversionInputTable, urls, action, consumerApiCount);
 
         coproProcessor.startProducer(greyScaleConversion.getQuerySet(), readBatchSize);
         return coproProcessor;

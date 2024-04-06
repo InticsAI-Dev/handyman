@@ -134,7 +134,7 @@ public class BulletInExtractionAction implements IActionExecution {
                       BulletinQueryOutputTable.class,
                       BulletinQueryInputTable.class,
                       jdbi, log,
-                      bulletinQueryInputTable, urls, action);
+                      bulletinQueryInputTable, urls, action, consumerApiCount);
 
       coproProcessor.startProducer(bulletInExtraction.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);

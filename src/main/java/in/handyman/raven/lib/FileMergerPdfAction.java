@@ -88,7 +88,7 @@ public class FileMergerPdfAction implements IActionExecution {
                             FileMergerpdfOutputEntity.class,
                             FileMergerpdfInputEntity.class,
                             jdbi, log,
-                            new FileMergerpdfInputEntity(), urls, action);
+                            new FileMergerpdfInputEntity(), urls, action, consumerApiCount);
 
             log.info(aMarker, "file mergercopro coproProcessor initialization  {}", coproProcessor);
 

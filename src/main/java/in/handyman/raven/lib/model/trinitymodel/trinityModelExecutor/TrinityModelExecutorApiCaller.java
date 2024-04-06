@@ -1,14 +1,17 @@
-package in.handyman.raven.lib.model.trinitymodel;
+package in.handyman.raven.lib.model.trinitymodel.trinityModelExecutor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.TrinityModelAction;
+import in.handyman.raven.lib.TrinityModelExecutorConsumerProcess;
+import in.handyman.raven.lib.model.trinitymodel.TrinityModelPayload;
+import in.handyman.raven.lib.model.trinitymodel.TrinityModelRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.List;
@@ -16,17 +19,14 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class TrinityModelApiCaller {
+public class TrinityModelExecutorApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private final TrinityModelAction aAction;
+    private final TrinityModelExecutorConsumerProcess aAction;
     private final OkHttpClient httpclient;
-
-
     private final String node;
 
-    public TrinityModelApiCaller(TrinityModelAction aAction, final String node) {
+    public TrinityModelExecutorApiCaller(TrinityModelExecutorConsumerProcess aAction, final String node, Logger log) {
         this.aAction = aAction;
         this.node = node;
         this.httpclient = new OkHttpClient.Builder()
@@ -39,15 +39,14 @@ public class TrinityModelApiCaller {
     public String computeTriton(final String inputPath, final String paperType, final List<String> questions,final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
-        Long rootpipelineId = action.getRootPipelineId();
+        Long rootPipelineId = action.getRootPipelineId();
         final String trinityProcessName = "VQA_VALUATION";
         ObjectMapper objectMapper = new ObjectMapper();
-
 
         TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
         trinityModelPayload.setActionId(actionId);
         trinityModelPayload.setProcess(trinityProcessName);
-        trinityModelPayload.setRootPipelineId(rootpipelineId);
+        trinityModelPayload.setRootPipelineId(rootPipelineId);
         trinityModelPayload.setPaperType(paperType);
         trinityModelPayload.setTenantId(tenantId);
         trinityModelPayload.setAttributes(questions);
@@ -57,8 +56,6 @@ public class TrinityModelApiCaller {
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
         TritonRequest tritonRequest = getTritonRequestPaperType(paperType,modelRegistry, jsonInputRequest);
-
-
         TrinityModelRequest trinityModelRequest = new TrinityModelRequest();
         trinityModelRequest.setInputs(Collections.singletonList(tritonRequest));
 
@@ -104,13 +101,12 @@ public class TrinityModelApiCaller {
         return tritonRequest;
     }
 
-    public String computeCopro(final String inputPath, final String paperType, final List<String> questions,final String modelRegistry,final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeCopro(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry,final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootPipelineId = action.getRootPipelineId();
         final String trinityProcessName = "VQA_VALUATION";
         ObjectMapper objectMapper = new ObjectMapper();
-
 
         TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
         trinityModelPayload.setActionId(actionId);
@@ -122,7 +118,6 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setModelRegistry(modelRegistry);
         trinityModelPayload.setTenantId(tenantId);
 
-
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
         final Request request = new Request.Builder().url(node)
@@ -131,8 +126,6 @@ public class TrinityModelApiCaller {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-
-
                 return responseBody;
             } else {
                 log.error("Error in the trinity model response {}", responseBody);

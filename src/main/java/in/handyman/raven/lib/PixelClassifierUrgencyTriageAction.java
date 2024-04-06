@@ -71,15 +71,17 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
         }
       }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+      Integer consumerApiCount = 5;
+
       final CoproProcessor<HwUrgencyTriageInputTable, HwUrgencyTriageOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       HwUrgencyTriageOutputTable.class,
                       HwUrgencyTriageInputTable.class,
                       jdbi, log,
-                      new HwUrgencyTriageInputTable(), urls, action);
+                      new HwUrgencyTriageInputTable(), urls, action, consumerApiCount);
       coproProcessor.startProducer(pixelClassifierUrgencyTriage.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery, 1, 1, new HwUrgencyTriageConsumerProcess(log, aMarker, action));
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, consumerApiCount, new HwUrgencyTriageConsumerProcess(log, aMarker, action));
       log.info(aMarker, " Handwritten Urgency Triage has been completed {}  ", pixelClassifierUrgencyTriage.getName());
     } catch (Exception e) {
       action.getContext().put(pixelClassifierUrgencyTriage.getName() + ".isSuccessful", "false");

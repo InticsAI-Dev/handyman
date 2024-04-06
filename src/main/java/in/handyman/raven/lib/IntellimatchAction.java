@@ -91,12 +91,14 @@ public class IntellimatchAction implements IActionExecution {
       }).collect(Collectors.toList())).orElse(Collections.emptyList());
       log.info(aMarker, "intelli match copro urls {}", urls);
 
+      Integer consumerApiCount = Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count"));
+
       final CoproProcessor<IntellimatchInputTable, IntellimatchOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       IntellimatchOutputTable.class,
                       IntellimatchInputTable.class,
                       jdbi, log,
-                      new IntellimatchInputTable(), urls, action);
+                      new IntellimatchInputTable(), urls, action, consumerApiCount);
       log.info(aMarker, "intelli match copro Processor initialization  {}", coproProcessor);
 
       //4. call the method start producer from coproprocessor
@@ -104,11 +106,10 @@ public class IntellimatchAction implements IActionExecution {
       coproProcessor.startProducer(intellimatch.getInputSet(), readBatchSize);
       log.info(aMarker, "intelli match startProducer called read batch size {}", readBatchSize);
       Thread.sleep(1000);
-      Integer consumerCount = Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count"));
       Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
-      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize,
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize,
               new IntellimatchConsumerProcess(log, aMarker, action));
-      log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCount, writeBatchSize);
+      log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
 
     } catch (Exception ex) {
       log.error(aMarker, "Error in execute method for Drug Match {} ", ExceptionUtil.toString(ex));

@@ -74,15 +74,17 @@ public class ProductResponseAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+            Integer consumerApiCount = 1;
+
             final CoproProcessor<ProductResponseAction.ProductResponseInputTable, ProductResponseAction.ProductResponseOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             ProductResponseAction.ProductResponseOutputTable.class,
                             ProductResponseAction.ProductResponseInputTable.class,
                             jdbi, log,
-                            new ProductResponseAction.ProductResponseInputTable(), urls, action);
+                            new ProductResponseAction.ProductResponseInputTable(), urls, action, consumerApiCount);
             coproProcessor.startProducer(productResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
             log.info(aMarker, "Product Response has been completed {}  ", productResponse.getName());
         } catch (Exception t) {
             action.getContext().put(productResponse.getName() + ".isSuccessful", "false");

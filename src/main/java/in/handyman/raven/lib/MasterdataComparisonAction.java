@@ -3,16 +3,12 @@
 
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.MasterdataComparison;
 import in.handyman.raven.lib.model.common.*;
 import in.handyman.raven.util.ExceptionUtil;
@@ -92,21 +88,23 @@ public class MasterdataComparisonAction implements IActionExecution {
       }).collect(Collectors.toList())).orElse(Collections.emptyList());
       log.info(aMarker, "master data comparison copro urls {}", urls);
 
+      Integer consumerApiCount = Integer.valueOf(action.getContext().get("consumer.masterdata.API.count"));
+
       final CoproProcessor<MasterDataInputTable, MasterDataOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       MasterDataOutputTable.class,
                       MasterDataInputTable.class,
                       jdbi, log,
-                      new MasterDataInputTable(), urls, action);
+                      new MasterDataInputTable(), urls, action, consumerApiCount);
       log.info(aMarker, "master data comparison copro Processor initialization  {}", coproProcessor);
 
       //4. call the method start producer from coproprocessor
       coproProcessor.startProducer(masterdataComparison.getInputSet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       log.info(aMarker, "master data comparison coproProcessor startProducer called read batch size {}", action.getContext().get("read.batch.size"));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("consumer.masterdata.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")),
               new MasterdataComparisonProcess(log, aMarker, action));
-      log.info(aMarker, "master data comparison coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("consumer.masterdata.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
+      log.info(aMarker, "master data comparison coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, Integer.valueOf(action.getContext().get("write.batch.size")));
 
     } catch (Exception ex) {
       log.error(aMarker, "Error in execute method for Drug Match {} ", ExceptionUtil.toString(ex));

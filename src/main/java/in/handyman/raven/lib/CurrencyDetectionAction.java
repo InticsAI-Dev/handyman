@@ -123,7 +123,7 @@ public class CurrencyDetectionAction implements IActionExecution {
                             CurrencyDetectionOutputQuerySet.class,
                             CurrencyDetectionInputQuerySet.class,
                             jdbi, log,
-                            currencyDetectionInputQuerySet, urls, action);
+                            currencyDetectionInputQuerySet, urls, action, consumerApiCount);
 
             coproProcessor.startProducer(currencyDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);
