@@ -416,31 +416,37 @@ public class ScalarAdapterAction implements IActionExecution {
 
     private Validator scrubbingDate(Validator validator) {
         if (validator.getInputValue() != null) {
-            // Define regex pattern to match date format "MM dd yyy"
-            String regexPattern = "(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})";
-            // Create pattern object
-            Pattern pattern = Pattern.compile(regexPattern);
-            // Create matcher object
-            Matcher matcher = pattern.matcher(validator.getInputValue());
 
-            if (matcher.find()) {
-                // Extract matched groups (month, separator, day, year)
-                String month = matcher.group(1);
-                String separator = matcher.group(2);
-                String day = matcher.group(3);
-                String separator2 = matcher.group(4);
-                String year = matcher.group(5);
-                String inputValue="";
-                // Insert a default separator if it's missing
-                if (separator.trim().isEmpty()) {
-                    separator = "-";
-                    inputValue = inputValue.concat(month + separator + day + separator +year);
-                    validator.setInputValue(inputValue);
-                    log.info("With Formatted date: " + month + separator + day + separator +year );
-                } else{
-                    inputValue = inputValue.concat(month + separator + day + separator2 +year);
-                    validator.setInputValue(inputValue);
-                    log.info("Extracted date: " + month + separator + day + separator2 +year );
+            int confidenceScore = this.dateAction.getDateScore(validator);
+
+            if (confidenceScore == 0) {
+
+                // Define regex pattern to match date format "MM dd yyy"
+                String regexPattern = "(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})";
+                // Create pattern object
+                Pattern pattern = Pattern.compile(regexPattern);
+                // Create matcher object
+                Matcher matcher = pattern.matcher(validator.getInputValue());
+
+                if (matcher.find()) {
+                    // Extract matched groups (month, separator, day, year)
+                    String month = matcher.group(1);
+                    String separator = matcher.group(2);
+                    String day = matcher.group(3);
+                    String separator2 = matcher.group(4);
+                    String year = matcher.group(5);
+                    String inputValue = "";
+                    // Insert a default separator if it's missing
+                    if (separator.trim().isEmpty()) {
+                        separator = "-";
+                        inputValue = inputValue.concat(month + separator + day + separator + year);
+                        validator.setInputValue(inputValue);
+                        log.info("With Formatted date: " + month + separator + day + separator + year);
+                    } else {
+                        inputValue = inputValue.concat(month + separator + day + separator2 + year);
+                        validator.setInputValue(inputValue);
+                        log.info("Extracted date: " + month + separator + day + separator2 + year);
+                    }
                 }
             }
         }
