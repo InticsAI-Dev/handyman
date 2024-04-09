@@ -164,60 +164,74 @@ public class ScalarAdapterAction implements IActionExecution {
         try {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
             for (ValidatorConfigurationDetail result : listOfDetails) {
-                log.info(aMarker, "Build 19- scalar executing  validator {}", result);
+
+                if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
+
+                    log.info(aMarker, "Build 19- scalar executing  validator {}", result);
 
 //                String inputValue = result.getInputValue();
-                Validator scrubbingInput = Validator.builder()
-                        .inputValue(result.getInputValue())
-                        .adapter(result.getAllowedAdapter())
-                        .allowedSpecialChar(result.getAllowedCharacters())
-                        .comparableChar(result.getComparableCharacters())
-                        .threshold(result.getValidatorThreshold())
-                        .build();
+                    Validator scrubbingInput = Validator.builder()
+                            .inputValue(result.getInputValue())
+                            .adapter(result.getAllowedAdapter())
+                            .allowedSpecialChar(result.getAllowedCharacters())
+                            .comparableChar(result.getComparableCharacters())
+                            .threshold(result.getValidatorThreshold())
+                            .build();
 
-                Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
-                String inputValue = configurationDetails.getInputValue();
-                result.setInputValue(inputValue);
-                int wordScore = wordcountAction.getWordCount(inputValue,
-                        result.getWordLimit(), result.getWordThreshold());
-                int charScore = charactercountAction.getCharCount(inputValue,
-                        result.getCharLimit(), result.getCharThreshold());
+                    Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
+                    String inputValue = configurationDetails.getInputValue();
+                    result.setInputValue(inputValue);
+                    int wordScore = wordcountAction.getWordCount(inputValue,
+                            result.getWordLimit(), result.getWordThreshold());
+                    int charScore = charactercountAction.getCharCount(inputValue,
+                            result.getCharLimit(), result.getCharThreshold());
 
-                int validatorScore = computeAdapterScore(configurationDetails);
-                int validatorNegativeScore = 0;
-                if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
-                    configurationDetails.setAdapter(result.getRestrictedAdapter());
-                    validatorNegativeScore = computeAdapterScore(configurationDetails);
+                    int validatorScore = computeAdapterScore(configurationDetails);
+                    int validatorNegativeScore = 0;
+                    if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
+                        configurationDetails.setAdapter(result.getRestrictedAdapter());
+                        validatorNegativeScore = computeAdapterScore(configurationDetails);
+                    }
+
+                    double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
+                    log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+
+                    updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    updateEmptyValueForRestrictedAns(result, inputValue);
+                    log.info(aMarker, "Build 19-validator vqa score {}", result.getVqaScore());
+
+                    result.setWordScore(wordScore);
+                    result.setCharScore(charScore);
+                    result.setValidatorScore(validatorScore);
+                    result.setValidatorNegativeScore(validatorNegativeScore);
+                    result.setRootPipelineId(action.getRootPipelineId());
+                    result.setConfidenceScore(valConfidenceScore);
+                    result.setProcessId(String.valueOf(action.getProcessId()));
+                    result.setStatus("COMPLETED");
+                    result.setStage("SCALAR_VALIDATION");
+                    result.setMessage("scalar validation macro completed");
+                    resultQueue.add(result);
+                    log.info(aMarker, "executed  validator {}", result);
+
+                    if (resultQueue.size() == this.writeBatchSize) {
+                        log.info(aMarker, "executing  batch {}", resultQueue.size());
+                        consumerBatch(jdbi, resultQueue);
+                        log.info(aMarker, "executed  batch {}", resultQueue.size());
+                        insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
+                        resultQueue.clear();
+                        log.info(aMarker, "cleared batch {}", resultQueue.size());
+                    }
+                } else {
+                    result.setRootPipelineId(action.getRootPipelineId());
+                    result.setConfidenceScore(0L);
+                    result.setProcessId(String.valueOf(action.getProcessId()));
+                    result.setStatus("COMPLETED");
+                    result.setStage("SCALAR_VALIDATION");
+                    result.setMessage("scalar validation macro completed");
+                    resultQueue.add(result);
+                    log.info(aMarker, "executed  validator else {}", result);
                 }
 
-                double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
-                log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
-
-                updateEmptyValueIfLowCf(result, valConfidenceScore);
-                updateEmptyValueForRestrictedAns(result, inputValue);
-                log.info(aMarker, "Build 19-validator vqa score {}", result.getVqaScore());
-
-                result.setWordScore(wordScore);
-                result.setCharScore(charScore);
-                result.setValidatorScore(validatorScore);
-                result.setValidatorNegativeScore(validatorNegativeScore);
-                result.setRootPipelineId(action.getRootPipelineId());
-                result.setConfidenceScore(valConfidenceScore);
-                result.setProcessId(String.valueOf(action.getProcessId()));
-                result.setStatus("COMPLETED");
-                result.setStage("SCALAR_VALIDATION");
-                result.setMessage("scalar validation macro completed");
-                resultQueue.add(result);
-                log.info(aMarker, "executed  validator {}", result);
-
-                if (resultQueue.size() == this.writeBatchSize) {
-                    log.info(aMarker, "executing  batch {}", resultQueue.size());
-                    consumerBatch(jdbi, resultQueue);
-                    log.info(aMarker, "executed  batch {}", resultQueue.size());
-                    insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
-                    resultQueue.clear();
-                    log.info(aMarker, "cleared batch {}", resultQueue.size());
-                }
             }
             if (!resultQueue.isEmpty()) {
                 log.info(aMarker, "executing final batch {}", resultQueue.size());
