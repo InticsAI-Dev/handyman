@@ -26,7 +26,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
 
     @Override
     public List<P2PNameValidationOutputTable> process(URL endpoint, P2PNameValidationInputTable entity) throws Exception {
-        log.info("p2p input entity: ",entity);
+        log.info("p2p input entity: {} ", entity);
         final List<P2PNameValidationOutputTable> p2PNameValidationOutputTableArrayList = new ArrayList<>();
         try {
             log.info(aMarker, "mapping inputs for the results {}", entity);
@@ -59,11 +59,12 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                 finalConcatenatedName = p2pFirstName + " " + p2pLastName;
             }
 
-            log.info(aMarker, "Concatenated Name before Full name validation", finalConcatenatedName);
-            if(!p2pFullName.contains(finalConcatenatedName)) {
-                finalConcatenatedName= p2pFullName;
+            log.info(aMarker, "Concatenated Name before Full name validation {}", finalConcatenatedName);
+            boolean isContains = finalConcatenatedName.contains(p2pFullName);
+            if (!p2pFullName.isBlank() && !p2pFullName.isEmpty() && p2pFullName != null && !isContains) {
+                finalConcatenatedName = p2pFullName;
             }
-            log.info(aMarker, "Concatenated Name after Full name validation", finalConcatenatedName);
+            log.info(aMarker, "Concatenated Name after Full name validation {}", finalConcatenatedName);
 
             p2PNameValidationOutputTableArrayList.add(P2PNameValidationOutputTable.builder()
                     .p2pConcatenatedName(finalConcatenatedName)
@@ -78,7 +79,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                     .tenantId(entity.getTenantId())
                     .sorItemName(entity.getSorItemName())
                     .build());
-            log.info(aMarker, "p2PNameValidationOutputTableArrayList", p2PNameValidationOutputTableArrayList);
+            log.info(aMarker, "p2PNameValidationOutputTableArrayList {}", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {
             log.error(aMarker, "error in execute method for p2p name concatenation ", e);
             throw new HandymanException("error in execute method for p2p name concatenation", e);
