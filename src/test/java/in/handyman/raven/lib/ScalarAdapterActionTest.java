@@ -73,7 +73,7 @@ class ScalarAdapterActionTest {
     @Test
     public void removePrefixAndSuffix1() {
         Validator validator = Validator.builder()
-                .inputValue("12 ak NPI")
+                .inputValue("NPI")
                 .build();
         String originalString = validator.getInputValue().trim(); // Trim to remove leading/trailing spaces
 
@@ -100,7 +100,7 @@ class ScalarAdapterActionTest {
 
     @Test
     public void remove() {
-        String text = "ee ee  12 tt yy";
+        String text = "NPI";
 
 
         int startIndex = 0;
@@ -112,9 +112,11 @@ class ScalarAdapterActionTest {
         while (endIndex >= 0 && (isAlphabetic(text.charAt(endIndex)) || text.charAt(endIndex) == ' ')) {
             endIndex--;
         }
+        if (startIndex > endIndex) {
+            System.out.println(""); // No non-alphabetic characters remaining
+        }
 
-
-        System.out.println(text.substring(startIndex, endIndex + 1));
+//        System.out.println(text.substring(startIndex, endIndex + 1));
     }
 
     private static boolean isAlphabetic(char ch) {

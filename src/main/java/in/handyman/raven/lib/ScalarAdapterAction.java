@@ -410,7 +410,12 @@ public class ScalarAdapterAction implements IActionExecution {
             while (endIndex >= 0 && (isAlphabetic(dateRegValue.charAt(endIndex)) || dateRegValue.charAt(endIndex) == ' ')) {
                 endIndex--;
             }
-            validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
+            if (startIndex > endIndex) {
+                validator.setInputValue(dateRegValue);
+            }
+            else {
+                validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
+            }
         }
         return validator;
     }
