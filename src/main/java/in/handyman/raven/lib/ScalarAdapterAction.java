@@ -413,20 +413,29 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
     private Validator removePrefixAndSuffix(Validator validator) {
-        if (validator.getInputValue().length() > 2) {
-            String originalString = validator.getInputValue();
-            StringBuilder modifiedString = new StringBuilder(originalString);
-            // Remove last alphabet character
-            while (modifiedString.length() > 0 && Character.isAlphabetic(modifiedString.charAt(modifiedString.length() - 1))) {
-                modifiedString.deleteCharAt(modifiedString.length() - 1);
+        String dateRegValue = validator.getInputValue();
+        if (dateRegValue != null && !dateRegValue.isEmpty()){
+            int startIndex = 0;
+            while (startIndex < dateRegValue.length() && (isAlphabetic(dateRegValue.charAt(startIndex)) || dateRegValue.charAt(startIndex) == ' ')) {
+                startIndex++;
             }
-            // Remove first alphabet character
-            while (Character.isAlphabetic(modifiedString.charAt(0))) {
-                modifiedString.deleteCharAt(0);
+
+            int endIndex = dateRegValue.length() - 1;
+            while (endIndex >= 0 && (isAlphabetic(dateRegValue.charAt(endIndex)) || dateRegValue.charAt(endIndex) == ' ')) {
+                endIndex--;
             }
-            validator.setInputValue(modifiedString.toString());
+            if (startIndex > endIndex) {
+                validator.setInputValue(dateRegValue);
+            }
+            else {
+                validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
+            }
         }
         return validator;
+    }
+
+    private static boolean isAlphabetic(char ch) {
+        return Character.isLetter(ch);
     }
 
     private Validator scrubbingDate(Validator validator) {
