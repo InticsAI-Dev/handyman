@@ -227,7 +227,7 @@ public class TrinityModelAction implements IActionExecution {
     }
 
     private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions,String modelRegistry, Jdbi jdbi,ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node).computeTriton(filePath, paperType, questions, modelRegistry, tenantId, action);
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node,log).computeTriton(filePath, paperType, questions, modelRegistry, tenantId, action);
         TrinityModelResponse trinityModelResponse = objectMapper.readValue(trinityModelResultLineItems, new TypeReference<>() {
         });
         trinityModelResponse.getOutputs().forEach(trinityModelOutput -> trinityModelOutput.getData().forEach(trinityModelResultLineItem -> {
@@ -236,7 +236,7 @@ public class TrinityModelAction implements IActionExecution {
     }
 
     private void coproRequestBuilder(String node, String filePath, String paperType, List<String> questions,String modelRegistry, Jdbi jdbi,ObjectMapper mapper, List<TrinityModelLineItem> assetBatchItem, String batchId) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node).computeCopro(filePath, paperType, questions,modelRegistry,tenantId, action);
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node,log).computeCopro(filePath, paperType, questions,modelRegistry,tenantId, action);
         extractedCoproOutputResponse(trinityModelResultLineItems, jdbi, filePath, tenantId,paperType,modelRegistry,"","",mapper, assetBatchItem, batchId);
 
     }
