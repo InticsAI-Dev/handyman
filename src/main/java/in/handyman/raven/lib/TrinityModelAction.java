@@ -54,7 +54,7 @@ public class TrinityModelAction implements IActionExecution {
         this.trinityModel = (TrinityModel) trinityModel;
         this.action = action;
         this.log = log;
-        this.tenantId = Long.valueOf(action.getContext().get("tenant_id"));
+        this.tenantId= Long.valueOf(action.getContext().get("tenant_id"));
         this.aMarker = MarkerFactory.getMarker(" TrinityModel:" + this.trinityModel.getName());
         httpClientTimeout = Optional.ofNullable(action.getContext().get("okhttp.client.timeout")).orElse("100");
     }
@@ -104,7 +104,7 @@ public class TrinityModelAction implements IActionExecution {
             String trinityUrl = trinityModel.getRequestUrl();
             final List<String> nodes = Optional.ofNullable(trinityUrl).map(s -> Arrays.asList(s.split(","))).orElse(Collections.emptyList());
 
-            doProcess(trinityModelLineItems, nodes, mapper);
+            doProcess(trinityModelLineItems, nodes,mapper);
         } catch (Exception e) {
             log.error(aMarker, "Error in trinity model attribution action", e);
             throw new HandymanException("Error in trinity model attribution action", e, action);
@@ -112,7 +112,7 @@ public class TrinityModelAction implements IActionExecution {
 
     }
 
-    private void doProcess(final List<TrinityModelLineItem> assetBatch, List<String> nodes, ObjectMapper mapper) {
+    private void doProcess(final List<TrinityModelLineItem> assetBatch, List<String> nodes,ObjectMapper mapper) {
         final int forkBatchSize;
         if (trinityModel.getForkBatchSize() != null) {
             forkBatchSize = Integer.parseInt(trinityModel.getForkBatchSize());
@@ -124,15 +124,15 @@ public class TrinityModelAction implements IActionExecution {
             if (coproEndpointNodeCount > 0) {
                 int assetBatchSize = assetBatch.size();
                 final int batchCount = (assetBatchSize / forkBatchSize) > 0 ? (assetBatchSize / forkBatchSize) : 1;
-                log.info(aMarker, " batchsize - {}, copro-endpoint-node-size - {}, forkBatchSize - {}, donut-line items {} ", batchCount, coproEndpointNodeCount, forkBatchSize, assetBatchSize);
-                if (forkBatchSize > 1) {
+                log.info(aMarker, " batchsize - {}, copro-endpoint-node-size - {}, forkBatchSize - {}, donut-line items {} ",batchCount,coproEndpointNodeCount,forkBatchSize, assetBatchSize);
+                if (forkBatchSize > 1 ) {
 
                     final List<List<TrinityModelLineItem>> partitionedAssetBatch = Lists.partition(assetBatch, forkBatchSize);
                     log.info(aMarker, "vqa running in parallel, partitionedAssetBatch {} ", partitionedAssetBatch);
 
-                    partitionedAssetBatch.forEach(assetBatchItem -> {
+                    partitionedAssetBatch.forEach(assetBatchItem ->  {
                         try {
-                            computeProcess(coproEndpointNodeCount, assetBatchItem, nodes, mapper, forkBatchSize);
+                            computeProcess(coproEndpointNodeCount, assetBatchItem, nodes,mapper,forkBatchSize);
                         } catch (InterruptedException e) {
                             throw new HandymanException("");
                         }
@@ -140,8 +140,8 @@ public class TrinityModelAction implements IActionExecution {
                     });
 
                 } else {
-                    log.info(aMarker, "vqa running in sequential, batchsize - {}, copro-endpoint-node-size - {}, forkBatchSize - {}, donut-line items {} ", batchCount, coproEndpointNodeCount, forkBatchSize, assetBatchSize);
-                    computeProcess(coproEndpointNodeCount, assetBatch, nodes, mapper, forkBatchSize);
+                    log.info(aMarker, "vqa running in sequential, batchsize - {}, copro-endpoint-node-size - {}, forkBatchSize - {}, donut-line items {} ",batchCount,coproEndpointNodeCount,forkBatchSize, assetBatchSize);
+                    computeProcess(coproEndpointNodeCount, assetBatch, nodes,mapper,forkBatchSize);
                 }
 
             }
@@ -153,32 +153,32 @@ public class TrinityModelAction implements IActionExecution {
         }
     }
 
-    private void computeProcess(final int nodeSize, final List<TrinityModelLineItem> assetBatchItem, List<String> nodes, ObjectMapper mapper, int forkBatchSize) throws InterruptedException {
+    private void computeProcess(final int nodeSize, final List<TrinityModelLineItem> assetBatchItem, List<String> nodes,ObjectMapper mapper,int forkBatchSize) throws InterruptedException {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(trinityModel.getResourceConn());
         final ExecutorService executorService = Executors.newFixedThreadPool(forkBatchSize);
         final CountDownLatch countDownLatch = new CountDownLatch(assetBatchItem.size());
 
         try {
-            log.info("compute process for vqa with assetBatchItem {}", assetBatchItem);
+            log.info("compute process for vqa with assetBatchItem {}",assetBatchItem);
             assetBatchItem.forEach(asset -> executorService.submit(() -> {
                 try {
 
-                    log.info("submitting new work with thread name {}", Thread.currentThread().getName());
+                    log.info("submitting new work with thread name {}",Thread.currentThread().getName());
                     doWork(nodeSize, nodes, mapper, asset, jdbi);
-                } finally {
-                    log.info("completed new work with thread name {}", Thread.currentThread().getName());
+                }finally {
+                    log.info("completed new work with thread name {}",Thread.currentThread().getName());
 
                     countDownLatch.countDown();
                 }
 
             }));
 
-        } finally {
+        }finally {
             countDownLatch.await();
             log.info("completed batch ");
 
         }
-        if (!executorService.isShutdown()) {
+        if(!executorService.isShutdown()){
             executorService.shutdown();
             log.info("shutting down executor service ");
         }
@@ -189,6 +189,7 @@ public class TrinityModelAction implements IActionExecution {
         final String filePath = asset.getFilePath();
         final String paperType = asset.getPaperType();
         final String modelRegistry = asset.getModelRegistry();
+
 
 
         try {
@@ -202,13 +203,13 @@ public class TrinityModelAction implements IActionExecution {
             String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
             if (Objects.equals("false", tritonRequestActivator)) {
-                log.info("Triton request activator : {} , Copro API running in legacy mode", tritonRequestActivator);
+                log.info("Triton request activator : {} , Copro API running in legacy mode",tritonRequestActivator);
 
-                coproRequestBuilder(node, filePath, paperType, questions, modelRegistry, jdbi, mapper);
+                coproRequestBuilder(node,filePath,paperType,questions,modelRegistry, jdbi, mapper);
             } else {
-                log.info("Triton request activator : {} , Copro API running in legacy mode", tritonRequestActivator);
+                log.info("Triton request activator : {} , Copro API running in legacy mode",tritonRequestActivator);
 
-                tritonRequestBuilder(node, filePath, paperType, questions, modelRegistry, jdbi, mapper);
+                tritonRequestBuilder(node,filePath,paperType,questions,modelRegistry, jdbi, mapper);
             }
 
         } catch (JsonProcessingException e) {
@@ -223,18 +224,18 @@ public class TrinityModelAction implements IActionExecution {
         }
     }
 
-    private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions, String modelRegistry, Jdbi jdbi, ObjectMapper objectMapper) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node, log).computeTriton(filePath, paperType, questions, modelRegistry, tenantId, action);
+    private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions,String modelRegistry, Jdbi jdbi,ObjectMapper objectMapper) throws JsonProcessingException {
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node,log).computeTriton(filePath, paperType, questions, modelRegistry, tenantId, action);
         TrinityModelResponse trinityModelResponse = objectMapper.readValue(trinityModelResultLineItems, new TypeReference<>() {
         });
         trinityModelResponse.getOutputs().forEach(trinityModelOutput -> trinityModelOutput.getData().forEach(trinityModelResultLineItem -> {
-            extractedTritonOuputDataResponse(trinityModelResultLineItem, jdbi, filePath, tenantId, paperType, trinityModelResponse.getModelName(), trinityModelResponse.getModelVersion(), modelRegistry, objectMapper);
+            extractedTritonOuputDataResponse(trinityModelResultLineItem, jdbi, filePath,tenantId, paperType, trinityModelResponse.getModelName(),trinityModelResponse.getModelVersion(),modelRegistry,objectMapper);
         }));
     }
 
-    private void coproRequestBuilder(String node, String filePath, String paperType, List<String> questions, String modelRegistry, Jdbi jdbi, ObjectMapper mapper) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node, log).computeCopro(filePath, paperType, questions, modelRegistry, tenantId, action);
-        extractedCoproOutputResponse(trinityModelResultLineItems, jdbi, filePath, tenantId, paperType, modelRegistry, "", "", mapper);
+    private void coproRequestBuilder(String node, String filePath, String paperType, List<String> questions,String modelRegistry, Jdbi jdbi,ObjectMapper mapper) throws JsonProcessingException {
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node,log).computeCopro(filePath, paperType, questions,modelRegistry,tenantId, action);
+        extractedCoproOutputResponse(trinityModelResultLineItems, jdbi, filePath, tenantId,paperType,modelRegistry,"","",mapper);
 
     }
 
@@ -273,10 +274,10 @@ public class TrinityModelAction implements IActionExecution {
                                 .add();
 
                     });
-                    try {
+                    try{
                         int[] counts = batch.execute();
                         log.info(aMarker, " persisted {} in trinity model_action", counts);
-                    } catch (Exception e) {
+                    }catch (Exception e){
                         log.info(aMarker, " persisted {} in trinity model_action", e);
                     }
                 });
@@ -285,9 +286,9 @@ public class TrinityModelAction implements IActionExecution {
             throw new RuntimeException(e);
         }
     }
-
-    private void extractedCoproOutputResponse(String trinityModelDataItems, Jdbi jdbi, String filePath, Long
-            tenantId, String paperType, String modelRegistry, String modelName, String modelVersion, ObjectMapper objectMapper) {
+    private void extractedCoproOutputResponse (String trinityModelDataItems, Jdbi jdbi, String filePath, Long
+            tenantId, String paperType, String modelRegistry, String modelName, String modelVersion, ObjectMapper objectMapper)
+    {
 
         try {
 
@@ -298,7 +299,7 @@ public class TrinityModelAction implements IActionExecution {
 
             log.info(aMarker, "completed {}", trinityModelDataItem.getAttributes().size());
             jdbi.useTransaction(handle -> {
-                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") VALUES(" + action.getPipelineId() + ",:filePath,:question,:predictedAttributionValue, :bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, " + action.getActionId() + "," + action.getRootPipelineId() + "," + action.getProcessId() + ",:status,:stage,:paperType, :scores, :modelName, :modelVersion,:tenantId, :modelRegistry);");
+                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") VALUES(" + action.getPipelineId() + ",:filePath,:question,:predictedAttributionValue, :bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, " + action.getActionId() + "," + action.getRootPipelineId() +  "," + action.getProcessId() +",:status,:stage,:paperType, :scores, :modelName, :modelVersion,:tenantId, :modelRegistry);");
 
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
@@ -322,10 +323,10 @@ public class TrinityModelAction implements IActionExecution {
                                 .add();
 
                     });
-                    try {
+                    try{
                         int[] counts = batch.execute();
                         log.info(aMarker, " persisted {} in trinity model_action", counts);
-                    } catch (Exception e) {
+                    }catch (Exception e){
                         log.info(aMarker, " persisted {} in trinity model_action", e);
                     }
 
