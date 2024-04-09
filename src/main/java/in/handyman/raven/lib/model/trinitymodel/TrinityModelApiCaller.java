@@ -6,16 +6,15 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TrinityModelAction;
 import in.handyman.raven.lib.model.triton.TritonRequest;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
@@ -24,9 +23,10 @@ public class TrinityModelApiCaller {
     private final OkHttpClient httpclient;
 
 
+    private final Logger log;
     private final String node;
 
-    public TrinityModelApiCaller(TrinityModelAction aAction, final String node) {
+    public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log) {
         this.aAction = aAction;
         this.node = node;
         this.httpclient = new OkHttpClient.Builder()
@@ -34,9 +34,10 @@ public class TrinityModelApiCaller {
                 .writeTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .readTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .build();
+        this.log = log;
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions,final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
@@ -56,7 +57,7 @@ public class TrinityModelApiCaller {
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
-        TritonRequest tritonRequest = getTritonRequestPaperType(paperType,modelRegistry, jsonInputRequest);
+        TritonRequest tritonRequest = getTritonRequestPaperType(paperType, modelRegistry, jsonInputRequest);
 
 
         TrinityModelRequest trinityModelRequest = new TrinityModelRequest();
@@ -82,19 +83,19 @@ public class TrinityModelApiCaller {
     }
 
     @NotNull
-    private static TritonRequest getTritonRequestPaperType(String paperType,String modelRegistry, String jsonInputRequest) {
+    private static TritonRequest getTritonRequestPaperType(String paperType, String modelRegistry, String jsonInputRequest) {
         TritonRequest tritonRequest = new TritonRequest();
 
-        if(Objects.equals(paperType,"Printed")){
+        if (Objects.equals(paperType, "Printed")) {
             tritonRequest.setShape(List.of(1, 1));
             tritonRequest.setDatatype("BYTES");
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
             if (Objects.equals(modelRegistry, "ARGON")) {
                 tritonRequest.setName("ARGON VQA START");
-            } else if (Objects.equals(modelRegistry, "XENON")){
+            } else if (Objects.equals(modelRegistry, "XENON")) {
                 tritonRequest.setName("XENON VQA START");
             }
-        }else if (Objects.equals(paperType,"Handwritten")) {
+        } else if (Objects.equals(paperType, "Handwritten")) {
             tritonRequest.setShape(List.of(1, 1));
             tritonRequest.setName("XENON VQA START");
             tritonRequest.setDatatype("BYTES");
@@ -104,7 +105,7 @@ public class TrinityModelApiCaller {
         return tritonRequest;
     }
 
-    public String computeCopro(final String inputPath, final String paperType, final List<String> questions,final String modelRegistry,final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeCopro(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootPipelineId = action.getRootPipelineId();
