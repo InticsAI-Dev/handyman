@@ -8,7 +8,6 @@ import in.handyman.raven.lib.TrinityModelExecutorConsumerProcess;
 import in.handyman.raven.lib.model.trinitymodel.TrinityModelPayload;
 import in.handyman.raven.lib.model.trinitymodel.TrinityModelRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -18,13 +17,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TrinityModelExecutorApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
     private final TrinityModelExecutorConsumerProcess aAction;
     private final OkHttpClient httpclient;
     private final String node;
+
+    private final Logger log;
+
 
     public TrinityModelExecutorApiCaller(TrinityModelExecutorConsumerProcess aAction, final String node, Logger log) {
         this.aAction = aAction;
@@ -34,6 +35,7 @@ public class TrinityModelExecutorApiCaller {
                 .writeTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .readTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .build();
+        this.log = log;
     }
 
     public String computeTriton(final String inputPath, final String paperType, final List<String> questions,final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {

@@ -181,7 +181,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                             int[] execute = preparedBatch.execute();
                                             logger.info("Consumer persisted {}", execute);
                                         }catch(Exception e){
-                                            logger.error("exception in prepared batch {}", e);
+                                            logger.error("exception in prepared batch", e);
                                         }
 
                                     });
@@ -216,6 +216,10 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             countDownLatch.await();
         } catch (InterruptedException e) {
             logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
+        }
+        if(!executorService.isShutdown()){
+            executorService.shutdown();
+            log.info("shutting down executor service");
         }
     }
 
