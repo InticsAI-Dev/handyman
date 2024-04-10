@@ -159,9 +159,6 @@ public class MultipartUploadAction implements IActionExecution {
                 .post(requestBody)
                 .build();
 
-        if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters {} ,inputFilePath : {}", endpoint, inputFilePath);
-        }
 
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
