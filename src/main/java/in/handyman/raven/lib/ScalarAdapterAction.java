@@ -55,6 +55,7 @@ public class ScalarAdapterAction implements IActionExecution {
     String[] restrictedAnswers;
     private final String PHONE_NUMBER_REGEX = "^\\(?(\\d{3})\\)?[-]?(\\d{3})[-]?(\\d{4})$";
     private final String NUMBER_REGEX = "^[+-]?(\\d+\\.?\\d*|\\.\\d+)$";
+    String dateRegexPattern;
 
     public ScalarAdapterAction(final ActionExecutionAudit action, final Logger log,
                                final Object scalarAdapter) {
@@ -68,6 +69,7 @@ public class ScalarAdapterAction implements IActionExecution {
         this.numericAction = new NumericvalidatorAction(action, log, Numericvalidator.builder().build());
         this.alphaNumericAction = new AlphanumericvalidatorAction(action, log, Alphanumericvalidator.builder().build());
         this.dateAction = new DatevalidatorAction(action, log, Datevalidator.builder().build());
+//        String scalarAdapterDateRegexPattern = this.action.getContext().get(DATE_REGEX);
     }
 
     @Override
@@ -80,6 +82,7 @@ public class ScalarAdapterAction implements IActionExecution {
             URI = action.getContext().get("copro.text-validation.url");
             multiverseValidator = Boolean.valueOf(action.getContext().get("validation.multiverse-mode"));
             restrictedAnswers = action.getContext().get("validation.restricted-answers").split(",");
+            dateRegexPattern = action.getContext().get("validation.date.regex.pattern");
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(scalarAdapter.getResultSet());
@@ -446,9 +449,9 @@ public class ScalarAdapterAction implements IActionExecution {
             if (confidenceScore == 0) {
 
                 // Define regex pattern to match date format "MM dd yyy"
-                String regexPattern = "(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})";
+//                String regexPattern = "(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})";
                 // Create pattern object
-                Pattern pattern = Pattern.compile(regexPattern);
+                Pattern pattern = Pattern.compile(dateRegexPattern);
                 // Create matcher object
                 Matcher matcher = pattern.matcher(validator.getInputValue());
 
