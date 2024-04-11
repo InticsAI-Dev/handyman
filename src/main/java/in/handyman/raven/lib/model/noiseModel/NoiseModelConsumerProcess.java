@@ -117,10 +117,6 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
 
         try (Response response = httpclient.newCall(request).execute()) {
 
-
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
-            }
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 NoiseModelResponse noiseModelResponse = objectMapper.readValue(responseBody, NoiseModelResponse.class);

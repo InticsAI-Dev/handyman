@@ -151,7 +151,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             }
 
 
-            log.info(aMarker, "file merger Info Action for {} has been completed", fileMergerPdf.getName());
+            log.info(aMarker, "file merger Info Action for has been completed");
 
         } catch (Exception e) {
             log.error(aMarker, "Error in file merger execute", e);

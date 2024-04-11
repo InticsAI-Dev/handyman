@@ -27,7 +27,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
     public static final String URGENCY_TRIAGE_PROCESS_NAME = PipelineName.URGENCY_TRIAGE.getProcessName();
     private final Logger log;
     private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final MediaType mediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
@@ -113,7 +112,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
         try (Response response = httpclient.newCall(request).execute()) {
-            final String responseBody = response.body().string();
+            final String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
                 log.info("Response Details: {}", response);
 
@@ -206,7 +205,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
     private void coproRequestBuider(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj) {
         try (Response response = httpclient.newCall(request).execute()) {
-            final String responseBody = response.body().string();
+            final String responseBody = Objects.requireNonNull(response.body()).string();
             String createdUserId = entity.getCreatedUserId();
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
@@ -239,7 +238,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             }
         } catch (Exception e) {
             String createdUserId = entity.getCreatedUserId();
-            String lastUpdatedUserId = entity.getLastUpdatedUserId();
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
             Integer groupId = entity.getGroupId();
@@ -272,7 +270,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
     private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
         String createdUserId = entity.getCreatedUserId();
-        String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
         Integer groupId = entity.getGroupId();
