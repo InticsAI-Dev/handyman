@@ -86,7 +86,7 @@ public class P2pNameValidationAction implements IActionExecution {
             final CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> coproProcessor = getP2PNameValidationInputTableP2PNameValidationOutputTableCoproProcessor(jdbi, urls);
             Thread.sleep(threadSleepTime);
 
-            final P2pNameValidationConsumerProcess p2pNameValidationConsumerProcess = new P2pNameValidationConsumerProcess(log, aMarker, this);
+            final P2pNameValidationConsumerProcess p2pNameValidationConsumerProcess = new P2pNameValidationConsumerProcess(actionExecutionAudit, log, aMarker, this);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, p2pNameValidationConsumerProcess);
             log.info(aMarker, "P2P name concatenation action has been completed {}  " , p2pNameValidation.getName());
         } catch (Exception e) {
