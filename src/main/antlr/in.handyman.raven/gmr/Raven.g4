@@ -1090,7 +1090,7 @@ multipartDownload:
 multipartDelete:
     'multipartDelete' 'as' name=STRING
     'resource-conn' resourceConn=STRING
-    'download-url' endPoint=STRING
+    'delete-url' endPoint=STRING
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
