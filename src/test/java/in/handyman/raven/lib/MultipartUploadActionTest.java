@@ -18,7 +18,7 @@ class MultipartUploadActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .endPoint("http://127.0.0.1:8002/multipart-upload")
-                .querySet("SELECT '/home/dineshkumar.anandan@zucisystems.com/Downloads/54.jpg' as filepath, " +
+                .querySet("SELECT '/home/dineshkumar.anandan@zucisystems.com/Documents/test/input/1.jpeg' as filepath, " +
                         "'/home/dineshkumar.anandan@zucisystems.com/Documents/test/output/' as outputDir," +
                         "'ORIGIN-1' as originId, 1 as paperNo, 1 as groupId, 1 as tenantId, " +
                         "'tmp-1' as templateId, 1112 as processId, 52731 as rootPipelineId;")

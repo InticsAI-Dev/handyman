@@ -149,6 +149,7 @@ action:
     |qrExtraction
     |multipartUpload
     |multipartDownload
+    |multipartDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -1080,6 +1081,14 @@ multipartUpload:
 
 multipartDownload:
     'multipartDownload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'download-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+multipartDelete:
+    'multipartDelete' 'as' name=STRING
     'resource-conn' resourceConn=STRING
     'download-url' endPoint=STRING
     'using' '{'
