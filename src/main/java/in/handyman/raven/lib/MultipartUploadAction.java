@@ -213,9 +213,10 @@ public class MultipartUploadAction implements IActionExecution {
                         .bindBean(multipartUploadOutputTable)
                         .execute();
             });
-        } catch (UnableToExecuteStatementException e) {
-            log.error(aMarker, "Exception occurred in multipart insert: {}", e.getMessage(), e);
-            throw new HandymanException("Exception occurred in multipart insert - " + e.getMessage(), e, action);
+        } catch (UnableToExecuteStatementException exception) {
+            log.error(aMarker, "Exception occurred in multipart insert: {}", exception.getMessage(), exception);
+            HandymanException handymanException = new HandymanException(exception);
+            HandymanException.insertException("Exception occurred in multipart insert for the file -  " + multipartUploadOutputTable.getFilepath(), handymanException, this.action);
         }
     }
 
