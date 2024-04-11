@@ -20,11 +20,10 @@ import okhttp3.Response;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
-import org.jdbi.v3.sqlobject.customizer.BindBean;
-import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -194,16 +193,32 @@ public class MultipartUploadAction implements IActionExecution {
     }
 
     private void handleResponse(Jdbi jdbi, Integer groupId, Long processId, String templateId, Long tenantId, Integer paperNo, String originId, Long rootPipelineId, MultipartUploadOutputTable multipartUploadOutputTable) {
-        multipartUploadOutputTable.setGroupId(groupId);
-        multipartUploadOutputTable.setRootPipelineId(rootPipelineId);
-        multipartUploadOutputTable.setPaperNo(paperNo);
-        multipartUploadOutputTable.setOriginId(originId);
-        multipartUploadOutputTable.setTemplateId(templateId);
-        multipartUploadOutputTable.setProcessId(processId);
-        multipartUploadOutputTable.setTenantId(tenantId);
-        MultipartUploadDao dao = jdbi.onDemand(MultipartUploadDao.class);
-        dao.insertMultipartUploadOutput(multipartUploadOutputTable);
+        try {
+            multipartUploadOutputTable.setGroupId(groupId);
+            multipartUploadOutputTable.setRootPipelineId(rootPipelineId);
+            multipartUploadOutputTable.setPaperNo(paperNo);
+            multipartUploadOutputTable.setOriginId(originId);
+            multipartUploadOutputTable.setTemplateId(templateId);
+            multipartUploadOutputTable.setProcessId(processId);
+            multipartUploadOutputTable.setTenantId(tenantId);
+
+            jdbi.useHandle(handle -> {
+                String sql = "INSERT INTO multipart_info.multipart_upload(" +
+                        "filepath, filename, message, status, template_id, origin_id, " +
+                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no) " +
+                        "VALUES (:filepath, :filename, :message, :status, :templateId, :originId, " +
+                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo)";
+
+                handle.createUpdate(sql)
+                        .bindBean(multipartUploadOutputTable)
+                        .execute();
+            });
+        } catch (UnableToExecuteStatementException e) {
+            log.error(aMarker, "Exception occurred in multipart insert: {}", e.getMessage(), e);
+            throw new HandymanException("Exception occurred in multipart insert - " + e.getMessage(), e, action);
+        }
     }
+
 
     @AllArgsConstructor
     @NoArgsConstructor
@@ -219,6 +234,7 @@ public class MultipartUploadAction implements IActionExecution {
         private String outputDir;
         private Long rootPipelineId;
     }
+
 
     @AllArgsConstructor
     @NoArgsConstructor
@@ -237,14 +253,6 @@ public class MultipartUploadAction implements IActionExecution {
         private Long rootPipelineId;
     }
 
-
-    public interface MultipartUploadDao {
-        @SqlUpdate("INSERT INTO multipart_info.multipart_upload(file_path, file_name, upload_message, status, " +
-                "template_id, origin_id, root_pipeline_id, process_id, group_id, tenant_id, paper_no) " +
-                "VALUES (:filepath, :filename, :message, :status, :templateId, :originId, :rootPipelineId, :processId, " +
-                ":groupId, :tenantId, :paperNo)")
-        void insertMultipartUploadOutput(@BindBean MultipartUploadOutputTable multipartUploadOutputTable);
-    }
 
     @Override
     public boolean executeIf() throws Exception {
