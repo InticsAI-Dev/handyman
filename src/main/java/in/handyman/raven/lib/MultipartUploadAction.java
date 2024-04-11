@@ -30,7 +30,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -211,13 +213,14 @@ public class MultipartUploadAction implements IActionExecution {
             multipartUploadOutputTable.setTemplateId(templateId);
             multipartUploadOutputTable.setProcessId(processId);
             multipartUploadOutputTable.setTenantId(tenantId);
+            multipartUploadOutputTable.setUploadedTime(Timestamp.valueOf(LocalDateTime.now()));
 
             jdbi.useHandle(handle -> {
                 String sql = "INSERT INTO multipart_info.multipart_upload(" +
                         "filepath, filename, message, status, template_id, origin_id, " +
-                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no) " +
+                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, uploaded_time) " +
                         "VALUES (:filepath, :filename, :message, :status, :templateId, :originId, " +
-                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo)";
+                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :uploadedTime)";
 
                 handle.createUpdate(sql)
                         .bindBean(multipartUploadOutputTable)
@@ -262,6 +265,7 @@ public class MultipartUploadAction implements IActionExecution {
         private String templateId;
         private Long processId;
         private Long rootPipelineId;
+        private Timestamp uploadedTime;
     }
 
 

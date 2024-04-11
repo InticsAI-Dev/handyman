@@ -13,7 +13,9 @@ import java.lang.Object;
 import java.lang.Override;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -190,13 +192,14 @@ public class MultipartDeleteAction implements IActionExecution {
             multipartDeleteOutputTable.setTemplateId(templateId);
             multipartDeleteOutputTable.setProcessId(processId);
             multipartDeleteOutputTable.setTenantId(tenantId);
+            multipartDeleteOutputTable.setDeletedTime(Timestamp.valueOf(LocalDateTime.now()));
 
             jdbi.useHandle(handle -> {
                 String sql = "INSERT INTO multipart_info.multipart_delete(" +
                         "filepath, message, status, template_id, origin_id, " +
-                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no) " +
+                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, deleted_time) " +
                         "VALUES (:filepath, :message, :status, :templateId, :originId, " +
-                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo)";
+                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :deletedTime)";
 
                 handle.createUpdate(sql)
                         .bindBean(multipartDeleteOutputTable)
@@ -238,6 +241,7 @@ public class MultipartDeleteAction implements IActionExecution {
         private String templateId;
         private Long processId;
         private Long rootPipelineId;
+        private Timestamp deletedTime;
     }
 
     @Override
