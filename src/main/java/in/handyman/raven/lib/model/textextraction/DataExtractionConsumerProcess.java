@@ -184,7 +184,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         parentObj.add(DataExtractionOutputTable.builder().filePath(dataExtractionDataItem.getInputFilePath()).extractedText(dataExtractionDataItem.getPageContent()).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(Timestamp.valueOf(LocalDateTime.now())).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).build());
     }
 
-    private static void extractedCoproOutputResponse(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
+    private static void extractedCoproOutputResponse(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) {
 
         String parentResponseObject = extractPageContent(stringDataItem);
         final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);

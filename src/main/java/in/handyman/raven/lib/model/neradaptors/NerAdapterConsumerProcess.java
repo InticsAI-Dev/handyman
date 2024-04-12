@@ -5,7 +5,6 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -22,8 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess<NerInputTable, NerOutputTable> {
-    private static final MediaType MediaTypeJSON = MediaType
-            .parse("application/json; charset=utf-8");
+
     public final ActionExecutionAudit action;
     private static final String HTTP_CLIENT_TIMEOUT = "100";
 
@@ -237,7 +235,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private void updateEmptyValueForRestrictedAns(NerInputTable result, String inputValue) {
         if (multiverseValidator) {
-            log.info(aMarker, "Build 19-validator updatating for Restricted answer {}");
+            log.info(aMarker, "validator updating for Restricted answer {}", inputValue);
             for (String format : restrictedAnswers) {
                 if (inputValue.equalsIgnoreCase(format)) {
                     updateEmptyValueAndCf(result);
@@ -248,7 +246,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private void updateEmptyValueIfLowCf(NerInputTable result, double valConfidenceScore) {
         if (valConfidenceScore < 100 && multiverseValidator) {
-            log.info(aMarker, "Build 19-validator updateEmptyValueIfLowCf {}", valConfidenceScore);
+            log.info(aMarker, "validator updateEmptyValueIfLowCf {}", valConfidenceScore);
             updateEmptyValueAndCf(result);
         }
     }
