@@ -69,6 +69,16 @@ class ScalarAdapterActionTest {
         System.out.println(validator);
     }
 
+    @Test
+    public void scrubbingInput() {
+        String validator = "mani kandan";
+        String regix = "[^a-zA-Z0-9 ]";
+        if (validator != null) {
+            String correctedValue = validator.replaceAll(regix, "");
+            System.out.println(correctedValue);
+        }
+    }
+
 
     @Test
     public void removePrefixAndSuffix1() {

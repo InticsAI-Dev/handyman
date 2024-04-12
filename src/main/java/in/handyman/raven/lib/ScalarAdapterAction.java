@@ -348,13 +348,13 @@ public class ScalarAdapterAction implements IActionExecution {
             switch (inputDetail.getAdapter()) {
                 case "alpha":
                     //Special character removed
-                    inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9]");
+                    inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9 ]");
                     break;
                 case "numeric":
                 case "numeric_reg":
                     //Special character and alphabets removed
                     inputDetail = removePrefixAndSuffix(inputDetail);
-                    inputDetail = scrubbingInput(inputDetail, "[^0-9]");
+                    inputDetail = scrubbingInput(inputDetail, "[^0-9 ]");
                     break;
                 case "date_reg":
                     //Remove prefix and suffix alphabets
