@@ -42,6 +42,7 @@ public class NerInputTable implements CoproProcessor.Entity {
     private Integer questionId;
     private Integer synonymId;
     private String modelRegistry;
+    private String category;
     private int sorId;
     private double wordScore;
     private double charScore;
