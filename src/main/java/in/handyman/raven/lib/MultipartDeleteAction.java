@@ -13,7 +13,6 @@ import java.lang.Object;
 import java.lang.Override;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -192,7 +191,7 @@ public class MultipartDeleteAction implements IActionExecution {
             multipartDeleteOutputTable.setTemplateId(templateId);
             multipartDeleteOutputTable.setProcessId(processId);
             multipartDeleteOutputTable.setTenantId(tenantId);
-            multipartDeleteOutputTable.setDeletedTime(Timestamp.valueOf(LocalDateTime.now()));
+            multipartDeleteOutputTable.setDeletedTime(LocalDateTime.now());
 
             jdbi.useHandle(handle -> {
                 String sql = "INSERT INTO multipart_info.multipart_delete(" +
@@ -241,7 +240,7 @@ public class MultipartDeleteAction implements IActionExecution {
         private String templateId;
         private Long processId;
         private Long rootPipelineId;
-        private Timestamp deletedTime;
+        private LocalDateTime deletedTime;
     }
 
     @Override

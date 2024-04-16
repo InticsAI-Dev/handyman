@@ -30,7 +30,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -213,7 +212,7 @@ public class MultipartUploadAction implements IActionExecution {
             multipartUploadOutputTable.setTemplateId(templateId);
             multipartUploadOutputTable.setProcessId(processId);
             multipartUploadOutputTable.setTenantId(tenantId);
-            multipartUploadOutputTable.setUploadedTime(Timestamp.valueOf(LocalDateTime.now()));
+            multipartUploadOutputTable.setUploadedTime(LocalDateTime.now());
 
             jdbi.useHandle(handle -> {
                 String sql = "INSERT INTO multipart_info.multipart_upload(" +
@@ -265,7 +264,7 @@ public class MultipartUploadAction implements IActionExecution {
         private String templateId;
         private Long processId;
         private Long rootPipelineId;
-        private Timestamp uploadedTime;
+        private LocalDateTime uploadedTime;
     }
 
 
