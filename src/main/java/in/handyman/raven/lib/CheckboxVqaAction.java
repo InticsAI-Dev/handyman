@@ -9,6 +9,8 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.CheckboxVqa;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -53,6 +55,7 @@ public class CheckboxVqaAction implements IActionExecution {
     this.log = log;
     this.aMarker = MarkerFactory.getMarker(" CheckboxVqa:" + this.checkboxVqa.getName());
   }
+  private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
   @Override
   public void execute() throws Exception {
@@ -145,6 +148,18 @@ public class CheckboxVqaAction implements IActionExecution {
       String modelId = entity.getModelId();
       try (Response response = httpclient.newCall(request).execute()) {
         String responseBody = Objects.requireNonNull(response.body()).string();
+        processOutputAudit.add(
+                ProcessAuditOutputTable.builder()
+                        .originId(originId)
+                        .batchId("1")
+                        .endpoint(String.valueOf(endpoint))
+                        .rootPipelineId(action.getParentPipelineId())
+                        .request(String.valueOf(request))
+                        .response(String.valueOf(response))
+                        .stage("TRIAGE_CHECKBOX")
+                        .message("Urgency Triage Finished")
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .build());
         if (response.isSuccessful()) {
           String checkboxState = Optional.ofNullable(mapper.readTree(responseBody).get("checkbox_state")).map(JsonNode::asText).orElse(null);
           String extractedPrintedText = Optional.ofNullable(mapper.readTree(responseBody).get("extracted_printed_text")).map(JsonNode::asText).orElse(null);
@@ -187,6 +202,15 @@ public class CheckboxVqaAction implements IActionExecution {
                   .message(response.message())
                   .build());
           log.error(aMarker, "The Exception occurred in urgency triage {}",response);
+          processOutputAudit.add(
+                  ProcessAuditOutputTable.builder()
+                          .originId(originId)
+                          .batchId("1")
+                          .rootPipelineId(action.getParentPipelineId())
+                          .stage("TRIAGE_CHECKBOX")
+                          .message(response.message())
+                          .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                          .build());
         }
       } catch (Exception e) {
         parentObj.add(CheckboxVqaOutputTable.builder()
@@ -210,6 +234,11 @@ public class CheckboxVqaAction implements IActionExecution {
 
       }
       return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+      return processOutputAudit;
     }
   }
 

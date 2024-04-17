@@ -9,7 +9,9 @@ import com.opencsv.exceptions.CsvValidationException;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.tableextraction.response.TableOutputResponse;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -23,10 +25,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -52,6 +51,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
     private final String outputDir;
+    private final List<ProcessAuditOutputTable> processAuditOutput = new ArrayList<>();
 
     public final ActionExecutionAudit action;
     final OkHttpClient httpclient = new OkHttpClient.Builder()
@@ -104,6 +104,19 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 log.info(aMarker, "coproProcessor consumer process response status {}", response.message());
 
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                processAuditOutput.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(objectNode.toString())
+                                .response(responseBody)
+                                .stage(tableExtractionProcessName)
+                                .message("Table Extraction macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 List<TableOutputResponse> tableOutputResponses = mapper.readValue(responseBody, new TypeReference<>() {
                 });
                 tableOutputResponses.forEach(tableOutputResponse1 -> {
@@ -163,6 +176,16 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .modelName(action.getContext().get("NEON_MODEL_NAME"))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
+                processAuditOutput.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(tableExtractionProcessName)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception exception) {
             parentObj.add(
@@ -189,6 +212,11 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         }
         log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
         return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processAuditOutput;
     }
 
     private void doMultipartDownloadCheck(String csvTablesPath, String croppedImagePath) {

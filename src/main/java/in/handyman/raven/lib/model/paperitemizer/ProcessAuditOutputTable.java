@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.net.URL;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,6 +16,7 @@ public class ProcessAuditOutputTable {
     private String originId;
     private Long rootPipelineId;
     private String batchId;
+    private String endpoint;
     private String response;
     private String request;
     private String status;

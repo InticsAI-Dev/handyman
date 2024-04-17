@@ -6,6 +6,8 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.copro.ComparisonDataItemCopro;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -36,6 +38,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             .readTimeout(100, TimeUnit.MINUTES)
             .build();
     String URI;
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
     public MasterdataComparisonProcess(Logger log, Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
@@ -91,11 +94,11 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             if (Objects.equals("false", tritonRequestActivator)) {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-                coproRequestBuider(result, request, parentObj);
+                coproRequestBuider(result, request, parentObj, jsonInputRequest, endpoint);
             } else {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-                tritonRequestBuilder(result, request, parentObj);
+                tritonRequestBuilder(result, request, parentObj, jsonRequest, endpoint);
             }
         } else {
             parentObj.add(
@@ -119,7 +122,12 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         return parentObj;
     }
 
-    private void coproRequestBuider(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj) throws IOException {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void coproRequestBuider(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj, String jsonRequest, URL endpoint) throws IOException {
         String eocIdentifier = result.getEocIdentifier();
         String originId = result.getOriginId();
         Integer paperNo = result.getPaperNo();
@@ -129,6 +137,20 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             log.info("master data comparison response body {}", response.body());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(result.getTenantId())
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(result.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage("MASTER-DATA-COMPARISON")
+                                .message("Master data comparison macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
+
                 extractedCoproOutputResponse(result, parentObj, responseBody, "", "");
             } else {
                 parentObj.add(
@@ -146,12 +168,23 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .rootPipelineId(action.getRootPipelineId())
                                 .build()
                 );
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(result.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(result.getRootPipelineId())
+                                .stage("MASTER-DATA-COMPARISON")
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
+
 
             }
         }
     }
 
-    private void tritonRequestBuilder(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj) {
+    private void tritonRequestBuilder(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String eocIdentifier = result.getEocIdentifier();
         String originId = result.getOriginId();
         Integer paperNo = result.getPaperNo();
@@ -160,6 +193,19 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         try (Response response = httpclient.newCall(request).execute()) {
             log.info("master data comparison response body {}", response.body());
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(originId)
+                            .tenantId(result.getTenantId())
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(result.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                            .stage("MASTER-DATA-COMPARISON")
+                            .message("Master data comparison macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
             if (response.isSuccessful()) {
                 ObjectMapper objectMappers = new ObjectMapper();
                 ComparisonResponse Response = objectMappers.readValue(responseBody, ComparisonResponse.class);
@@ -186,6 +232,16 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .rootPipelineId(action.getRootPipelineId())
                                 .build()
                 );
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(result.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(result.getRootPipelineId())
+                                .stage("MASTER-DATA-COMPARISON")
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
                 log.error(aMarker, "The Exception occurred in master data comparison by {} ", response);
                 throw new HandymanException(responseBody);
             }

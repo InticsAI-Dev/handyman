@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.FileMergerPdf;
 import in.handyman.raven.lib.model.filemergerpdf.copro.FileMergerDataItemCopro;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -56,6 +57,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
 
 
     private final FileMergerPdf fileMergerPdf;
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
@@ -128,11 +130,11 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 if (Objects.equals("false", tritonRequestActivator)) {
                     Request request = new Request.Builder().url(endpoint)
                             .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-                    coproRequestBuilder(entity, request, parentObj);
+                    coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
                 } else {
                     Request request = new Request.Builder().url(endpoint)
                             .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-                    tritonRequestBuilder(entity, request, parentObj);
+                    tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
                 }
 
 
@@ -161,15 +163,43 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         return parentObj;
     }
 
-    private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj, String jsonRequest, URL endpoint) {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(entity.getTenantId())
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonRequest)
+                            .response(response.body().string())
+                            .stage(FILE_MERGER_PROCESS_NAME)
+                            .message("File Merger macro completed")
+                            .status(in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
             if (response.isSuccessful()) {
-
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 // Handle non-successful response here
                 log.error(aMarker, "Unsuccessful response received in copro: {}", response.code());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(entity.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(FILE_MERGER_PROCESS_NAME)
+                                .message(response.message())
+                                .status(in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
+
             }
 
         } catch (IOException e) {
@@ -178,9 +208,22 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
 
     }
 
-    private void tritonRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj) throws IOException {
+    private void tritonRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj, String jsonInputRequest, URL endpoint) throws IOException {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(entity.getTenantId())
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                            .stage(FILE_MERGER_PROCESS_NAME)
+                            .message("File Merger macro completed")
+                            .status(in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
             if (response.isSuccessful()) {
                 FileMergerResponse modelResponse = mapper.readValue(responseBody, FileMergerResponse.class);
 
@@ -192,6 +235,16 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             } else {
                 // Handle non-successful response here
                 log.error(aMarker, "Unsuccessful response received in triton: {}", response.code());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(entity.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(FILE_MERGER_PROCESS_NAME)
+                                .message(response.message())
+                                .status(in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             log.error(aMarker, "Unsuccessful response received in triton: {}", e.getMessage());

@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.templatedetection.TemplateDetectionConsumerProcess;
 import in.handyman.raven.lib.model.templatedetection.TemplateDetectionInputTable;
 import in.handyman.raven.lib.model.templatedetection.TemplateDetectionOutputTable;
@@ -21,10 +22,7 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
@@ -112,10 +110,11 @@ public class TemplateDetectionAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+            List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
             final CoproProcessor<TemplateDetectionInputTable, TemplateDetectionOutputTable> coproProcessor = getTemplateDetectionCoproProcessor(jdbi, urls, querysetStr);
             log.info(aMarker, "Copro processor start compose completed {}", nameStr);
-            Thread.sleep(threadSleepTime);
-            final TemplateDetectionConsumerProcess templateDetectionConsumerProcess = new TemplateDetectionConsumerProcess(log, aMarker, action, this);
+            Thread.sleep(1000);
+            final TemplateDetectionConsumerProcess templateDetectionConsumerProcess = new TemplateDetectionConsumerProcess(log, aMarker, action, this,processOutputAudit);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, templateDetectionConsumerProcess);
 
         } catch (Exception e) {

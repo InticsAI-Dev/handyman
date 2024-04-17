@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.P2pNameValidationAction;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -85,6 +86,11 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
         }
 
         return p2PNameValidationOutputTableArrayList;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return null;
     }
 
     private String cleanAndExtractAlphabets(String value) {

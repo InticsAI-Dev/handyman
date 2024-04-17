@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -40,6 +41,8 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
 
     public final ActionExecutionAudit action;
     public final String httpClientTimeout;
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(10, TimeUnit.MINUTES)
@@ -95,10 +98,10 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, request, objectMapper, rootPipelineId, noiseOutputEntities);
+            coproRequestBuilder(entity, request, objectMapper, rootPipelineId, noiseOutputEntities, jsonRequest, endpoint);
         } else {
             final Request tritonRequest = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, tritonRequest, objectMapper, noiseOutputEntities);
+            tritonRequestBuilder(entity, tritonRequest, objectMapper, noiseOutputEntities,jsonInputRequest, endpoint );
         }
 
         if (log.isInfoEnabled()) {
@@ -107,7 +110,12 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         return noiseOutputEntities;
     }
 
-    private void tritonRequestBuilder(NoiseModelInputEntity entity, Request request, ObjectMapper objectMapper, List<NoiseModelOutputEntity> parentObj) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void tritonRequestBuilder(NoiseModelInputEntity entity, Request request, ObjectMapper objectMapper, List<NoiseModelOutputEntity> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
@@ -123,6 +131,19 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
             }
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputRequest)
+                                .response(responseBody)
+                                .stage(NOISE_DETECTION)
+                                .message("Paper Itemizer macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 NoiseModelResponse noiseModelResponse = objectMapper.readValue(responseBody, NoiseModelResponse.class);
                 if (noiseModelResponse.getOutputs() != null && !noiseModelResponse.getOutputs().isEmpty()) {
                     noiseModelResponse.getOutputs().forEach(o -> o.getData().forEach(noiseModelDataItem ->
@@ -145,6 +166,16 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(NOISE_DETECTION)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
 
         } catch (Exception exception) {
@@ -248,7 +279,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         }
     }
 
-    private void coproRequestBuilder(NoiseModelInputEntity entity, Request request, ObjectMapper objectMapper, Long rootPipelineId, List<NoiseModelOutputEntity> noiseOutputEntities) {
+    private void coproRequestBuilder(NoiseModelInputEntity entity, Request request, ObjectMapper objectMapper, Long rootPipelineId, List<NoiseModelOutputEntity> noiseOutputEntities, String jsonRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
@@ -259,6 +290,19 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(NOISE_DETECTION)
+                                .message("noise detection macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
 
                 JsonNode rootNode = objectMapper.readTree(responseBody);
 
@@ -330,6 +374,16 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .message(response.message())
                         .build());
                 log.error(aMarker, "The Exception occurred in episode of coverage in response {}", response);
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(NOISE_DETECTION)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
 
         } catch (Exception e) {

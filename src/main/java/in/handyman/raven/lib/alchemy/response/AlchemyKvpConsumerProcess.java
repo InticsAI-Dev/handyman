@@ -8,6 +8,8 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpInputEntity;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpOutputEntity;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -36,6 +38,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private final int timeOut;
     private final String authToken;
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
     public AlchemyKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AlchemyKvpResponseAction aAction) {
         this.log = log;
@@ -80,7 +83,19 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
                 AlchemyApiPayload alchemyApiPayload = mapper.readValue(response.body().string(), AlchemyApiPayload.class);
-
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(String.valueOf(request))
+                                .response(String.valueOf(response))
+                                .stage("PRODUCT_OUTBOUND")
+                                .message("alchemy kvp response completed for origin_id - "+entity.getAlchemyOriginId())
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
 
                 if (!alchemyApiPayload.getPayload().isEmpty() && !alchemyApiPayload.getPayload().isNull() && alchemyApiPayload.isSuccess()) {
 
@@ -108,6 +123,17 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                             .rootPipelineId(rootPipelineId)
                             .stage("PRODUCT_OUBOUND").status("FAILED").message("alchemy kvp response failed for origin_id - "+entity.getAlchemyOriginId())
                             .build());
+
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage("PRODUCT_OUBOUND")
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
                 }
 
 
@@ -122,5 +148,10 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit ;
     }
 }

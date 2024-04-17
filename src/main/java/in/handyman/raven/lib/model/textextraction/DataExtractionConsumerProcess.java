@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
@@ -40,6 +41,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     final OkHttpClient httpclient = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.MINUTES).writeTimeout(10, TimeUnit.MINUTES).readTimeout(10, TimeUnit.MINUTES).build();
 
     private static final ObjectMapper mapper = new ObjectMapper();
+
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
     public DataExtractionConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
@@ -100,17 +103,22 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
-            coproRequestBuilder(entity, request, parentObj, originId, groupId);
+            coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, mediaType)).build();
-            tritonRequestBuilder(entity, request, parentObj, originId, groupId);
+            tritonRequestBuilder(entity, request, parentObj, originId, groupId, jsonRequest, endpoint);
         }
 
 
         return parentObj;
     }
 
-    private void coproRequestBuilder(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void coproRequestBuilder(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String jsonRequest, URL endpoint ) {
         Long tenantId = entity.getTenantId();
         String templateId = entity.getTemplateId();
         Long processId = entity.getProcessId();
@@ -118,6 +126,19 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = entity.getTemplateName();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(tenantId)
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonRequest)
+                            .response(response.body().string())
+                            .stage(PROCESS_NAME)
+                            .message("Text Extraction macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
 
             if (response.isSuccessful()) {
                 extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "");
@@ -125,6 +146,16 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).templateName(templateName).build());
                 log.error(aMarker, "The Exception occurred in response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(Timestamp.valueOf(LocalDateTime.now())).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).build());
@@ -136,7 +167,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         }
     }
 
-    private void tritonRequestBuilder(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId) {
+    private void tritonRequestBuilder(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String jsonInputRequest, URL endpoint) {
         Long tenantId = entity.getTenantId();
         String templateId = entity.getTemplateId();
         Long processId = entity.getProcessId();
@@ -144,7 +175,19 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = entity.getTemplateName();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
-
+            processOutputAudit.add(
+                ProcessAuditOutputTable.builder()
+                        .originId(entity.getOriginId())
+                        .tenantId(tenantId)
+                        .batchId("1")
+                        .endpoint(String.valueOf(endpoint))
+                        .rootPipelineId(entity.getRootPipelineId())
+                        .request(jsonInputRequest)
+                        .response(responseBody)
+                        .stage(PROCESS_NAME)
+                        .message("Text Extraction macro completed")
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .build());
             if (response.isSuccessful()) {
                 ObjectMapper objectMappers = new ObjectMapper();
                 DataExtractionResponse modelResponse = objectMappers.readValue(responseBody, DataExtractionResponse.class);
@@ -163,6 +206,17 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).templateName(templateName).build());
                 log.error(aMarker, "The Exception occurred ");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
+
             }
         } catch (Exception e) {
             parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(Timestamp.valueOf(LocalDateTime.now())).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).build());

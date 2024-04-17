@@ -9,6 +9,8 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PixelClassifierUrgencyTriage;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,6 +47,8 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
   private static PixelClassifierUrgencyTriage pixelClassifierUrgencyTriage = new PixelClassifierUrgencyTriage();
 
   private final Marker aMarker;
+  private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
 
   public PixelClassifierUrgencyTriageAction(final ActionExecutionAudit action, final Logger log,
                                             final Object hwUrgencyTriage) {
@@ -152,6 +156,19 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
       String modelId = entity.getModelId();
       try (Response response = httpclient.newCall(request).execute()) {
         String responseBody = Objects.requireNonNull(response.body()).string();
+        processOutputAudit.add(
+                ProcessAuditOutputTable.builder()
+                        .originId(entity.getOriginId())
+                        .tenantId(tenantId)
+                        .batchId("1")
+                        .endpoint(String.valueOf(endpoint))
+                        .rootPipelineId(action.getParentPipelineId())
+                        .request(String.valueOf(request))
+                        .response(String.valueOf(response))
+                        .stage("PIXEL_CLASSIFIER_URGENCY_TRIAGE")
+                        .message("Handwritten Urgency Triage Finished")
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .build());
         if (response.isSuccessful()) {
           log.info("Response Details: {}",response);
           String binaryModelOutput = Optional.ofNullable(mapper.readTree(responseBody).get("binary_model")).map(JsonNode::asText).orElse(null);
@@ -193,6 +210,17 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
                   .message(response.message())
                   .build());
           log.error(aMarker, "The Exception occurred in handwritten urgency triage {}",response);
+          processOutputAudit.add(
+                  ProcessAuditOutputTable.builder()
+                          .originId(entity.getOriginId())
+                          .tenantId(tenantId)
+                          .batchId("1")
+                          .rootPipelineId(action.getParentPipelineId())
+                          .stage("PIXEL_CLASSIFIER_URGENCY_TRIAGE")
+                          .message(response.message())
+                          .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                          .build());
+
         }
       } catch (Exception e) {
         parentObj.add(HwUrgencyTriageOutputTable.builder()
@@ -215,6 +243,11 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
         HandymanException.insertException("Error in pixel classifier urgency triage action", handymanException, this.action);
       }
       return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+      return processOutputAudit;
     }
   }
 

@@ -7,6 +7,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.ParagraphExtractionAction;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.paragraph.detection.triton.ParagraphExtractionModelResponse;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -30,6 +31,8 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
     private final String outputDir;
 
@@ -107,19 +110,24 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
         return parentObj;
     }
 
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
 
-    private void coproResponseBuider(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj) {
+
+    private void coproResponseBuider(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -128,6 +136,19 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(PROCESS_NAME)
+                                .message("paragraph detection macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 parentObj.add(ParagraphQueryOutputTable.builder()
@@ -143,6 +164,16 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                         .rootPipelineId(rootPipelineId)
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(ParagraphQueryOutputTable.builder()
@@ -164,7 +195,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void tritonRequestBuilder(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -173,6 +204,19 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputRequest)
+                                .response(responseBody)
+                                .stage(PROCESS_NAME)
+                                .message("paragraph detection macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 ParagraphExtractionModelResponse modelResponse = mapper.readValue(responseBody, ParagraphExtractionModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -196,6 +240,16 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                         .rootPipelineId(rootPipelineId)
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(ParagraphQueryOutputTable.builder()

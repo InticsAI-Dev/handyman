@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -29,6 +30,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
     private static final String PROCESS_NAME = PipelineName.PHRASE_MATCH.getProcessName();
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
@@ -89,22 +92,40 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request);
+            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
         }
 
         return parentObj;
     }
 
-    private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper, String jsonRequest, URL endpoint) {
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long tenantId = entity.getTenantId();
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(PROCESS_NAME)
+                                .message("phrase match macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
             if (response.isSuccessful()) {
                 extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
 
@@ -122,6 +143,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .rootPipelineId(rootPipelineId)
                                 .build());
                 log.info(aMarker, "The Exception occurred in Phrase match API call");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
 
         } catch (Exception exception) {
@@ -145,12 +176,25 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
 
-    private void tritonRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request) {
+    private void tritonRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, String jsonInputRequest, URL endpoint) {
         Long tenantId = entity.getTenantId();
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(tenantId)
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                            .stage(PROCESS_NAME)
+                            .message("phrase match macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
 
             if (response.isSuccessful()) {
                 ObjectMapper objectMapper = new ObjectMapper();
@@ -175,6 +219,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .rootPipelineId(rootPipelineId)
                                     .build());
                     log.info(aMarker, "The Exception occurred in Phrase match API call");
+                    processOutputAudit.add(
+                            ProcessAuditOutputTable.builder()
+                                    .originId(entity.getOriginId())
+                                    .tenantId(tenantId)
+                                    .batchId("1")
+                                    .rootPipelineId(entity.getRootPipelineId())
+                                    .stage(PROCESS_NAME)
+                                    .message(response.message())
+                                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                    .build());
                 }
             }
         } catch (Exception exception) {

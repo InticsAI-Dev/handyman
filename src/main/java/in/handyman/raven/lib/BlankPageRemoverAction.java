@@ -9,6 +9,8 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.BlankPageRemover;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,6 +50,8 @@ public class BlankPageRemoverAction implements IActionExecution {
     private final String URI;
 
     private final Marker aMarker;
+    private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
 
     public BlankPageRemoverAction(final ActionExecutionAudit action, final Logger log,
                                   final Object blankPageRemover) {
@@ -138,6 +142,21 @@ public class BlankPageRemoverAction implements IActionExecution {
             log.debug(aMarker, "The Request Details: {}", request);
             try (Response response = httpclient.newCall(request).execute()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
+
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(entity.getTenantId())
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(action.getParentPipelineId())
+                                .request(String.valueOf(request))
+                                .response(String.valueOf(response))
+                                .stage("BLANK_PAGE_REMOVAL")
+                                .message("Blankpage removal finished")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
+
                 if (response.isSuccessful()) {
                     JSONObject parentResponseObject = new JSONObject(responseBody);
                     parentObj.add(
@@ -161,6 +180,16 @@ public class BlankPageRemoverAction implements IActionExecution {
                                     .message(response.message())
                                     .build());
                     log.info(aMarker, "The Exception occurred in blank page remover ");
+                    processOutputAudit.add(
+                            ProcessAuditOutputTable.builder()
+                                    .originId(entity.getOriginId())
+                                    .tenantId(entity.tenantId)
+                                    .batchId("1")
+                                    .rootPipelineId(action.getParentPipelineId())
+                                    .stage("BLANK_PAGE_REMOVAL")
+                                    .message(response.message())
+                                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                    .build());
                 }
             } catch (Exception e) {
                 parentObj.add(
@@ -178,7 +207,12 @@ public class BlankPageRemoverAction implements IActionExecution {
             return parentObj;
         }
 
-    }
+            @Override
+            public List<ProcessAuditOutputTable> processAudit() throws Exception {
+                return processOutputAudit;
+            }
+
+        }
 
     @Override
     public boolean executeIf() throws Exception {

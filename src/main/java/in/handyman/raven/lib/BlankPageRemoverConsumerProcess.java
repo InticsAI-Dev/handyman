@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.json.JSONObject;
@@ -33,6 +35,7 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
             .writeTimeout(10, TimeUnit.MINUTES)
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
+    private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
     public BlankPageRemoverConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir) {
         this.log = log;
@@ -56,6 +59,20 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(entity.getTenantId())
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(action.getParentPipelineId())
+                            .request(String.valueOf(request))
+                            .response(String.valueOf(response))
+                            .stage("BLANK_PAGE_REMOVAL")
+                            .message("Blankpage removal finished")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
+
             if (response.isSuccessful()) {
                 JSONObject parentResponseObject = new JSONObject(responseBody);
                 parentObj.add(
@@ -79,6 +96,16 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
                                 .message(response.message())
                                 .build());
                 log.info(aMarker, "The Exception occurred in blank page remover ");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(entity.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(action.getParentPipelineId())
+                                .stage("BLANK_PAGE_REMOVAL")
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(
@@ -98,6 +125,11 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
                     this.action);
         }
         return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
     }
 
 }

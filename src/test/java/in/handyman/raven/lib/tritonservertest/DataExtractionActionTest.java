@@ -63,18 +63,21 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://192.168.10.239:10182/copro/preprocess/text-extraction")
+                .endPoint("http://192.168.10.245:8300/v2/models/text-extractor-service/versions/1/infer")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name")
+                .querySet("SELECT  distinct a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
+                        "                                    FROM info.auto_rotation a\n" +
+                        "                                     where origin_id in ('ORIGIN-86', 'ORIGIN-87', 'ORIGIN-88', 'ORIGIN-89', 'ORIGIN-90', 'ORIGIN-91', \n" +
+                        "                                     'ORIGIN-92')")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.239:10182/copro/preprocess/text-extraction");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.245:8300/v2/models/text-extractor-service/versions/1/infer");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);

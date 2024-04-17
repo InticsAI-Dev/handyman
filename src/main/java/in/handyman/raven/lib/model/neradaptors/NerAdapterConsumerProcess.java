@@ -4,6 +4,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
 import in.handyman.raven.lib.model.*;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -194,6 +195,11 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         atomicInteger.set(0);
         log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
         return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return null;
     }
 
     int computeAdapterScore(Validator inputDetail) {

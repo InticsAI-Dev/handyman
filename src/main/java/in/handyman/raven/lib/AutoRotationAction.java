@@ -10,6 +10,7 @@ import in.handyman.raven.lib.model.AutoRotation;
 import in.handyman.raven.lib.model.autorotation.AutoRotationConsumerProcess;
 import in.handyman.raven.lib.model.autorotation.AutoRotationInputTable;
 import in.handyman.raven.lib.model.autorotation.AutoRotationOutputTable;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
@@ -21,10 +22,7 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
@@ -121,10 +119,11 @@ public class AutoRotationAction implements IActionExecution {
                       AutoRotationInputTable.class,
                       jdbi, log,
                       autoRotationInputTable, urls, action);
+      List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
       coproProcessor.startProducer(autoRotation.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
-      final AutoRotationConsumerProcess autoRotationConsumerProcess = new AutoRotationConsumerProcess(log, aMarker, action, outputDir, this);
+      final AutoRotationConsumerProcess autoRotationConsumerProcess = new AutoRotationConsumerProcess(log, aMarker, action, outputDir, this,processOutputAudit);
       coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, autoRotationConsumerProcess);
       log.info(aMarker, " Auto Rotation Action has been completed {}  ", autoRotation.getName());
     } catch (Exception e) {

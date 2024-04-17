@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -38,6 +39,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             .writeTimeout(10, TimeUnit.MINUTES)
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
     public ZeroShotConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) throws JsonMappingException, JsonProcessingException {
         this.log = log;
@@ -97,17 +99,22 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request);
+            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
         }
 
         return parentObj;
     }
 
-    private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, String jsonRequest, URL endpoint) {
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
 
@@ -117,6 +124,19 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(originId)
+                            .tenantId(entity.getTenantId())
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonRequest)
+                            .response(responseBody)
+                            .stage("URGENCY_TRIAGE_MODEL")
+                            .message("Urgency Triage macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
             if (response.isSuccessful()) {
                 ObjectMapper objectMapper = new ObjectMapper();
                 ZeroShotClassifierModelResponse modelResponse = objectMapper.readValue(responseBody, ZeroShotClassifierModelResponse.class);
@@ -141,6 +161,16 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .rootPipelineId(rootPipelineId)
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(entity.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage("URGENCY_TRIAGE_MODEL")
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception exception) {
             parentObj.add(
@@ -160,7 +190,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         }
     }
 
-    private void coproRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, ObjectMapper objectMapper) {
+    private void coproRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, ObjectMapper objectMapper, String jsonInputRequest, URL endpoint) {
 
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
@@ -171,6 +201,19 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(originId)
+                            .tenantId(entity.getTenantId())
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                            .stage("URGENCY_TRIAGE_MODEL")
+                            .message("Urgency Triage macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
             if (response.isSuccessful()) {
                 extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
 
@@ -187,6 +230,16 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .rootPipelineId(rootPipelineId)
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(entity.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage("URGENCY_TRIAGE_MODEL")
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception exception) {
             parentObj.add(

@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.CurrencyDetectionAction;
 import in.handyman.raven.lib.model.currency.detection.triton.CurrencyDetectionModelResponse;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -39,6 +40,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
 
     private final int timeOut;
 
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
     public CurrencyDetectionConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir, CurrencyDetectionAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
@@ -104,19 +106,24 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj,jsonRequest, endpoint);
         }
 
 
         return parentObj;
     }
 
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
 
-    private void coproResponseBuider(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj) {
+
+    private void coproResponseBuider(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -126,6 +133,19 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(PROCESS_NAME)
+                                .message("Currency Detection macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 parentObj.add(CurrencyDetectionOutputQuerySet.builder()
@@ -141,6 +161,16 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .rootPipelineId(rootPipelineId)
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(CurrencyDetectionOutputQuerySet.builder()
@@ -162,7 +192,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void tritonRequestBuilder(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj) {
+    private void tritonRequestBuilder(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -172,6 +202,19 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputRequest)
+                                .response(responseBody)
+                                .stage(PROCESS_NAME)
+                                .message("Currency Detection macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 CurrencyDetectionModelResponse modelResponse = mapper.readValue(responseBody, CurrencyDetectionModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -196,6 +239,16 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .rootPipelineId(rootPipelineId)
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(CurrencyDetectionOutputQuerySet.builder()

@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.BulletInExtractionAction;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.bulletin.detection.triton.BulletinExtractionModelResponse;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -36,6 +37,8 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
 
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
+
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
     private final BulletInExtractionAction aAction;
 
     private final int timeOut;
@@ -107,19 +110,24 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and request {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator,jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode and request {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator,jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
         return parentObj;
     }
 
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
 
-    private void coproResponseBuider(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj) {
+
+    private void coproResponseBuider(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -128,6 +136,19 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(PROCESS_NAME)
+                                .message("Bulletin Extraction macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 parentObj.add(BulletinQueryOutputTable.builder()
@@ -148,6 +169,17 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(tenantId)
+                            .batchId("1")
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .stage(PROCESS_NAME)
+                            .message(response.message())
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .build());
+            log.info(aMarker, "Error in getting response {}", response.message());
         } catch (Exception e) {
             parentObj.add(BulletinQueryOutputTable.builder()
                     .synonymId(entity.getSynonymId())
@@ -169,7 +201,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         }
     }
 
-    private void tritonRequestBuilder(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -178,6 +210,19 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(tenantId)
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                            .stage(PROCESS_NAME)
+                            .message("Bulletin Extraction macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
                 BulletinExtractionModelResponse modelResponse = mapper.readValue(responseBody, BulletinExtractionModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -203,6 +248,17 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(entity.getOriginId())
+                            .tenantId(tenantId)
+                            .batchId("1")
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .stage(PROCESS_NAME)
+                            .message(response.message())
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .build());
+
         } catch (Exception e) {
             parentObj.add(BulletinQueryOutputTable.builder()
                     .synonymId(entity.getSynonymId())

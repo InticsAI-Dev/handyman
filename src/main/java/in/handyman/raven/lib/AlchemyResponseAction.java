@@ -2,23 +2,20 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.AlchemyResponse;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -29,11 +26,7 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -52,6 +45,8 @@ public class AlchemyResponseAction implements IActionExecution {
     private final AlchemyResponse alchemyResponse;
 
     private final Marker aMarker;
+    private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
 
     public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log,
                                  final Object alchemyResponse) {
@@ -205,6 +200,19 @@ public class AlchemyResponseAction implements IActionExecution {
             }
 
             try (Response response = httpclient.newCall(request).execute()) {
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(String.valueOf(request))
+                                .response(String.valueOf(response))
+                                .stage("")
+                                .message("")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 if (response.isSuccessful()) {
                     log.info("Response Details: {}", response);
                     log.info(aMarker, "Execute for alchemy response {}", response);
@@ -215,6 +223,11 @@ public class AlchemyResponseAction implements IActionExecution {
                 HandymanException.insertException("Exception occurred in alchemy response action for alchemy originId - " + originId + " and sorItemName - " + sorItemName, handymanException, this.action);
             }
             return parentObj;
+        }
+
+        @Override
+        public List<ProcessAuditOutputTable> processAudit() throws Exception {
+            return processOutputAudit;
         }
     }
 

@@ -10,7 +10,6 @@ import in.handyman.raven.util.ExceptionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
-import org.jdbi.v3.core.statement.Update;
 import org.slf4j.Logger;
 
 import java.net.URL;
@@ -18,15 +17,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -97,6 +89,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
             logger.info("Total no of rows created {}", counter.get());
+            System.out.println("count count "+counter.get());
             executorService.submit(() -> {
                 try {
                     partitions.forEach((integer, ts) -> {
@@ -143,7 +136,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
-                              final ConsumerProcess<I, O> callable) {
+                              final ConsumerProcess<I, O> callable) throws Exception {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
@@ -189,6 +182,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                     });
                                     insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                                     processedEntity.clear();
+                                    System.out.println("outputsize : " + results.size());
                                 }
                             } else {
                                 logger.info("Breaking the consumer");
@@ -204,8 +198,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                         }
                     }
                     checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime);
-                    final List<ProcessAuditOutputTable> auditResults = callable.processAudit();
-                    insertRowsProcessedIntoProcessAudit(jdbi, auditResults);
+
                 } catch (Exception e) {
                     logger.error("Final persistence failed", e);
                 } finally {
@@ -221,17 +214,29 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         } catch (InterruptedException e) {
             logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
         }
+        finally {
+            executorService.shutdown();
+        }
+
+        final List<ProcessAuditOutputTable> auditResults = callable.processAudit();
+        insertRowsProcessedIntoProcessAudit(jdbi, auditResults);
+
     }
+
+
 
     private void insertRowsProcessedIntoProcessAudit(Jdbi jdbi, List<ProcessAuditOutputTable> auditResults) throws Exception {
         try {
             jdbi.useTransaction(handle -> {
+                System.out.println(auditResults.size());
                 for (ProcessAuditOutputTable auditResult : auditResults) {
                     handle.createUpdate("INSERT INTO audit.process_audit_output" +
-                                    " (tenant_id, batch_id, root_pipeline_id, origin_id, created_on, request, response, status, stage, message) " +
-                                    "VALUES(:tenantId, :batchId, :rootPipelineId, :originId, now(), :request, :response, :status, :stage, :message)")
+                                    " (tenant_id, batch_id, root_pipeline_id, origin_id, created_on, endpoint, request, response, status, stage, message) " +
+                                    "VALUES(:tenantId, :batchId, :rootPipelineId, :originId, now(), :endpoint, :request, :response, :status, :stage, :message)")
                             .bindBean(auditResult)
                             .execute();
+
+
                 }
             });
         } catch (Exception exception) {
@@ -239,8 +244,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Error inserting into batch insert audit", handymanException, actionExecutionAudit);
         }
-    }
 
+    }
 
 
     private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime) {

@@ -8,9 +8,11 @@ import com.opencsv.exceptions.CsvValidationException;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.table.extraction.headers.copro.legacy.response.TableResponse;
 import in.handyman.raven.lib.model.table.extraction.headers.copro.legacy.response.TableResponseOutputRoot;
 import in.handyman.raven.lib.model.tableextraction.TableHeader;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
@@ -49,6 +51,8 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     private final String outputDir;
 
     public final ActionExecutionAudit action;
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(10, TimeUnit.MINUTES)
@@ -91,7 +95,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
             if (Objects.equals("false", tritonRequestActivator)) {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-                coproResponseBuilder(entity, request, parentObj, TABLE_EXTRACTION_PROCESS_NAME, objectMapper);
+                coproResponseBuilder(entity, request, parentObj, TABLE_EXTRACTION_PROCESS_NAME, objectMapper, jsonInputRequest, endpoint);
             } else {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
@@ -103,6 +107,11 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
             log.info(aMarker, "Empty request builded in the table headers");
         }
         return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
     }
 
     private static TableExtractionInputRequestTable convertTableObjectIntoRequest(ActionExecutionAudit action, TableExtractionInputTable entity, List<TableHeader> tableHeadersObject, String outputDir) {
@@ -133,7 +142,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
 
     }
 
-    private void coproResponseBuilder(TableExtractionInputTable entity, Request request, List<TableExtractionOutputTable> parentObj, String tableExtractionProcessName, ObjectMapper objectMapper) {
+    private void coproResponseBuilder(TableExtractionInputTable entity, Request request, List<TableExtractionOutputTable> parentObj, String tableExtractionProcessName, ObjectMapper objectMapper, String jsonInputResponse, URL endpoint) {
         String originId = entity.getOriginId();
         Long groupId = entity.getGroupId();
         Long tenantId = entity.getTenantId();
@@ -146,6 +155,19 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 log.info(aMarker, "coproProcessor consumer process response status {}", response.message());
 
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputResponse)
+                                .response(responseBody)
+                                .stage(tableExtractionProcessName)
+                                .message("Table Extraction macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 List<TableResponseOutputRoot> tableOutputResponses = mapper.readValue(responseBody, new TypeReference<>() {
                 });
                 tableOutputResponses.forEach(tableOutputResponse1 -> {
@@ -249,6 +271,16 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .channelId(entity.getChannelId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(tableExtractionProcessName)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception exception) {
             parentObj.add(

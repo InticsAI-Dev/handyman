@@ -9,6 +9,8 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.AlchemyInfo;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -55,6 +57,8 @@ public class AlchemyInfoAction implements IActionExecution {
         this.log = log;
         this.aMarker = MarkerFactory.getMarker(" AlchemyInfo:" + this.alchemyInfo.getName());
     }
+
+    private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
     @Override
     public void execute() throws Exception {
@@ -147,6 +151,19 @@ public class AlchemyInfoAction implements IActionExecution {
             String pipelineOriginId = entity.getOriginId();
             Long rootPipelineId = entity.getRootPipelineId();
             try (Response response = httpclient.newCall(request).execute()) {
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(entity.getOriginId())
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(action.getParentPipelineId())
+                                .request(String.valueOf(request))
+                                .response(String.valueOf(response))
+                                .stage("ALCHEMY INFO")
+                                .message("Executed for alchemy Info")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 if (response.isSuccessful()) {
                     log.info("Response Details: {}", response);
                     String responseBody = Objects.requireNonNull(response.body()).string();
@@ -166,6 +183,17 @@ public class AlchemyInfoAction implements IActionExecution {
                             .rootPipelineId(rootPipelineId)
                             .build()));
                     log.info(aMarker, "Execute for alchemy Info {}", response);
+                }else {
+                    processOutputAudit.add(
+                            ProcessAuditOutputTable.builder()
+                                    .originId(entity.getOriginId())
+                                    .tenantId(tenantId)
+                                    .batchId("1")
+                                    .rootPipelineId(action.getParentPipelineId())
+                                    .stage("ALCHEMY INFO")
+                                    .message(response.message())
+                                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                    .build());
                 }
             } catch (Exception e) {
                 log.error(aMarker, "The Exception occurred in alchemy info action", e);
@@ -173,6 +201,11 @@ public class AlchemyInfoAction implements IActionExecution {
                 HandymanException.insertException("Exception occurred in alchemy info action for group id - " + groupId + " and originId - " + pipelineOriginId, handymanException, this.action);
             }
             return parentObj;
+        }
+
+        @Override
+        public List<ProcessAuditOutputTable> processAudit() throws Exception {
+            return processOutputAudit;
         }
     }
 

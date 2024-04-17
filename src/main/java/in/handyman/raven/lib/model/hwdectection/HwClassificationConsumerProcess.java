@@ -8,6 +8,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.hwdectection.copro.HwDetectionDataItemCopro;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -35,6 +36,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     private final Marker aMarker;
     private final String outputDir;
     private final String STAGE = PipelineName.PAPER_CLASSIFICATION.getProcessName();
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType mediaTypeJson = MediaType
             .parse("application/json; charset=utf-8");
@@ -98,11 +101,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, parentObj);
+            coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -113,7 +116,12 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         return parentObj;
     }
 
-    private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -126,6 +134,19 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
             if (response.isSuccessful()) {
 
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(STAGE)
+                                .message("Paper Itemizer macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
 
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
@@ -146,6 +167,16 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .rootPipelineId(entity.getRootPipelineId())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(STAGE)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
 
 
@@ -173,7 +204,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     }
 
 
-    private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj) {
+    private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -184,6 +215,19 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(originId)
+                            .tenantId(tenantId)
+                            .batchId("1")
+                            .endpoint(String.valueOf(endpoint))
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                            .stage(STAGE)
+                            .message("Paper Itemizer macro completed")
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .build());
             if (response.isSuccessful()) {
                 ObjectMapper objectMappers = new ObjectMapper();
                 HwDetectionResponse hwDetectionResponse = objectMappers.readValue(responseBody, HwDetectionResponse.class);
@@ -216,6 +260,16 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .rootPipelineId(entity.getRootPipelineId())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .stage(STAGE)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
             }
         } catch (Exception e) {
             parentObj.add(HwClassificationOutputTable.builder()

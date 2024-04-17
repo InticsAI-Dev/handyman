@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.qrextraction.copro.QrReaderCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -44,6 +45,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
     public final ActionExecutionAudit action;
     public static String httpClientTimeout = new String();
+    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(10, TimeUnit.MINUTES)
@@ -111,18 +114,23 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, request, objectMapper, qrOutputEntities, rootPipelineId);
+            coproRequestBuilder(entity, request, objectMapper, qrOutputEntities, rootPipelineId, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, request, objectMapper, qrOutputEntities, rootPipelineId);
+            tritonRequestBuilder(entity, request, objectMapper, qrOutputEntities, rootPipelineId, jsonRequest, endpoint);
         }
 
 
         return qrOutputEntities;
     }
 
-    private void tritonRequestBuilder(QrInputEntity entity, Request request, ObjectMapper objectMapper, List<QrOutputEntity> qrOutputEntities, Long rootPipelineId) {
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processOutputAudit;
+    }
+
+    private void tritonRequestBuilder(QrInputEntity entity, Request request, ObjectMapper objectMapper, List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String jsonRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Long paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
@@ -132,6 +140,20 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                    processOutputAudit.add(
+                            ProcessAuditOutputTable.builder()
+                                    .originId(originId)
+                                    .tenantId(tenantId)
+                                    .batchId("1")
+                                    .endpoint(String.valueOf(endpoint))
+                                    .rootPipelineId(entity.getRootPipelineId())
+                                    .request(jsonRequest)
+                                    .response(responseBody)
+                                    .stage(QR_EXTRACTION)
+                                    .message("Paper Itemizer macro completed")
+                                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                    .build());
+
                 QrExtractionResponse modelResponse = objectMapper.readValue(responseBody, QrExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
@@ -152,6 +174,19 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                             .stage(QR_EXTRACTION)
                             .message("qr code absent in the given file")
                             .build());
+
+                    processOutputAudit.add(
+                            ProcessAuditOutputTable.builder()
+                                    .originId(originId)
+                                    .tenantId(tenantId)
+                                    .batchId("1")
+                                    .rootPipelineId(entity.getRootPipelineId())
+                                    .stage(QR_EXTRACTION)
+                                    .message(response.message())
+                                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                    .build());
+
+
                 }
 
             } else {
@@ -190,7 +225,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         }
     }
 
-    private void coproRequestBuilder(QrInputEntity entity, Request request, ObjectMapper objectMapper, List<QrOutputEntity> qrOutputEntities, Long rootPipelineId) {
+    private void coproRequestBuilder(QrInputEntity entity, Request request, ObjectMapper objectMapper, List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String jsonInputResponse, URL endpoint) {
         String originId = entity.getOriginId();
         Long paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
@@ -200,6 +235,19 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
+                processOutputAudit.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(originId)
+                                .tenantId(tenantId)
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputResponse)
+                                .response(response.body().string())
+                                .stage(QR_EXTRACTION)
+                                .message("qr extraction macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 extractedCoproOutputResponse(qrOutputEntities, rootPipelineId, responseBody, originId, paperNo, groupId, fileId, tenantId, "", "");
 
             } else {
@@ -217,6 +265,16 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .build());
 
                 log.error(aMarker, "The Exception occurred in episode of coverage in response {}", response);
+                processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                        .originId(originId)
+                        .tenantId(tenantId)
+                        .batchId("1")
+                        .rootPipelineId(entity.getRootPipelineId())
+                        .stage(QR_EXTRACTION)
+                        .message("qr code absent in the given file")
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .build());
             }
 
         } catch (Exception e) {

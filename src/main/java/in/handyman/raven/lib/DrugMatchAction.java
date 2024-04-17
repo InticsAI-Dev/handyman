@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -58,6 +60,7 @@ public class DrugMatchAction implements IActionExecution {
     this.log = log;
     this.aMarker = MarkerFactory.getMarker(" DrugMatch:" + this.drugMatch.getName());
   }
+  private static final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
 
   @Override
   public void execute() throws Exception {
@@ -161,6 +164,18 @@ public class DrugMatchAction implements IActionExecution {
         String jCode = result.getJCode();
         try (Response response = httpclient.newCall(request).execute()) {
           String responseBody = Objects.requireNonNull(response.body()).string();
+          processOutputAudit.add(
+                  ProcessAuditOutputTable.builder()
+                          .originId(originId)
+                          .batchId("1")
+                          .endpoint(String.valueOf(endpoint))
+                          .rootPipelineId(action.getParentPipelineId())
+                          .request(String.valueOf(request))
+                          .response(String.valueOf(response))
+                          .stage("PAHUB-DRUGNAME")
+                          .message("Drug name master data extracted")
+                          .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                          .build());
           if (response.isSuccessful()) {
             List<drugNameResponse> output = mapper.readValue(responseBody, new TypeReference<>() {
             });
@@ -180,7 +195,6 @@ public class DrugMatchAction implements IActionExecution {
                               .rootPipelineId(result.rootPipelineId)
                               .message("Drug name master data extracted").build());
             });
-
           } else {
             parentObj.add(
                     DrugMatchOutputTable
@@ -199,6 +213,15 @@ public class DrugMatchAction implements IActionExecution {
                             .rootPipelineId(result.rootPipelineId)
                             .build());
             log.error(aMarker, "failed for request {} and response {}", request, response);
+            processOutputAudit.add(
+                    ProcessAuditOutputTable.builder()
+                            .originId(originId)
+                            .batchId("1")
+                            .rootPipelineId(action.getParentPipelineId())
+                            .stage("BLANK_PAGE_REMOVAL")
+                            .message(response.message())
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .build());
             throw new HandymanException(responseBody);
           }
         } catch (Exception exception) {
@@ -227,6 +250,11 @@ public class DrugMatchAction implements IActionExecution {
       atomicInteger.set(0);
       log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
       return parentObj;
+    }
+
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+      return processOutputAudit;
     }
   }
 

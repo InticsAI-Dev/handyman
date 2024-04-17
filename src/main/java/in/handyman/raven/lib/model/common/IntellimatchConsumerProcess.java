@@ -8,6 +8,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.copro.ComparisonDataItemCopro;
+import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -32,6 +33,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     private final Logger log;
     private final Marker aMarker;
     public final ActionExecutionAudit action;
+    public final List<ProcessAuditOutputTable> processAuditOutput = new ArrayList<>();
     private static ObjectMapper mapper = new ObjectMapper();
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
 
@@ -79,13 +81,13 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                 log.info(aMarker, "coproProcessor consumer process running with copro legacy request builder with url {}", endpoint );
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-                coproRequestBuider(result, request, parentObj);
+                coproRequestBuider(result, request, parentObj, jsonInputRequest, endpoint);
             } else {
                 log.info(aMarker, "coproProcessor consumer process running with copro triton request builder with url  {}", endpoint);
 
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-                tritonRequestBuilder(result, request, parentObj);
+                tritonRequestBuilder(result, request, parentObj, jsonRequest, endpoint );
             }
 
             log.info(aMarker, "coproProcessor consumer process with empty actual value entity {}", result);
@@ -110,6 +112,11 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         return parentObj;
     }
 
+    @Override
+    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        return processAuditOutput;
+    }
+
     @NotNull
     private ComparisonPayload getComparisonPayload(IntellimatchInputTable result) {
         List<String> sentence = Collections.singletonList(result.getExtractedValue());
@@ -132,13 +139,26 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         return comparisonPayload;
     }
 
-    private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) throws
+    private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj, String jsonRequest, URL endpoint) throws
             IOException {
 
         try (Response response = httpclient.newCall(request).execute()) {
             log.info("intelliMatch data comparison response body {}", response.body());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
+                processAuditOutput.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(result.getOriginId())
+                                .tenantId(result.getTenantId())
+                                .batchId("1")
+                                .endpoint(String.valueOf(endpoint))
+                                .rootPipelineId(result.getRootPipelineId())
+                                .request(jsonRequest)
+                                .response(response.body().string())
+                                .stage(CONTROL_DATA_PROCESS_NAME)
+                                .message("Control Data macro completed")
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .build());
                 extractedCoproOutputResponse(result, parentObj, responseBody, "", "");
             } else {
                 parentObj.add(IntellimatchOutputTable.builder().
@@ -156,18 +176,40 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         message(response.message()).
                         build()
                 );
-
+                processAuditOutput.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(result.getOriginId())
+                                .tenantId(result.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(result.getRootPipelineId())
+                                .stage(CONTROL_DATA_PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
 
             }
         }
     }
 
 
-    private void tritonRequestBuilder(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) {
+    private void tritonRequestBuilder(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = result.getOriginId();
         try (Response response = httpclient.newCall(request).execute()) {
             log.info("intelliMatch data comparison response body {}", response.body());
             String responseBody = Objects.requireNonNull(response.body()).string();
+            processAuditOutput.add(
+                ProcessAuditOutputTable.builder()
+                        .originId(result.getOriginId())
+                        .tenantId(result.getTenantId())
+                        .batchId("1")
+                        .endpoint(String.valueOf(endpoint))
+                        .rootPipelineId(result.getRootPipelineId())
+                        .request(jsonInputRequest)
+                        .response(responseBody)
+                        .stage(CONTROL_DATA_PROCESS_NAME)
+                        .message("Control Data macro completed")
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .build());
             if (response.isSuccessful()) {
                 ObjectMapper objectMappers = new ObjectMapper();
                 ComparisonResponse comparisonResponse = objectMappers.readValue(responseBody, ComparisonResponse.class);
@@ -192,6 +234,18 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         message(response.message()).
                         build()
                 );
+
+                processAuditOutput.add(
+                        ProcessAuditOutputTable.builder()
+                                .originId(result.getOriginId())
+                                .tenantId(result.getTenantId())
+                                .batchId("1")
+                                .rootPipelineId(result.getRootPipelineId())
+                                .stage(CONTROL_DATA_PROCESS_NAME)
+                                .message(response.message())
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .build());
+
                 log.error(aMarker, "The Exception occurred in intelliMatch data comparison by {} ", response);
                 throw new HandymanException(responseBody);
             }
