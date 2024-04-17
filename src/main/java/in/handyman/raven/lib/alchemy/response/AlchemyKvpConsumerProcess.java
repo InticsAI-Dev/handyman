@@ -151,7 +151,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit ;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 }

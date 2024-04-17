@@ -182,7 +182,7 @@ public class ProductResponseAction implements IActionExecution {
         }
 
         @Override
-        public List<ProcessAuditOutputTable> processAudit() throws Exception {
+        public ProcessAuditOutputTable processAudit() throws Exception {
             return null;
         }
     }

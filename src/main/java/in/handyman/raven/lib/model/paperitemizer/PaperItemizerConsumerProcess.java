@@ -108,8 +108,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuider(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String jsonRequest, URL endpoint) {

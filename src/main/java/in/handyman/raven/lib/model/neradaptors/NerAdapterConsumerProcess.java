@@ -198,10 +198,9 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+    public ProcessAuditOutputTable processAudit() throws Exception {
         return null;
     }
-
     int computeAdapterScore(Validator inputDetail) {
         int confidenceScore = 0;
         try {

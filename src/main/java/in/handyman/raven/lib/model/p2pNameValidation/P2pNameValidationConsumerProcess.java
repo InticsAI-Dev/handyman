@@ -89,7 +89,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+    public ProcessAuditOutputTable processAudit() throws Exception {
         return null;
     }
 

@@ -215,8 +215,8 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processAuditOutput;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void doMultipartDownloadCheck(String csvTablesPath, String croppedImagePath) {

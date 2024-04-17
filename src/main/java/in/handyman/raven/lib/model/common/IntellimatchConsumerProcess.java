@@ -113,8 +113,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processAuditOutput;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     @NotNull

@@ -126,8 +126,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void tritonRequestBuilder(QrInputEntity entity, Request request, ObjectMapper objectMapper, List<QrOutputEntity> qrOutputEntities, Long rootPipelineId, String jsonRequest, URL endpoint) {

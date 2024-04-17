@@ -123,8 +123,8 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuider(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj, String jsonRequest, URL endpoint) throws IOException {

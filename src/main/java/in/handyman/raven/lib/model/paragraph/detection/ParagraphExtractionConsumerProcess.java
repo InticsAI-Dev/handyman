@@ -122,8 +122,8 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
 

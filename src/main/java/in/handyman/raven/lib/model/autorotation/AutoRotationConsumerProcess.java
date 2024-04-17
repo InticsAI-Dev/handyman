@@ -121,9 +121,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         return parentObj;
     }
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
-
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
     private void coproRequestBuider(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();

@@ -204,8 +204,8 @@ public class AlchemyInfoAction implements IActionExecution {
         }
 
         @Override
-        public List<ProcessAuditOutputTable> processAudit() throws Exception {
-            return processOutputAudit;
+        public ProcessAuditOutputTable processAudit() throws Exception {
+            return null;
         }
     }
 

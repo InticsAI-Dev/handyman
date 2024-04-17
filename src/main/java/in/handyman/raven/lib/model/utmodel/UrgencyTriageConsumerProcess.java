@@ -106,8 +106,8 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void tritonRequestBuilder(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String jsonRequest, URL endpoint) {

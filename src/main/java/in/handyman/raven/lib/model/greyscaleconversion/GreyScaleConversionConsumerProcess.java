@@ -116,8 +116,8 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuider(GreyScaleConversionInputQuerySet entity, Request request, List<GreyScaleConversionOutputQuerySet> parentObj, String jsonRequest, URL endpoint) {

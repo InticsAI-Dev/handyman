@@ -164,8 +164,8 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj, String jsonRequest, URL endpoint) {

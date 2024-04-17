@@ -109,12 +109,10 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         }
         return noiseOutputEntities;
     }
-
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
-
     private void tritonRequestBuilder(NoiseModelInputEntity entity, Request request, ObjectMapper objectMapper, List<NoiseModelOutputEntity> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();

@@ -114,8 +114,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuilder(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String jsonRequest, URL endpoint ) {

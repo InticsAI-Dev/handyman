@@ -89,7 +89,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
             logger.info("Total no of rows created {}", counter.get());
-            System.out.println("count count "+counter.get());
+
             executorService.submit(() -> {
                 try {
                     partitions.forEach((integer, ts) -> {
@@ -140,9 +140,12 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
+        final List<ProcessAuditOutputTable> auditResults = new ArrayList<>();
         for (int consumer = 0; consumer < consumerCount; consumer++) {
             executorService.submit(() -> {
                 final List<O> processedEntity = new ArrayList<>();
+
+                System.out.println("Input :"+queue.size());
                 try {
                     while (true) {
                         try {
@@ -155,13 +158,17 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                     logger.info("Nodes size {} and index value {}", nodesSize, index);
                                     if (nodesSize != index) {
                                         final List<O> list = callable.process(nodes.get(index), take);
+                                        ProcessAuditOutputTable list1 =callable.processAudit();
                                         results.addAll(list);
+                                        auditResults.add(list1);
                                     }
                                 } catch (Exception e) {
                                     logger.error("Error in callable process in consumer", e);
                                 }
                                 processedEntity.addAll(results);
                                 if (nodeCount.get() % writeBatchSize == 0) {
+
+
                                     jdbi.useTransaction(handle -> {
                                         final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
                                         for (final O output : processedEntity) {
@@ -182,7 +189,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                     });
                                     insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                                     processedEntity.clear();
-                                    System.out.println("outputsize : " + results.size());
+
+
                                 }
                             } else {
                                 logger.info("Breaking the consumer");
@@ -205,6 +213,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                     logger.info("Consumer {} completed the process and persisted {} rows", countDownLatch.getCount(), nodeCount.get());
                     countDownLatch.countDown();
                 }
+
             });
 
             logger.info("Consumer {} submitted the process", consumer);
@@ -218,7 +227,6 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             executorService.shutdown();
         }
 
-        final List<ProcessAuditOutputTable> auditResults = callable.processAudit();
         insertRowsProcessedIntoProcessAudit(jdbi, auditResults);
 
     }
@@ -298,7 +306,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
         List<O> process(final URL endpoint, final I entity) throws Exception;
 
-        List<ProcessAuditOutputTable> processAudit() throws Exception;
+        ProcessAuditOutputTable processAudit() throws Exception;
 
     }
 

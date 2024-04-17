@@ -103,8 +103,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper, String jsonRequest, URL endpoint) {

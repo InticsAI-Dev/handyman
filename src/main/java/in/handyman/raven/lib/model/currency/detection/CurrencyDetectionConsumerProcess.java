@@ -118,8 +118,8 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
 

@@ -110,8 +110,8 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private static TableExtractionInputRequestTable convertTableObjectIntoRequest(ActionExecutionAudit action, TableExtractionInputTable entity, List<TableHeader> tableHeadersObject, String outputDir) {

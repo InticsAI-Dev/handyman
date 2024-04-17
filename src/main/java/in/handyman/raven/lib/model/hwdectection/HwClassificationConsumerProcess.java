@@ -117,8 +117,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
-        return processOutputAudit;
+    public ProcessAuditOutputTable processAudit() throws Exception {
+        return null;
     }
 
     private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonRequest, URL endpoint) {

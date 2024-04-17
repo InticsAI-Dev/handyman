@@ -35,7 +35,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
-    private final List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
+    private final ProcessAuditOutputTable processOutputAudit = new ProcessAuditOutputTable();
     private final TemplateDetectionAction aAction;
     private final  String TEMPLATE_DETECTION = "TEMPLATE_DETECTION";
     private final int timeOut;
@@ -114,7 +114,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
     }
 
     @Override
-    public List<ProcessAuditOutputTable> processAudit() throws Exception {
+    public ProcessAuditOutputTable processAudit() throws Exception {
         return processOutputAudit;
     }
 
@@ -126,22 +126,12 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+            processOutputAudit.setRequest(jsonRequest);
+            processOutputAudit.setResponse(responseBody);
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
-                processOutputAudit.add(
-                        ProcessAuditOutputTable.builder()
-                                .originId(entity.getOriginId())
-                                .tenantId(tenantId)
-                                .batchId("1")
-                                .endpoint(String.valueOf(endpoint))
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .request(jsonRequest)
-                                .response(responseBody)
-                                .stage(TEMPLATE_DETECTION)
-                                .message("Template Detection macro completed")
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .build());
+
                 extractedCoproOutputResponse(entity,  responseBody, outputObjectList, "", ",", objectMapper);
 
             } else {
@@ -159,17 +149,6 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .stage(TEMPLATE_DETECTION)
                                 .message("Template detection completed and response is empty for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
-                                .build());
-
-                processOutputAudit.add(
-                        ProcessAuditOutputTable.builder()
-                                .originId(entity.getOriginId())
-                                .tenantId(tenantId)
-                                .batchId("1")
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .stage(TEMPLATE_DETECTION)
-                                .message(response.message())
-                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                                 .build());
 
             }
@@ -208,19 +187,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
-            processOutputAudit.add(
-                    ProcessAuditOutputTable.builder()
-                            .originId(entity.getOriginId())
-                            .tenantId(tenantId)
-                            .batchId("1")
-                            .endpoint(String.valueOf(endpoint))
-                            .rootPipelineId(entity.getRootPipelineId())
-                            .request(jsonInputRequest)
-                            .response(responseBody)
-                            .stage(TEMPLATE_DETECTION)
-                            .message("Template Detection macro completed")
-                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                            .build());
+            processOutputAudit.setRequest(jsonInputRequest);
+            processOutputAudit.setResponse(responseBody);
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
 
@@ -268,16 +236,6 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .processedFilePath(entity.getFilePath())
                                 .build()
                 );
-                processOutputAudit.add(
-                        ProcessAuditOutputTable.builder()
-                                .originId(entity.getOriginId())
-                                .tenantId(tenantId)
-                                .batchId("1")
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .stage(TEMPLATE_DETECTION)
-                                .message(response.message())
-                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                                .build());
             }
         } catch (Exception e) {
             outputObjectList.add(
