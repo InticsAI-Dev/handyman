@@ -15,20 +15,20 @@ class ScalarAdapterActionTest {
                 .condition(true)
                 .name("scalar adapter for docnut attribution")
                 .processID("1234567")
-                .resultSet("SELECT dp.sor_item_name as sor_key, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
-                        "                    si.allowed_adapter , si.restricted_adapter ,'${init_process_id.process_id}' as process_id,\n" +
+                .resultSet(" SELECT dp.sor_item_name as sor_key, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
+                        "                    si.allowed_adapter , si.restricted_adapter ,'16144' as process_id,\n" +
                         "                    si.word_limit , si.word_threshold ,\n" +
                         "                    si.char_limit , si.char_threshold ,\n" +
                         "                    si.validator_threshold , si.allowed_characters ,\n" +
                         "                    si.comparable_characters, si.restricted_adapter_flag,\n" +
                         "                    dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
                         "                    dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id\n" +
+                        "        \n" +
                         "                    FROM sor_transaction.vqa_transaction dp\n" +
-                        "                    JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-                        "                      join sor_transaction.sor_transaction_payload_queue st on st.origin_id=dp.origin_id\n" +
-                        "                    WHERE dp.group_id = '${group_id}' AND si.allowed_adapter !='ner'\n" +
-                        "                    AND dp.answer is not null and dp.tenant_id = ${tenant_id} and dp.batch_id = '${batch_id}'" +
-                        "limit 1;")
+                        "                JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
+                        "                join sor_transaction.sor_transaction_payload_queue_archive  st on st.origin_id=dp.origin_id\n" +
+                        "                WHERE dp.group_id = '12' AND si.allowed_adapter !='ner'\n" +
+                        "                AND dp.answer is not null and dp.tenant_id = 1 and dp.batch_id = 'BATCH-12_0';")
 
                 .resourceConn("intics_zio_db_conn")
 
@@ -41,7 +41,7 @@ class ScalarAdapterActionTest {
         action.getContext().put("validation.multiverse-mode","true");
         action.getContext().put("validation.restricted-answers","No,None of the above");
         action.getContext().put("validaiton.char-limit-count","1");
-        action.getContext().put("copro.text-validation.url", "http://localhost:10189/copro/text-validation/patient");
+        action.getContext().put("copro.text-validation.url", "http://192.168.10.248:9100/v2/models/ner-service/versions/1/infer");
         final ScalarAdapterAction scalarAdapterAction = new ScalarAdapterAction(action, log, build);
         scalarAdapterAction.execute();
 

@@ -19,9 +19,14 @@ public class FileMergerPdfActionTest {
                 .name("FileMergerPdf")
                 .outputDir("/data/output/")
                 .endPoint("http://192.168.10.248:9300/v2/models/merger-service/versions/1/infer")
-                .querySet("SELECT 'oxy_org1' as origin_id ,replace(concat('cleaned_pdf_','INT-1','.pdf'),'-','_') as output_file_name, \n" +
-                        "1 as group_id, ARRAY['/data/input/2_0_1.jpg','/data/input/abl1.jpg'] as filePaths, \n" +
-                        "1 as tenant_id, 1 as root_pipeline_id, 1 as process_id,'batch_1' as batch_id;")
+                .querySet("SELECT sot.origin_id, concat(a2.file_name, '_001.pdf') as output_file_name, sot.group_id, array_agg(a.file_path ORDER BY paper_no ASC) as file_paths, sot.tenant_id, sot.root_pipeline_id, sot.root_pipeline_id as process_id, sot.batch_id\n" +
+                        "FROM outbound.outbound_payload_queue opq\n" +
+                        "inner join info.source_of_truth sot on sot.origin_id = opq.origin_id and sot.batch_id = opq.batch_id\n" +
+                        "inner join info.asset a on a.file_id =sot.preprocessed_file_id\n" +
+                        "left join info.source_of_origin soo on soo.origin_id = opq.origin_id\n" +
+                        "left join info.asset a2 on a2.asset_id=soo.asset_id\n" +
+                        "where sot.group_id= 61 and sot.tenant_id = 81 and opq.status='STAGED' and opq.stage='OUTBOUND'  and sot.batch_id = 'BATCH-61_0'\n" +
+                        "group by sot.origin_id, a2.file_name, sot.group_id, sot.tenant_id, sot.root_pipeline_id, sot.batch_id\n")
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("alchemy_response.cleaned_pdf_info")
 
@@ -48,15 +53,22 @@ public class FileMergerPdfActionTest {
         FileMergerPdf filemergerPdf = FileMergerPdf.builder()
                 .condition(true)
                 .name("FileMergerPdf")
-                .outputDir("/data/output")
+                .outputDir("/data/output/")
                 .endPoint("http://192.168.10.248:9300/v2/models/merger-service/versions/1/infer")
                 .outputTable("alchemy_response.cleaned_pdf_info")
-                .querySet("SELECT 'oxy_org1' as origin_id ,replace(concat('cleaned_pdf_','INT-1','.pdf'),'-','_') as output_file_name, 1 as group_id, ARRAY['/data/input/SYNT_167074460_C2.pdf','/data/input/SYNT_167074460_C3.pdf'] as filePaths, 1 as tenant_id, 1 as root_pipeline_id, 138980184199100180 as process_id;")
+                .querySet("SELECT sot.origin_id, concat(a2.file_name, '_001.pdf') as output_file_name, sot.group_id, array_agg(a.file_path ORDER BY paper_no ASC) as file_paths, sot.tenant_id, sot.root_pipeline_id, sot.root_pipeline_id as process_id, sot.batch_id\n" +
+                        "FROM outbound.outbound_payload_queue opq\n" +
+                        "inner join info.source_of_truth sot on sot.origin_id = opq.origin_id and sot.batch_id = opq.batch_id\n" +
+                        "inner join info.asset a on a.file_id =sot.preprocessed_file_id\n" +
+                        "left join info.source_of_origin soo on soo.origin_id = opq.origin_id\n" +
+                        "left join info.asset a2 on a2.asset_id=soo.asset_id\n" +
+                        "where sot.group_id= 61 and sot.tenant_id = 81 and opq.status='STAGED' and opq.stage='OUTBOUND'  and sot.batch_id = 'BATCH-61_0'\n" +
+                        "group by sot.origin_id, a2.file_name, sot.group_id, sot.tenant_id, sot.root_pipeline_id, sot.batch_id;\n")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.file-merger.url","http://192.168.10.239:10191/copro/preprocess/merger");
+        actionExecutionAudit.getContext().put("copro.file-merger.url","http://192.168.10.248:9300/v2/models/merger-service/versions/1/infer");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","1"),
                 Map.entry("file.merger.consumer.API.count","1"),

@@ -52,22 +52,20 @@ class TrinityModelActionTest {
         TrinityModel trinityModel=TrinityModel.builder()
                 .name("DIE model testing")
                 .condition(true)
-                .outputDir("/home/christopher.paulraj@zucisystems.com/Downloads/data/")
-                .requestUrl("http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer")
+                .outputDir("/data/output/")
+                .requestUrl("http://192.168.10.245:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("\n" +
-                        "\n" +
-                        "SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
-                        "a.model_registry as model_registry, a.tenant_id, a.batch_id \n" +
+                .questionSql("SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
+                        "a.model_registry as model_registry, a.tenant_id, a.batch_id\n" +
                         "FROM macro.sor_transaction_tqa_audit a\n" +
-                        "where a.document_type='Printed' and a.model_registry = 'XENON'\n" +
-                        "and a.root_pipeline_id = '4705' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id ;\n" +
-                        "\n")
+                        "where a.document_type='Printed' and a.model_registry = 'ARGON'\n" +
+                        "and a.root_pipeline_id = '23063'\n" +
+                        "group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id ;\n")
                 .responseAs("docnet_attribution_response_123")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.trinity-attribution.handwritten.url","http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.trinity-attribution.handwritten.url","http://192.168.10.245:8900/v2/models/argon-vqa-service/versions/1/infer");
         actionExecutionAudit.getContext().put("okhttp.client.timeout","20");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
         actionExecutionAudit.getContext().put("tenant_id", "1");

@@ -17,11 +17,11 @@ public class EocJsonGeneratorTest {
         EocJsonGenerator eocJsonGenerator = EocJsonGenerator.builder()
                     .name("eoc json generator")
                 .resourceConn("intics_zio_db_conn")
-                .documentId("SYNT_166529664")
-                .eocId("H67100435")
-                .originId("ORIGIN-1")
+                .documentId("julipedra_1")
+                .eocId("julipedra_1_NID")
+                .originId("ORIGIN-62")
                 .groupId("1")
-                .authtoken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJHYXRlS2VlcGVyIiwiZXhwIjoxNzEyMjU5NTk1LCJpYXQiOjE3MTIxNzMxOTUsImVtYWlsIjoiZGVtb0BpbnRpY3MuYWkifQ.W0bEOwS2MHlpJUH0c6oB1zP1nCBUd9CvkbDNQb733qs")
+                .authtoken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJHYXRlS2VlcGVyIiwiZXhwIjoxNzEzNTI0NjcxLCJpYXQiOjE3MTM0MzgyNzEsImVtYWlsIjoia2lzc2Zsb3dfcmZAaW50aWNzLmFpIn0.lrvY6iUS2cOh1TiMYmODMr13JDdYcbS0xWkYZlWHLGA")
 
                 .build();
 
@@ -34,9 +34,10 @@ public class EocJsonGeneratorTest {
 
         action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
-                Map.entry("gatekeeper.appid", "demo@intics.ai"),
+                Map.entry("gatekeeper.appid", "kissflow_rf@intics.ai"),
                 Map.entry("tenant_id", "8"),
-                Map.entry("gatekeeper.url", "http://192.168.10.248:40002/"),
+                Map.entry("batch_id","batch_1_0"),
+                Map.entry("gatekeeper.url", "http://intics.gatekeeper:40002/"),
                  Map.entry("write.batch.size", "5")));
 
 
