@@ -19,7 +19,8 @@ class ProductOutboundZipfileActionTest {
                 .resultTable("product_outbound.product_outbound_zip_file_details")
                 .processId("1234567")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("SELECT origin_id, root_pipeline_id, group_id, process_id, cleaned_pdf_path, origin_pdf_path, product_json, kvp_response, table_response, tenant_id,file_name, 'batch_1' as batch_id\n" +
+                .querySet("select origin_id, root_pipeline_id, group_id, process_id, cleaned_pdf_path, origin_pdf_path, product_json,\n" +
+                        "kvp_response, table_response, tenant_id,file_name, batch_id\n" +
                         "FROM product_outbound.product_outbound_zip_file_input\n" +
                         "limit 1;")
                 .condition(true)

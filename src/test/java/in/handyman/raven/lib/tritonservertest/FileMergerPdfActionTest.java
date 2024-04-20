@@ -72,7 +72,7 @@ public class FileMergerPdfActionTest {
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","1"),
                 Map.entry("file.merger.consumer.API.count","1"),
-                Map.entry("multipart.file.upload.activator","false"),
+                Map.entry("multipart.file.upload.activator","true"),
                 Map.entry("gen_group_id.group_id","1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),

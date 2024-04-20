@@ -87,6 +87,7 @@ public class ProductOutboundZipfileAction implements IActionExecution {
             String sourceJsonString = outboundInputTableEntity.getProductJson();
             String sourceKvpJsonString = outboundInputTableEntity.getKvpResponse();
             String fileNameStr = outboundInputTableEntity.getFileName();
+            String batchId = outboundInputTableEntity.getBatchId();
 
             createFolder(originFolderPath);
             createFolder(originKvpFolderPath);
@@ -117,7 +118,7 @@ public class ProductOutboundZipfileAction implements IActionExecution {
                         .fileName(fileNameStr)
                         .stage("PRODUCT_OUTBOUND")
                         .status("COMPLETED")
-                        .batchId(outboundInputTableEntity.getBatchId())
+                        .batchId(batchId)
                         .message("completed for the outbound zip file creation ")
                         .build();
                 outboundOutputTableEntities.add(outboundOutputTableEntity);
