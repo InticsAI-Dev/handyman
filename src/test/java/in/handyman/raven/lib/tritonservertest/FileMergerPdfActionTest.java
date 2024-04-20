@@ -53,7 +53,7 @@ public class FileMergerPdfActionTest {
         FileMergerPdf filemergerPdf = FileMergerPdf.builder()
                 .condition(true)
                 .name("FileMergerPdf")
-                .outputDir("/data/output/")
+                .outputDir("/data/output/evaluation_output/")
                 .endPoint("http://192.168.10.248:9300/v2/models/merger-service/versions/1/infer")
                 .outputTable("alchemy_response.cleaned_pdf_info")
                 .querySet("SELECT sot.origin_id, concat(a2.file_name, '_001.pdf') as output_file_name, sot.group_id, array_agg(a.file_path ORDER BY paper_no ASC) as file_paths, sot.tenant_id, sot.root_pipeline_id, sot.root_pipeline_id as process_id, sot.batch_id\n" +
@@ -72,10 +72,12 @@ public class FileMergerPdfActionTest {
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","1"),
                 Map.entry("file.merger.consumer.API.count","1"),
+                Map.entry("multipart.file.upload.activator","false"),
                 Map.entry("gen_group_id.group_id","1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
-                Map.entry("merger.response.download.url","false"),
+                Map.entry("merger.response.download.url","http://file.merger.multipart.instance1:10001/multipart-download"),
+//                Map.entry("merger.response.download.url","false"),
                 Map.entry("write.batch.size","1")));
 
 

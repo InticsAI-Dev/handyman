@@ -305,7 +305,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     private void doMultipartDownloadCheck(String MultipartUploadActivatorValue, String processedFilePath) {
-        if (MultipartUploadActivatorValue.equalsIgnoreCase("false")) {
+        if (MultipartUploadActivatorValue.equalsIgnoreCase("true")) {
 
             try {
                 log.info("MultipartUploadActivator is true downloading file " + processedFilePath);
