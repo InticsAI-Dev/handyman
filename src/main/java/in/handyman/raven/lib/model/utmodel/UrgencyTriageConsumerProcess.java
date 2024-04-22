@@ -114,8 +114,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         try (Response response = httpclient.newCall(request).execute()) {
             final String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                log.info("Response Details: {}", response);
-
                 UrgencyTriageModelResponse modelResponse = objectMapper.readValue(responseBody, UrgencyTriageModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -124,7 +122,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
                             extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
 
-                            log.info(aMarker, "Execute for urgency triage {}", response);
+                            log.info(aMarker, "Execute for urgency triage {}", response.isSuccessful());
                         });
                     });
                 }

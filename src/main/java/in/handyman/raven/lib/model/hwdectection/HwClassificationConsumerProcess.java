@@ -244,7 +244,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
-        log.info("copro api response body {}", responseBody);
 
         HwDetectionDataItem hwDetectionDataItem = mapper.readValue(responseBody, new TypeReference<>() {
         });
