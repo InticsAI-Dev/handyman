@@ -17,9 +17,11 @@ class MultipartUploadActionTest {
                 .name("multipart file upload for paper itemization")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endPoint("paper.itemizer.multipart.upload.url")
-                .querySet("SELECT '/home/manikandan.tm@zucisystems.com/data/full_full_0_default.jpg' as filepath, " +
-                        "'/data/output' as outputDir;")
+                .endPoint("http://127.0.0.1:8002/multipart-upload")
+                .querySet("SELECT '/home/dineshkumar.anandan@zucisystems.com/Documents/test/input/1.jpeg' as filepath, " +
+                        "'/home/dineshkumar.anandan@zucisystems.com/Documents/test/output/' as outputDir," +
+                        "'ORIGIN-1' as originId, 1 as paperNo, 1 as groupId, 1 as tenantId, " +
+                        "'tmp-1' as templateId, 1112 as processId, 52731 as rootPipelineId;")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
@@ -28,7 +30,7 @@ class MultipartUploadActionTest {
                 Map.entry("read.batch.size","5"),
                 Map.entry("gen_group_id.group_id","5"),
                 Map.entry("consumer.API.count","1"),
-                Map.entry("paper.itemizer.multipart.upload.url","http://copro.paper.itemizer:10001/multipart-upload"),
+                Map.entry("paper.itemizer.multipart.upload.url","http://127.0.0.1:8002/multipart-upload"),
                 Map.entry("write.batch.size","5")));
 
         MultipartUploadAction multipartUploadAction = new MultipartUploadAction(actionExecutionAudit, log, multipartUpload);
