@@ -98,23 +98,29 @@ public class MultipartUploadAction implements IActionExecution {
                     int endpointSize = urls.size();
                     log.info("Endpoints are not empty for multipart upload with nodes count {}", endpointSize);
 
-                    final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
-                    final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
+                    int batchSize = Integer.parseInt(action.getContext().get("batch.processing.split.count"));
+                    final ExecutorService executorService = Executors.newFixedThreadPool(batchSize);
+                    int inputSize = multipartUploadInputTables.size();
+                    final CountDownLatch countDownLatch = new CountDownLatch(inputSize * endpointSize);
                     log.info("Total consumers {}", countDownLatch.getCount());
 
-                    urls.forEach(url -> executorService.submit(() -> multipartUploadInputTables.forEach(multipartUploadInputTable -> {
-                        try {
-                            uploadFile(url, multipartUploadInputTable, jdbi);
-                        } catch (Exception e) {
+                    log.info("Input files sizes {}", inputSize);
+
+                    multipartUploadInputTables.parallelStream().forEach(multipartUploadInputTable -> {
+                        urls.forEach(url -> executorService.submit(() -> {
                             String filepath = multipartUploadInputTable.getFilePath();
-                            log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", filepath, e.getMessage());
-                            HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("Exception occurred in multipart upload for file - " + filepath, handymanException, this.action);
-                        } finally {
-                            log.info("Consumer {} completed the process", countDownLatch.getCount());
-                            countDownLatch.countDown();
-                        }
-                    })));
+                            try {
+                                uploadFile(url, multipartUploadInputTable, jdbi);
+                            } catch (Exception e) {
+                                log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", filepath, e.getMessage());
+                                HandymanException handymanException = new HandymanException(e);
+                                HandymanException.insertException("Exception occurred in multipart upload for file - " + filepath, handymanException, this.action);
+                            } finally {
+                                log.info("Consumer {} completed the process for file {}", countDownLatch.getCount(), filepath);
+                                countDownLatch.countDown();
+                            }
+                        }));
+                    });
                     try {
                         countDownLatch.await();
                     } catch (InterruptedException e) {
