@@ -36,7 +36,7 @@ class GreyScaleConvertionTest {
         actionExecutionAudit.setActionId(2345L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
-                Map.entry("greyscale.conversion.consumer.API.count", "1"),
+                Map.entry("greyscale.conversion.consumer.API.count", "10"),
                 Map.entry("triton.grey.scale.conversion.request.activator", "false"),
                 Map.entry("write.batch.size", "5"))
         );

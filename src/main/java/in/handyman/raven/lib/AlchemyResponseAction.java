@@ -120,7 +120,7 @@ public class AlchemyResponseAction implements IActionExecution {
         }
 
         @Override
-        public List<AlchemyResponseAction.AlchemyResponseOutputTable> process(URL endpoint, AlchemyResponseAction.AlchemyResponseInputTable entity) throws Exception {
+        public List<AlchemyResponseAction.AlchemyResponseOutputTable> process(URL endpoint, AlchemyResponseAction.AlchemyResponseInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
             List<AlchemyResponseAction.AlchemyResponseOutputTable> parentObj = new ArrayList<>();
             String originId = entity.getOriginId();

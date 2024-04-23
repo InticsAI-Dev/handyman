@@ -26,7 +26,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
     }
 
     @Override
-    public List<P2PNameValidationOutputTable> process(URL endpoint, P2PNameValidationInputTable entity) throws Exception {
+    public List<P2PNameValidationOutputTable> process(URL endpoint, P2PNameValidationInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         log.info("p2p input entity: ",entity);
         final List<P2PNameValidationOutputTable> p2PNameValidationOutputTableArrayList = new ArrayList<>();
         try {

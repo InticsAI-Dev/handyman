@@ -58,7 +58,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
     @Override
-    public List<NoiseModelOutputEntity> process(URL endpoint, NoiseModelInputEntity entity) throws Exception {
+    public List<NoiseModelOutputEntity> process(URL endpoint, NoiseModelInputEntity entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         log.info("copro consumer process started");
         List<NoiseModelOutputEntity> noiseOutputEntities = new ArrayList<>();
         final String filePath = entity.getInputFilePath();

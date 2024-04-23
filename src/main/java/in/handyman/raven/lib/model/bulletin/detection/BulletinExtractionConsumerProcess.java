@@ -55,7 +55,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
 
 
     @Override
-    public List<BulletinQueryOutputTable> process(URL endpoint, BulletinQueryInputTable entity) throws Exception {
+    public List<BulletinQueryOutputTable> process(URL endpoint, BulletinQueryInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         List<BulletinQueryOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
 

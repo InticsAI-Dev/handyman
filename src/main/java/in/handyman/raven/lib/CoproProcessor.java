@@ -145,7 +145,6 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             executorService.submit(() -> {
                 final List<O> processedEntity = new ArrayList<>();
 
-                System.out.println("Input :"+queue.size());
                 try {
                     while (true) {
                         try {
@@ -157,10 +156,10 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                     int nodesSize = nodes.size();
                                     logger.info("Nodes size {} and index value {}", nodesSize, index);
                                     if (nodesSize != index) {
-                                        final List<O> list = callable.process(nodes.get(index), take);
-                                        ProcessAuditOutputTable list1 =callable.processAudit();
+                                        final List<O> list = callable.process(nodes.get(index), take,auditResults);
+//                                        ProcessAuditOutputTable list1 =callable.processAudit();
                                         results.addAll(list);
-                                        auditResults.add(list1);
+//                                        auditResults.add(list1);
                                     }
                                 } catch (Exception e) {
                                     logger.error("Error in callable process in consumer", e);
@@ -304,7 +303,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     public interface ConsumerProcess<I, O extends Entity> {
 
-        List<O> process(final URL endpoint, final I entity) throws Exception;
+        List<O> process(final URL endpoint, final I entity, final List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception;
 
         ProcessAuditOutputTable processAudit() throws Exception;
 

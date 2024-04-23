@@ -60,7 +60,7 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
     @Override
-    public List<AlchemyKvpOutputEntity> process(URL endpoint, AlchemyKvpInputEntity entity) throws Exception {
+    public List<AlchemyKvpOutputEntity> process(URL endpoint, AlchemyKvpInputEntity entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
         log.info(aMarker, " Alchemy cosumer process Started for origin id {}", entity.getAlchemyOriginId());
 

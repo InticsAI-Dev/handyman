@@ -76,7 +76,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     @Override
-    public List<FileMergerpdfOutputEntity> process(URL endpoint, FileMergerpdfInputEntity entity) throws JsonProcessingException {
+    public List<FileMergerpdfOutputEntity> process(URL endpoint, FileMergerpdfInputEntity entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws JsonProcessingException {
         List<FileMergerpdfOutputEntity> parentObj = new ArrayList<>();
 
         try {

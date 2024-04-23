@@ -61,7 +61,7 @@ public class OutboundTableConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     @Override
-    public List<AlchemyTableOutputEntity> process(URL endpoint, AlchemyTableInputEntity entity) throws Exception {
+    public List<AlchemyTableOutputEntity> process(URL endpoint, AlchemyTableInputEntity entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
         log.info(aMarker, "Alchemy cosumer process Started for origin id {}", entity.getAlchemyOriginId());
 

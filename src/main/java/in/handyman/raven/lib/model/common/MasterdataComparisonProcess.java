@@ -49,7 +49,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
     }
 
     @Override
-    public List<MasterDataOutputTable> process(URL endpoint, MasterDataInputTable result) throws Exception {
+    public List<MasterDataOutputTable> process(URL endpoint, MasterDataInputTable result,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, result);
         List<MasterDataOutputTable> parentObj = new ArrayList<>();
         AtomicInteger atomicInteger = new AtomicInteger();

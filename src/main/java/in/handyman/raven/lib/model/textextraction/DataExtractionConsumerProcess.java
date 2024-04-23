@@ -52,7 +52,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     @Override
-    public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity) throws JsonProcessingException {
+    public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws JsonProcessingException {
         List<DataExtractionOutputTable> parentObj = new ArrayList<>();
 
         String inputFilePath = entity.getFilePath();

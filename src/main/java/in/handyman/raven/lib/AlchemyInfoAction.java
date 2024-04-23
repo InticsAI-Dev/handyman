@@ -123,7 +123,7 @@ public class AlchemyInfoAction implements IActionExecution {
         }
 
         @Override
-        public List<AlchemyInfoAction.AlchemyInfoOutputTable> process(URL endpoint, AlchemyInfoAction.AlchemyInfoInputTable entity) throws Exception {
+        public List<AlchemyInfoAction.AlchemyInfoOutputTable> process(URL endpoint, AlchemyInfoAction.AlchemyInfoInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
             List<AlchemyInfoAction.AlchemyInfoOutputTable> parentObj = new ArrayList<>();
             String inputFilePath = entity.getFilePath();

@@ -124,7 +124,7 @@ public class ProductResponseAction implements IActionExecution {
         }
 
         @Override
-        public List<ProductResponseAction.ProductResponseOutputTable> process(URL endpoint, ProductResponseAction.ProductResponseInputTable entity) throws Exception {
+        public List<ProductResponseAction.ProductResponseOutputTable> process(URL endpoint, ProductResponseAction.ProductResponseInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
             List<ProductResponseAction.ProductResponseOutputTable> parentObj = new ArrayList<>();
             Long rootPipelineId=entity.getRootPipelineId();

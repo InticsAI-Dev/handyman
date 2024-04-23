@@ -5,6 +5,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.paperitemizer.PaperItemizerInputTable;
+import in.handyman.raven.lib.model.paperitemizer.PaperItemizerOutputTable;
 import in.handyman.raven.lib.model.paperitemizer.ProcessAuditOutputTable;
 import in.handyman.raven.lib.model.templatedetection.TemplateDetectionConsumerProcess;
 import in.handyman.raven.lib.model.templatedetection.TemplateDetectionInputTable;
@@ -110,11 +112,18 @@ public class TemplateDetectionAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            List<ProcessAuditOutputTable> processOutputAudit = new ArrayList<>();
-            final CoproProcessor<TemplateDetectionInputTable, TemplateDetectionOutputTable> coproProcessor = getTemplateDetectionCoproProcessor(jdbi, urls, querysetStr);
+            final CoproProcessor<TemplateDetectionInputTable, TemplateDetectionOutputTable> coproProcessor =
+                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                            TemplateDetectionOutputTable.class,
+                            TemplateDetectionInputTable.class,
+                            jdbi, log,
+                            new TemplateDetectionInputTable(), urls, action);
+
+            log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);
+            coproProcessor.startProducer(querysetStr, readBatchSize);
             log.info(aMarker, "Copro processor start compose completed {}", nameStr);
             Thread.sleep(1000);
-            final TemplateDetectionConsumerProcess templateDetectionConsumerProcess = new TemplateDetectionConsumerProcess(log, aMarker, action, this,processOutputAudit);
+            final TemplateDetectionConsumerProcess templateDetectionConsumerProcess = new TemplateDetectionConsumerProcess(log, aMarker, action, this);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, templateDetectionConsumerProcess);
 
         } catch (Exception e) {
@@ -124,22 +133,6 @@ public class TemplateDetectionAction implements IActionExecution {
 
 
     }
-
-    @NotNull
-    private CoproProcessor<TemplateDetectionInputTable, TemplateDetectionOutputTable> getTemplateDetectionCoproProcessor(Jdbi jdbi, List<URL> urls, String querysetStr) {
-        final TemplateDetectionInputTable templateDetectionInputTable = new TemplateDetectionInputTable();
-        final CoproProcessor<TemplateDetectionInputTable, TemplateDetectionOutputTable> coproProcessor =
-                new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                        TemplateDetectionOutputTable.class,
-                        TemplateDetectionInputTable.class,
-                        jdbi, log,
-                        templateDetectionInputTable, urls, action);
-
-
-        coproProcessor.startProducer(querysetStr, readBatchSize);
-        return coproProcessor;
-    }
-
     @Override
     public boolean executeIf() throws Exception {
         return templateDetection.getCondition();

@@ -67,7 +67,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     }
 
     @Override
-    public List<NerOutputTable> process(URL endpoint, NerInputTable result) throws Exception {
+    public List<NerOutputTable> process(URL endpoint, NerInputTable result,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         URI = String.valueOf(endpoint);
         multiverseValidator = Boolean.parseBoolean(action.getContext().get("validation.multiverse-mode"));
         restrictedAnswers = action.getContext().get("validation.restricted-answers").split(",");

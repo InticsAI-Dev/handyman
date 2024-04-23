@@ -117,7 +117,7 @@ public class CheckboxVqaAction implements IActionExecution {
     }
 
     @Override
-    public List<CheckboxVqaOutputTable> process(URL endpoint, CheckboxVqaInputTable entity) throws Exception {
+    public List<CheckboxVqaOutputTable> process(URL endpoint, CheckboxVqaInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
       List<CheckboxVqaOutputTable> parentObj = new ArrayList<>();
       final ObjectNode objectNode = mapper.createObjectNode();

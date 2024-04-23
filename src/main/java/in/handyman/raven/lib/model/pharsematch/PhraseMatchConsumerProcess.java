@@ -46,7 +46,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
     @Override
-    public List<PhraseMatchOutputTable> process(URL endpoint, PhraseMatchInputTable entity) throws JsonProcessingException {
+    public List<PhraseMatchOutputTable> process(URL endpoint, PhraseMatchInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws JsonProcessingException {
         List<PhraseMatchOutputTable> parentObj = new ArrayList<>();
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();

@@ -53,7 +53,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
 
 
     @Override
-    public List<CurrencyDetectionOutputQuerySet> process(URL endpoint, CurrencyDetectionInputQuerySet entity) throws Exception {
+    public List<CurrencyDetectionOutputQuerySet> process(URL endpoint, CurrencyDetectionInputQuerySet entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
 
         List<CurrencyDetectionOutputQuerySet> parentObj = new ArrayList<>();

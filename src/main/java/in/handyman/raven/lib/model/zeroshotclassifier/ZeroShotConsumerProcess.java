@@ -48,7 +48,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     }
 
     @Override
-    public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity) throws JsonProcessingException {
+    public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws JsonProcessingException {
         List<ZeroShotClassifierOutputTable> parentObj = new ArrayList<>();
 
         String originId = entity.getOriginId();

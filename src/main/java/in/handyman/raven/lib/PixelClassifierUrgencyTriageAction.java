@@ -117,7 +117,7 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
     }
 
     @Override
-    public List<HwUrgencyTriageOutputTable> process(URL endpoint, HwUrgencyTriageInputTable entity) throws Exception {
+    public List<HwUrgencyTriageOutputTable> process(URL endpoint, HwUrgencyTriageInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
       List<HwUrgencyTriageOutputTable> parentObj = new ArrayList<>();
       final ObjectNode objectNode = mapper.createObjectNode();

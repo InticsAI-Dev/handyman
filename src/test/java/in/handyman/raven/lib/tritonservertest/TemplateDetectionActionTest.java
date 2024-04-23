@@ -58,7 +58,7 @@ class TemplateDetectionActionTest {
         actionExecutionAudit.getContext().put("copro.template.detection.url","http://192.168.10.245:8900/v2/models/argon-vqa-service/versions/1/infer");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
-                Map.entry("template.detection.consumer.API.count","3"),
+                Map.entry("template.detection.consumer.API.count","5"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size","5")));

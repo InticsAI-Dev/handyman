@@ -64,7 +64,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
     //7. overwrite the method process in coproprocessor, write copro api logic inside this method
     @Override
-    public List<QrOutputEntity> process(URL endpoint, QrInputEntity entity) throws Exception {
+    public List<QrOutputEntity> process(URL endpoint, QrInputEntity entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         log.info("copro consumer process started");
         List<QrOutputEntity> qrOutputEntities = new ArrayList<>();
 

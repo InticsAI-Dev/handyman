@@ -47,7 +47,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     @Override
-    public List<UrgencyTriageOutputTable> process(URL endpoint, UrgencyTriageInputTable entity) throws Exception {
+    public List<UrgencyTriageOutputTable> process(URL endpoint, UrgencyTriageInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         List<UrgencyTriageOutputTable> parentObj = new ArrayList<>();
 
         String inputFilePath = entity.getInputFilePath();

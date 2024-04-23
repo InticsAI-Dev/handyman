@@ -39,15 +39,13 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
     private final TemplateDetectionAction aAction;
     private final  String TEMPLATE_DETECTION = "TEMPLATE_DETECTION";
     private final int timeOut;
-    final List<ProcessAuditOutputTable> processAuditOutputTables;
 
-    public TemplateDetectionConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, TemplateDetectionAction aAction, List<ProcessAuditOutputTable> processAuditOutputTables) {
+    public TemplateDetectionConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, TemplateDetectionAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.aAction = aAction;
         this.timeOut = aAction.getTimeOut();
-        this.processAuditOutputTables = processAuditOutputTables;
         this.httpclient = new OkHttpClient.Builder()
                 .connectTimeout(this.timeOut, TimeUnit.MINUTES)
                 .writeTimeout(this.timeOut, TimeUnit.MINUTES)
@@ -57,7 +55,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
 
     @Override
-    public List<TemplateDetectionOutputTable> process(URL endpoint, TemplateDetectionInputTable entity) throws Exception {
+    public List<TemplateDetectionOutputTable> process(URL endpoint, TemplateDetectionInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
         List<TemplateDetectionOutputTable> outputObjectList = new ArrayList<>();
         List<String> attributes = entity.getQuestions();
@@ -105,7 +103,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-            tritonRequestBuilder(entity, request, objectMapper, outputObjectList, jsonRequest, endpoint);
+            tritonRequestBuilder(entity, request, objectMapper, outputObjectList, jsonRequest, endpoint,processAuditOutputTables);
         }
 
 
@@ -127,6 +125,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = response.body().string();
+            
             processOutputAudit.setRequest(jsonRequest);
             processOutputAudit.setResponse(responseBody);
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
@@ -178,7 +177,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         }
 
     }
-    private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList, String jsonInputRequest, URL endpoint) {
+    private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList, String jsonInputRequest, URL endpoint,List<ProcessAuditOutputTable> processAuditOutputTables) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
@@ -187,8 +186,11 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
-            processOutputAudit.setRequest(jsonInputRequest);
-            processOutputAudit.setResponse(responseBody);
+
+            processAuditOutputTables.add(ProcessAuditOutputTable.builder()
+                            .request(jsonInputRequest)
+                            .response(responseBody)
+                    .build());
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
 

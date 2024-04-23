@@ -134,7 +134,7 @@ public class DrugMatchAction implements IActionExecution {
     }
 
     @Override
-    public List<DrugMatchOutputTable> process(URL endpoint, DrugMatchInputTable result) throws Exception {
+    public List<DrugMatchOutputTable> process(URL endpoint, DrugMatchInputTable result,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
       log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, result);
       List<DrugMatchOutputTable> parentObj = new ArrayList<>();
       AtomicInteger atomicInteger = new AtomicInteger();

@@ -42,9 +42,9 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     private final int timeOut;
 
 
-    List<ProcessAuditOutputTable> processOutputAudit;
+    private final ProcessAuditOutputTable processOutputAudit = new ProcessAuditOutputTable();
 
-    public AutoRotationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir, AutoRotationAction aAction,List<ProcessAuditOutputTable> processOutputAudit) {
+    public AutoRotationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir, AutoRotationAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -52,12 +52,10 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         this.aAction = aAction;
         this.timeOut = aAction.getTimeOut();
         this.httpclient = new OkHttpClient.Builder().connectTimeout(this.timeOut, TimeUnit.MINUTES).writeTimeout(this.timeOut, TimeUnit.MINUTES).readTimeout(this.timeOut, TimeUnit.MINUTES).build();
-        this.processOutputAudit=processOutputAudit;
     }
 
-
     @Override
-    public List<AutoRotationOutputTable> process(URL endpoint, AutoRotationInputTable entity) throws IOException {
+    public List<AutoRotationOutputTable> process(URL endpoint, AutoRotationInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws IOException {
 
         List<AutoRotationOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
@@ -122,7 +120,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     }
     @Override
     public ProcessAuditOutputTable processAudit() throws Exception {
-        return null;
+        return processOutputAudit;
     }
     private void coproRequestBuider(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
@@ -134,33 +132,12 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                processOutputAudit.add(
-                        ProcessAuditOutputTable.builder()
-                                .originId(entity.getOriginId())
-                                .tenantId(tenantId)
-                                .batchId("1")
-                                .endpoint(String.valueOf(endpoint))
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .request(jsonRequest)
-                                .response(response.body().string())
-                                .stage(PROCESS_NAME)
-                                .message("Auto Rotation macro completed")
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .build());
+                processOutputAudit.setRequest(jsonRequest);
+                processOutputAudit.setResponse(responseBody);
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
                 log.info(aMarker, "Error in getting response {}", response.message());
-                processOutputAudit.add(
-                        ProcessAuditOutputTable.builder()
-                                .originId(entity.getOriginId())
-                                .tenantId(tenantId)
-                                .batchId("1")
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .stage(PROCESS_NAME)
-                                .message(response.message())
-                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                                .build());
             }
         } catch (Exception e) {
             parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
@@ -181,19 +158,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                processOutputAudit.add(
-                ProcessAuditOutputTable.builder()
-                        .originId(entity.getOriginId())
-                        .tenantId(tenantId)
-                        .batchId("1")
-                        .endpoint(String.valueOf(endpoint))
-                        .rootPipelineId(entity.getRootPipelineId())
-                        .request(jsonInputRequest)
-                        .response(responseBody)
-                        .stage(PROCESS_NAME)
-                        .message("Auto Rotation macro completed")
-                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                        .build());
+                processOutputAudit.setRequest(jsonInputRequest);
+                processOutputAudit.setRequest(responseBody);
                 AutoRotationModelResponse modelResponse = mapper.readValue(responseBody, AutoRotationModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -206,16 +172,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
             } else {
                 parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
                 log.info(aMarker, "Error in getting response {}", response.message());
-                processOutputAudit.add(
-                        ProcessAuditOutputTable.builder()
-                                .originId(entity.getOriginId())
-                                .tenantId(tenantId)
-                                .batchId("1")
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .stage(PROCESS_NAME)
-                                .message(response.message())
-                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                                .build());
+
         }
         } catch (Exception e) {
             parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());

@@ -67,7 +67,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     }
 
     @Override
-    public List<TableExtractionOutputTable> process(URL endpoint, TableExtractionInputTable entity) throws Exception {
+    public List<TableExtractionOutputTable> process(URL endpoint, TableExtractionInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, entity);
 
         List<TableExtractionOutputTable> parentObj = new ArrayList<>();

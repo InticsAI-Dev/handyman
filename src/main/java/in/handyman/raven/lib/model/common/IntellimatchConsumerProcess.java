@@ -57,7 +57,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
     @Override
-    public List<IntellimatchOutputTable> process(URL endpoint, IntellimatchInputTable result) throws Exception {
+    public List<IntellimatchOutputTable> process(URL endpoint, IntellimatchInputTable result,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, result);
         List<IntellimatchOutputTable> parentObj = new ArrayList<>();
         ObjectMapper objectMapper = new ObjectMapper();

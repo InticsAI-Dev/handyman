@@ -130,7 +130,7 @@ public class BlankPageRemoverAction implements IActionExecution {
 
         //7. overwrite the method process in coproprocessor, write copro api logic inside this method
         @Override
-        public List<BlankPageRemoverAction.BlankPageRemoverOutputTable> process(URL endpoint, BlankPageRemoverAction.BlankPageRemoverInputTable entity) throws JsonProcessingException {
+        public List<BlankPageRemoverAction.BlankPageRemoverOutputTable> process(URL endpoint, BlankPageRemoverAction.BlankPageRemoverInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws JsonProcessingException {
             List<BlankPageRemoverAction.BlankPageRemoverOutputTable> parentObj = new ArrayList<>();
             final ObjectNode objectNode = mapper.createObjectNode();
             objectNode.put("inputFilePath", entity.filePath);

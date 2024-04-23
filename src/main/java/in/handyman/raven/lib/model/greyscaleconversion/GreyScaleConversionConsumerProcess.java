@@ -51,7 +51,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
 
 
     @Override
-    public List<GreyScaleConversionOutputQuerySet> process(URL endpoint, GreyScaleConversionInputQuerySet entity) throws Exception {
+    public List<GreyScaleConversionOutputQuerySet> process(URL endpoint, GreyScaleConversionInputQuerySet entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
 
         List<GreyScaleConversionOutputQuerySet> parentObj = new ArrayList<>();

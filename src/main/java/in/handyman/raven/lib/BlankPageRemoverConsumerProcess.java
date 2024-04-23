@@ -46,7 +46,7 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
 
     //7. overwrite the method process in coproprocessor, write copro api logic inside this method
     @Override
-    public List<BlankPageRemoverOutputTable> process(URL endpoint, BlankPageRemoverInputTable entity) throws JsonProcessingException {
+    public List<BlankPageRemoverOutputTable> process(URL endpoint, BlankPageRemoverInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws JsonProcessingException {
         List<BlankPageRemoverOutputTable> parentObj = new ArrayList<>();
         final ObjectNode objectNode = mapper.createObjectNode();
         objectNode.put("inputFilePath", entity.getFilePath());

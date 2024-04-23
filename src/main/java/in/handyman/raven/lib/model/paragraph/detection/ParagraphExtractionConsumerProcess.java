@@ -54,7 +54,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
 
 
     @Override
-    public List<ParagraphQueryOutputTable> process(URL endpoint, ParagraphQueryInputTable entity) throws Exception {
+    public List<ParagraphQueryOutputTable> process(URL endpoint, ParagraphQueryInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
         List<ParagraphQueryOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
         String rootPipelineId = String.valueOf(entity.getRootPipelineId());

@@ -57,7 +57,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     }
 
     @Override
-    public List<HwClassificationOutputTable> process(URL endpoint, HwClassificationInputTable entity) throws Exception {
+    public List<HwClassificationOutputTable> process(URL endpoint, HwClassificationInputTable entity,List<ProcessAuditOutputTable> processAuditOutputTables) throws Exception {
 
         List<HwClassificationOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
