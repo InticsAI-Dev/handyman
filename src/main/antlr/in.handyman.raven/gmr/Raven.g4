@@ -158,6 +158,7 @@ action:
     |paragraphExtraction
     |bulletInExtraction
     |p2pNameValidation
+    |convertExcelToDatabase
     );
 
 
@@ -1175,6 +1176,14 @@ p2pNameValidation:
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
 
+convertExcelToDatabase:
+    'convert-excel-to-database' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'fileType' fileType=STRING
+    'target' targetConn=STRING
+    'using' '{'
+                        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;
