@@ -66,19 +66,19 @@ public class P2pNameValidationAction implements IActionExecution {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(p2pNameValidation.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-            log.info(aMarker, "p2p name concatenation action {} has been started", p2pNameValidation.getName());
+            log.info(aMarker, "p2p name concatenation action {} has been started " , p2pNameValidation.getName());
 
             final String insertQuery = "INSERT INTO " + p2pNameValidation.getOutputTable() +
                     "(origin_id, group_id, b_box, confidence_score, filter_score, maximum_score, extracted_value, " +
                     "paper_no, root_pipeline_id, tenant_id, sor_item_name) "
                     + " VALUES(?,?,?,?,?,?,?,?,?,?,?)";
-            log.info(aMarker, "p2p name concatenation insert querp2p name concatenation insert queryy {}", insertQuery);
+            log.info(aMarker, "p2p name concatenation insert query p2p name concatenation insert query {}", insertQuery);
 
             final List<URL> urls = Optional.ofNullable(p2pUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
                 try {
                     return new URL(urlItem);
                 } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL " + urlItem, e);
+                    log.error("Error in processing the URL {}" , urlItem, e);
                     throw new HandymanException("Error in processing the URL", e, actionExecutionAudit);
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
@@ -86,9 +86,9 @@ public class P2pNameValidationAction implements IActionExecution {
             final CoproProcessor<P2PNameValidationInputTable, P2PNameValidationOutputTable> coproProcessor = getP2PNameValidationInputTableP2PNameValidationOutputTableCoproProcessor(jdbi, urls);
             Thread.sleep(threadSleepTime);
 
-            final P2pNameValidationConsumerProcess p2pNameValidationConsumerProcess = new P2pNameValidationConsumerProcess(log, aMarker, this);
+            final P2pNameValidationConsumerProcess p2pNameValidationConsumerProcess = new P2pNameValidationConsumerProcess(actionExecutionAudit, log, aMarker, this);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, p2pNameValidationConsumerProcess);
-            log.info(aMarker, "P2P name concatenation action has been completed {}  ", p2pNameValidation.getName());
+            log.info(aMarker, "P2P name concatenation action has been completed {}  " , p2pNameValidation.getName());
         } catch (Exception e) {
             actionExecutionAudit.getContext().put(p2pNameValidation.getName() + ".isSuccessful", "false");
             log.error(aMarker, "error in execute method for p2p name concatenation ", e);

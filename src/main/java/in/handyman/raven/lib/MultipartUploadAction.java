@@ -89,40 +89,48 @@ public class MultipartUploadAction implements IActionExecution {
             final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multipartUpload.getQuerySet());
             formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(MultipartUploadInputTable.class).forEach(multipartUploadInputTables::add)));
 
-            if (!urls.isEmpty()) {
-                int endpointSize = urls.size();
-                log.info("Endpoints are not empty for multipart upload with nodes count {}", endpointSize);
+            if (!multipartUploadInputTables.isEmpty()) {
 
-                final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
-                final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
-                log.info("Total consumers {}", countDownLatch.getCount());
+                if (!urls.isEmpty()) {
+                    int endpointSize = urls.size();
+                    log.info("Endpoints are not empty for multipart upload with nodes count {}", endpointSize);
 
-                urls.forEach(url -> executorService.submit(() -> multipartUploadInputTables.forEach(multipartUploadInputTable -> {
+                    final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
+                    final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
+                    log.info("Total consumers {}", countDownLatch.getCount());
+
+                    urls.forEach(url -> executorService.submit(() -> multipartUploadInputTables.forEach(multipartUploadInputTable -> {
+                        try {
+                            uploadFile(url, multipartUploadInputTable);
+                        } catch (Exception e) {
+                            String filepath = multipartUploadInputTable.getFilepath();
+                            log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", filepath, e.getMessage());
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("Exception occurred in multipart upload for file - " + filepath, handymanException, this.action);
+                        } finally {
+                            log.info("Consumer {} completed the process", countDownLatch.getCount());
+                            countDownLatch.countDown();
+                        }
+                    })));
                     try {
-                        uploadFile(url, multipartUploadInputTable);
-                    } catch (Exception e) {
-                        String filepath = multipartUploadInputTable.getFilepath();
-                        log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", filepath, e.getMessage());
-                        HandymanException handymanException = new HandymanException(e);
-                        HandymanException.insertException("Exception occurred in multipart upload for file - " + filepath, handymanException, this.action);
+                        countDownLatch.await();
+                    } catch (InterruptedException e) {
+                        log.error("Consumer Interrupted with exception", e);
+                        throw new HandymanException("Error in Multipart upload execute method for mapping query set", e, action);
                     } finally {
-                        log.info("Consumer {} completed the process", countDownLatch.getCount());
-                        countDownLatch.countDown();
+                        executorService.shutdown();
                     }
-                })));
-                try {
-                    countDownLatch.await();
-                } catch (InterruptedException e) {
-                    log.error("Consumer Interrupted with exception", e);
-                    throw new HandymanException("Error in Multipart upload execute method for mapping query set", e, action);
+                } else {
+                    log.error(aMarker, "Endpoints for multipart upload is empty");
                 }
-            } else {
-                log.error(aMarker, "Endpoints for multipart upload is empty");
+            }
+            else {
+                log.info("Multipart upload input request list is empty");
             }
 
-        } catch (Exception e) {
-            throw new HandymanException("Error in Multipart upload", e, action);
-        }
+            } catch(Exception e){
+                throw new HandymanException("Error in Multipart upload", e, action);
+            }
     }
 
     public void uploadFile(URL endpoint, MultipartUploadInputTable entity) throws Exception {
@@ -151,9 +159,6 @@ public class MultipartUploadAction implements IActionExecution {
                 .post(requestBody)
                 .build();
 
-        if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters {} ,inputFilePath : {}", endpoint, inputFilePath);
-        }
 
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {

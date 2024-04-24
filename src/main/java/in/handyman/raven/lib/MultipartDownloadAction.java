@@ -94,34 +94,40 @@ public class MultipartDownloadAction implements IActionExecution {
             final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multipartDownload.getQuerySet());
             formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(DownloadOctetStreamFileInputTable.class).forEach(downloadOctetStreamFileInputTables::add)));
 
-            if (!urls.isEmpty()) {
-                int endpointSize = urls.size();
+            if (!downloadOctetStreamFileInputTables.isEmpty()) {
 
-                log.info("Endpoints are not empty for multipart download with nodes count {}", endpointSize);
-                final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
-                final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
-                log.info("Total consumers {}", countDownLatch.getCount());
+                if (!urls.isEmpty()) {
+                    int endpointSize = urls.size();
 
-                urls.forEach(url -> executorService.submit(() -> downloadOctetStreamFileInputTables.forEach(multipartUploadInputTable -> {
+                    log.info("Endpoints are not empty for multipart download with nodes count {}", endpointSize);
+                    final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
+                    final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
+                    log.info("Total consumers {}", countDownLatch.getCount());
+
+                    urls.forEach(url -> executorService.submit(() -> downloadOctetStreamFileInputTables.forEach(multipartUploadInputTable -> {
+                        try {
+                            downloadFile(url, multipartUploadInputTable);
+                        } catch (Exception e) {
+                            String filepath = multipartUploadInputTable.getFilepath();
+                            log.error(aMarker, "The Exception occurred in multipart file download for file {} with exception {}", filepath, e.getMessage());
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("Exception occurred in multipart download for file - " + filepath, handymanException, this.action);
+                        } finally {
+                            log.info("Consumer {} completed the process", countDownLatch.getCount());
+                            countDownLatch.countDown();
+                        }
+                    })));
                     try {
-                        downloadFile(url, multipartUploadInputTable);
-                    } catch (Exception e) {
-                        String filepath = multipartUploadInputTable.getFilepath();
-                        log.error(aMarker, "The Exception occurred in multipart file download for file {} with exception {}", filepath, e.getMessage());
-                        HandymanException handymanException = new HandymanException(e);
-                        HandymanException.insertException("Exception occurred in multipart download for file - " + filepath, handymanException, this.action);
-                    } finally {
-                        log.info("Consumer {} completed the process", countDownLatch.getCount());
-                        countDownLatch.countDown();
+                        countDownLatch.await();
+                    } catch (InterruptedException e) {
+                        log.error("Consumer Interrupted with exception", e);
                     }
-                })));
-                try {
-                    countDownLatch.await();
-                } catch (InterruptedException e) {
-                    log.error("Consumer Interrupted with exception", e);
+                } else {
+                    log.error(aMarker, "Endpoints for multipart download is empty");
                 }
-            } else {
-                log.error(aMarker, "Endpoints for multipart download is empty");
+            }
+            else {
+                log.info("Multipart download input request list is empty");
             }
         } catch (Exception t) {
             log.error(aMarker, "Error at Download OctetStream File execute method {}", ExceptionUtil.toString(t));

@@ -5,7 +5,6 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -22,8 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess<NerInputTable, NerOutputTable> {
-    private static final MediaType MediaTypeJSON = MediaType
-            .parse("application/json; charset=utf-8");
+
     public final ActionExecutionAudit action;
     private static final String HTTP_CLIENT_TIMEOUT = "100";
 
@@ -132,7 +130,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .sorItemId(sorItemId)
                             .sorItemName(sorKey)
                             .question(question)
-                            .answer(inputValue)
+                            .answer(result.getInputValue())
                             .vqaScore(vqaScore)
                             .weight(weight)
                             .createdUserId(createdUserId)
@@ -151,6 +149,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message("Ner validation macro completed")
                             .modelRegistry(modelRegistry)
                             .rootPipelineId(rootPipelineId)
+                            .category(result.getCategory())
                             .build());
 
 
@@ -167,7 +166,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .sorItemId(sorItemId)
                             .sorItemName(sorKey)
                             .question(question)
-                            .answer(inputValue)
+                            .answer(result.getInputValue())
                             .vqaScore(vqaScore)
                             .weight(weight)
                             .createdUserId(createdUserId)
@@ -186,6 +185,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message("Confidence Score is less than 0")
                             .modelRegistry(result.getModelRegistry())
                             .rootPipelineId(rootPipelineId)
+                            .category(result.getCategory())
                             .build());
             log.error(aMarker, "The Exception occurred in confidence score validation by {} ", valConfidenceScore);
         }
@@ -204,7 +204,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                 case "ner":
                     confidenceScore = this.nerAction.getNerScore(inputDetail, URI);
                     break;
-                case "alpha":
+               /* case "alpha":
                     confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
                     break;
                 case "alphanumeric":
@@ -221,7 +221,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                     break;
                 case "numeric_reg":
                     confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
-                    break;
+                    break;*/
             }
 
         } catch (Throwable t) {
@@ -237,7 +237,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private void updateEmptyValueForRestrictedAns(NerInputTable result, String inputValue) {
         if (multiverseValidator) {
-            log.info(aMarker, "Build 19-validator updatating for Restricted answer {}");
+            log.info(aMarker, "validator updating for Restricted answer {}", inputValue);
             for (String format : restrictedAnswers) {
                 if (inputValue.equalsIgnoreCase(format)) {
                     updateEmptyValueAndCf(result);
@@ -248,7 +248,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private void updateEmptyValueIfLowCf(NerInputTable result, double valConfidenceScore) {
         if (valConfidenceScore < 100 && multiverseValidator) {
-            log.info(aMarker, "Build 19-validator updateEmptyValueIfLowCf {}", valConfidenceScore);
+            log.info(aMarker, "validator updateEmptyValueIfLowCf {}", valConfidenceScore);
             updateEmptyValueAndCf(result);
         }
     }
