@@ -79,8 +79,8 @@ public class MultipartUploadAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multipartUpload.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Multipart Upload Action for {} has been started", multipartUpload.getName());
-            String endPointUrl = multipartUpload.getEndPoint();
-            final List<URL> urls = Optional.ofNullable(endPointUrl).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String endPoint = multipartUpload.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {

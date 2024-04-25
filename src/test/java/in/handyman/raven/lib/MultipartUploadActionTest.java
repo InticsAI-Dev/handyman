@@ -30,7 +30,7 @@ class MultipartUploadActionTest {
                 Map.entry("read.batch.size","5"),
                 Map.entry("gen_group_id.group_id","5"),
                 Map.entry("consumer.API.count","1"),
-                Map.entry("paper.itemizer.multipart.upload.url","http://127.0.0.1:8002/multipart-upload"),
+                Map.entry("paper.itemizer.multipart.upload.url","http://copro.paper.itemizer:10001/multipart-upload"),
                 Map.entry("write.batch.size","5")));
 
         MultipartUploadAction multipartUploadAction = new MultipartUploadAction(actionExecutionAudit, log, multipartUpload);
