@@ -16,6 +16,7 @@ class TrinityModelActionTest {
         TrinityModel trinityModel=TrinityModel.builder()
                 .name("DIE model testing")
                 .condition(true)
+                .responseAs("docnet_attribution_response_1234567")
                 .outputDir("/home/christopher.paulraj@zucisystems.com/Downloads/data/")
                 .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
