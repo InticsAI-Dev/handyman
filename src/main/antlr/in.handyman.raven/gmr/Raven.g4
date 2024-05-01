@@ -159,6 +159,7 @@ action:
     |paragraphExtraction
     |bulletInExtraction
     |p2pNameValidation
+    |dbBackupEase
     );
 
 
@@ -1180,6 +1181,15 @@ p2pNameValidation:
     'process-id' processId=STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+
+dbBackupEase:
+    'dbBackupEase' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
