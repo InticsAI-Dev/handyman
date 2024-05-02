@@ -16,12 +16,13 @@ public class TrinityModelPayload {
     private Long actionId;
     private String process;
     private String inputFilePath;
-    private List<String> attributes;
+    private List<TrinityInputAttribute> attributes;
     private String paperType;
-    private Integer paperNo;
+    private Long paperNo;
     private String originId;
     private Long processId;
-    private Integer groupId;
+    private Long groupId;
     private Long tenantId;
     private String modelRegistry;
+    private String qnCategory;
 }

@@ -23,10 +23,10 @@ class ScalarAdapterActionTest {
                         "                     si.validator_threshold , si.allowed_characters ,\n" +
                         "                     si.comparable_characters, si.restricted_adapter_flag,\n" +
                         "                     dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-                        "                     dp.created_user_id, dp.root_pipeline_id, dp.tenant_id,dp.b_box,dp.model_registry\n" +
+                        "                     dp.created_user_id, dp.root_pipeline_id, dp.tenant_id,dp.b_box,dp.model_registry, dp.category\n" +
                         "                     FROM sor_transaction.vqa_transaction dp\n" +
                         "                     JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-                        "                     WHERE dp.group_id = '23' AND si.allowed_adapter ='ner' AND dp.answer is not null" +
+                        "                     WHERE dp.group_id = '116' AND si.allowed_adapter ='ner' AND dp.answer is not null" +
                         " AND dp.sor_item_name ='patient_name';\n" +
                         "   ")
 

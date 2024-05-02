@@ -36,7 +36,7 @@ public class TrinityModelApiCaller {
                 .build();
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeTriton(TrinityModelLineItem asset, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
@@ -48,15 +48,20 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setActionId(actionId);
         trinityModelPayload.setProcess(trinityProcessName);
         trinityModelPayload.setRootPipelineId(rootpipelineId);
-        trinityModelPayload.setPaperType(paperType);
-        trinityModelPayload.setTenantId(tenantId);
-        trinityModelPayload.setAttributes(questions);
-        trinityModelPayload.setInputFilePath(inputPath);
-        trinityModelPayload.setModelRegistry(modelRegistry);
+        trinityModelPayload.setPaperType(asset.getPaperType());
+        trinityModelPayload.setTenantId(asset.getTenantId());
+        trinityModelPayload.setAttributes(asset.getAttributes());
+        trinityModelPayload.setInputFilePath(asset.getFilePath());
+        trinityModelPayload.setModelRegistry(asset.getModelRegistry());
+        trinityModelPayload.setOriginId(asset.getOriginId());
+        trinityModelPayload.setGroupId(asset.getGroupId());
+        trinityModelPayload.setPaperNo(asset.getPaperNo());
+        trinityModelPayload.setProcessId(asset.getProcessId());
+        trinityModelPayload.setQnCategory(asset.getQnCategory());
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
-        TritonRequest tritonRequest = getTritonRequestPaperType(paperType, modelRegistry, jsonInputRequest);
+        TritonRequest tritonRequest = getTritonRequestPaperType(asset.getPaperType(), asset.getModelRegistry(), jsonInputRequest);
 
 
         TrinityModelRequest trinityModelRequest = new TrinityModelRequest();
@@ -66,7 +71,7 @@ public class TrinityModelApiCaller {
 
         final Request request = new Request.Builder().url(node)
                 .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-        log.info("Request URL : {} Question List size {}", node, questions.size());
+        log.info("Request URL : {} Question List size {}", node, asset.getAttributes().size());
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
@@ -106,7 +111,7 @@ public class TrinityModelApiCaller {
         return tritonRequest;
     }
 
-    public String computeCopro(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeCopro(TrinityModelLineItem asset, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootPipelineId = action.getRootPipelineId();
@@ -118,18 +123,24 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setActionId(actionId);
         trinityModelPayload.setProcess(trinityProcessName);
         trinityModelPayload.setRootPipelineId(rootPipelineId);
-        trinityModelPayload.setPaperType(paperType);
-        trinityModelPayload.setAttributes(questions);
-        trinityModelPayload.setInputFilePath(inputPath);
-        trinityModelPayload.setModelRegistry(modelRegistry);
-        trinityModelPayload.setTenantId(tenantId);
+        trinityModelPayload.setPaperType(asset.getPaperType());
+        trinityModelPayload.setAttributes(asset.getAttributes());
+        trinityModelPayload.setInputFilePath(asset.getFilePath());
+        trinityModelPayload.setModelRegistry(asset.getModelRegistry());
+        trinityModelPayload.setTenantId(asset.getTenantId());
+        trinityModelPayload.setOriginId(asset.getOriginId());
+        trinityModelPayload.setGroupId(asset.getGroupId());
+        trinityModelPayload.setPaperNo(asset.getPaperNo());
+        trinityModelPayload.setProcessId(asset.getProcessId());
+        trinityModelPayload.setQnCategory(asset.getQnCategory());
+
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
         final Request request = new Request.Builder().url(node)
                 .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-        log.info("Request URL : {} Question List size {}", node, questions.size());
+        log.info("Request URL : {} Question List size {}", node);
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {

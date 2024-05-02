@@ -15,11 +15,19 @@ import java.util.List;
 @Builder
 public class TrinityModelDataItem {
     private List<TrinityModelDataLineItem> attributes;
+    private String inputFilePath;
     private Integer imageDPI;
     private Integer imageWidth;
     private Integer imageHeight;
     private String extractedImageUnit;
-    private String inputFilePath;
-    private Long tenantId;
+    private String qnCategory;
 
+    private String modelRegistry;
+    private String paperType;
+    private String originId;
+    private Long processId;
+    private Long paperNo;
+    private Long groupId;
+    private Long tenantId;
+    private Long rootPipelineId;
 }

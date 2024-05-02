@@ -50,19 +50,27 @@ class TrinityModelActionTest {
                 .name("DIE model testing")
                 .condition(true)
                 .outputDir("/data/output/")
-                .requestUrl("http://triton.copro.valuation.printed:8900/v2/models/argon-vqa-service/versions/1/infer")
+                .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("SELECT 'what is name' as question, '/data/resized.jpg' as file_path,'Printed' as paperType;")
-                .responseAs("sor_transaction_tqa_123456")
+                .questionSql("SELECT jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)) as attributes, \n" +
+                        "a.file_path,a.paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.category as qn_category , a.root_pipeline_id, 1 as process_id \n" +
+                        "FROM macro.sor_transaction_final_tqa_audit a\n" +
+                        "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=a.origin_id\n" +
+                        "where a.model_registry = 'ARGON' and a.category = 'PRIMARY'\n" +
+                        "and a.tenant_id = 1 and st.group_id='244'\n" +
+                        "group by a.file_path, a.paper_type, a.model_registry,a.origin_id, a.paper_no , a.tenant_id,a.group_id ,a.category, a.root_pipeline_id LIMIT 1;\n")
+                .responseAs("vqa_transaction")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.trinity-attribution.printed.url","http://triton.copro.valuation.printed:8900/v2/models/argon-vqa-service/versions/1/infer");
         actionExecutionAudit.getContext().put("okhttp.client.timeout","20");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
+        actionExecutionAudit.getContext().put("action_id", "1");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.setRootPipelineId(12345678L);
+        actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
                 Map.entry("tenant_id","1"),
