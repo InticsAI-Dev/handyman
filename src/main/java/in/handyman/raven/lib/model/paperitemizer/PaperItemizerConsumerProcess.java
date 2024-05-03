@@ -94,7 +94,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, objectMapper, parentObj);
+            tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -160,7 +160,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
 
-    private void tritonRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj) {
+    private void tritonRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -179,7 +179,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                 PaperItemizerResponse paperItemizerResponse = objectMapper.readValue(responseBody, PaperItemizerResponse.class);
                 if (paperItemizerResponse.getOutputs() != null && !paperItemizerResponse.getOutputs().isEmpty()) {
                     paperItemizerResponse.getOutputs().forEach(o -> o.getData().forEach(paperItemizerDataItem ->
-                            extractedOutputRequest(entity, objectMapper, parentObj, paperItemizerResponse.getModelName(), paperItemizerResponse.getModelVersion(), paperItemizerDataItem)
+                            extractedOutputRequest(entity, objectMapper, parentObj, paperItemizerResponse.getModelName(), paperItemizerResponse.getModelVersion(), paperItemizerDataItem, jsonInputRequest, responseBody, endpoint.toString())
                     ));
                 }
 
@@ -222,7 +222,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private void extractedOutputRequest(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem) {
+    private void extractedOutputRequest(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem, String request, String response, String endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -254,6 +254,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build());
             }
 

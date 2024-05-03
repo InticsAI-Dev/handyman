@@ -103,7 +103,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproRequestBuider(entity, request, parentObj);
+            coproRequestBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
             tritonRequestBuilder(entity, request, parentObj);
@@ -113,7 +113,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
         return parentObj;
     }
 
-    private void coproRequestBuider(GreyScaleConversionInputQuerySet entity, Request request, List<GreyScaleConversionOutputQuerySet> parentObj) {
+    private void coproRequestBuider(GreyScaleConversionInputQuerySet entity, Request request, List<GreyScaleConversionOutputQuerySet> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -123,7 +123,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
                 log.info(aMarker, "Error in getting response {}", response.message());
@@ -203,7 +203,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void extractedCoproOutputResponse(GreyScaleConversionInputQuerySet entity, String greyScaleConversionDataItemStr, List<GreyScaleConversionOutputQuerySet> parentObj, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(GreyScaleConversionInputQuerySet entity, String greyScaleConversionDataItemStr, List<GreyScaleConversionOutputQuerySet> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -229,6 +229,9 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                     .rootPipelineId(rootPipelineId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonProcessingException e) {
             parentObj.add(GreyScaleConversionOutputQuerySet.builder()

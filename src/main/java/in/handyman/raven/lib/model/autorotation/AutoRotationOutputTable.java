@@ -31,11 +31,14 @@ public class AutoRotationOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String modelName;
     private String modelVersion;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processId, this.processedFilePath
-                , this.paperNo, this.status, this.stage, this.message, this.createdOn, this.rootPipelineId, this.modelName, this.modelVersion).collect(Collectors.toList());
+                , this.paperNo, this.status, this.stage, this.message, this.createdOn, this.rootPipelineId, this.modelName, this.modelVersion, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

@@ -33,10 +33,13 @@ public class GreyScaleConversionOutputQuerySet implements CoproProcessor.Entity 
     private String modelName;
     private String modelVersion;
     private boolean isColor;
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processId, this.processedFilePath
-                , this.paperNo, this.status, this.stage, this.message, this.createdOn, this.rootPipelineId, this.modelName, this.modelVersion, this.inputFilePath, this.isColor).collect(Collectors.toList());
+                , this.paperNo, this.status, this.stage, this.message, this.createdOn, this.rootPipelineId, this.modelName, this.modelVersion, this.inputFilePath, this.isColor, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

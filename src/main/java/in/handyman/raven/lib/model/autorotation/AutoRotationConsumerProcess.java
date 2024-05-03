@@ -110,7 +110,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
             coproRequestBuilder(entity, request, parentObj);
         } else {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -141,7 +141,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         }
     }
 
-    private void tritonRequestBuilder(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj) {
+    private void tritonRequestBuilder(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj, String jsonInputrequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -155,7 +155,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(autoRotationDataItem -> {
-                        extractOuputDataRequest(entity, autoRotationDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractOuputDataRequest(entity, autoRotationDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonInputrequest, responseBody, endpoint.toString());
                     }));
 
                 }
@@ -173,7 +173,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         }
     }
 
-    private void extractOuputDataRequest(AutoRotationInputTable entity, String autoRotationDataItem, List<AutoRotationOutputTable> parentObj, String modelName, String modelVersion) {
+    private void extractOuputDataRequest(AutoRotationInputTable entity, String autoRotationDataItem, List<AutoRotationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -196,7 +196,10 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
                             .rootPipelineId(autoRotationFilePath.getRootPipelineId())
                             .modelName(modelName)
                             .modelVersion(modelVersion)
-                        .build());
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
+                            .build());
         } catch (JsonProcessingException e) {
 
             parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());

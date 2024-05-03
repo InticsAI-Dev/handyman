@@ -101,13 +101,13 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request);
+            tritonRequestBuilder(entity, parentObj, request,jsonRequest, endpoint);
         }
 
         return parentObj;
     }
 
-    private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request) {
+    private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, String jsonRequest, URL endpoint) {
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
 
@@ -124,7 +124,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(zeroShotClassifierDataItem -> {
 
-                            extractedOutputDataRequest(entity, parentObj, zeroShotClassifierDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
+                            extractedOutputDataRequest(entity, parentObj, zeroShotClassifierDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, String.valueOf(endpoint));
                         });
                     });
                 }
@@ -206,7 +206,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         }
     }
 
-    private static void extractedOutputDataRequest(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+    private static void extractedOutputDataRequest(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
 
         Long rootPipelineId = entity.getRootPipelineId();
 
@@ -231,6 +231,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
+                        .request(request)
+                        .response(response)
+                        .endpoint(endpoint)
                         .build());
             });
         } catch (JsonProcessingException e) {

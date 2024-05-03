@@ -53,8 +53,8 @@ public class GreyScaleConversionAction implements IActionExecution {
     public static final String WRITE_BATCH_SIZE = "write.batch.size";
     public static final String THREAD_SLEEP_TIME = "1000";
     public static final String INSERT_INTO = "INSERT INTO";
-    public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,input_file_path,is_color";
-    public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,input_file_path,is_color,request,response,endpoint";
+    public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     public static final String READ_BATCH_SIZE = "read.batch.size";
     private final int threadSleepTime;
     private final Integer consumerApiCount;

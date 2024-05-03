@@ -101,7 +101,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-            tritonRequestBuilder(entity, request, objectMapper, outputObjectList);
+            tritonRequestBuilder(entity, request, objectMapper, outputObjectList, jsonRequest, endpoint);
         }
 
 
@@ -167,7 +167,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     }
 
-    private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
+    private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList, String jsonRequest, URL endpoint) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
@@ -181,7 +181,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                 TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
 
                 if (templateDetectionResponse.getOutputs() != null && !templateDetectionResponse.getOutputs().isEmpty()) {
-                    templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper)));
+                    templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper, jsonRequest, responseBody, String.valueOf(endpoint))));
                 } else {
                     outputObjectList.add(
                             TemplateDetectionOutputTable.builder()
@@ -244,7 +244,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void extractOutputDataRequest(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
+    private void extractOutputDataRequest(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper, String request, String response, String endpoint) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
@@ -282,6 +282,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .modelVersion(modelVersion)
                                 .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build()
                 );
             });
