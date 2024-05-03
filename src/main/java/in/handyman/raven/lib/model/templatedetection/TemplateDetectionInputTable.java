@@ -20,13 +20,13 @@ public class TemplateDetectionInputTable implements CoproProcessor.Entity {
     private String templateId;
     private Long processId;
     private Long rootPipelineId;
-    private List<String> questions;
+    private String questions;
 
-    public List<String> getQuestions() {
+    public String getQuestions() {
         return questions;
     }
 
-    public void setQuestions(List<String> questions) {
+    public void setQuestions(String questions) {
         this.questions = questions;
     }
 

@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.templatedetection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -8,6 +9,7 @@ import in.handyman.raven.lambda.doa.audit.ExecutionStatus;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.TemplateDetectionAction;
 import in.handyman.raven.lib.model.templatedetection.copro.TemplateDetectionDataItemCopro;
+import in.handyman.raven.lib.model.trinitymodel.TrinityInputAttribute;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
@@ -56,13 +58,16 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
     @Override
     public List<TemplateDetectionOutputTable> process(URL endpoint, TemplateDetectionInputTable entity) throws Exception {
 
+        ObjectMapper objectMapper = new ObjectMapper();
         List<TemplateDetectionOutputTable> outputObjectList = new ArrayList<>();
-        List<String> attributes = entity.getQuestions();
+
+        List<TrinityInputAttribute> attributes = attributeList(objectMapper, entity.getQuestions());
+
         String inputFilePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
         Long actionId = action.getActionId();
 
-        ObjectMapper objectMapper = new ObjectMapper();
+
 
 
         //payload
@@ -78,6 +83,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         templateDetectionDataInput.setProcessId(entity.getProcessId());
         templateDetectionDataInput.setGroupId(entity.getGroupId());
         templateDetectionDataInput.setTenantId(entity.getTenantId());
+        templateDetectionDataInput.setModelRegistry("ARGON");
+        templateDetectionDataInput.setQnCategory("PRIMARY");
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 
@@ -167,6 +174,11 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     }
 
+    private List<TrinityInputAttribute> attributeList(ObjectMapper objectMapper, String jsonString)throws JsonProcessingException{
+        List<TrinityInputAttribute> customObjects = objectMapper.readValue(jsonString, new TypeReference<>() {
+        });
+        return customObjects;
+    }
     private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -178,7 +190,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
+                    TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
 
                 if (templateDetectionResponse.getOutputs() != null && !templateDetectionResponse.getOutputs().isEmpty()) {
                     templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper)));
@@ -261,8 +273,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
                 outputObjectList.add(
                         TemplateDetectionOutputTable.builder()
-                                .processId(attribute.getProcessId())
-                                .tenantId(attribute.getTenantId())
+                                .processId(templateDetectionDataItem.getProcessId())
+                                .tenantId(templateDetectionDataItem.getTenantId())
                                 .templateId(templateId)
                                 .predictedAttributionValue(predictedAttributionValue)
                                 .question(question)
@@ -272,9 +284,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .imageDPI(templateDetectionDataItem.getImageDPI())
                                 .extractedImageUnit(templateDetectionDataItem.getExtractedImageUnit())
                                 .rootPipelineId(entity.getRootPipelineId())
-                                .groupId(attribute.getGroupId())
-                                .originId(attribute.getOriginId())
-                                .paperNo(attribute.getPaperNo())
+                                .groupId(templateDetectionDataItem.getGroupId())
+                                .originId(templateDetectionDataItem.getOriginId())
+                                .paperNo(templateDetectionDataItem.getPaperNo())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .status(ExecutionStatus.COMPLETED.toString())
                                 .stage(TEMPLATE_DETECTION)
