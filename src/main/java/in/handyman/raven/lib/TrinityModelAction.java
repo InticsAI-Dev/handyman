@@ -269,7 +269,7 @@ public class TrinityModelAction implements IActionExecution {
 
             log.info(aMarker, "completed {}", trinityModelDataItem.getAttributes().size());
             jdbi.useTransaction(handle -> {
-                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
+                final PreparedBatch batch = handle.prepareBatch("INSERT INTO " + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
                         "VALUES(:tenantId,:groupId, :scores, :originId, :paperNo, :sorItemName, :answer, :sorQuestion,:bBoxes::json, " +
                         ":imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry," +
                         " :qnCategory );");
@@ -324,7 +324,7 @@ public class TrinityModelAction implements IActionExecution {
 
             log.info(aMarker, "completed {}", trinityModelDataItem.getAttributes().size());
             jdbi.useTransaction(handle -> {
-                final PreparedBatch batch = handle.prepareBatch("INSERT INTO macro." + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
+                final PreparedBatch batch = handle.prepareBatch("INSERT INTO " + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
                         "VALUES(:tenantId,:groupId, :scores, :originId, :paperNo, :sorItemName, :answer, :sorQuestion,:bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry, :qnCategory );");
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
