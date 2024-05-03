@@ -100,9 +100,9 @@ public class TrinityModelAction implements IActionExecution {
             ObjectMapper objectMapper1 = new ObjectMapper();
 
             for (TrinityModelQueryResult trinityModelQueryResult : trinityModelQueryResults) {
-                final List<TrinityInputAttribute> attribute = attributeList(objectMapper1, trinityModelQueryResult.getAttributes() );
+                final List<TrinityInputAttribute> attributes = attributeList(objectMapper1, trinityModelQueryResult.getAttributes() );
                 requestTrinityModelLineItems.add(TrinityModelLineItem.builder()
-                        .attributes(attribute)
+                        .attributes(attributes)
                         .filePath(trinityModelQueryResult.getFilePath())
                         .paperType(trinityModelQueryResult.getPaperType())
                         .modelRegistry(trinityModelQueryResult.getModelRegistry())
@@ -114,6 +114,7 @@ public class TrinityModelAction implements IActionExecution {
                         .rootPipelineId(trinityModelQueryResult.getRootPipelineId())
                         .processId(trinityModelQueryResult.getProcessId())
                         .build());
+                log.info(aMarker,"Input Query Result got- {} ", trinityModelQueryResult);
             }
 
 //            Map<String, Map<String, List<TrinityModelQueryResult>>> listTrinityModelQueryResult = trinityModelQueryResults.stream().collect(Collectors.groupingBy(TrinityModelQueryResult::getFilePath, Collectors.groupingBy(TrinityModelQueryResult::getPaperType)));
@@ -298,7 +299,7 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("sorItemName", resultLineItem.getSorItemName())
                                 .bind("rootPipelineId", trinityModelDataItem.getRootPipelineId())
                                 .add();
-
+                        log.info(aMarker, "Output triton response bind: {}, {}", trinityModelDataItem, resultLineItem);
                     });
                     try{
                         int[] counts = batch.execute();
@@ -352,7 +353,7 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("sorItemName", resultLineItem.getSorItemName())
                                 .bind("rootPipelineId", trinityModelDataItem.getRootPipelineId())
                                 .add();
-
+                        log.info(aMarker, "Output copro response bind: {}, {}", trinityModelDataItem, resultLineItem);
                     });
                     try{
                         int[] counts = batch.execute();
