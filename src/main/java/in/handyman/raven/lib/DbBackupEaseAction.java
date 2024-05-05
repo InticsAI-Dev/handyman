@@ -14,7 +14,6 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.time.format.DateTimeFormatter;
@@ -60,10 +59,11 @@ public class DbBackupEaseAction implements IActionExecution {
     public void execute() throws Exception {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbBackupEase.getResourceConn());
         jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-        log.info(aMarker, "database backup action {} has been started ", dbBackupEase.getName());
+        log.info(aMarker, "Database backup action {} has been started ", dbBackupEase.getName());
 
         final List<DataBaseBackupInputTable> dataBaseBackupInput = new ArrayList<>();
 
+        // Execute SQL queries to get backup information
         jdbi.useTransaction(handle -> {
             final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(dbBackupEase.getQuerySet());
             AtomicInteger atomicInteger = new AtomicInteger(0);
@@ -77,24 +77,47 @@ public class DbBackupEaseAction implements IActionExecution {
             });
         });
 
-        // creating file name for database backup
+        // Create file name for the database backup
         final String fileName = action.getContext().get("database.backup.file.name");
-        final String filenameWithDateTime = fileName + "_" +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")) + ".sql";
+        final String originalFileName = fileName + "_" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss")) + ".sql";
 
-        final List<String> allBackupSchemaList = new ArrayList<>();
-        final List<String> allRestrictedSchemaList = new ArrayList<>();
+        // Get backup schemas and construct backup command
+        List<String> allBackupSchemaList = getAllBackupSchemas(dataBaseBackupInput);
+        String backupCommand = constructBackupCommand(allBackupSchemaList);
+        log.info(aMarker, "Backup command: {}", backupCommand);
+
+        try {
+            // Execute backup command using ProcessBuilder
+            Process process = new ProcessBuilder()
+                    .command("bash", "-c", backupCommand + " > " + originalFileName)
+                    .start();
+            // Wait for the process to finish
+            process.waitFor();
+            // Check the exit status
+            int exitCode = process.exitValue();
+            if (exitCode == 0) {
+                log.info(aMarker, "Backup successful. Dump file saved as {}", originalFileName);
+            } else {
+                log.error(aMarker, "Backup failed. Exit code: {}", exitCode);
+            }
+        } catch (IOException | InterruptedException e) {
+            // Log the exception
+            log.error(aMarker, "Error during backup:", e);
+        }
+
+    }
+
+    private List<String> getAllBackupSchemas(List<DataBaseBackupInputTable> dataBaseBackupInput) {
+        List<String> allBackupSchemaList = new ArrayList<>();
+        List<String> allRestrictedSchemaList = new ArrayList<>();
 
         dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
-            final String outputDir = Optional.ofNullable(dataBaseBackupInputTable.getTargetDirectory()).map(String::valueOf).orElse("[]");
-            log.info(aMarker, "file path string {}", outputDir);
-
             // Collect backup schema list
             List<String> backupSchemaList = dataBaseBackupInputTable.getBackupSchemaList();
             if (backupSchemaList != null && !backupSchemaList.isEmpty()) {
                 allBackupSchemaList.addAll(backupSchemaList);
             }
-
             // Collect restricted schema list
             List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
             if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
@@ -102,33 +125,23 @@ public class DbBackupEaseAction implements IActionExecution {
             }
             allBackupSchemaList.removeAll(allRestrictedSchemaList);
         });
+        return allBackupSchemaList;
+    }
 
-        // creating command for backup to execute code
-        String schemaNames = String.join(",", allBackupSchemaList);
 
-        // Build the command to execute pg_dump for all schemas
-        String command = "pg_dump -U username -d dbname -n " + schemaNames + filenameWithDateTime;
+    private String constructBackupCommand(List<String> backupSchemas) {
+        // Add additional options if needed
+        String additionalOptions = "-U postgres -d zio_pipeline -h localhost -p 5432";
 
-        try {
-            // Execute the command using ProcessBuilder
-            Process process = new ProcessBuilder()
-                    .command("bash", "-c", command)
-                    .start();
-            // Wait for the process to finish
-            process.waitFor();
-            // Check the exit status
-            int exitCode = process.exitValue();
-            if (exitCode == 0) {
-                System.out.println("Backup of schemas " + schemaNames + " successful");
-            } else {
-                System.out.println("Backup of schemas " + schemaNames + " failed");
-            }
-        } catch (IOException | InterruptedException e) {
-            // Log the exception
-            e.printStackTrace();
+        // Construct schema options
+        StringBuilder schemaOptionsBuilder = new StringBuilder();
+        for (String schema : backupSchemas) {
+            schemaOptionsBuilder.append("-n ").append(schema).append(" ");
         }
+        String schemaOptions = schemaOptionsBuilder.toString().trim();
 
-
+        // Construct the full command
+        return String.format("docker exec pedantic_lovelace sh -c 'pg_dump %s %s'", additionalOptions, schemaOptions);
     }
 
 
