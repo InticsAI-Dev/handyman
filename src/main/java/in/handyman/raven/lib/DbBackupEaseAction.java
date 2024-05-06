@@ -32,6 +32,7 @@ import org.jdbi.v3.core.argument.NullArgument;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -96,7 +97,9 @@ public class DbBackupEaseAction implements IActionExecution {
                     constructBackupCommandExcludeDb(dataBaseBackupInput, action, dbBackupEase);
 
             final boolean resultBool = executeBackupCommand(backupCommand, originalFileName);
-            long fileSize = Files.size(Paths.get(originalFileName));
+
+            final String formattedFileSize = getFormattedFileSize(originalFileName);
+
             final List<String> allRestrictedSchemaList = new ArrayList<>();
             dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
                 // Collect restricted schema list
@@ -105,11 +108,26 @@ public class DbBackupEaseAction implements IActionExecution {
                     allRestrictedSchemaList.addAll(restrictedSchemaList);
                 }
             });
-            handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, fileSize, resultBool,
+            handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, formattedFileSize, resultBool,
                     fileNameWithDate, outputDir, dataBaseBackupInput);
         } catch (IOException ioException) {
             log.error(aMarker, "Error while creating directory or executing backup:", ioException);
         }
+    }
+
+    private static @NotNull String getFormattedFileSize(String originalFileName) throws IOException {
+        // getting backup file size
+        long fileSize = Files.size(Paths.get(originalFileName));
+        double fileSizeInMB = (double) fileSize / (1024 * 1024);
+
+        String formattedFileSize;
+        if (fileSizeInMB >= 1024) {
+            double fileSizeInGB = fileSizeInMB / 1024;
+            formattedFileSize = String.format("%.3f GB", fileSizeInGB);
+        } else {
+            formattedFileSize = String.format("%.3f MB", fileSizeInMB);
+        }
+        return formattedFileSize;
     }
 
     private boolean executeBackupCommand(String backupCommand, String originalFileName) {
@@ -189,11 +207,11 @@ public class DbBackupEaseAction implements IActionExecution {
     }
 
     private void handleResponse(Jdbi jdbi, List<String> allBackupSchemaList,
-                                List<String> allRestrictedSchemaList, Long fileSize, boolean resultBool,
+                                List<String> allRestrictedSchemaList, String fileSize, boolean resultBool,
                                 String originalFileName, String outputDir, List<DataBaseBackupInputTable> dataBaseBackupInputTable) {
         final DataBaseBackupOutputTable dataBaseBackupOutputTable = new DataBaseBackupOutputTable();
         String backupStatus = resultBool ? "SUCCESS" : "FAILED";
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime localDateTime = LocalDateTime.now();
 
         dataBaseBackupInputTable.forEach(dataBaseBackupInputTableMap -> {
             dataBaseBackupOutputTable.setGroupId(dataBaseBackupInputTableMap.getGroupId());
@@ -203,7 +221,7 @@ public class DbBackupEaseAction implements IActionExecution {
             dataBaseBackupOutputTable.setDataBaseBackupStatus(backupStatus);
             dataBaseBackupOutputTable.setBackupSchemaList(allBackupSchemaList);
             dataBaseBackupOutputTable.setRestrictedSchemaList(allRestrictedSchemaList);
-            dataBaseBackupOutputTable.setCreatedOn(now);
+            dataBaseBackupOutputTable.setCreatedOn(localDateTime);
             dataBaseBackupOutputTable.setDbBackupDirPath(outputDir);
             dataBaseBackupOutputTable.setDbBackupFileName(originalFileName);
             dataBaseBackupOutputTable.setDbBackupFileSize(fileSize);
@@ -258,7 +276,7 @@ public class DbBackupEaseAction implements IActionExecution {
         private List<String> restrictedSchemaList;
         private String dbBackupFileName;
         private String dbBackupDirPath;
-        private Long dbBackupFileSize;
+        private String dbBackupFileSize;
     }
 
 
