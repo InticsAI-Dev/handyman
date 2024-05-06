@@ -16,7 +16,7 @@ class ScalarAdapterActionTest {
                 .name("scalar adapter for docnut attribution")
                 .processID("1234567")
                 .resultSet("SELECT dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
-                        "si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'16144' as process_id,\n" +
+                        "si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'${init_process_id.process_id}' as process_id,\n" +
                         "si.word_limit , si.word_threshold ,\n" +
                         "si.char_limit , si.char_threshold ,\n" +
                         "si.validator_threshold , si.allowed_characters ,\n" +
@@ -25,10 +25,9 @@ class ScalarAdapterActionTest {
                         "dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id\n" +
                         "FROM sor_transaction.vqa_transaction dp\n" +
                         "JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-                        "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=dp.origin_id\n" +
-                        "where dp.root_pipeline_id =38434 and dp.group_id = '69' AND si.allowed_adapter !='ner'\n" +
-                        "AND dp.answer is not null and dp.tenant_id = 81 and dp.batch_id = 'BATCH-69_0'\n" +
-                        "limit 10\n")
+                        "join sor_transaction.sor_transaction_payload_queue st on st.origin_id=dp.origin_id\n" +
+                        "WHERE dp.group_id = '2298' AND si.allowed_adapter !='ner'\n" +
+                        "AND dp.answer is not null and dp.tenant_id = 81;\n")
 
                 .resourceConn("intics_zio_db_conn")
 

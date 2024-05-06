@@ -21,11 +21,12 @@ class TrinityModelActionTest {
                 .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql(" SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
-                        "a.model_registry as model_registry, a.tenant_id, a.batch_id \n" +
+                .questionSql("SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
+                        "a.model_registry as model_registry, a.tenant_id, a.batch_id\n" +
                         "FROM macro.sor_transaction_tqa_audit a\n" +
                         "where a.document_type='Printed' and a.model_registry = 'XENON'\n" +
-                        "and a.root_pipeline_id = '4705' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id ;\n ")
+                        "and a.root_pipeline_id = '38136' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id\n" +
+                        "limit 1")
                 .responseAs("sor_transaction_tqa_49254")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
@@ -61,8 +62,8 @@ class TrinityModelActionTest {
                         "a.model_registry as model_registry, a.tenant_id, a.batch_id\n" +
                         "FROM macro.sor_transaction_tqa_audit a\n" +
                         "where a.document_type='Printed' and a.model_registry = 'ARGON'\n" +
-                        "and a.root_pipeline_id = '23063'\n" +
-                        "group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id ;\n")
+                        "and a.root_pipeline_id = '38136' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id\n" +
+                        "limit 1")
                 .responseAs("docnet_attribution_response_123")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
