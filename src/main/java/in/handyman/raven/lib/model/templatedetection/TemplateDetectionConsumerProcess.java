@@ -85,6 +85,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         templateDetectionDataInput.setTenantId(entity.getTenantId());
         templateDetectionDataInput.setModelRegistry("ARGON");
         templateDetectionDataInput.setQnCategory("PRIMARY");
+        templateDetectionDataInput.setModelRegistryId(entity.getModelRegistryId());
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 

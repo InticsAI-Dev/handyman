@@ -26,5 +26,5 @@ public class TemplateDetectionData {
     private Long tenantId;
     private String modelRegistry;
     private String qnCategory;
-
+    private Long modelRegistryId;
 }

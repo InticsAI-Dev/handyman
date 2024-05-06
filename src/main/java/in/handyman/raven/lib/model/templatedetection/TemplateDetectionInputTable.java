@@ -21,6 +21,7 @@ public class TemplateDetectionInputTable implements CoproProcessor.Entity {
     private Long processId;
     private Long rootPipelineId;
     private String questions;
+    private Long modelRegistryId;
 
     public String getQuestions() {
         return questions;
@@ -93,6 +94,10 @@ public class TemplateDetectionInputTable implements CoproProcessor.Entity {
     public void setRootPipelineId(Long rootPipelineId) {
         this.rootPipelineId = rootPipelineId;
     }
+
+    public Long getModelRegistryId() {return modelRegistryId; }
+
+    public void setModelRegistryId(Long modelRegistryId) { this.modelRegistryId = modelRegistryId; }
 
     @Override
     public List<Object> getRowData() {

@@ -38,9 +38,10 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String modelName;
     private String modelVersion;
+    private Long modelRegistryId;
 
 
-    public TemplateDetectionOutputTable(String originId, Integer groupId, Long tenantId, String templateId, Long processId, String processedFilePath,  Integer paperNo, String status, String stage, String message, Timestamp createdOn, Long rootPipelineId) {
+    public TemplateDetectionOutputTable(String originId, Integer groupId, Long tenantId, String templateId, Long processId, String processedFilePath,  Integer paperNo, String status, String stage, String message, Timestamp createdOn, Long rootPipelineId, Long modelRegistryId) {
         this.originId = originId;
         this.groupId = groupId;
         this.tenantId = tenantId;
@@ -55,6 +56,7 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
         this.rootPipelineId = rootPipelineId;
         this.modelName = modelName;
         this.modelVersion = modelVersion;
+        this.modelRegistryId = modelRegistryId;
     }
 
     public String getOriginId() {
@@ -153,10 +155,12 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
         this.rootPipelineId = rootPipelineId;
     }
 
+    public void setModelRegistryId(Long modelRegistryId) {this.modelRegistryId = modelRegistryId;}
+
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.processId, this.originId, this.paperNo,this.groupId
                 ,this.processedFilePath,this.question, this.predictedAttributionValue,this.scores,this.bboxes
-                ,this.imageWidth,this.imageHeight,this.imageDPI,this.extractedImageUnit,this.tenantId,this.templateId,this.status,this.stage,this.message,this.createdOn,this.rootPipelineId,this.modelName, this.modelVersion).collect(Collectors.toList());
+                ,this.imageWidth,this.imageHeight,this.imageDPI,this.extractedImageUnit,this.tenantId,this.templateId,this.status,this.stage,this.message,this.createdOn,this.rootPipelineId,this.modelName, this.modelVersion, this.modelRegistryId).collect(Collectors.toList());
     }
 }

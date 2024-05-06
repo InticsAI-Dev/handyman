@@ -53,18 +53,19 @@ class TemplateDetectionActionTest {
                 .ouputTable("macro.template_detection_response_12345")
                 .resourceConn("intics_zio_db_conn")
                 .processId("12345")
-                .querySet("\tselect  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/244/preprocess/autorotation/auto_rotation/SYNT_166838894_c6_1.jpg' as file_path, 1 as tenant_id,\n" +
+                .querySet("\tselect  'INT-1' as origin_id , 1 as paper_no ,1 as group_id ,1 as model_registry_id, '/data/output/244/preprocess/autorotation/auto_rotation/SYNT_166838894_c6_1.jpg' as file_path, 1 as tenant_id,\n" +
                                 "                        'TMP-1' as template_id ,\n" +
                                 "                        134 as process_id ,12435 as root_pipeline_id , \n" +
-                                "                        '[{\"question\": \"Find out the template name\", \"synonym_id\": 114, \"question_id\": 244, \"sor_item_name\": \"template_name\"},\n" +
-                                "                         {\"question\": \"what is the biggest word in the document\", \"synonym_id\": 114, \"question_id\": 248, \"sor_item_name\": \"template_name\"},\n" +
-                                "                         {\"question\": \"what is pharmacy\", \"synonym_id\": 114, \"question_id\": 627, \"sor_item_name\": \"template_name\"}]'  as questions"
+                                "                        '[{\"question\": \"Find out the template name\", \"synonymId\": 114, \"questionId\": 244, \"sorItemName\": \"template_name\"},\n" +
+                                "                         {\"question\": \"what is the biggest word in the document\", \"synonymId\": 114, \"questionId\": 248, \"sorItemName\": \"template_name\"},\n" +
+                                "                         {\"question\": \"what is pharmacy\", \"synonymId\": 114, \"questionId\": 627, \"sorItemName\": \"template_name\"}]'  as questions"
                         )
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.template.detection.url","http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer");
         actionExecutionAudit.setProcessId(138980079308730208L);
+        actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
                 Map.entry("triton.request.activator", "true"),
