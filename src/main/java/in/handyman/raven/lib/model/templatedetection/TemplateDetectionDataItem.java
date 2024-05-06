@@ -30,4 +30,5 @@ public class TemplateDetectionDataItem {
     private Integer groupId;
     private Long tenantId;
     private Long rootPipelineId;
+    private Long modelRegistryId;
 }
