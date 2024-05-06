@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
@@ -10,6 +11,8 @@ import java.io.IOException;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -17,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.time.format.DateTimeFormatter;
+import java.util.stream.Stream;
 
 import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
@@ -27,6 +31,7 @@ import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -71,22 +76,43 @@ public class DbBackupEaseAction implements IActionExecution {
                 log.info(aMarker, "Executing query {} from index {}", sqlToExecute, atomicInteger.getAndIncrement());
                 Query query = handle.createQuery(sqlToExecute);
                 ResultIterable<DataBaseBackupInputTable> dataBaseBackupInputTables = query.mapToBean(DataBaseBackupInputTable.class);
-                List<DataBaseBackupInputTable> dataBaseBackupInputTableList = dataBaseBackupInputTables.stream().collect(Collectors.toList());
-                dataBaseBackupInput.addAll(dataBaseBackupInputTableList);
+                dataBaseBackupInput.addAll(dataBaseBackupInputTables.stream().collect(Collectors.toList()));
                 log.info(aMarker, "Executed query from index {}", atomicInteger.get());
             });
         });
 
         // Create file name for the database backup
-        final String fileName = action.getContext().get("database.backup.file.name");
-        final String originalFileName = fileName + "_" +
+        final String outputDir = dataBaseBackupInput.get(0).getTargetDirectory();
+        final String fileNameWithDate = action.getContext().get("database.backup.file.name") + "_" +
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss")) + ".sql";
+        final String originalFileName = outputDir + fileNameWithDate;
 
-        // Get backup schemas and construct backup command
-        List<String> allBackupSchemaList = getAllBackupSchemas(dataBaseBackupInput);
-        String backupCommand = constructBackupCommand(allBackupSchemaList);
-        log.info(aMarker, "Backup command: {}", backupCommand);
+        try {
+            Files.createDirectories(Paths.get(outputDir));
+            // Get backup schemas and construct backup command
+            final List<String> allBackupSchemaList = getAllBackupSchemas(dataBaseBackupInput);
+            String backupCommand = !allBackupSchemaList.isEmpty() ?
+                    constructBackupCommandBySchema(allBackupSchemaList, action, dbBackupEase) :
+                    constructBackupCommandExcludeDb(dataBaseBackupInput, action, dbBackupEase);
 
+            final boolean resultBool = executeBackupCommand(backupCommand, originalFileName);
+            long fileSize = Files.size(Paths.get(originalFileName));
+            final List<String> allRestrictedSchemaList = new ArrayList<>();
+            dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
+                // Collect restricted schema list
+                List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
+                if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
+                    allRestrictedSchemaList.addAll(restrictedSchemaList);
+                }
+            });
+            handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, fileSize, resultBool,
+                    fileNameWithDate, outputDir, dataBaseBackupInput);
+        } catch (IOException ioException) {
+            log.error(aMarker, "Error while creating directory or executing backup:", ioException);
+        }
+    }
+
+    private boolean executeBackupCommand(String backupCommand, String originalFileName) {
         try {
             // Execute backup command using ProcessBuilder
             Process process = new ProcessBuilder()
@@ -100,48 +126,106 @@ public class DbBackupEaseAction implements IActionExecution {
                 log.info(aMarker, "Backup successful. Dump file saved as {}", originalFileName);
             } else {
                 log.error(aMarker, "Backup failed. Exit code: {}", exitCode);
+                return false;
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException exception) {
             // Log the exception
-            log.error(aMarker, "Error during backup:", e);
+            log.error(aMarker, "Error during backup:", exception);
         }
-
+        return true;
     }
 
     private List<String> getAllBackupSchemas(List<DataBaseBackupInputTable> dataBaseBackupInput) {
-        List<String> allBackupSchemaList = new ArrayList<>();
-        List<String> allRestrictedSchemaList = new ArrayList<>();
+        List<String> allRestrictedSchemaList = dataBaseBackupInput.stream()
+                .filter(inputTable -> inputTable.getRestrictedSchemaList() != null)
+                .flatMap(inputTable -> inputTable.getRestrictedSchemaList().stream())
+                .collect(Collectors.toList());
 
-        dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
-            // Collect backup schema list
-            List<String> backupSchemaList = dataBaseBackupInputTable.getBackupSchemaList();
-            if (backupSchemaList != null && !backupSchemaList.isEmpty()) {
-                allBackupSchemaList.addAll(backupSchemaList);
-            }
-            // Collect restricted schema list
-            List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
-            if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
-                allRestrictedSchemaList.addAll(restrictedSchemaList);
-            }
-            allBackupSchemaList.removeAll(allRestrictedSchemaList);
-        });
-        return allBackupSchemaList;
+        return dataBaseBackupInput.stream()
+                .flatMap(inputTable -> {
+                    if (inputTable.getBackupSchemaList() != null) {
+                        return inputTable.getBackupSchemaList().stream()
+                                .filter(schema -> !allRestrictedSchemaList.contains(schema));
+                    } else {
+                        return Stream.empty();
+                    }
+                })
+                .distinct()
+                .collect(Collectors.toList());
     }
 
 
-    private String constructBackupCommand(List<String> backupSchemas) {
-        // Add additional options if needed
-        String additionalOptions = "-U postgres -d zio_pipeline -h localhost -p 5432";
+    private String constructBackupCommandBySchema(List<String> backupSchemas, ActionExecutionAudit action, DbBackupEase dbBackupEase) {
+        String additionalOptions = getAdditionalOptions(action, dbBackupEase);
+        String schemaOptions = backupSchemas.stream()
+                .map(schema -> "-n " + schema)
+                .collect(Collectors.joining(" "));
 
-        // Construct schema options
-        StringBuilder schemaOptionsBuilder = new StringBuilder();
-        for (String schema : backupSchemas) {
-            schemaOptionsBuilder.append("-n ").append(schema).append(" ");
-        }
-        String schemaOptions = schemaOptionsBuilder.toString().trim();
+        return String.format(getCommandFormat(), additionalOptions, schemaOptions);
+    }
 
-        // Construct the full command
-        return String.format("docker exec pedantic_lovelace sh -c 'pg_dump %s %s'", additionalOptions, schemaOptions);
+    private String constructBackupCommandExcludeDb(List<DataBaseBackupInputTable> dataBaseBackupInput, ActionExecutionAudit action, DbBackupEase dbBackupEase) {
+        String additionalOptions = getAdditionalOptions(action, dbBackupEase);
+        String restrictedSchemas = dataBaseBackupInput.stream()
+                .filter(inputTable -> inputTable.getRestrictedSchemaList() != null) // Null check
+                .flatMap(inputTable -> inputTable.getRestrictedSchemaList().stream())
+                .map(schema -> "-N " + schema)
+                .collect(Collectors.joining(" "));
+
+        return String.format(getCommandFormat(), additionalOptions, restrictedSchemas);
+    }
+
+
+    private String getCommandFormat() {
+        return "docker exec " + action.getContext().get("db.docker.container.name.value") +
+                " sh -c 'pg_dump %s %s'";
+    }
+
+    private String getAdditionalOptions(ActionExecutionAudit action, DbBackupEase dbBackupEase) {
+        return " -U " + action.getContext().get("db.docker.user.name") +
+                " -d " + dbBackupEase.getDataBaseName() +
+                " -h " + action.getContext().get("db.docker.host.value") +
+                " -p " + action.getContext().get("db.docker.port.value");
+    }
+
+    private void handleResponse(Jdbi jdbi, List<String> allBackupSchemaList,
+                                List<String> allRestrictedSchemaList, Long fileSize, boolean resultBool,
+                                String originalFileName, String outputDir, List<DataBaseBackupInputTable> dataBaseBackupInputTable) {
+        final DataBaseBackupOutputTable dataBaseBackupOutputTable = new DataBaseBackupOutputTable();
+        String backupStatus = resultBool ? "SUCCESS" : "FAILED";
+        LocalDateTime now = LocalDateTime.now();
+
+        dataBaseBackupInputTable.forEach(dataBaseBackupInputTableMap -> {
+            dataBaseBackupOutputTable.setGroupId(dataBaseBackupInputTableMap.getGroupId());
+            dataBaseBackupOutputTable.setRootPipelineId(dataBaseBackupInputTableMap.getRootPipelineId());
+            dataBaseBackupOutputTable.setProcessId(dataBaseBackupInputTableMap.getProcessId());
+            dataBaseBackupOutputTable.setTenantId(dataBaseBackupInputTableMap.getTenantId());
+            dataBaseBackupOutputTable.setDataBaseBackupStatus(backupStatus);
+            dataBaseBackupOutputTable.setBackupSchemaList(allBackupSchemaList);
+            dataBaseBackupOutputTable.setRestrictedSchemaList(allRestrictedSchemaList);
+            dataBaseBackupOutputTable.setCreatedOn(now);
+            dataBaseBackupOutputTable.setDbBackupDirPath(outputDir);
+            dataBaseBackupOutputTable.setDbBackupFileName(originalFileName);
+            dataBaseBackupOutputTable.setDbBackupFileSize(fileSize);
+
+            try {
+                jdbi.useHandle(handle -> {
+                    String sql = "INSERT INTO sanitary_hub.db_data_backup_audit (" +
+                            "created_on, db_backup_status, process_id, root_pipeline_id, group_id, tenant_id, backup_schema_list, " +
+                            "restricted_schema_list, db_backup_file_path, db_backup_file_name, backup_file_size) " +
+                            "VALUES (:createdOn, :dataBaseBackupStatus, :processId, :rootPipelineId, :groupId, :tenantId, " +
+                            ":backupSchemaList, :restrictedSchemaList, :dbBackupDirPath, :dbBackupFileName, :dbBackupFileSize)";
+
+                    handle.createUpdate(sql)
+                            .bindBean(dataBaseBackupOutputTable)
+                            .execute();
+                });
+            } catch (UnableToExecuteStatementException exception) {
+                log.error(aMarker, "Exception occurred in database backup audit insert: {}", exception.getMessage(), exception);
+                HandymanException handymanException = new HandymanException(exception);
+                HandymanException.insertException("Exception occurred in database backup audit insert for the file -  " + dataBaseBackupOutputTable.getDbBackupFileName(), handymanException, this.action);
+            }
+        });
     }
 
 
@@ -152,6 +236,11 @@ public class DbBackupEaseAction implements IActionExecution {
         private List<String> backupSchemaList;
         private List<String> restrictedSchemaList;
         private String targetDirectory;
+        private String originId;
+        private Integer groupId;
+        private Long tenantId;
+        private Long processId;
+        private Long rootPipelineId;
     }
 
     @AllArgsConstructor
@@ -161,9 +250,10 @@ public class DbBackupEaseAction implements IActionExecution {
 
         private LocalDateTime createdOn;
         private String dataBaseBackupStatus;
-        private Integer processId;
-        private Integer rootPipelineId;
-        private Integer tenantId;
+        private Long processId;
+        private Long rootPipelineId;
+        private Long tenantId;
+        private Integer groupId;
         private List<String> backupSchemaList;
         private List<String> restrictedSchemaList;
         private String dbBackupFileName;

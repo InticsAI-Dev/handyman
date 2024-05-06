@@ -21,12 +21,22 @@ class DbBackupEaseActionTest {
                 .dataBaseName("zio_pipeline")
                 .auditTable("sanitary_hub.db_data_backup_audit")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("SELECT ARRAY['info', 'sor_transaction', 'paper_classification', 'urgency_triage'] AS backupSchemaList,\n" +
-                        "       ARRAY['audit', 'sor_meta'] AS restrictedSchemaList,\n" +
-                        "       '/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/' AS targetDirectory;\n")
+                .querySet("SELECT \n" +
+                        "    ARRAY['info', 'sor_transaction', 'paper_classification', 'urgency_triage'] AS backupSchemaList,\n" +
+                        "    ARRAY['audit', 'sor_transaction'] AS restrictedSchemaList,\n" +
+                        "    '/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/' AS targetDirectory,\n" +
+                        "    1 AS groupId,\n" +
+                        "    1 AS tenantId,\n" +
+                        "    1112 AS processId,\n" +
+                        "    52732 AS rootPipelineId;\n")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("database.backup.file.name", "pg_dump_file");
+        actionExecutionAudit.getContext().put("allow.backup.by.schema", "false");
+        actionExecutionAudit.getContext().put("db.docker.user.name", "postgres");
+        actionExecutionAudit.getContext().put("db.docker.host.value", "localhost");
+        actionExecutionAudit.getContext().put("db.docker.port.value", "5432");
+        actionExecutionAudit.getContext().put("db.docker.container.name.value", "pedantic_lovelace");
         DbBackupEaseAction dbBackupEaseAction = new DbBackupEaseAction(actionExecutionAudit, log, dataBaseModel);
         dbBackupEaseAction.execute();
     }
@@ -61,6 +71,58 @@ class DbBackupEaseActionTest {
         } else {
             System.out.println("Output file does not exist");
         }
+    }
+
+    @Test
+    void executeDb() throws Exception {
+        DbBackupEase dataBaseModel = DbBackupEase.builder()
+                .name("database backup pipeline")
+                .condition(true)
+                .dataBaseName("zio_pipeline")
+                .auditTable("sanitary_hub.db_data_backup_audit")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("SELECT '/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/' AS targetDirectory,\n" +
+                        "    1 AS groupId,\n" +
+                        "    1 AS tenantId,\n" +
+                        "    1112 AS processId,\n" +
+                        "    52732 AS rootPipelineId;\n")
+                .build();
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().put("database.backup.file.name", "pg_dump_file");
+        actionExecutionAudit.getContext().put("allow.backup.by.schema", "false");
+        actionExecutionAudit.getContext().put("db.docker.user.name", "postgres");
+        actionExecutionAudit.getContext().put("db.docker.host.value", "localhost");
+        actionExecutionAudit.getContext().put("db.docker.port.value", "5432");
+        actionExecutionAudit.getContext().put("db.docker.container.name.value", "pedantic_lovelace");
+        DbBackupEaseAction dbBackupEaseAction = new DbBackupEaseAction(actionExecutionAudit, log, dataBaseModel);
+        dbBackupEaseAction.execute();
+    }
+
+    @Test
+    void executeBackupSchema() throws Exception {
+        DbBackupEase dataBaseModel = DbBackupEase.builder()
+                .name("database backup pipeline")
+                .condition(true)
+                .dataBaseName("zio_pipeline")
+                .auditTable("sanitary_hub.db_data_backup_audit")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("SELECT \n" +
+                        "    ARRAY['info', 'sor_transaction', 'paper_classification', 'urgency_triage'] AS backupSchemaList," +
+                        "   '/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/' AS targetDirectory,\n" +
+                        "    1 AS groupId,\n" +
+                        "    1 AS tenantId,\n" +
+                        "    1112 AS processId,\n" +
+                        "    52732 AS rootPipelineId;\n")
+                .build();
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().put("database.backup.file.name", "pg_dump_file");
+        actionExecutionAudit.getContext().put("allow.backup.by.schema", "false");
+        actionExecutionAudit.getContext().put("db.docker.user.name", "postgres");
+        actionExecutionAudit.getContext().put("db.docker.host.value", "localhost");
+        actionExecutionAudit.getContext().put("db.docker.port.value", "5432");
+        actionExecutionAudit.getContext().put("db.docker.container.name.value", "pedantic_lovelace");
+        DbBackupEaseAction dbBackupEaseAction = new DbBackupEaseAction(actionExecutionAudit, log, dataBaseModel);
+        dbBackupEaseAction.execute();
     }
 
 }
