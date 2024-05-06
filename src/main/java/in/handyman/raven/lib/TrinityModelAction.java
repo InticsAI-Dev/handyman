@@ -273,7 +273,7 @@ public class TrinityModelAction implements IActionExecution {
             jdbi.useTransaction(handle -> {
                 final PreparedBatch batch = handle.prepareBatch("INSERT INTO " + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
                         "VALUES(now(), :tenantId,now(),:tenantId, :tenantId,:groupId, :scores, :originId, :paperNo, :sorItemName, :answer, :sorQuestion,:bBoxes::json, " +
-                        ":imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry," +
+                        ":imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry,:modelRegistryId," +
                         " :qnCategory );");
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
@@ -329,7 +329,7 @@ public class TrinityModelAction implements IActionExecution {
             jdbi.useTransaction(handle -> {
                 final PreparedBatch batch = handle.prepareBatch("INSERT INTO " + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
                         "VALUES(now(), :tenantId,now(),:tenantId,:tenantId,:groupId, :scores, :originId, :paperNo, :sorItemName, :answer, :sorQuestion," +
-                        ":bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry, :qnCategory );");
+                        ":bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry, :modelRegistryId, :qnCategory );");
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
                     resultLineItems.forEach(resultLineItem -> {
