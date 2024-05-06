@@ -25,4 +25,5 @@ public class TrinityModelPayload {
     private Long tenantId;
     private String modelRegistry;
     private String qnCategory;
+    private Long modelRegistryId;
 }

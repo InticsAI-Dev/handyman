@@ -53,7 +53,7 @@ class TrinityModelActionTest {
                 .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("SELECT jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)) as attributes, \n" +
+                .questionSql("SELECT (jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)))::varchar as attributes, \n" +
                         "a.file_path,a.paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.category as qn_category , a.root_pipeline_id, 1 as process_id \n" +
                         "FROM macro.sor_transaction_final_tqa_audit a\n" +
                         "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=a.origin_id\n" +

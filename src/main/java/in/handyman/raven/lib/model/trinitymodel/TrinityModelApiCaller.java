@@ -58,6 +58,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setPaperNo(asset.getPaperNo());
         trinityModelPayload.setProcessId(asset.getProcessId());
         trinityModelPayload.setQnCategory(asset.getQnCategory());
+        trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
@@ -133,6 +134,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setPaperNo(asset.getPaperNo());
         trinityModelPayload.setProcessId(asset.getProcessId());
         trinityModelPayload.setQnCategory(asset.getQnCategory());
+        trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
 
 
 
