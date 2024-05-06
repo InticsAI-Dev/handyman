@@ -56,7 +56,7 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(zeroShotClassifierPaperFilter.getResourceConn());
+           final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(zeroShotClassifierPaperFilter.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Phrase match paper filter Action for {} has been started", zeroShotClassifierPaperFilter.getName());
             final String processId = Optional.ofNullable(zeroShotClassifierPaperFilter.getProcessID()).map(String::valueOf).orElse(null);

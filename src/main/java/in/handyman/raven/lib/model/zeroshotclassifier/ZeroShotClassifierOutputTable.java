@@ -25,9 +25,7 @@ import java.util.stream.Stream;
         private String entity;
 
         private String status;
-
         private String stage;
-
         private String message;
         private Long rootPipelineId;
         private String modelName;

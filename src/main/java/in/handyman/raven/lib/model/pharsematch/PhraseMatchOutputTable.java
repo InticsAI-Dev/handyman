@@ -31,13 +31,17 @@ public class PhraseMatchOutputTable implements CoproProcessor.Entity {
     private String modelName;
     private String modelVersion;
     private Long tenantId;
+    private String request;
+    private String response;
+    private String endpoint;
+
 
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.paperNo, this.truthEntity, this.entity,
-                this.isKeyPresent, this.status, this.stage, this.message,this.rootPipelineId,this.modelName, this.modelVersion,this.tenantId).collect(Collectors.toList());
+                this.isKeyPresent, this.status, this.stage, this.message,this.rootPipelineId,this.modelName, this.modelVersion,this.tenantId, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }
 

@@ -101,7 +101,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -172,7 +172,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     }
 
 
-    private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj) {
+    private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -190,7 +190,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     hwDetectionResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(hwDetectionDataItem -> {
                             try {
-                                extractOutputDataRequest(entity, hwDetectionDataItem, parentObj, hwDetectionResponse.getModelName(), hwDetectionResponse.getModelVersion());
+                                extractOutputDataRequest(entity, hwDetectionDataItem, parentObj, hwDetectionResponse.getModelName(), hwDetectionResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                             } catch (JsonProcessingException e) {
                                 throw new HandymanException("Handwritten classification failed in processing response", e);
                             }
@@ -239,7 +239,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         }
     }
 
-    private void extractOutputDataRequest(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
+    private void extractOutputDataRequest(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         String templateId = entity.getTemplateId();
@@ -265,6 +265,9 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
                 .build());
     }
 
