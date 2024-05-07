@@ -94,7 +94,7 @@ public class DbBackupEaseAction implements IActionExecution {
             final List<String> allBackupSchemaList = getAllBackupSchemas(dataBaseBackupInput);
             String backupCommand = !allBackupSchemaList.isEmpty() ?
                     constructBackupCommandBySchema(allBackupSchemaList, action, dbBackupEase) :
-                    constructBackupCommandExcludeDb(dataBaseBackupInput, action, dbBackupEase);
+                    constructBackupCommandExcludeSchema(dataBaseBackupInput, action, dbBackupEase);
 
             final boolean resultBool = executeBackupCommand(backupCommand, originalFileName);
 
@@ -182,7 +182,7 @@ public class DbBackupEaseAction implements IActionExecution {
         return String.format(getCommandFormat(), additionalOptions, schemaOptions);
     }
 
-    private String constructBackupCommandExcludeDb(List<DataBaseBackupInputTable> dataBaseBackupInput, ActionExecutionAudit action, DbBackupEase dbBackupEase) {
+    private String constructBackupCommandExcludeSchema(List<DataBaseBackupInputTable> dataBaseBackupInput, ActionExecutionAudit action, DbBackupEase dbBackupEase) {
         String additionalOptions = getAdditionalOptions(action, dbBackupEase);
         String restrictedSchemas = dataBaseBackupInput.stream()
                 .filter(inputTable -> inputTable.getRestrictedSchemaList() != null) // Null check
