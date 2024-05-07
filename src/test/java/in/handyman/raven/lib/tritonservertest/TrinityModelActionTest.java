@@ -54,13 +54,13 @@ class TrinityModelActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
                 .questionSql("SELECT (jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)))::varchar as attributes, \n" +
-                        "a.file_path,a.paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.category as qn_category , a.root_pipeline_id, 1 as process_id \n" +
+                        "a.file_path,a.paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.category as qn_category , a.root_pipeline_id, 1 as process_id , 1 as model_registry_id\n" +
                         "FROM macro.sor_transaction_final_tqa_audit a\n" +
                         "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=a.origin_id\n" +
                         "where a.model_registry = 'ARGON' and a.category = 'PRIMARY'\n" +
-                        "and a.tenant_id = 1 and st.group_id='244'\n" +
+                        "and a.tenant_id = 1 and st.group_id='297'\n" +
                         "group by a.file_path, a.paper_type, a.model_registry,a.origin_id, a.paper_no , a.tenant_id,a.group_id ,a.category, a.root_pipeline_id LIMIT 1;\n")
-                .responseAs("vqa_transaction")
+                .responseAs("sor_transaction.vqa_transaction")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
