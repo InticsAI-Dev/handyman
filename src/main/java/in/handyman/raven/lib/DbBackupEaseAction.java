@@ -254,7 +254,6 @@ public class DbBackupEaseAction implements IActionExecution {
         private List<String> backupSchemaList;
         private List<String> restrictedSchemaList;
         private String targetDirectory;
-        private String originId;
         private Integer groupId;
         private Long tenantId;
         private Long processId;
