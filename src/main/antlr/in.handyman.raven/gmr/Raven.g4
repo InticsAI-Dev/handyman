@@ -160,6 +160,7 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |dbBackupEase
+    |dbDataDart
     );
 
 
@@ -1193,6 +1194,15 @@ dbBackupEase:
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
+
+dbDataDart:
+    'dbDataDart' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
 
 //rules
 
