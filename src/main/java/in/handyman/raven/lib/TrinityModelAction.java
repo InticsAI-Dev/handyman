@@ -40,9 +40,9 @@ public class TrinityModelAction implements IActionExecution {
     //public static final String CREATE_TABLE_COLUMN = "id bigserial not null, file_path text,question text, predicted_attribution_value text , score float8 NULL, b_box json null, image_dpi int8 null, image_width int8 null, image_height int8 null, extracted_image_unit varchar null, action_id bigint, root_pipeline_id bigint,process_id bigint, created_on timestamp not null default now(),status varchar NULL,stage varchar NULL ,paper_type varchar NULL,tenant_id int8 null, model_registry varchar NULL,model_name varchar null,model_version varchar null, synonym_id int null, question_id int null";
     //public static final String CREATE_ERROR_TABLE_COLUMN = "id bigserial not null, file_path text,error_message text,  action_id bigint, root_pipeline_id bigint,process_id bigint, created_on timestamp not null default now() ,tenant_id int8 null";
 
-    public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id, vqa_score, origin_id, paper_no, sor_item_name, answer, sor_question, b_box, image_dpi, image_width, image_height, extracted_image_unit, root_pipeline_id, question_id, synonym_id, model_registry,model_registry_id, category";
+    public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id, vqa_score, origin_id, paper_no, sor_item_name, answer, sor_question, b_box, image_dpi, image_width, image_height, extracted_image_unit, root_pipeline_id, question_id, synonym_id, model_registry,model_registry_id, category, status, stage";
     public static final String CREATE_TABLE_COLUMN = "created_on timestamp NOT NULL,created_user_id varchar(255) NOT NULL,last_updated_on timestamp NULL,last_updated_user_id varchar(255) NULL,transaction_id bigserial NOT NULL,tenant_id int8 NULL,  group_id int4 null,vqa_score numeric(10, 2) NULL,origin_id varchar(255) NOT NULL, paper_no int4 NOT NULL," +
-            " sor_item_name varchar(255) NOT NULL,answer text NULL, sor_question varchar(255) NOT NULL, b_box varchar null, image_dpi int8 NULL,image_width int8 NULL, image_height int8 NULL,extracted_image_unit varchar NULL,root_pipeline_id int8 NULL,          question_id int8 null, synonym_id int8 null, model_registry varchar NULL, model_registry_id int8 NULL, category text NULL";
+            " sor_item_name varchar(255) NOT NULL,answer text NULL, sor_question varchar(255) NOT NULL, b_box varchar null, image_dpi int8 NULL,image_width int8 NULL, image_height int8 NULL,extracted_image_unit varchar NULL,root_pipeline_id int8 NULL,          question_id int8 null, synonym_id int8 null, model_registry varchar NULL, model_registry_id int8 NULL, category text NULL,status varchar NULL,stage varchar NULL";
     public static final String CREATE_ERROR_TABLE_COLUMN = "id bigserial not null, file_path text,error_message text, action_id bigint, root_pipeline_id bigint,process_id bigint, created_on timestamp not null default now() ,tenant_id int8 null";
     private final ActionExecutionAudit action;
 
@@ -274,7 +274,7 @@ public class TrinityModelAction implements IActionExecution {
                 final PreparedBatch batch = handle.prepareBatch("INSERT INTO " + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
                         "VALUES(now(), :tenantId,now(),:tenantId, :tenantId,:groupId, :scores, :originId, :paperNo, :sorItemName, :answer, :sorQuestion,:bBoxes::json, " +
                         ":imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry,:modelRegistryId," +
-                        " :qnCategory );");
+                        " :qnCategory , :status, :stage);");
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
                     resultLineItems.forEach(resultLineItem -> {
@@ -300,6 +300,8 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("sorItemName", resultLineItem.getSorItemName())
                                 .bind("rootPipelineId", trinityModelDataItem.getRootPipelineId())
                                 .bind("modelRegistryId", trinityModelDataItem.getModelRegistryId())
+                                .bind("status", "COMPLETED")
+                                .bind("stage", "VQA_TRANSACTION")
                                 .add();
                         log.info(aMarker, "Output triton response bind: {}, {}", trinityModelDataItem, resultLineItem);
                     });
@@ -329,7 +331,7 @@ public class TrinityModelAction implements IActionExecution {
             jdbi.useTransaction(handle -> {
                 final PreparedBatch batch = handle.prepareBatch("INSERT INTO " + trinityModel.getResponseAs() + " (" + COLUMN_LIST + ") " +
                         "VALUES(now(), :tenantId,now(),:tenantId,:tenantId,:groupId, :scores, :originId, :paperNo, :sorItemName, :answer, :sorQuestion," +
-                        ":bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry, :modelRegistryId, :qnCategory );");
+                        ":bBoxes::json, :imageDpi, :imageWidth, :imageHeight , :extractedImageUnit, :rootPipelineId, :questionId, :synonymId, :modelRegistry, :modelRegistryId, :qnCategory , :status, :stage);");
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
                     resultLineItems.forEach(resultLineItem -> {
@@ -355,6 +357,8 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("sorItemName", resultLineItem.getSorItemName())
                                 .bind("rootPipelineId", trinityModelDataItem.getRootPipelineId())
                                 .bind("modelRegistryId", trinityModelDataItem.getModelRegistryId())
+                                .bind("status", "COMPLETED")
+                                .bind("stage", "VQA_TRANSACTION")
                                 .add();
                         log.info(aMarker, "Output copro response bind: {}, {}", trinityModelDataItem, resultLineItem);
                     });
