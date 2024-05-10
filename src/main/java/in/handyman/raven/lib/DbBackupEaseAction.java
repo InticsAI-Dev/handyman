@@ -206,12 +206,13 @@ public class DbBackupEaseAction implements IActionExecution {
                 " -p " + action.getContext().get("db.docker.port.value");
     }
 
-    private void handleResponse(Jdbi jdbi, List<String> allBackupSchemaList,
-                                List<String> allRestrictedSchemaList, String fileSize, boolean resultBool,
-                                String originalFileName, String outputDir, List<DataBaseBackupInputTable> dataBaseBackupInputTable) {
+    private void handleResponse(final Jdbi jdbi, final List<String> allBackupSchemaList,
+                                final List<String> allRestrictedSchemaList, final String fileSize, boolean resultBool,
+                                final String originalFileName, final String outputDir, final List<DataBaseBackupInputTable> dataBaseBackupInputTable) {
+
         final DataBaseBackupOutputTable dataBaseBackupOutputTable = new DataBaseBackupOutputTable();
-        String backupStatus = resultBool ? "SUCCESS" : "FAILED";
-        LocalDateTime localDateTime = LocalDateTime.now();
+        final String backupStatus = resultBool ? "SUCCESS" : "FAILED";
+        final LocalDateTime localDateTime = LocalDateTime.now();
 
         dataBaseBackupInputTable.forEach(dataBaseBackupInputTableMap -> {
             dataBaseBackupOutputTable.setGroupId(dataBaseBackupInputTableMap.getGroupId());

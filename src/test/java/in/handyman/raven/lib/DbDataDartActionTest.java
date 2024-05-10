@@ -18,13 +18,14 @@ class DbDataDartActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .querySet("SELECT \n" +
                         "    ARRAY['paper_classification', 'urgency_triage'] AS truncateSchemaList,\n" +
-                        "    ARRAY['paper_classification.paper_classification_result', 'urgency_triage.ut_model_result'] AS excludeTableWithSchemaList,\n" +
+                        "    ARRAY['urgency_triage.ut_model_result'] AS excludeTableWithSchemaList,\n" +
                         "    1 AS groupId,\n" +
                         "    1 AS tenantId,\n" +
                         "    1112 AS processId,\n" +
                         "    52732 AS rootPipelineId;\n")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().put("db.truncate.exclude.table.list", "true");
         DbDataDartAction dbDataDartAction = new DbDataDartAction(actionExecutionAudit, log, dbDataDart);
         dbDataDartAction.execute();
     }
