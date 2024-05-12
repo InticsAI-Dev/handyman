@@ -16,17 +16,17 @@ class TrinityModelActionTest {
         TrinityModel trinityModel=TrinityModel.builder()
                 .name("DIE model testing")
                 .condition(true)
-                .responseAs("docnet_attribution_response_1234567")
+                .responseAs("docnet_attribution_response_123")
                 .outputDir("/home/christopher.paulraj@zucisystems.com/Downloads/data/")
                 .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
-                        "a.model_registry as model_registry, a.tenant_id, a.batch_id\n" +
-                        "FROM macro.sor_transaction_tqa_audit a\n" +
-                        "where a.document_type='Printed' and a.model_registry = 'XENON'\n" +
-                        "and a.root_pipeline_id = '38136' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id\n" +
-                        "limit 1")
+                .questionSql("SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\\n\" +\n" +
+                        "                        \"a.model_registry as model_registry, a.tenant_id, a.batch_id\\n\" +\n" +
+                        "                        \"FROM macro.sor_transaction_tqa_audit a\\n\" +\n" +
+                        "                        \"where a.document_type='Printed' and a.model_registry = 'XENON'\\n\" +\n" +
+                        "                        \"and a.root_pipeline_id = '38136' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id\\n\" +\n" +
+                        "                        \"limit 1")
                 .responseAs("sor_transaction_tqa_49254")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
@@ -58,11 +58,11 @@ class TrinityModelActionTest {
                 .requestUrl("http://192.168.10.245:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("SELECT array_agg(a.question) as questions, a.file_path, a.document_type as paper_type,\n" +
-                        "a.model_registry as model_registry, a.tenant_id, a.batch_id\n" +
-                        "FROM macro.sor_transaction_tqa_audit a\n" +
-                        "where a.document_type='Printed' and a.model_registry = 'ARGON'\n" +
-                        "and a.root_pipeline_id = '38136' group by a.file_path, paper_type, a.model_registry, a.tenant_id, a.batch_id\n" +
+                .questionSql("SELECT a.questions as questions, a.file_path, 'Printed' as paper_type, 'ARGON' as model_registry, a.tenant_id\n" +
+                        "FROM macro.sor_transaction_final_tqa_41345 a\n" +
+                        "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=a.origin_id\n" +
+                        "where a.model_registry = 'ARGON'\n" +
+                        "and a.tenant_id = 1 and st.group_id='117' and a.batch_id='BATCH-117_0'\n" +
                         "limit 1")
                 .responseAs("docnet_attribution_response_123")
                 .build();

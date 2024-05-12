@@ -113,10 +113,8 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
         try (Response response = httpclient.newCall(request).execute()) {
-            final String responseBody = response.body().string();
+            final String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                log.info("Response Details: {}", response);
-
                 UrgencyTriageModelResponse modelResponse = objectMapper.readValue(responseBody, UrgencyTriageModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -125,7 +123,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
                             extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
 
-                            log.info(aMarker, "Execute for urgency triage {}", response);
+                            log.info(aMarker, "Execute for urgency triage {}", response.isSuccessful());
                         });
                     });
                 }
@@ -209,7 +207,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
     private void coproRequestBuider(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj) {
         try (Response response = httpclient.newCall(request).execute()) {
-            final String responseBody = response.body().string();
+            final String responseBody = Objects.requireNonNull(response.body()).string();
             String createdUserId = entity.getCreatedUserId();
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();

@@ -35,8 +35,6 @@ import java.util.stream.Collectors;
         actionName = "AutoRotation"
 )
 public class AutoRotationAction implements IActionExecution {
-  private static final MediaType MediaTypeJSON = MediaType
-          .parse("application/json; charset=utf-8");
   public static final String DEFAULT_SOCKET_TIME_OUT = "100";
   public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
   public static final String COPRO_CLIENT_API_SLEEPTIME = "copro.client.api.sleeptime";
@@ -60,7 +58,7 @@ public class AutoRotationAction implements IActionExecution {
   private final String outputDir;
   private final String insertQuery;
 
-  private int timeout;
+  private final int timeout;
 
   private final ActionExecutionAudit action;
   private final Logger log;
@@ -79,17 +77,17 @@ public class AutoRotationAction implements IActionExecution {
     this.aMarker = MarkerFactory.getMarker(" AutoRotation:" + this.autoRotation.getName());
     this.URI = ((AutoRotation) autoRotation).getEndPoint();
     String socketTimeStr = action.getContext().get(COPRO_CLIENT_SOCKET_TIMEOUT);
-    socketTimeStr = socketTimeStr != null && socketTimeStr.trim().length() > 0 ? socketTimeStr : DEFAULT_SOCKET_TIME_OUT;
+    socketTimeStr = socketTimeStr != null && !socketTimeStr.trim().isEmpty() ? socketTimeStr : DEFAULT_SOCKET_TIME_OUT;
     this.timeout = Integer.parseInt(socketTimeStr);
     String threadSleepTimeStr = action.getContext().get(COPRO_CLIENT_API_SLEEPTIME);
-    threadSleepTimeStr = threadSleepTimeStr != null && threadSleepTimeStr.trim().length() > 0 ? threadSleepTimeStr : THREAD_SLEEP_TIME;
+    threadSleepTimeStr = threadSleepTimeStr != null && !threadSleepTimeStr.trim().isEmpty() ? threadSleepTimeStr : THREAD_SLEEP_TIME;
     this.threadSleepTime = Integer.parseInt(threadSleepTimeStr);
     //TODO - Please do same as above to ensure that you don't assume default values
     String consumerApiCountStr = this.action.getContext().get(CONSUMER_API_COUNT);
     consumerApiCount = Integer.valueOf(consumerApiCountStr);
     String writeBatchSizeStr = this.action.getContext().get(WRITE_BATCH_SIZE);
     this.writeBatchSize = Integer.valueOf(writeBatchSizeStr);
-    this.readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
+    this.readBatchSize = Integer.parseInt(action.getContext().get(READ_BATCH_SIZE));
     this.schemaName = DEFAULT_INFO_SCHEMA_NAME;
     this.targetTableName = AUTO_ROTATION;
     this.columnList = COLUMN_LIST;

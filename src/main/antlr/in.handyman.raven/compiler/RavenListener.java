@@ -1270,6 +1270,66 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitTableExtractionHeaders(RavenParser.TableExtractionHeadersContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#currencyDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterCurrencyDetection(RavenParser.CurrencyDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#currencyDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitCurrencyDetection(RavenParser.CurrencyDetectionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#greyScaleConversion}.
+	 * @param ctx the parse tree
+	 */
+	void enterGreyScaleConversion(RavenParser.GreyScaleConversionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#greyScaleConversion}.
+	 * @param ctx the parse tree
+	 */
+	void exitGreyScaleConversion(RavenParser.GreyScaleConversionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#tableExtractionOutbound}.
+	 * @param ctx the parse tree
+	 */
+	void enterTableExtractionOutbound(RavenParser.TableExtractionOutboundContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#tableExtractionOutbound}.
+	 * @param ctx the parse tree
+	 */
+	void exitTableExtractionOutbound(RavenParser.TableExtractionOutboundContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#paragraphExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterParagraphExtraction(RavenParser.ParagraphExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#paragraphExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitParagraphExtraction(RavenParser.ParagraphExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#bulletInExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterBulletInExtraction(RavenParser.BulletInExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#bulletInExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitBulletInExtraction(RavenParser.BulletInExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#p2pNameValidation}.
+	 * @param ctx the parse tree
+	 */
+	void enterP2pNameValidation(RavenParser.P2pNameValidationContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#p2pNameValidation}.
+	 * @param ctx the parse tree
+	 */
+	void exitP2pNameValidation(RavenParser.P2pNameValidationContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree
 	 */

@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.p2pNameValidation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.P2pNameValidationAction;
 import org.jetbrains.annotations.NotNull;
@@ -16,12 +17,12 @@ import java.util.Optional;
 public class P2pNameValidationConsumerProcess implements CoproProcessor.ConsumerProcess<P2PNameValidationInputTable, P2PNameValidationOutputTable> {
     private final Logger log;
     private final Marker aMarker;
+    private final ActionExecutionAudit action;
 
-    private final ObjectMapper mapper = new ObjectMapper();
-
-    public P2pNameValidationConsumerProcess(Logger log, Marker aMarker, P2pNameValidationAction p2pNameValidationAction) {
+    public P2pNameValidationConsumerProcess(ActionExecutionAudit actionExecutionAudit,  Logger log, Marker aMarker, P2pNameValidationAction p2pNameValidationAction) {
         this.log = log;
         this.aMarker = aMarker;
+        this.action = actionExecutionAudit;
     }
 
     @Override
@@ -48,7 +49,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             final Double p2pLastNameFilterScore = entity.getP2pLastNameFilterScore() != null ? entity.getP2pLastNameFilterScore() : 0;
             final Double finalFilterScore = (p2pFirstNameFilterScore + p2pLastNameFilterScore) / 2;
 
-            String finalConcatenatedName = null;
+            String finalConcatenatedName;
             if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
                 finalConcatenatedName = p2pFirstName;
             } else if (p2pFirstName.contains(p2pLastName)) {
@@ -61,7 +62,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
 
             log.info(aMarker, "Concatenated Name before Full name validation {}", finalConcatenatedName);
             boolean isContains = finalConcatenatedName.contains(p2pFullName);
-            if (!p2pFullName.isBlank() && !p2pFullName.isEmpty() && p2pFullName != null && !isContains) {
+            if (!p2pFullName.isBlank() && !p2pFullName.isEmpty() && !isContains) {
                 finalConcatenatedName = p2pFullName;
             }
             log.info(aMarker, "Concatenated Name after Full name validation {}", finalConcatenatedName);
@@ -82,13 +83,14 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             log.info(aMarker, "p2PNameValidationOutputTableArrayList {}", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {
             log.error(aMarker, "error in execute method for p2p name concatenation ", e);
-            throw new HandymanException("error in execute method for p2p name concatenation", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in execute method for p2p name concatenation ", handymanException, this.action);
         }
 
         return p2PNameValidationOutputTableArrayList;
     }
 
     private String cleanAndExtractAlphabets(String value) {
-        return value.replaceAll("[^a-zA-Z]+", "");
+            return value.replaceAll("[^a-zA-Z]+", "");
     }
 }

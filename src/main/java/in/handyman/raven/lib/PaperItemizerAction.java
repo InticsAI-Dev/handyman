@@ -88,7 +88,7 @@ public class PaperItemizerAction implements IActionExecution {
 
             log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);
 
-//            4. call the method start producer from coproprocessor
+            //4. call the method start producer from coproprocessor
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(PAPER_ITEMIZER_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));

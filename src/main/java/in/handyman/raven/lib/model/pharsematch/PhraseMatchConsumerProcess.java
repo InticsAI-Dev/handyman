@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProcess<PhraseMatchInputTable, PhraseMatchOutputTable> {
     private final Logger log;
     private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
@@ -158,11 +157,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 ObjectMapper objectMapper = new ObjectMapper();
                 PharseMatchResponse modelResponse = objectMapper.readValue(responseBody, PharseMatchResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                    modelResponse.getOutputs().forEach(o -> {
-                        o.getData().forEach(phraseMatchDataItem -> {
-                            extractedOutputDataRequest(entity, parentObj, phraseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
-                        });
-                    });
+                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(phraseMatchDataItem -> extractedOutputDataRequest(entity, parentObj, phraseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion())));
                 } else {
                     parentObj.add(
                             PhraseMatchOutputTable
@@ -236,19 +231,15 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
-        String originId = entity.getOriginId();
-        String groupId = entity.getGroupId();
+    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
         Long tenantId = entity.getTenantId();
 
-        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
         try {
-            List<PharseMatchDataItemCopro> pharseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<List<PharseMatchDataItemCopro>>() {
-
+            List<PharseMatchDataItemCopro> phraseMatchOutputData = objectMapper.readValue(phraseMatchDataItem, new TypeReference<>() {
             });
 
-            for (PharseMatchDataItemCopro item : pharseMatchOutputData) {
+            for (PharseMatchDataItemCopro item : phraseMatchOutputData) {
 
                 parentObj.add(
                         PhraseMatchOutputTable

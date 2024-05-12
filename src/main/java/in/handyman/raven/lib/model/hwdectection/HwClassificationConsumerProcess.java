@@ -60,7 +60,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         String entityFilePath = entity.getFilePath();
         Long rootpipelineId = action.getRootPipelineId();
         Long actionId = action.getActionId();
-
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -107,7 +106,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} modelPath  {}  outputDir {} ", endpoint, entityFilePath, outputDir);
+            log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} outputDir {} ", endpoint, entityFilePath, outputDir);
         }
 
         return parentObj;

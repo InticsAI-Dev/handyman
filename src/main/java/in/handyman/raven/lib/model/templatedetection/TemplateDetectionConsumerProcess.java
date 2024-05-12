@@ -19,7 +19,10 @@ import java.io.IOException;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class TemplateDetectionConsumerProcess implements CoproProcessor.ConsumerProcess<TemplateDetectionInputTable, TemplateDetectionOutputTable> {
@@ -27,14 +30,13 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     private final Logger log;
     private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType mediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
 
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
     private final TemplateDetectionAction aAction;
-    private final  String TEMPLATE_DETECTION = "TEMPLATE_DETECTION";
+    private final String TEMPLATE_DETECTION = "TEMPLATE_DETECTION";
     private final int timeOut;
 
     public TemplateDetectionConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, TemplateDetectionAction aAction) {
@@ -80,7 +82,6 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 
-
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("ARGON VQA START");
         requestBody.setShape(List.of(1, 1));
@@ -97,7 +98,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-            coproRequestBuider(entity, request, objectMapper ,outputObjectList);
+            coproRequestBuider(entity, request, objectMapper, outputObjectList);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
@@ -119,8 +120,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         try (Response response = httpclient.newCall(request).execute()) {
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
-                extractedCoproOutputResponse(entity,  responseBody, outputObjectList, "", ",", objectMapper);
+                String responseBody = Objects.requireNonNull(response.body()).string();
+                extractedCoproOutputResponse(entity, responseBody, outputObjectList, "", ",", objectMapper);
 
             } else {
                 outputObjectList.add(
@@ -168,6 +169,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         }
 
     }
+
     private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -178,16 +180,11 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         try (Response response = httpclient.newCall(request).execute()) {
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
+                String responseBody = Objects.requireNonNull(response.body()).string();
                 TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
 
                 if (templateDetectionResponse.getOutputs() != null && !templateDetectionResponse.getOutputs().isEmpty()) {
-                    templateDetectionResponse.getOutputs().forEach(output -> {
-                        output.getData().forEach(templateDetectionData -> {
-                            extractOutputDataRequest(entity,  templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper);
-
-                        });
-                    });
+                    templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper)));
                 } else {
                     outputObjectList.add(
                             TemplateDetectionOutputTable.builder()
@@ -261,7 +258,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
         try {
-            TemplateDetectionDataItem templateDetectionDataItem= objectMapper.readValue(templateDetectionData,TemplateDetectionDataItem.class);
+            TemplateDetectionDataItem templateDetectionDataItem = objectMapper.readValue(templateDetectionData, TemplateDetectionDataItem.class);
             templateDetectionDataItem.getAttributes().forEach(attribute -> {
                 String bboxStr = String.valueOf(attribute.getBboxes());
                 String question = attribute.getQuestion();
@@ -324,6 +321,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         }
 
     }
+
     private void extractedCoproOutputResponse(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -396,4 +394,4 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
     }
 
 
-    }
+}

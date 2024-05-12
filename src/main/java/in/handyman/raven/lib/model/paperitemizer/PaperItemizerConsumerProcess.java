@@ -92,7 +92,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuider(entity, request, objectMapper, parentObj);
+            coproRequestBuilder(entity, request, objectMapper, parentObj);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
@@ -104,12 +104,10 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and outputDir {}", endpoint, inputFilePath, outputDir);
         }
 
-
-        log.info(aMarker, "coproProcessor consumer process with output entity {}", parentObj);
         return parentObj;
     }
 
-    private void coproRequestBuider(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj) {
+    private void coproRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -122,7 +120,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                 log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
             }
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
+                String responseBody = Objects.requireNonNull(response.body()).string();
                 extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody);
 
             } else {
@@ -182,14 +180,11 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                 log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
             }
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
+                String responseBody = Objects.requireNonNull(response.body()).string();
                 PaperItemizerResponse paperItemizerResponse = objectMapper.readValue(responseBody, PaperItemizerResponse.class);
                 if (paperItemizerResponse.getOutputs() != null && !paperItemizerResponse.getOutputs().isEmpty()) {
                     paperItemizerResponse.getOutputs().forEach(o -> o.getData().forEach(paperItemizerDataItem ->
-                            {
-                                extractedOutputRequest(entity, objectMapper, parentObj, paperItemizerResponse.getModelName(), paperItemizerResponse.getModelVersion(), paperItemizerDataItem);
-
-                            }
+                            extractedOutputRequest(entity, objectMapper, parentObj, paperItemizerResponse.getModelName(), paperItemizerResponse.getModelVersion(), paperItemizerDataItem)
                     ));
                 }
 
@@ -243,7 +238,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         try {
 
             List<PaperItemizerDataItem> paperItemizeOutputDataList = objectMapper.readValue(
-                    paperItemizerDataItem, new TypeReference<List<PaperItemizerDataItem>>() {
+                    paperItemizerDataItem, new TypeReference<>() {
                     }
             );
 

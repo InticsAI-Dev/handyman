@@ -155,7 +155,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
-                            .batchId(entity.getBatchId())
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);

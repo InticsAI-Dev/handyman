@@ -258,9 +258,6 @@ public class AlchemyResponseAction implements IActionExecution {
             return null;
         }
     }
-
-
-
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
@@ -270,7 +267,6 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedAsciiValue;
         private String confidenceScore;
     }
-
     @AllArgsConstructor
     @NoArgsConstructor
     @Data

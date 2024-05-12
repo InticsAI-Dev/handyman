@@ -209,7 +209,7 @@ public class TrinityModelAction implements IActionExecution {
 
                 coproRequestBuilder(node,filePath,paperType,questions,modelRegistry, jdbi, mapper, assetBatchItem, batchId);
             } else {
-                log.info("Triton request activator : {} , Copro API running in legacy mode",tritonRequestActivator);
+                log.info("Triton request activator : {} , Copro API running in triton mode",tritonRequestActivator);
 
                 tritonRequestBuilder(node,filePath,paperType,questions,modelRegistry, jdbi, mapper, assetBatchItem, batchId);
             }
@@ -242,7 +242,6 @@ public class TrinityModelAction implements IActionExecution {
     }
 
     private void extractedTritonOuputDataResponse(String trinityModelDataItems, Jdbi jdbi, String filePath, Long tenantId, String paperType, String modelName, String modelVersion, String modelRegistry, ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) {
-        System.out.print("batch id in extractedTritonOuputDataResponse"+batchId);
         try {
 
             TrinityModelDataItem trinityModelDataItem = objectMapper.readValue(trinityModelDataItems, new TypeReference<>() {
@@ -324,7 +323,6 @@ public class TrinityModelAction implements IActionExecution {
                                 .bind("tenantId", tenantId)
                                 .bind("modelRegistry", modelRegistry)
                                 .bind("batchId", batchId)
-
                                 .add();
 
                     });

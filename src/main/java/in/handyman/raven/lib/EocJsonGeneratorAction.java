@@ -94,7 +94,6 @@ public class EocJsonGeneratorAction implements IActionExecution {
                 log.error(aMarker, "The Failure Response {} --> {}", name, responseBody);
                 action.getContext().put(name.concat(".error"), "true");
                 action.getContext().put(name.concat(".errorMessage"), responseBody);
-
             }
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);

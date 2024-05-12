@@ -93,11 +93,11 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                 .threshold(result.getValidatorThreshold())
                 .build();
 
-        int validatorScore = getNerScore(configurationDetails,URI);
+        int validatorScore = computeAdapterScore(configurationDetails);
         int validatorNegativeScore;
         if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
             configurationDetails.setAdapter(result.getRestrictedAdapter());
-            validatorNegativeScore = getNerScore(configurationDetails,URI );
+            validatorNegativeScore = computeAdapterScore(configurationDetails);
         } else {
             validatorNegativeScore = 0;
         }
@@ -140,7 +140,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .sorItemId(sorItemId)
                             .sorItemName(sorKey)
                             .question(question)
-                            .answer(inputValue)
+                            .answer(result.getInputValue())
                             .vqaScore(vqaScore)
                             .weight(weight)
                             .createdUserId(createdUserId)
@@ -160,6 +160,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .modelRegistry(modelRegistry)
                             .rootPipelineId(rootPipelineId)
                             .batchId(result.getBatchId())
+                            .category(result.getCategory())
                             .build());
 
 
@@ -176,7 +177,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .sorItemId(sorItemId)
                             .sorItemName(sorKey)
                             .question(question)
-                            .answer(inputValue)
+                            .answer(result.getInputValue())
                             .vqaScore(vqaScore)
                             .weight(weight)
                             .createdUserId(createdUserId)
@@ -196,6 +197,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .modelRegistry(result.getModelRegistry())
                             .rootPipelineId(rootPipelineId)
                             .batchId(result.getBatchId())
+                            .category(result.getCategory())
                             .build());
             log.error(aMarker, "The Exception occurred in confidence score validation by {} ", valConfidenceScore);
         }
@@ -206,32 +208,48 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         return parentObj;
     }
 
-    public int getNerScore(Validator adapter, String uri) {
+    int computeAdapterScore(Validator inputDetail) {
         int confidenceScore = 0;
         try {
-            boolean alphaValidator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
-            if (alphaValidator) {
-                boolean validator = nameAdapter.getNameValidationModel(adapter, uri, action);
-                confidenceScore = validator ? adapter.getThreshold() : 0;
-            } else {
-                Pattern pattern = Pattern.compile(NAME_NUMBER_REGEX);
-                Matcher matcher = pattern.matcher(adapter.getInputValue());
-                if (matcher.matches()) {
-                    String name = matcher.group(1);
-                    boolean validator = nameAdapter.getValidationModel(name, uri, action);
-                    confidenceScore = validator ? adapter.getThreshold() : 0;
-                }
+
+            switch (inputDetail.getAdapter()) {
+                case "ner":
+                    confidenceScore = this.nerAction.getNerScore(inputDetail, URI);
+                    break;
+               /* case "alpha":
+                    confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+                    break;
+                case "alphanumeric":
+                    confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+                    break;
+                case "numeric":
+                    confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    break;
+                case "date":
+                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+                    break;
+                case "phone_reg":
+                    confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    break;
+                case "numeric_reg":
+                    confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+                    break;*/
             }
-        } catch (Exception ex) {
-            log.error("Error in getting ner score {}", ExceptionUtil.toString(ex));
-            throw new HandymanException("Failed to execute", ex, action);
+
+        } catch (Throwable t) {
+            log.error(aMarker, "error adapter validation{}", inputDetail, t);
+            action.getContext().put(this.action.getActionName().concat(".error"), "true");
+            log.error(aMarker, "Exception occurred in Scalar Computation {}", ExceptionUtil.toString(t));
+            HandymanException handymanException = new HandymanException("Error in execute method for ner adapter", t, action);
+            HandymanException.insertException("Exception occurred in NER Computation", handymanException, action);
+            throw new HandymanException("Error in execute method for ner adapter", t, action);
         }
         return confidenceScore;
     }
 
     private void updateEmptyValueForRestrictedAns(NerInputTable result, String inputValue) {
         if (multiverseValidator) {
-            log.info(aMarker, "Build 19-validator updatating for Restricted answer {}");
+            log.info(aMarker, "validator updating for Restricted answer {}", inputValue);
             for (String format : restrictedAnswers) {
                 if (inputValue.equalsIgnoreCase(format)) {
                     updateEmptyValueAndCf(result);
@@ -242,7 +260,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private void updateEmptyValueIfLowCf(NerInputTable result, double valConfidenceScore) {
         if (valConfidenceScore < 100 && multiverseValidator) {
-            log.info(aMarker, "Build 19-validator updateEmptyValueIfLowCf {}", valConfidenceScore);
+            log.info(aMarker, "validator updateEmptyValueIfLowCf {}", valConfidenceScore);
             updateEmptyValueAndCf(result);
         }
     }

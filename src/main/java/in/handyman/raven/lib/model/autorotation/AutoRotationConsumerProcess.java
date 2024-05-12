@@ -107,7 +107,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproRequestBuider(entity, request, parentObj);
+            coproRequestBuilder(entity, request, parentObj);
         } else {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
             tritonRequestBuilder(entity, request, parentObj);
@@ -117,7 +117,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         return parentObj;
     }
 
-    private void coproRequestBuider(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj) {
+    private void coproRequestBuilder(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -126,7 +126,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
+                String responseBody = Objects.requireNonNull(response.body()).string();
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
@@ -150,7 +150,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                String responseBody = response.body().string();
+                String responseBody = Objects.requireNonNull(response.body()).string();
                 AutoRotationModelResponse modelResponse = mapper.readValue(responseBody, AutoRotationModelResponse.class);
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {

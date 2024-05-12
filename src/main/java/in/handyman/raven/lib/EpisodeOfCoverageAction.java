@@ -236,7 +236,6 @@ public class EpisodeOfCoverageAction implements IActionExecution {
         private String batchId;
         private Integer paperNo;
         private Long tenantId;
-
     }
 
 
