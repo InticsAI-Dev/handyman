@@ -14,22 +14,19 @@ class AlchemyInfoActionTest {
 
 
         AlchemyInfo alchemyInfo = AlchemyInfo.builder()
-                .tenantId(2L)
+                .tenantId(1L)
                 .condition(true)
                 .name("alchemy info action")
-                .querySet("SELECT so.tenant_id, so.origin_id, ampq.root_pipeline_id, so.group_id, at.file_path\n" +
-                        "from info.source_of_origin so join info.asset at on so.file_id = at.file_id\n" +
-                        "join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = so.origin_id\n" +
-                        "where at.file_path = '/data/input/test_data/SYNT_166730538_c3.pdf'\n" +
-                        "limit 1")
+                .querySet("SELECT so.tenant_id::bigint, so.origin_id, ampq.root_pipeline_id, so.group_id, at.file_path from info.source_of_origin so join info.asset at on so.file_id = at.file_id\n" +
+                        "            join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = so.origin_id;")
                 .resourceConn("intics_zio_db_conn")
                 .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjk0ODA4MDEzLCJpYXQiOjE2OTQ3NjQ4MTMsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.2IQEewH-cQ5TK3L8wKpk_UAXrojAnWqSTi9ORwQJyOU")
                 .build();
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
 
-            actionExecutionAudit.getContext().put("alchemy.origin.upload.url","http://192.168.10.248:8189/alchemy/api/v1/info/origin/upload");
-        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjk1OTM2MjQzLCJpYXQiOjE2OTU4OTMwNDMsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.Ltwlm5CVDbR9EmHyLzjczRYC_Tn_etlWKBxISP6tbsE");
-        actionExecutionAudit.getContext().put("alchemyAuth.tenantId","2");
+        actionExecutionAudit.getContext().put("alchemy.origin.upload.url","http://localhost:8189/alchemy/api/v1/info/origin/upload");
+        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjk0ODA4MDEzLCJpYXQiOjE2OTQ3NjQ4MTMsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.2IQEewH-cQ5TK3L8wKpk_UAXrojAnWqSTi9ORwQJyOU");
+        actionExecutionAudit.getContext().put("alchemyAuth.tenantId","1");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
         actionExecutionAudit.getContext().put("read.batch.size","1");
         actionExecutionAudit.getContext().put("write.batch.size","1");

@@ -16,18 +16,18 @@ public class NoiseModelsActionTest {
 
         final IntegratedNoiseModelApi build = IntegratedNoiseModelApi.builder()
                 .condition(true)
-                .processId("1235472754635346527")
+                .processId("123")
                 .name("noise-detection-model")
-                .endPoint("http://192.168.10.248:9400/v2/models/noise-detection-service/versions/1/infer")
+                .endPoint("http://localhost:9400/v2/models/noise-detection-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("noise_model.noise_model_output_table")
                 .querySet("SELECT " +
-                        "'/data/input/test.jpg' as inputFilePath, " +
+                        "'/data/output/pdf_to_image/Humana_Form/Humana_Form_0.jpg' as inputFilePath, " +
                         "'INT-1' as origin_id, " +
                         "'/data/output/' as output_dir ,"+
                         "1 as file_id, " +
                         "1 as group_id, " +
-                        "1 as paper_no, '1' as batch_id, " +
+                        "1 as paper_no, " +
                         "1 as process_id, " +
                         "1 as tenant_id")
                 .build();

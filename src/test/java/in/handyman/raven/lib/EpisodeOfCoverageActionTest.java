@@ -14,10 +14,10 @@ class EpisodeOfCoverageActionTest {
 
         EpisodeOfCoverage episodeOfCoverage = EpisodeOfCoverage.builder()
                 .name("Episode of coverage")
-                .resourceConn("intics_zio_db_conn")
+                .resourceConn("intics_agadia_db_conn")
                 .originId("INT-1")
                 .totalPages("6")
-                .outputTable("sor_grouping.eoc_result_1234567")
+                .outputTable("sor_grouping.eoc_result_138971395735140128")
                 .eocIdCount("1")
                 .eocGroupingItem("EOC_ID")
                 .groupId("1")
@@ -62,10 +62,10 @@ class EpisodeOfCoverageActionTest {
 
         EpisodeOfCoverage episodeOfCoverage = EpisodeOfCoverage.builder()
                 .name("Episode of coverage")
-                .resourceConn("intics_zio_db_conn")
-                .originId("ORIGIN-1")
+                .resourceConn("intics_agadia_db_conn")
+                .originId("INT-2")
                 .totalPages("6")
-                .outputTable("sor_grouping.eoc_result_1234567")
+                .outputTable("sor_grouping.eoc_result_138971395735140128")
                 .eocIdCount("1")
                 .eocGroupingItem("EOC_ID")
                 .groupId("1")
@@ -73,16 +73,16 @@ class EpisodeOfCoverageActionTest {
                         "                             FROM info.source_of_truth sot\n" +
                         "                             JOIN info.asset asset\n" +
                         "                             ON asset.file_id=sot.preprocessed_file_id\n" +
-                        "                             WHERE sot.origin_id='ORIGIN-1';")
-                .value("    SELECT '${group_id}' AS group_id,predicted_value as answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'6' AS total_pages, batch_id\n" +
+                        "                             WHERE sot.origin_id='INT-2' ;")
+                .value("    SELECT '${group_id}' AS group_id,predicted_value as answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'6' AS total_pages\n" +
                         "                            FROM score.aggregation_evaluator\n" +
-                        "                            WHERE origin_id='ORIGIN-1'  and predicted_value !='' and predicted_value is not null and batch_id = 'BATCH-1_0' ;")
+                        "                            WHERE origin_id='INT-2'  and predicted_value !='' and predicted_value is not null ;")
                 .qrInput(" SELECT '1' AS group_id,extracted_value AS answer, min(paper_no) AS start_no, max(paper_no) AS end_no,'${file_count.total_page}' AS total_pages\n" +
                         "                           FROM qr_extraction.qr_extraction_details\n" +
-                        "                           WHERE origin_id='ORIGIN-1' AND qr_format='DATAMATRIX' AND is_candidate_qr='YES'  and extracted_value is not null and extracted_value!='' group by extracted_value ;")
+                        "                           WHERE origin_id='INT-2' AND qr_format='DATAMATRIX' AND is_candidate_qr='YES'  and extracted_value is not null and extracted_value!='' group by extracted_value ;")
                 .pndValue("SELECT '1' AS group_id,string_agg(predicted_value,'-') AS answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'6' AS total_pages\n" +
                         "                            FROM score.aggregation_evaluator\n" +
-                        "                            WHERE origin_id='ORIGIN-1'  and predicted_value !='' and predicted_value is not null;")
+                        "                            WHERE origin_id='INT-2'  and predicted_value !='' and predicted_value is not null;")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
@@ -106,10 +106,10 @@ class EpisodeOfCoverageActionTest {
 
         EpisodeOfCoverage episodeOfCoverage = EpisodeOfCoverage.builder()
                 .name("Episode of coverage")
-                .resourceConn("intics_zio_db_conn")
-                .originId("ORIGIN-1")
+                .resourceConn("intics_agadia_db_conn")
+                .originId("INT-10")
                 .totalPages("6")
-                .outputTable("sor_grouping.eoc_result_2176")
+                .outputTable("sor_grouping.eoc_result_138971395735140128")
                 .eocIdCount("1")
                 .eocGroupingItem("EOC_ID")
                 .groupId("1")
@@ -117,25 +117,16 @@ class EpisodeOfCoverageActionTest {
                         "                             FROM info.source_of_truth sot\n" +
                         "                             JOIN info.asset asset\n" +
                         "                             ON asset.file_id=sot.preprocessed_file_id\n" +
-                        "                             WHERE sot.origin_id='ORIGIN-1' ;")
-                .value("      SELECT '1' AS group_id,predicted_value as answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'2' AS total_pages\n" +
-                        "        FROM score.aggregation_evaluator\n" +
-                        "        WHERE origin_id='ORIGIN-1'  and predicted_value !=''\n" +
-                        "        and predicted_value is not null and tenant_id = 1;")
-
-                .qrInput("   SELECT '1' AS group_id,extracted_value AS answer, min(paper_no) AS start_no, max(paper_no) AS end_no,'2' AS total_pages\n" +
+                        "                             WHERE sot.origin_id='INT-10' ;")
+                .value("    SELECT '${group_id}' AS group_id,predicted_value as answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'6' AS total_pages\n" +
+                        "                            FROM score.aggregation_evaluator\n" +
+                        "                            WHERE origin_id='INT-10'  and predicted_value !='' and predicted_value is not null ;")
+                .qrInput(" SELECT '1' AS group_id,extracted_value AS answer, min(paper_no) AS start_no, max(paper_no) AS end_no,'${file_count.total_page}' AS total_pages\n" +
                         "                           FROM qr_extraction.qr_extraction_details\n" +
-                        "                           WHERE origin_id='ORIGIN-1'\n" +
-                        "                           AND qr_format='DATAMATRIX' AND is_candidate_qr='YES'\n" +
-                        "                           and extracted_value is not null and extracted_value!='' and tenant_id = 1\n" +
-                        "                           group by extracted_value ;\n" +
-                        "\t\t")
-
-                .pndValue(" SELECT '1' AS group_id,string_agg(predicted_value,'-') AS answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'2' AS total_pages\n" +
-                        "  FROM score.aggregation_evaluator\n" +
-                        "  WHERE origin_id='ORIGIN-1'  and predicted_value !=''\n" +
-                        "  and predicted_value is not null and tenant_id = 1 ;\n" +
-                        "  ")
+                        "                           WHERE origin_id='INT-10' AND qr_format='DATAMATRIX' AND is_candidate_qr='YES'  and extracted_value is not null and extracted_value!='' group by extracted_value ;")
+                .pndValue("SELECT '1' AS group_id,string_agg(predicted_value,'-') AS answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'1' AS total_pages\n" +
+                        "                            FROM score.aggregation_evaluator\n" +
+                        "                            WHERE origin_id='INT-10'  and predicted_value !='' and predicted_value is not null;")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder()

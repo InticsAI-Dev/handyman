@@ -15,15 +15,16 @@ public class MasterDataComparisonActionTest {
         final MasterdataComparison build = MasterdataComparison.builder()
                 .condition(true)
                 .name("MasterDataComparison")
-                .endPoint("http://192.168.10.248:9200/v2/models/cos-service/versions/1/infer")
+                .endPoint("http://192.168.10.240:9200/v2/models/cos-service/versions/1/infer")
+//                .endPoint("http://192.168.10.239:10192/copro/similarity/cos-sim")
                 .matchResult("md_lookup_systemKey.provider_address_match")
-                .inputSet("SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.prescriber_fax  as extracted_value ,b.prescriber_fax  as actual_value,\n" +
-                        "a.root_pipeline_id as root_pipeline_id, a.tenant_id as tenant_id, a.batch_id\n" +
-                        "FROM md_lookup_systemKey.prescriber_fax a\n" +
-                        "LEFT JOIN master_data.prescriber_metadata b\n" +
-                        "ON a.sk_prescriber_npi=b.prescriber_npi\n" +
-                        "or a.sk_prescriber_name=b.prescriber_name\n" +
-                        "WHERE a.group_id='16' and a.tenant_id = 1 and a.batch_id = 'BATCH-16_0'")
+                .inputSet("SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.provider_address  as extracted_value ,b.provider_address  as actual_value,\n" +
+                        "                a.root_pipeline_id as root_pipeline_id\n" +
+                        "                FROM md_lookup_systemKey.provider_address a\n" +
+                        "                LEFT JOIN master_data.provider_metadata b\n" +
+                        "                ON a.sk_provider_npi=b.provider_npi\n" +
+                        "                and a.sk_provider_name=b.provider_name\n" +
+                        "                WHERE a.group_id='16' and a.tenant_id = 1 and 4 = 4")
 //                .inputSet("SELECT 'INT-1' AS originId, 1 AS paperNo, 1 AS groupId,1 as tenantId, 1 AS eocIdentifier, ARRAY['dinesh kumar', 'dinesh', 'kumar'] AS extractedValue,'dinesh' AS actualValue, 1 AS rootPipelineId")
                 .resourceConn("intics_zio_db_conn")
                 .build();

@@ -19,8 +19,8 @@ class FileMergerActionTest {
         FileMerger fileMerger= FileMerger.builder()
                 .name("file merger ")
                 .condition(true)
-                .outputDir("/home/christopher.paulraj@zucisystems.com/Pictures/output/")
-                .requestBody("{\"outputDir\": \"/home/christopher.paulraj@zucisystems.com/Pictures/output/\", \"inputFilePaths\": [\"/home/christopher.paulraj@zucisystems.com/Downloads/o2f_new_samples 1/pdf/2306-000838.pdf,/home/christopher.paulraj@zucisystems.com/Downloads/o2f_new_samples 1/pdf/7066.pdf\"], \"outputFileName\": \"test_1.pdf\"}")
+                .outputDir("/data/output/")
+                .requestBody("{\"outputDir\": \"/data/output/\", \"inputFilePaths\": [\"/data/output/auto_rotation/1220147418_0.jpg\"], \"outputFileName\": \"test_1.pdf\"}")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();

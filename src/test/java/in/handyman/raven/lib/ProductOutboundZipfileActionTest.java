@@ -15,12 +15,12 @@ class ProductOutboundZipfileActionTest {
     public void unitTestCase() throws Exception {
         ProductOutboundZipfile productOutboundZipfile = ProductOutboundZipfile.builder()
                 .name("product outbound zip file details")
-                .outputDir("/data/output")
+                .outputDir("/home/anandh.andrews@zucisystems.com/intics-workspace/testing/output")
                 .resultTable("product_outbound.product_outbound_zip_file_details")
                 .processId("1234567")
                 .resourceConn("intics_zio_db_conn")
-                .querySet(" select  origin_id, root_pipeline_id, group_id, process_id, cleaned_pdf_path, origin_pdf_path, product_json, kvp_response, table_response, tenant_id,file_name, alchemy_origin_id, batch_id\n" +
-                        "FROM product_outbound.product_outbound_zip_file_input \n")
+                .querySet("SELECT origin_id, root_pipeline_id, group_id, process_id, cleaned_pdf_path, origin_pdf_path, product_json, kvp_response, table_response, tenant_id,file_name\n" +
+                        "FROM product_outbound.product_outbound_zip_file_input;")
                 .condition(true)
                 .build();
 

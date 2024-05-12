@@ -42,7 +42,7 @@ class DataExtractionActionTest {
                 .condition(true)
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("select 'INT-1' as origin_id, 1 as group_id,'/data/output/646/preprocess/paper_itemizer/pdf_to_image/SYNT_166522063_c1/SYNT_166522063_c1_1.jpg' as file_path, 1 as paper_no, 1 as tenant_id, 1 as template_id, 1 as root_pipeline_id, '138980184199100180' as process_id, '1' as batch_id")
+                .querySet("select 'INT-1' as origin_id, 1 as group_id,'/data/output/646/preprocess/paper_itemizer/pdf_to_image/SYNT_166522063_c1/SYNT_166522063_c1_1.jpg' as file_path, 1 as paper_no, 1 as tenant_id, 1 as template_id, 1 as root_pipeline_id, '138980184199100180' as process_id")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.248:8300/v2/models/text-extractor-service/versions/1/infer");

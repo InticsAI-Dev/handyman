@@ -31,16 +31,16 @@ class TableExtractionActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .processId("999")
-                .endpoint("http://192.168.10.245:18890/copro/table-attribution-with-header-v4")
                 .resultTable("table_extraction.table_extraction_result")
                 .outputDir("/data/output/")
-                .querySet("")
+                .querySet("SELECT  'ORIGIN-ss' as origin_id, 1 as group_id ,'/data/output/186/preprocess/autorotation/auto_rotation/(Galvanized___Heavy_Duty)_Racks_Quotation_0.jpg' as file_path," +
+                        "1 as tenant_id,1 as template_id,1 as process_id,1 as root_pipeline_id")
                 .build();
 
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
-        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.245:18890/copro/table-attribution-with-header-v4"),
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.248:18888/copro/table-attribution"),
                 Map.entry("read.batch.size", "1"),
                 Map.entry("table.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "false"),
@@ -56,14 +56,12 @@ class TableExtractionActionTest {
         TableExtractionHeaders tableExtraction = TableExtractionHeaders.builder()
                 .name("Text extraction macro test after copro optimization")
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://192.168.10.245:18890/copro/table-attribution-with-header-v4")
+                .endpoint("http://192.168.10.245:18889/copro/table-attribution-with-header")
                 .condition(true)
                 .processId("999")
                 .resultTable("table_extraction.table_extraction_result")
                 .outputDir("/data/output/")
-                .querySet("\n" +
-                        "    SELECT tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path, table_headers,'ARGON' as model_name,truth_entity_id,sor_container_id,channel_id, 'batch_1' as batch_id \n" +
-                        "           from macro.table_extraction_line_items_123\n")
+                .querySet("select * from macro.table_extraction_line_items_1234")
                 .build();
 
 
@@ -71,7 +69,7 @@ class TableExtractionActionTest {
 
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
                 Map.entry("read.batch.size", "1"),
-                Map.entry("mulipart.file.upload.activator", "false"),
+                Map.entry("mulipart.file.utpload.activator", "false"),
                 Map.entry("table.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("consumer.API.count", "1"),

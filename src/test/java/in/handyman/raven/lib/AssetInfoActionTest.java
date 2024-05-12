@@ -13,10 +13,10 @@ class AssetInfoActionTest {
     void testingAssetInfo() throws Exception {
         AssetInfo assetInfo= AssetInfo.builder()
                 .name("info")
-                .resourceConn("intics_zio_db_conn")
+                .resourceConn("intics_agadia_db_conn")
                 .assetTable("macro.file_details_truth_138978990615970048")
                 .auditTable("info.sanitizer_summary_audit_138978990615970048")
-                .values("select '/home/christopher.paulraj@zucisystems.com/Music/4a35b427-36.jpeg' as file_path , '1' as batch_id;")
+                .values("select '/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia-gatekeeper/test.jpg' as file_path;")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
