@@ -117,12 +117,12 @@ public class DbBackupEaseAction implements IActionExecution {
 
     private static @NotNull String getFormattedFileSize(String originalFileName) throws IOException {
         // getting backup file size
-        long fileSize = Files.size(Paths.get(originalFileName));
-        double fileSizeInMB = (double) fileSize / (1024 * 1024);
+        final long fileSize = Files.size(Paths.get(originalFileName));
+        final double fileSizeInMB = (double) fileSize / (1024 * 1024);
 
         String formattedFileSize;
         if (fileSizeInMB >= 1024) {
-            double fileSizeInGB = fileSizeInMB / 1024;
+            final double fileSizeInGB = fileSizeInMB / 1024;
             formattedFileSize = String.format("%.3f GB", fileSizeInGB);
         } else {
             formattedFileSize = String.format("%.3f MB", fileSizeInMB);
@@ -133,7 +133,7 @@ public class DbBackupEaseAction implements IActionExecution {
     private boolean executeBackupCommand(String backupCommand, String originalFileName) {
         try {
             // Execute backup command using ProcessBuilder
-            Process process = new ProcessBuilder()
+            final Process process = new ProcessBuilder()
                     .command("bash", "-c", backupCommand + " > " + originalFileName)
                     .start();
             // Wait for the process to finish
@@ -154,7 +154,7 @@ public class DbBackupEaseAction implements IActionExecution {
     }
 
     private List<String> getAllBackupSchemas(List<DataBaseBackupInputTable> dataBaseBackupInput) {
-        List<String> allRestrictedSchemaList = dataBaseBackupInput.stream()
+        final List<String> allRestrictedSchemaList = dataBaseBackupInput.stream()
                 .filter(inputTable -> inputTable.getRestrictedSchemaList() != null)
                 .flatMap(inputTable -> inputTable.getRestrictedSchemaList().stream())
                 .collect(Collectors.toList());
@@ -174,8 +174,8 @@ public class DbBackupEaseAction implements IActionExecution {
 
 
     private String constructBackupCommandBySchema(List<String> backupSchemas, ActionExecutionAudit action, DbBackupEase dbBackupEase) {
-        String additionalOptions = getAdditionalOptions(action, dbBackupEase);
-        String schemaOptions = backupSchemas.stream()
+        final String additionalOptions = getAdditionalOptions(action, dbBackupEase);
+        final String schemaOptions = backupSchemas.stream()
                 .map(schema -> "-n " + schema)
                 .collect(Collectors.joining(" "));
 
@@ -183,8 +183,8 @@ public class DbBackupEaseAction implements IActionExecution {
     }
 
     private String constructBackupCommandExcludeSchema(List<DataBaseBackupInputTable> dataBaseBackupInput, ActionExecutionAudit action, DbBackupEase dbBackupEase) {
-        String additionalOptions = getAdditionalOptions(action, dbBackupEase);
-        String restrictedSchemas = dataBaseBackupInput.stream()
+        final String additionalOptions = getAdditionalOptions(action, dbBackupEase);
+        final String restrictedSchemas = dataBaseBackupInput.stream()
                 .filter(inputTable -> inputTable.getRestrictedSchemaList() != null) // Null check
                 .flatMap(inputTable -> inputTable.getRestrictedSchemaList().stream())
                 .map(schema -> "-N " + schema)

@@ -73,7 +73,7 @@ public class DbDataDartAction implements IActionExecution {
 
             for (String schemaTableName : schemaTableNamesList) {
                 final String[] parts = schemaTableName.split("\\.");
-                String schemaName = parts[0];
+                final String schemaName = parts[0];
                 final String truncateQuery = String.format("TRUNCATE TABLE %s", schemaTableName);
 
                 try (final Statement stmt = connection.createStatement()) {
@@ -92,8 +92,7 @@ public class DbDataDartAction implements IActionExecution {
 
     private void performTruncation(String schemaTableName, Statement stmt, String truncateQuery, Jdbi jdbi, List<DataBaseTruncateInputTable> dataBaseTruncateInputTableList, String schemaName) throws SQLException {
         final String getRowCount = String.format("SELECT count(*) FROM %s", schemaTableName);
-        System.out.println(getRowCount);
-        ResultSet rs = stmt.executeQuery(getRowCount);
+        final ResultSet rs = stmt.executeQuery(getRowCount);
         long truncatedRowCount = 0;
         if (rs.next()) {
             truncatedRowCount = rs.getLong(1); // Get the value of the first column in the result set
@@ -113,9 +112,8 @@ public class DbDataDartAction implements IActionExecution {
 
         // Iterate over DataBaseTruncateInputTable objects
         for (DataBaseTruncateInputTable inputTable : dataBaseTruncateInputTableList) {
-            List<String> truncateSchemaList = inputTable.getTruncateSchemaList();
-            List<String> excludeTableWithSchemaList = inputTable.getExcludeTableWithSchemaList();
-            System.out.println("excludeTableWithSchemaList" + excludeTableWithSchemaList);
+            final List<String> truncateSchemaList = inputTable.getTruncateSchemaList();
+            final List<String> excludeTableWithSchemaList = inputTable.getExcludeTableWithSchemaList();
             for (String schema : truncateSchemaList) {
                 String query = "SELECT table_name FROM information_schema.tables " +
                         "WHERE table_schema = :schema AND table_type = 'BASE TABLE'";
