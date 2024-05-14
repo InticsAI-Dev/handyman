@@ -159,6 +159,7 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |convertExcelToDatabase
+    |faceDetection
     );
 
 
@@ -1184,6 +1185,16 @@ convertExcelToDatabase:
     'using' '{'
                         querySet=STRING
     '}' ('on-condition' condition=expression)* ;
+
+faceDetection:
+    'faceDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
 //rules
 
 resource : STRING;
