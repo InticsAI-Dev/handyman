@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
@@ -9,9 +10,19 @@ import in.handyman.raven.lib.model.FaceDetection;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Types;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
+import in.handyman.raven.lib.model.face.detection.FaceDetectionConsumerProcess;
+import in.handyman.raven.lib.model.face.detection.FaceDetectionQueryInputTable;
+import in.handyman.raven.lib.model.face.detection.FaceDetectionQueryOutputTable;
 import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
@@ -100,13 +111,47 @@ public class FaceDetectionAction implements IActionExecution {
 
   @Override
   public void execute() throws Exception {
-    final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(faceDetection.getResourceConn());
-    jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-    log.info(aMarker, "paragraph Extraction Action for {} has been started", faceDetection.getName());
+
+
+    try {
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(faceDetection.getResourceConn());
+      jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+      log.info(aMarker, "face detection Action for {} has been started", faceDetection.getName());
+
+      final List<URL> urls = Optional.ofNullable(faceDetectionUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+        try {
+          return new URL(urlItem);
+        } catch (MalformedURLException e) {
+          log.error("Error in processing the URL " + urlItem, e);
+          throw new HandymanException("Error in processing the URL", e, action);
+        }
+      }).collect(Collectors.toList())).orElse(Collections.emptyList());
+
+      FaceDetectionQueryInputTable faceDetectionQueryInputTable = new FaceDetectionQueryInputTable();
+      final CoproProcessor<FaceDetectionQueryInputTable, FaceDetectionQueryOutputTable> coproProcessor =
+              new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                      FaceDetectionQueryOutputTable.class,
+                      FaceDetectionQueryInputTable.class,
+                      jdbi, log, faceDetectionQueryInputTable, urls, action);
+
+      coproProcessor.startProducer(faceDetection.getQuerySet(), readBatchSize);
+      Thread.sleep(threadSleepTime);
+      final FaceDetectionConsumerProcess faceDetectionConsumerProcess = new FaceDetectionConsumerProcess(log, aMarker, outputDir, action, this);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, faceDetectionConsumerProcess);
+      log.info(aMarker, " Face detection Action has been completed {}  ", faceDetection.getName());
+    } catch (Exception e) {
+      action.getContext().put(faceDetection.getName() + ".isSuccessful", "false");
+      log.error(aMarker, "error in execute method for face detection ", e);
+      throw new HandymanException("error in execute method for face detection", e, action);
+    }
   }
 
   @Override
   public boolean executeIf() throws Exception {
     return faceDetection.getCondition();
+  }
+
+  public Integer getTimeOut() {
+    return this.timeout;
   }
 }
