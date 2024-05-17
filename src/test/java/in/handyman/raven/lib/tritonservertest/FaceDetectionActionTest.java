@@ -19,11 +19,11 @@ public class FaceDetectionActionTest {
                 .outputDir("/data/")
                 .outputTable("face_detection.face_detection_result")
                 .querySet(
-                        "select sot.origin_id,a.file_path as input_file_path ,sot.paper_no , sot.root_pipeline_id , \n" +
+                        "select sot.origin_id,'/data/output/pdf_to_image/h_hart_packet/h_hart_packet_17.jpg' as input_file_path ,sot.paper_no , sot.root_pipeline_id , \n" +
                                 " a.tenant_id , sot.group_id,1 as process_id, 'FACE_DETECTION' as process\n" +
                                 "from info.source_of_truth sot\n" +
                                 "join info.asset a on a.file_id = sot.preprocessed_file_id \n" +
-                                "where a.root_pipeline_id = 14368"
+                                "where a.root_pipeline_id = 14368 LIMIT 1"
                 )
                 .build();
 

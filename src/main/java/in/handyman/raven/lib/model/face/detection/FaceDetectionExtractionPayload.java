@@ -1,6 +1,5 @@
 package in.handyman.raven.lib.model.face.detection;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class FaceDetectionExtractionResponse {
-    private boolean success;
-    private List<FaceDetectionExtractionPayload> payload;
+public class FaceDetectionExtractionPayload {
+    private String inputFilepath;
+    private List<FaceDetectionExtractionPrediction> predictions;
 }
