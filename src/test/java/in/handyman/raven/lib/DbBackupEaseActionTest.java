@@ -22,8 +22,8 @@ class DbBackupEaseActionTest {
                 .auditTable("sanitary_hub.db_data_backup_audit")
                 .resourceConn("intics_zio_db_conn")
                 .querySet("SELECT \n" +
-                        "    ARRAY['info', 'sor_transaction', 'paper_classification', 'urgency_triage'] AS backupSchemaList,\n" +
-                        "    ARRAY['audit', 'sor_transaction'] AS restrictedSchemaList,\n" +
+                        "    'info,sor_transaction,paper_classification, urgency_triage' AS backupSchemaList,\n" +
+                        "    'audit,sor_transaction' AS restrictedSchemaList,\n" +
                         "    '/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/' AS targetDirectory,\n" +
                         "    1 AS groupId,\n" +
                         "    1 AS tenantId,\n" +
@@ -44,10 +44,10 @@ class DbBackupEaseActionTest {
     @Test
     public void dbCommand() throws InterruptedException, IOException {
         // Define the backup command
-        String backupCommand = "docker exec pedantic_lovelace sh -c 'pg_dump -U postgres -d zio_pipeline -h localhost -p 5432 -n audit -n sor_meta'";
+        String backupCommand = "docker exec pedantic_lovelace sh -c 'pg_dump  -U postgres -d zio_pipeline -h localhost -p 5432 -n info -n sor_transaction -n paper_classification -n  urgency_triage'";
 
         // Specify the absolute path for the output file
-        String outputFile = "/home/dineshkumar.anandan@zucisystems.com/Documents/data_cleanup_pipeline_test/psql_dump.sql";
+        String outputFile = "/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/psql_dump.sql";
 
         // Execute the backup command and redirect output to the file
         Process process = new ProcessBuilder()
