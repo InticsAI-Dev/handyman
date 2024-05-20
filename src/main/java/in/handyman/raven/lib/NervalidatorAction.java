@@ -42,7 +42,7 @@ public class NervalidatorAction implements IActionExecution {
         this.log = log;
         this.URI = action.getContext().get("copro.text-validation.url");
         this.alphaAdapter = new AlphaAdapter();
-        this.nameAdapter = new NameAdapter();
+        this.nameAdapter = new NameAdapter(jdbi);
         this.aMarker = MarkerFactory.getMarker(" Nervalidator:" + this.nervalidator.getName());
     }
 

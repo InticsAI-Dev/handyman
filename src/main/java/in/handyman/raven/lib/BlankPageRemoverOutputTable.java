@@ -22,9 +22,12 @@ public class BlankPageRemoverOutputTable implements CoproProcessor.Entity {
     private String status;
     private String stage;
     private String message;
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.processedFilePath, this.status, this.stage, this.message).collect(Collectors.toList());
+        return Stream.of(this.originId, this.groupId, this.processedFilePath, this.status, this.stage, this.message, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

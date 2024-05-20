@@ -97,7 +97,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, parentObj);
+            coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
@@ -112,7 +112,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         return parentObj;
     }
 
-    private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj) {
+    private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -126,7 +126,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
                 String responseBody = Objects.requireNonNull(response.body()).string();
 
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
 
                 parentObj.add(HwClassificationOutputTable.builder()
@@ -143,6 +143,9 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .message(response.message())
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -163,6 +166,9 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .message(ExceptionUtil.toString(e))
                     .groupId(entity.getGroupId())
                     .rootPipelineId(entity.getRootPipelineId())
+                    .request(jsonInputRequest)
+                    .response("Error in getting Response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -213,6 +219,9 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .message(response.message())
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -231,6 +240,9 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .message(ExceptionUtil.toString(e))
                     .groupId(entity.getGroupId())
                     .rootPipelineId(entity.getRootPipelineId())
+                    .request(jsonRequest)
+                    .response("Error in getting Response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -271,7 +283,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .build());
     }
 
-    private void extractedCoproOutputResponse(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
+    private void extractedCoproOutputResponse(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -302,6 +314,9 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
                 .build());
     }
 }

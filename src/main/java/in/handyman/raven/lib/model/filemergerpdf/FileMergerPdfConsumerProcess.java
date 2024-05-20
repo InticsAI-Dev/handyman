@@ -128,11 +128,11 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 if (Objects.equals("false", tritonRequestActivator)) {
                     Request request = new Request.Builder().url(endpoint)
                             .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-                    coproRequestBuilder(entity, request, parentObj);
+                    coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
                 } else {
                     Request request = new Request.Builder().url(endpoint)
                             .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-                    tritonRequestBuilder(entity, request, parentObj);
+                    tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
                 }
 
 
@@ -161,12 +161,12 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         return parentObj;
     }
 
-    private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj) {
+    private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj, String jsonInputRequest, URL endpoint) {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
 
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 // Handle non-successful response here
                 log.error(aMarker, "Unsuccessful response received in copro: {}", response.code());
@@ -178,7 +178,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
 
     }
 
-    private void tritonRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj) throws IOException {
+    private void tritonRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj, String jsonRequest, URL endpoint) throws IOException {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
@@ -186,7 +186,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(fileMergerDataItem -> {
-                        extractedOutputDataRequest(entity, fileMergerDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractedOutputDataRequest(entity, fileMergerDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody,endpoint.toString());
                     }));
                 }
             } else {
@@ -198,7 +198,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private void extractedOutputDataRequest(FileMergerpdfInputEntity entity, String fileMergerDataItem, List<FileMergerpdfOutputEntity> parentObj, String modelName, String modelVersion) {
+    private void extractedOutputDataRequest(FileMergerpdfInputEntity entity, String fileMergerDataItem, List<FileMergerpdfOutputEntity> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long rootPipelineId = entity.getRootPipelineId();
         Long tenantId = entity.getTenantId();
         try {
@@ -264,6 +264,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonMappingException e) {
 
@@ -280,6 +283,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             throw new HandymanException("exception in processing triton output response node", e, action);
         } catch (JsonProcessingException e) {
@@ -296,6 +302,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             throw new HandymanException("exception in processing triton input node", e, action);
         }
@@ -323,7 +332,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private void extractedCoproOutputResponse(FileMergerpdfInputEntity entity, String fileMergerDataItem, List<FileMergerpdfOutputEntity> parentObj, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(FileMergerpdfInputEntity entity, String fileMergerDataItem, List<FileMergerpdfOutputEntity> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long rootPipelineId = entity.getRootPipelineId();
         Long tenantId = entity.getTenantId();
         Long group_id = entity.getGroupId();
@@ -390,6 +399,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonMappingException e) {
 
@@ -406,6 +418,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .request(request)
+                    .response(response)
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             throw new HandymanException("exception in processing triton output response node", e, action);
         } catch (JsonProcessingException e) {
@@ -422,6 +437,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             throw new HandymanException("exception in processing triton input node", e, action);
         }

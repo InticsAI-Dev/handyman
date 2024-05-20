@@ -90,7 +90,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, objectMapper, parentObj);
+            coproRequestBuilder(entity, request, objectMapper, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
@@ -105,7 +105,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         return parentObj;
     }
 
-    private void coproRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj) {
+    private void coproRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -118,7 +118,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
             }
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody);
+                extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody, jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
                 parentObj.add(
@@ -134,6 +134,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -197,6 +200,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .message(response.message())
                                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                                 .rootPipelineId(entity.getRootPipelineId())
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -215,6 +221,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .message(exception.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(entity.getRootPipelineId())
+                            .request(jsonInputRequest)
+                            .response("Error In Response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
@@ -274,6 +283,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .message(e.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(entity.getRootPipelineId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
@@ -282,7 +294,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
 
-    private void extractedCoproOutputResponse(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem) {
+    private void extractedCoproOutputResponse(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem, String request, String response, String endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -312,6 +324,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
+                                .response(response)
+                                .request(request)
+                                .endpoint(endpoint)
                                 .build());
             });
 
@@ -329,6 +344,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .message(e.getMessage())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                             .rootPipelineId(entity.getRootPipelineId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);

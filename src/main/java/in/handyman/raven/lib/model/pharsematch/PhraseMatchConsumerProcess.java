@@ -88,7 +88,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
@@ -98,14 +98,14 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         return parentObj;
     }
 
-    private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper) {
+    private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper, String jsonInputRequest, URL endpoint) {
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long tenantId = entity.getTenantId();
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
+                extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "", jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
                 parentObj.add(
@@ -119,6 +119,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .stage(PROCESS_NAME)
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.info(aMarker, "The Exception occurred in Phrase match API call");
             }
@@ -135,6 +138,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
+                            .request(jsonInputRequest)
+                            .response("Error in response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -168,6 +174,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .stage(PROCESS_NAME)
                                     .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                     .rootPipelineId(rootPipelineId)
+                                    .request(jsonRequest)
+                                    .response(response.message())
+                                    .endpoint(String.valueOf(endpoint))
                                     .build());
                     log.info(aMarker, "The Exception occurred in Phrase match API call");
                 }
@@ -184,6 +193,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
+                            .request(jsonRequest)
+                            .response("Error In Response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -229,7 +241,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
@@ -255,6 +267,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .isKeyPresent(String.valueOf(item.getIsKeyPresent()))
                                 .entity(item.getEntity())
                                 .modelVersion(modelVersion)
+                                .response(response)
+                                .request(request)
+                                .endpoint(endpoint)
                                 .build());
             }
 

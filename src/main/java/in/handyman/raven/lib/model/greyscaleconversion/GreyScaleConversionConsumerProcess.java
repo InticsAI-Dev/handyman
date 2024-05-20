@@ -106,7 +106,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
             coproRequestBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -125,11 +125,11 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                 String responseBody = response.body().string();
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
-                parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
+                parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).response(response.message()).request(jsonInputRequest).endpoint(String.valueOf(endpoint)).build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
         } catch (Exception e) {
-            parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
+            parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).response("Error in Response").request(jsonInputRequest).endpoint(String.valueOf(endpoint)).build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Grey Scale Conversion consumer failed for batch/group " + groupId, handymanException, this.action);
@@ -137,7 +137,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void tritonRequestBuilder(GreyScaleConversionInputQuerySet entity, Request request, List<GreyScaleConversionOutputQuerySet> parentObj) {
+    private void tritonRequestBuilder(GreyScaleConversionInputQuerySet entity, Request request, List<GreyScaleConversionOutputQuerySet> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -151,17 +151,17 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(greyScaleConversionDataItem -> {
-                        extractTritonOuputDataRequest(entity, greyScaleConversionDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractTritonOuputDataRequest(entity, greyScaleConversionDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonInputRequest, responseBody, endpoint.toString());
                     }));
 
                 }
 
             } else {
-                parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
+                parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).request(jsonInputRequest).response(response.message()).endpoint(String.valueOf(endpoint)).build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
         } catch (Exception e) {
-            parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
+            parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).request(jsonInputRequest).response("Error in Response").endpoint(String.valueOf(endpoint)).build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Grey Scale Conversion consumer failed for batch/group " + groupId, handymanException, this.action);
@@ -169,7 +169,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void extractTritonOuputDataRequest(GreyScaleConversionInputQuerySet entity, String greyScaleConversionDataitemStr, List<GreyScaleConversionOutputQuerySet> parentObj, String modelName, String modelVersion) {
+    private void extractTritonOuputDataRequest(GreyScaleConversionInputQuerySet entity, String greyScaleConversionDataitemStr, List<GreyScaleConversionOutputQuerySet> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -193,10 +193,13 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                     .rootPipelineId(greyScaleConversionDataItem.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .response(response)
+                    .request(request)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonProcessingException e) {
 
-            parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
+            parentObj.add(GreyScaleConversionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).request(request).response(response).endpoint(endpoint).build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Grey Scale Conversion consumer failed for batch/group " + groupId, handymanException, this.action);
@@ -246,6 +249,9 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .response(response)
+                    .request(request)
+                    .endpoint(endpoint)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);

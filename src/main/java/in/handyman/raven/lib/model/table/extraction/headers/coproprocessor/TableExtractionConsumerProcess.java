@@ -91,7 +91,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
             if (Objects.equals("false", tritonRequestActivator)) {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-                coproResponseBuilder(entity, request, parentObj, TABLE_EXTRACTION_PROCESS_NAME, objectMapper);
+                coproResponseBuilder(entity, request, parentObj, TABLE_EXTRACTION_PROCESS_NAME, objectMapper, jsonInputRequest, endpoint);
             } else {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
@@ -133,7 +133,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
 
     }
 
-    private void coproResponseBuilder(TableExtractionInputTable entity, Request request, List<TableExtractionOutputTable> parentObj, String tableExtractionProcessName, ObjectMapper objectMapper) {
+    private void coproResponseBuilder(TableExtractionInputTable entity, Request request, List<TableExtractionOutputTable> parentObj, String tableExtractionProcessName, ObjectMapper objectMapper, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Long groupId = entity.getGroupId();
         Long tenantId = entity.getTenantId();
@@ -219,6 +219,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                             .truthEntityId(entity.getTruthEntityId())
                                             .sorContainerId(entity.getSorContainerId())
                                             .channelId(entity.getChannelId())
+                                            .request(jsonInputRequest)
+                                            .response(responseBody)
+                                            .endpoint(String.valueOf(endpoint))
                                             .build());
                         }
 
@@ -247,6 +250,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .truthEntityId(entity.getTruthEntityId())
                                 .sorContainerId(entity.getSorContainerId())
                                 .channelId(entity.getChannelId())
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -268,6 +274,9 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .truthEntityId(entity.getTruthEntityId())
                             .sorContainerId(entity.getSorContainerId())
                             .channelId(entity.getChannelId())
+                            .request(jsonInputRequest)
+                            .response("Error in response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);
