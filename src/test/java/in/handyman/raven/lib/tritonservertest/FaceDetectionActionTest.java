@@ -23,7 +23,7 @@ public class FaceDetectionActionTest {
                                 " a.tenant_id , sot.group_id,1 as process_id, 'FACE_DETECTION' as process\n" +
                                 "from info.source_of_truth sot\n" +
                                 "join info.asset a on a.file_id = sot.preprocessed_file_id \n" +
-                                "where a.root_pipeline_id = 14368 LIMIT 1"
+                                "where a.root_pipeline_id = 14368"
                 )
                 .build();
 

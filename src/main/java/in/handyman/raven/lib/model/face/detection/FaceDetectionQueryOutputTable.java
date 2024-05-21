@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -16,6 +17,10 @@ import java.util.stream.Stream;
 @NoArgsConstructor
 @Builder
 public class FaceDetectionQueryOutputTable implements CoproProcessor.Entity {
+    private Timestamp createdOn;
+    private Long createdUserId;
+    private Timestamp lastUpdatedOn;
+    private Long lastUpdatedUserId;
     private String originId;
     private Integer paperNo;
     private String predictedValue;
@@ -40,7 +45,7 @@ public class FaceDetectionQueryOutputTable implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.paperNo, this.predictedValue, this.precision,
+        return Stream.of(this.createdOn, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId, this.originId, this.paperNo, this.predictedValue, this.precision,
                 this.leftPos, this.upperPos, this.rightPos, this.lowerPos, this.encode, this.groupId,
                 this.filePath, this.tenantId, this.processId, this.rootPipelineId, this.process,
                 this.status, this.stage, this.message, this.modelName, this.modelVersion).collect(Collectors.toList());

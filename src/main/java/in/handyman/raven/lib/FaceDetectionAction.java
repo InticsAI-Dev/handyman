@@ -57,13 +57,14 @@ public class FaceDetectionAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "face_detection";
   public static final String FACE_DETECTION = "face_detection_result";
-  public static final String COLUMN_LIST = "origin_id, paper_no, predicted_value, precision, left_pos, " +
+  public static final String COLUMN_LIST = "created_on,created_user_id, last_updated_on, last_updated_user_id, " +
+          "origin_id, paper_no, predicted_value, precision, left_pos, " +
           "upper_pos, right_pos, lower_pos, encode, group_id, file_path, tenant_id, process_id, root_pipeline_id, " +
           "process , status, stage, message, model_name, model_version";
-  public static final String VAL_STRING_LIST = "VALUES( ?,?,?,?,?," +
+  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?," +
                                                   "?,?,?,?,?" +
                                                   ",?,?,?,?,?," +
-                                                  "?,?,?,?)";
+                                                  "?,?,?,?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
 
   private final int threadSleepTime;
@@ -136,7 +137,7 @@ public class FaceDetectionAction implements IActionExecution {
 
       coproProcessor.startProducer(faceDetection.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
-      final FaceDetectionConsumerProcess faceDetectionConsumerProcess = new FaceDetectionConsumerProcess(log, aMarker, outputDir, action, this);
+       final FaceDetectionConsumerProcess faceDetectionConsumerProcess = new FaceDetectionConsumerProcess(log, aMarker, outputDir, action, this);
       coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, faceDetectionConsumerProcess);
       log.info(aMarker, " Face detection Action has been completed {}  ", faceDetection.getName());
     } catch (Exception e) {

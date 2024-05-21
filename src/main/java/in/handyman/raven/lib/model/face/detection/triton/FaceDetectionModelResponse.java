@@ -18,6 +18,6 @@ public class FaceDetectionModelResponse {
     private String modelName;
     @JsonProperty("model_version")
     private String modelVersion;
-
     private List<AutoRotationOutput> outputs;
+
 }
