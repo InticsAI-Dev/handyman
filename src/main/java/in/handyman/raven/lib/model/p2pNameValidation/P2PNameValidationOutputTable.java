@@ -29,10 +29,11 @@ public class P2PNameValidationOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private Integer tenantId;
     private String sorItemName;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.p2pBbox, this.p2pConfidenceScore, this.p2pFilterScore
-                , this.p2pMaximumScore, this.p2pConcatenatedName, this.paperNo, this.rootPipelineId, this.tenantId, this.sorItemName).collect(Collectors.toList());
+                , this.p2pMaximumScore, this.p2pConcatenatedName, this.paperNo, this.rootPipelineId, this.tenantId, this.sorItemName, this.batchId).collect(Collectors.toList());
     }
 }
