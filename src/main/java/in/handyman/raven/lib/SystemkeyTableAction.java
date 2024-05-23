@@ -115,8 +115,8 @@ public class SystemkeyTableAction implements IActionExecution {
               "batch_id varchar NULL," +
               "tenant_id int8 NULL);" ;
       handle.execute(createTableSQL);
-      System.out.println("Table '"+ tableName+ "' has been created.");
-      System.out.println("Table '" + tableName + "_match' has been created");
+      log.info("Table '{}' has been created.", tableName);
+      log.info("Table '{}_match' has been created", tableName);
   }
 
 
