@@ -22,6 +22,7 @@ public class FigureDetectionQueryInputTable implements CoproProcessor.Entity{
     private Long processId;
     private String process;
     private Float threshold;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

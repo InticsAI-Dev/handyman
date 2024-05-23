@@ -1,6 +1,5 @@
 package in.handyman.raven.lib.model.face.detection;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,18 +8,15 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.FaceDetectionAction;
 import in.handyman.raven.lib.model.face.detection.triton.FaceDetectionModelResponse;
-import in.handyman.raven.lib.model.paragraph.detection.ParagraphExtractionResponse;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
-import jakarta.json.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
-import java.io.DataInput;
 import java.io.IOException;
 import java.net.URL;
 import java.sql.Timestamp;
@@ -56,9 +52,8 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
     public List<FaceDetectionQueryOutputTable> process(URL endpoint, FaceDetectionQueryInputTable entity) throws Exception {
         List<FaceDetectionQueryOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getInputFilePath();
-        String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         String filePath = String.valueOf(entity.getInputFilePath());
-        Long actionId = action.getActionId();
+
 
         FaceDetectionExtractionRequest faceDetectionExtractionRequest = new FaceDetectionExtractionRequest();
 
@@ -93,7 +88,7 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuilder(entity, request, parentObj);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
@@ -104,7 +99,7 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
 
-    private void coproResponseBuider(FaceDetectionQueryInputTable entity, Request request, List<FaceDetectionQueryOutputTable> parentObj) {
+    private void coproResponseBuilder(FaceDetectionQueryInputTable entity, Request request, List<FaceDetectionQueryOutputTable> parentObj) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -134,8 +129,9 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .message(response.message())
+                        .batchId(entity.getBatchId())
                         .build());
-                log.info(aMarker, "Error in getting response {}", response.message());
+                log.info(aMarker, "Error in getting response from copro server {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(FaceDetectionQueryOutputTable.builder()
@@ -150,12 +146,12 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
+                    .batchId(entity.getBatchId())
                     .build());
 
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("face detection consumer failed for batch/group " + groupId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            HandymanException.insertException("Face detection consumer failed in copro server batch/group " + groupId, handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response from copro server {}", ExceptionUtil.toString(e));
         }
 
     }
@@ -171,29 +167,31 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
         String originId = entity.getOriginId();
 
         parentObj.add(FaceDetectionQueryOutputTable.builder()
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                        .createdUserId(tenantId)
-                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
-                        .lastUpdatedUserId(tenantId)
-                        .originId(originId)
-                        .paperNo(paperNo)
-                        .predictedValue(predictions.getPredictedValue())
-                        .precision(predictions.getPrecision())
-                        .leftPos(predictions.getLeftPos())
-                        .upperPos(predictions.getUpperPos())
-                        .rightPos(predictions.getRightPos())
-                        .lowerPos(predictions.getLowerPos())
-                        .encode(predictions.getEncode())
-                        .groupId(groupId)
-                        .filePath(processedFilePaths)
-                        .tenantId(tenantId)
-                        .processId(processId)
-                        .rootPipelineId(rootPipelineId)
-                        .process(entity.getProcess())
-                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                        .stage(PROCESS_NAME)
-                        .message("face detection macro completed")
-                        .build()
+                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .createdUserId(tenantId)
+                .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                .lastUpdatedUserId(tenantId)
+                .originId(originId)
+                .paperNo(paperNo)
+                .predictedValue(predictions.getPredictedValue())
+                .precision(predictions.getPrecision())
+                .leftPos(predictions.getLeftPos())
+                .upperPos(predictions.getUpperPos())
+                .rightPos(predictions.getRightPos())
+                .lowerPos(predictions.getLowerPos())
+                .encode(predictions.getEncode())
+                .groupId(groupId)
+                .filePath(processedFilePaths)
+                .tenantId(tenantId)
+                .processId(processId)
+                .rootPipelineId(rootPipelineId)
+                .process(entity.getProcess())
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                .stage(PROCESS_NAME)
+                .message("face detection macro completed")
+                .batchId(entity.getBatchId())
+
+                .build()
         );
     }
 
@@ -235,8 +233,9 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .message(response.message())
+                        .batchId(entity.getBatchId())
                         .build());
-                log.info(aMarker, "Error in getting response {}", response.message());
+                log.info(aMarker, "Error in getting response from triton response {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(FaceDetectionQueryOutputTable.builder()
@@ -251,19 +250,18 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
+                    .batchId(entity.getBatchId())
                     .build());
 
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("face detection consumer failed for batch/group " + groupId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
         }
 
 
     }
 
-    private void extractTritonOutputDataResponse(FaceDetectionQueryInputTable entity, String faceDetectionDataItem, List<FaceDetectionQueryOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException
-    {
+    private void extractTritonOutputDataResponse(FaceDetectionQueryInputTable entity, String faceDetectionDataItem, List<FaceDetectionQueryOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -278,33 +276,29 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
             List<FaceDetectionExtractionPrediction> detectionDataItem = mapper.readValue(faceDetectionDataItem, new TypeReference<>() {
             });
             detectionDataItem.forEach(faceDetectionExtractionResponse -> {
-                try {
-                    String faceDetectionExtractionResponseStr = mapper.writeValueAsString(faceDetectionExtractionResponse.getEncode());
-                    parentObj.add(new FaceDetectionQueryOutputTable().builder()
-                            .originId(originId)
-                            .paperNo(paperNo)
-                            .predictedValue(faceDetectionExtractionResponse.getPredictedValue())
-                            .precision(faceDetectionExtractionResponse.getPrecision())
-                            .leftPos(faceDetectionExtractionResponse.getLeftPos())
-                            .upperPos(faceDetectionExtractionResponse.getUpperPos())
-                            .rightPos(faceDetectionExtractionResponse.getRightPos())
-                            .lowerPos(faceDetectionExtractionResponse.getLowerPos())
-                            .encode(faceDetectionExtractionResponseStr)
-                            .groupId(groupId)
-                            .filePath(processedFilePaths)
-                            .tenantId(tenantId)
-                            .processId(processId)
-                            .rootPipelineId(rootPipelineId)
-                            .process(entity.getProcess())
-                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                            .stage(PROCESS_NAME)
-                            .message("face detection macro completed")
-                            .modelName(modelName)
-                            .modelVersion(modelVersion)
-                            .build());
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
+                parentObj.add(FaceDetectionQueryOutputTable.builder()
+                        .originId(originId)
+                        .paperNo(paperNo)
+                        .predictedValue(faceDetectionExtractionResponse.getPredictedValue())
+                        .precision(faceDetectionExtractionResponse.getPrecision())
+                        .leftPos(faceDetectionExtractionResponse.getLeftPos())
+                        .upperPos(faceDetectionExtractionResponse.getUpperPos())
+                        .rightPos(faceDetectionExtractionResponse.getRightPos())
+                        .lowerPos(faceDetectionExtractionResponse.getLowerPos())
+                        .encode(faceDetectionExtractionResponse.getEncode())
+                        .groupId(groupId)
+                        .filePath(processedFilePaths)
+                        .tenantId(tenantId)
+                        .processId(processId)
+                        .rootPipelineId(rootPipelineId)
+                        .process(entity.getProcess())
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .stage(PROCESS_NAME)
+                        .message("face detection macro completed")
+                        .modelName(modelName)
+                        .modelVersion(modelVersion)
+                        .batchId(entity.getBatchId())
+                        .build());
             });
         } catch (JsonProcessingException e) {
             parentObj.add(FaceDetectionQueryOutputTable.builder()
@@ -321,10 +315,11 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .message(ExceptionUtil.toString(e))
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
-            log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
+            log.error(aMarker, "The Exception occurred in processing response from triton server  {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("face detection consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("face detection consumer failed in triton server batch/group " + groupId, handymanException, this.action);
 
         }
     }

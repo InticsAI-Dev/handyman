@@ -23,6 +23,7 @@ public class FaceDetectionQueryInputTable implements CoproProcessor.Entity  {
     private Long groupId;
     private Long processId;
     private String process;
+    private String batchId;
 
 
     @Override

@@ -1,14 +1,10 @@
 package in.handyman.raven.lib.model.figure.detection;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.face.detection.FaceDetectionQueryOutputTable;
-import in.handyman.raven.lib.model.paragraph.detection.ParagraphExtractionResponse;
-import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -55,24 +51,17 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
     public List<FigureDetectionQueryOutputTable> process(URL endpoint, FigureDetectionQueryInputTable entity) throws Exception {
         List<FigureDetectionQueryOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getInputFilePath();
-        String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         String filePath = String.valueOf(entity.getInputFilePath());
         Float threshold = entity.getThreshold();
-        Long actionId = action.getActionId();
 
 
         RequestBody emptyBody = RequestBody.create(new byte[0]);
-
-        Request urlRequest1 = new Request.Builder().url(endpoint + "?inputFilePath=" + filePath + "&threshold=" + threshold)
-                .build();
-        String jsonInputRequest = mapper.writeValueAsString(urlRequest1);
-
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("FIGURE DETECTION START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
+//        requestBody.setData(Collections.singletonList(jsonInputRequest));
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
@@ -90,11 +79,11 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
 
 
         if (Objects.equals("false", tritonRequestActivator)) {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
+            log.info("Triton request activator variable: {} value: {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request urlRequest = new Request.Builder().url(endpoint + "?inputFilePath=" + filePath + "&threshold=" + threshold)
                     .post(emptyBody)
                     .build();
-            coproResponseBuider(entity, urlRequest, parentObj);
+            coproResponseBuilder(entity, urlRequest, parentObj);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
             Request urlRequest = new Request.Builder().url(endpoint + "?inputFilePath=" + filePath + "&threshold=" + threshold)
@@ -134,6 +123,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .message(response.message())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -150,12 +140,12 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
+                    .batchId(entity.getBatchId())
                     .build());
 
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Figure detection consumer failed for batch/group " + groupId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            HandymanException.insertException("Figure detection consumer failed in batch/group " + groupId, handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response from triton server {}", ExceptionUtil.toString(e));
         }
     }
 
@@ -187,13 +177,14 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message("face detection macro completed")
+                    .batchId(entity.getBatchId())
                     .build()
             );
 
         });
     }
 
-    private void coproResponseBuider(FigureDetectionQueryInputTable entity, Request request, List<FigureDetectionQueryOutputTable> parentObj) {
+    private void coproResponseBuilder(FigureDetectionQueryInputTable entity, Request request, List<FigureDetectionQueryOutputTable> parentObj) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -221,8 +212,9 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(PROCESS_NAME)
                         .message(response.message())
+                        .batchId(entity.getBatchId())
                         .build());
-                log.info(aMarker, "Error in getting response {}", response.message());
+                log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(FigureDetectionQueryOutputTable.builder()
@@ -237,12 +229,12 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
+                    .batchId(entity.getBatchId())
                     .build());
 
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Figure detection consumer failed for batch/group " + groupId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            log.error(aMarker, "The Exception occurred in getting response from copro server {}", ExceptionUtil.toString(e));
         }
     }
 
@@ -273,6 +265,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(PROCESS_NAME)
+                    .batchId(entity.getBatchId())
                     .message("face detection macro completed")
                     .build()
                 );
