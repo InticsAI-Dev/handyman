@@ -3,7 +3,6 @@ package in.handyman.raven.lib.model.p2pNameValidation;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.P2pNameValidationAction;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -16,7 +15,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
     private final Marker aMarker;
     private final ActionExecutionAudit action;
 
-    public P2pNameValidationConsumerProcess(ActionExecutionAudit actionExecutionAudit,  Logger log, Marker aMarker, P2pNameValidationAction p2pNameValidationAction) {
+    public P2pNameValidationConsumerProcess(ActionExecutionAudit actionExecutionAudit, Logger log, Marker aMarker) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = actionExecutionAudit;
@@ -28,7 +27,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
         final List<P2PNameValidationOutputTable> p2PNameValidationOutputTableArrayList = new ArrayList<>();
         try {
             log.info(aMarker, "mapping inputs for the results {}", entity);
-            final String p2pBboxFinal = entity.getP2pFirstNameBbox();
+            final String bBoxFinal = entity.getP2pFirstNameBBox();
             final String p2pFullName = entity.getP2pFullName();
 
             final String p2pFirstName = cleanAndExtractAlphabets(entity.getP2pFirstName());
@@ -42,9 +41,8 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             final Double p2pLastNameMaxScore = entity.getP2pLastNameMaximumScore() != null ? entity.getP2pLastNameMaximumScore() : 0;
             final Double finalMaxScore = (p2pFirstNameMaxScore + p2pLastNameMaxScore) / 2;
 
-            final Double p2pFirstNameFilterScore = entity.getP2pFirstNameFilterScore() != null ? entity.getP2pFirstNameFilterScore() : 0;
-            final Double p2pLastNameFilterScore = entity.getP2pLastNameFilterScore() != null ? entity.getP2pLastNameFilterScore() : 0;
-            final Double finalFilterScore = (p2pFirstNameFilterScore + p2pLastNameFilterScore) / 2;
+            Integer finalQuestionId = getFinalQuestionId(entity);
+            Integer finalSynonymId = getFinalSynonymId(entity);
 
             String finalConcatenatedName;
             if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
@@ -56,7 +54,6 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             } else {
                 finalConcatenatedName = p2pFirstName + " " + p2pLastName;
             }
-
             log.info(aMarker, "Concatenated Name before Full name validation {}", finalConcatenatedName);
             boolean isContains = finalConcatenatedName.contains(p2pFullName);
             if (!p2pFullName.isBlank() && !p2pFullName.isEmpty() && !isContains) {
@@ -70,12 +67,14 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                     .rootPipelineId(entity.getRootPipelineId())
                     .paperNo(entity.getPaperNo())
                     .originId(entity.getOriginId())
-                    .p2pBbox(p2pBboxFinal)
+                    .p2pBBox(bBoxFinal)
                     .p2pConfidenceScore(finalConfidenceScore)
-                    .p2pFilterScore(finalFilterScore)
                     .p2pMaximumScore(finalMaxScore)
                     .tenantId(entity.getTenantId())
                     .sorItemName(entity.getSorItemName())
+                    .synonymId(finalSynonymId)
+                    .questionId(finalQuestionId)
+                    .modelRegistry(entity.getModelRegistry())
                     .build());
             log.info(aMarker, "p2PNameValidationOutputTableArrayList {}", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {
@@ -83,11 +82,38 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Error in execute method for p2p name concatenation ", handymanException, this.action);
         }
-
         return p2PNameValidationOutputTableArrayList;
     }
 
+    private static Integer getFinalSynonymId(P2PNameValidationInputTable entity) {
+        Integer finalSynonymId;
+        if (entity.getSynonymId() != null) {
+            finalSynonymId = entity.getSynonymId();
+        } else {
+            if (entity.getFirstNameQuestionId() != null) {
+                finalSynonymId = entity.getFirstNameSynonymId();
+            } else {
+                finalSynonymId = entity.getLastNameSynonymId();
+            }
+        }
+        return finalSynonymId;
+    }
+
+    private static Integer getFinalQuestionId(P2PNameValidationInputTable entity) {
+        Integer finalQuestionId;
+        if (entity.getQuestionId() != null) {
+            finalQuestionId = entity.getQuestionId();
+        } else {
+            if (entity.getFirstNameQuestionId() != null) {
+                finalQuestionId = entity.getFirstNameQuestionId();
+            } else {
+                finalQuestionId = entity.getLastNameQuestionId();
+            }
+        }
+        return finalQuestionId;
+    }
+
     private String cleanAndExtractAlphabets(String value) {
-            return value.replaceAll("[^a-zA-Z]+", "");
+        return value.replaceAll("[^a-zA-Z]+", "");
     }
 }

@@ -18,10 +18,9 @@ import java.util.stream.Stream;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class P2PNameValidationOutputTable implements CoproProcessor.Entity {
 
-    private String p2pBbox;
+    private String p2pBBox;
     private Double p2pConfidenceScore;
     private String p2pConcatenatedName;
-    private Double p2pFilterScore;
     private Integer groupId;
     private Double p2pMaximumScore;
     private String originId;
@@ -29,10 +28,14 @@ public class P2PNameValidationOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private Integer tenantId;
     private String sorItemName;
+    private Integer questionId;
+    private Integer synonymId;
+    private String modelRegistry;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.p2pBbox, this.p2pConfidenceScore, this.p2pFilterScore
-                , this.p2pMaximumScore, this.p2pConcatenatedName, this.paperNo, this.rootPipelineId, this.tenantId, this.sorItemName).collect(Collectors.toList());
+        return Stream.of(this.originId, this.groupId, this.p2pBBox, this.p2pConfidenceScore, this.p2pMaximumScore,
+                this.p2pConcatenatedName, this.paperNo, this.rootPipelineId, this.tenantId, this.sorItemName,
+                this.questionId, this.synonymId, this.modelRegistry).collect(Collectors.toList());
     }
 }
