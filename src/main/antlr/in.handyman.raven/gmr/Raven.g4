@@ -159,6 +159,7 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |convertExcelToDatabase
+    |kryptonKvp
     );
 
 
@@ -1183,6 +1184,16 @@ convertExcelToDatabase:
     'target' targetConn=STRING
     'using' '{'
                         querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+kryptonKvp:
+    'kryptonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 //rules
 
