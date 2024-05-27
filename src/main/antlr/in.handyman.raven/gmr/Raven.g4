@@ -161,6 +161,7 @@ action:
     |convertExcelToDatabase
     |faceDetection
     |figureDetection
+    |documentparser
     );
 
 
@@ -1198,6 +1199,15 @@ faceDetection:
 
 figureDetection:
     'figureDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+documentparser:
+    'Document-parser' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'outputDir' outputDir=STRING
     'copro-url' endpoint=STRING
