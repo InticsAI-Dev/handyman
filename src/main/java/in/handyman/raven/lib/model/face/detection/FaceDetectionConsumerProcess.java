@@ -130,6 +130,10 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .stage(PROCESS_NAME)
                         .message(response.message())
                         .batchId(entity.getBatchId())
+                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdUserId(tenantId)
+                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .lastUpdatedUserId(tenantId)
                         .build());
                 log.info(aMarker, "Error in getting response from copro server {}", response.message());
             }
@@ -147,6 +151,10 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
+                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedUserId(tenantId)
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -234,6 +242,10 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .stage(PROCESS_NAME)
                         .message(response.message())
                         .batchId(entity.getBatchId())
+                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdUserId(tenantId)
+                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .lastUpdatedUserId(tenantId)
                         .build());
                 log.info(aMarker, "Error in getting response from triton response {}", response.message());
             }
@@ -251,6 +263,10 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
+                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedUserId(tenantId)
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -316,6 +332,10 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .modelName(modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
+                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedUserId(tenantId)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response from triton server  {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);

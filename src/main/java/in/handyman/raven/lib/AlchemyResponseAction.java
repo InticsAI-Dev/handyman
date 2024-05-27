@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.lib.model.AlchemyResponse;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
@@ -146,49 +147,66 @@ public class AlchemyResponseAction implements IActionExecution {
                     .feature(feature)
                     .build();
 
-            if(feature.equals("KIE")){
+            if(feature.equals(Feature.KIE.name())){
                 alchemyRequestTable.setBbox(mapper.readTree(bbox));
                 alchemyRequestTable.setConfidenceScore(confidenceScore);
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setSynonymId(synonymId);
                 alchemyRequestTable.setQuestionId(questionId);
             }
-            if(feature.equals("CHECKBOX_EXTRACTION")){
+            if(feature.equals(Feature.CHECKBOX_EXTRACTION.name())){
                 alchemyRequestTable.setBbox(mapper.readTree(bbox));
                 alchemyRequestTable.setConfidenceScore(confidenceScore);
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setState(entity.getState());
             }
-            if(feature.equals("TABLE_EXTRACT")){
+            if(feature.equals(Feature.TABLE_EXTRACT.name())){
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
                 alchemyRequestTable.setTableData(tableNode);
                 alchemyRequestTable.setCsvFilePath(entity.getCsvFilePath());
                 alchemyRequestTable.setTruthEntityId(entity.getTruthEntityId());
             }
-            if(feature.equals("CURRENCY_DETECTION")){
+            if(feature.equals(Feature.CURRENCY_DETECTION.name())){
                 alchemyRequestTable.setDetectedValue(entity.getDetectedValue());
                 alchemyRequestTable.setDetectedAsciiValue(entity.getDetectedAsciiValue());
                 alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
             }
-            if(feature.equals("TABLE_EXTRACT_AGGREGATE")){
+            if(feature.equals(Feature.TABLE_EXTRACT_AGGREGATE.name())){
                 JsonNode tableAggregateNode = mapper.readTree(entity.getTableAggregateNode());
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
                 alchemyRequestTable.setTableData(tableNode);
                 alchemyRequestTable.setAggregateJson(tableAggregateNode);
                 alchemyRequestTable.setSorItemId(entity.sorItemId);
             }
-            if(feature.equals("BULLETIN_EXTRACTION")){
+            if(feature.equals(Feature.BULLETIN_EXTRACTION.name())){
                 JsonNode bulletinOutput = mapper.readTree(entity.getBulletinPoints());
                 alchemyRequestTable.setBulletinPoints(bulletinOutput);
                 alchemyRequestTable.setBulletinSection(entity.getBulletinSection());
                 alchemyRequestTable.setSynonymId(entity.getSynonymId());
             }
-            if(feature.equals("PARAGRAPH_EXTRACTION")){
+            if(feature.equals(Feature.PARAGRAPH_EXTRACTION.name())){
                 JsonNode paragraphOutput = mapper.readTree(entity.getParagraphPoints());
                 alchemyRequestTable.setParagraphPoints(paragraphOutput);
                 alchemyRequestTable.setParagraphSection(entity.getParagraphSection());
                 alchemyRequestTable.setSynonymId(entity.getSynonymId());
             }
+            if(feature.equals(Feature.FACE_DETECTION.name())){
+
+                ObjectNode bboxJsonNode = mapper.createObjectNode();
+                bboxJsonNode.put("topLeftX",entity.getLeftPos());
+                bboxJsonNode.put("topLeftY",entity.getUpperPos());
+                bboxJsonNode.put("bottomRightX",entity.getRightPos());
+                bboxJsonNode.put("bottomRightY",entity.getLowerPos());
+
+                alchemyRequestTable.setEncode(entity.getEncode());
+                alchemyRequestTable.setBbox(bboxJsonNode);
+                alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
+            }
+            if(feature.equals(Feature.FIGURE_DETECTION.name())){
+                alchemyRequestTable.setEncode(entity.getEncode());
+
+            }
+
 
 
 
@@ -247,6 +265,11 @@ public class AlchemyResponseAction implements IActionExecution {
         private String bulletinPoints;
         private String paragraphSection;
         private String paragraphPoints;
+        private String encode;
+        private String leftPos;
+        private String upperPos;
+        private String rightPos;
+        private String lowerPos;
 
 
         @Override
@@ -288,6 +311,9 @@ public class AlchemyResponseAction implements IActionExecution {
         private JsonNode bulletinPoints;
         private String paragraphSection;
         private JsonNode paragraphPoints;
+        private String encode;
+
+
     }
 
     @AllArgsConstructor

@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.net.MediaType;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -10,7 +11,6 @@ import in.handyman.raven.lib.model.FigureDetection;
 import in.handyman.raven.lib.model.figure.detection.FigureDetectionConsumerProcess;
 import in.handyman.raven.lib.model.figure.detection.FigureDetectionQueryInputTable;
 import in.handyman.raven.lib.model.figure.detection.FigureDetectionQueryOutputTable;
-import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -43,8 +43,6 @@ public class FigureDetectionAction implements IActionExecution {
 
     private final Marker aMarker;
 
-    private static final MediaType MediaTypeJSON = MediaType
-            .parse("application/json; charset=utf-8");
     public static final String DEFAULT_SOCKET_TIME_OUT = "100";
     public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     public static final String COPRO_CLIENT_API_SLEEPTIME = "copro.client.api.sleeptime";

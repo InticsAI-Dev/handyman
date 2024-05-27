@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.FigureDetectionAction;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
-import in.handyman.raven.lib.FigureDetectionAction;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -34,7 +34,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
 
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
-    private final FigureDetectionAction aAction;
+    //    private final FigureDetectionAction aAction;
     private final int timeOut;
 
     public FigureDetectionConsumerProcess(Logger log, Marker aMarker, String outputDir, ActionExecutionAudit action, FigureDetectionAction aAction) {
@@ -42,7 +42,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
         this.aMarker = aMarker;
         this.outputDir = outputDir;
         this.action = action;
-        this.aAction = aAction;
+//        this.aAction = aAction;
         this.timeOut = aAction.getTimeOut();
         this.httpclient = new OkHttpClient.Builder().connectTimeout(this.timeOut, TimeUnit.MINUTES).writeTimeout(this.timeOut, TimeUnit.MINUTES).readTimeout(this.timeOut, TimeUnit.MINUTES).build();
     }
@@ -107,7 +107,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                 String responseBody = response.body().string();
                 List<FigureDetectionExtractionEncode> modelResponse = mapper.readValue(responseBody, new TypeReference<>() {
                 });
-                if (modelResponse  != null && !modelResponse.isEmpty()) {
+                if (modelResponse != null && !modelResponse.isEmpty()) {
                     extractTritonOutputDataResponse(entity, modelResponse, parentObj);
                 }
             } else {
@@ -124,6 +124,11 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                         .stage(PROCESS_NAME)
                         .message(response.message())
                         .batchId(entity.getBatchId())
+                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdUserId(tenantId)
+                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .lastUpdatedUserId(tenantId)
+                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -141,6 +146,11 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
+                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedUserId(tenantId)
+
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -196,8 +206,8 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                 String responseBody = response.body().string();
                 List<FigureDetectionExtractionEncode> modelResponse = mapper.readValue(responseBody, new TypeReference<>() {
                 });
-                if (modelResponse  != null && !modelResponse.isEmpty()) {
-                        extractedCoproOutputResponse(entity, modelResponse, parentObj);
+                if (modelResponse != null && !modelResponse.isEmpty()) {
+                    extractedCoproOutputResponse(entity, modelResponse, parentObj);
                 }
             } else {
                 parentObj.add(FigureDetectionQueryOutputTable.builder()
@@ -213,6 +223,11 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                         .stage(PROCESS_NAME)
                         .message(response.message())
                         .batchId(entity.getBatchId())
+                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdUserId(tenantId)
+                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .lastUpdatedUserId(tenantId)
+
                         .build());
                 log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
@@ -230,6 +245,11 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
+                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedUserId(tenantId)
+
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -268,8 +288,8 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .batchId(entity.getBatchId())
                     .message("face detection macro completed")
                     .build()
-                );
+            );
 
-            });
-        }
+        });
     }
+}
