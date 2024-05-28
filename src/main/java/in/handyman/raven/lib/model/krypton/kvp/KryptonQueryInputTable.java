@@ -20,6 +20,7 @@ public class KryptonQueryInputTable implements CoproProcessor.Entity{
     private Integer paperNo;
     private String originId;
     private Long processId;
+    private Long actionId;
     private Long groupId;
     private Long tenantId;
     private Long rootPipelineId;

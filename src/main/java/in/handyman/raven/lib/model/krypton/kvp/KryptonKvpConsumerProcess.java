@@ -89,7 +89,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("KRYPTON KVP START");
+        requestBody.setName("KRYPTON MODEL START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -139,7 +139,11 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 KryptonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, KryptonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs()  != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(kryptonDataItem -> {
-                        extractTritonOutputDataResponse(entity, kryptonDataItem, parentObj);
+                        try {
+                            extractTritonOutputDataResponse(entity, kryptonDataItem, parentObj);
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
                     }));
 
                 }
@@ -150,6 +154,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                         .groupId(groupId)
                         .inputFilePath(entity.getInputFilePath())
                         .tenantId(tenantId)
+                        .actionId(entity.getActionId())
                         .processId(processId)
                         .rootPipelineId(rootPipelineId)
                         .process(entity.getProcess())
@@ -173,6 +178,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                     .tenantId(tenantId)
                     .processId(processId)
                     .rootPipelineId(rootPipelineId)
+                    .actionId(entity.getActionId())
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
@@ -191,7 +197,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
     }
 
-    private void extractTritonOutputDataResponse(KryptonQueryInputTable entity, KryptonKvpLineItem kryptonDataItem, List<KryptonQueryOutputTable> parentObj) {
+    private void extractTritonOutputDataResponse(KryptonQueryInputTable entity, String kryptonDataItem, List<KryptonQueryOutputTable> parentObj) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -200,6 +206,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
         Long rootPipelineId = entity.getRootPipelineId();
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
+        KryptonKvpLineItem modelResponse = mapper.readValue(kryptonDataItem, KryptonKvpLineItem.class);
 
 
         parentObj.add(KryptonQueryOutputTable.builder()
@@ -209,19 +216,20 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(kryptonDataItem.getResponse())
+                .totalResponseJson(modelResponse.getResponse().toString())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
+                .actionId(entity.getActionId())
                 .tenantId(tenantId)
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .imageDPI(kryptonDataItem.getImageDPI())
-                .imageWidth(kryptonDataItem.getImageWidth())
-                .extractedImageUnit(kryptonDataItem.getExtractedImageUnit())
-                .imageHeight(kryptonDataItem.getImageHeight())
-                .responseFormat(kryptonDataItem.getResponseFormat())
-                .textModel(kryptonDataItem.getTextModel())
+                .imageDPI(modelResponse.getImageDPI())
+                .imageWidth(modelResponse.getImageWidth())
+                .extractedImageUnit(modelResponse.getExtractedImageUnit())
+                .imageHeight(modelResponse.getImageHeight())
+                .responseFormat(modelResponse.getResponseFormat())
+                .textModel(modelResponse.getTextModel())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
@@ -245,7 +253,11 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 KryptonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, KryptonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs()  != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(kryptonDataItem -> {
-                        extractedCoproOutputResponse(entity, kryptonDataItem, parentObj);
+                        try {
+                            extractedCoproOutputResponse(entity, kryptonDataItem, parentObj);
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
                     }));
 
                 }
@@ -255,6 +267,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                         .paperNo(paperNo)
                         .groupId(groupId)
                         .inputFilePath(entity.getInputFilePath())
+                        .actionId(entity.getActionId())
                         .tenantId(tenantId)
                         .processId(processId)
                         .rootPipelineId(rootPipelineId)
@@ -273,6 +286,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                     .groupId(groupId)
                     .inputFilePath(entity.getInputFilePath())
                     .tenantId(tenantId)
+                    .actionId(entity.getActionId())
                     .processId(processId)
                     .rootPipelineId(rootPipelineId)
                     .process(entity.getProcess())
@@ -288,7 +302,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
         }
     }
 
-    private void extractedCoproOutputResponse(KryptonQueryInputTable entity, KryptonKvpLineItem kryptonLineItem, List<KryptonQueryOutputTable> parentObj) {
+    private void extractedCoproOutputResponse(KryptonQueryInputTable entity, String kryptonDataItem, List<KryptonQueryOutputTable> parentObj) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -298,6 +312,8 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
 
+        KryptonKvpLineItem modelResponse = mapper.readValue(kryptonDataItem, KryptonKvpLineItem.class);
+
         parentObj.add(KryptonQueryOutputTable.builder()
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                 .createdUserId(tenantId)
@@ -305,19 +321,20 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(kryptonLineItem.getResponse())
+                .totalResponseJson(modelResponse.getResponse().toString())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
+                .actionId(entity.getActionId())
                 .tenantId(tenantId)
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .imageDPI(kryptonLineItem.getImageDPI())
-                .imageWidth(kryptonLineItem.getImageWidth())
-                .extractedImageUnit(kryptonLineItem.getExtractedImageUnit())
-                .imageHeight(kryptonLineItem.getImageHeight())
-                .responseFormat(kryptonLineItem.getResponseFormat())
-                .textModel(kryptonLineItem.getTextModel())
+                .imageDPI(modelResponse.getImageDPI())
+                .imageWidth(modelResponse.getImageWidth())
+                .extractedImageUnit(modelResponse.getExtractedImageUnit())
+                .imageHeight(modelResponse.getImageHeight())
+                .responseFormat(modelResponse.getResponseFormat())
+                .textModel(modelResponse.getTextModel())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())

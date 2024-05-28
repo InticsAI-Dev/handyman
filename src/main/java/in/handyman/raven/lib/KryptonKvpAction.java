@@ -57,14 +57,14 @@ public class KryptonKvpAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "krypton_kvp";
   public static final String KRYPTON_KVP_OUTPUT = "krypton_kvp_output";
-  public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id," +
+  public static final String COLUMN_LIST = "created_user_id,created_on,last_updated_user_id,  last_updated_on, " +
           "input_file_path, total_response_json,text_model,paper_type, paper_no,origin_id ,process_id,process," +
-          "group_id, tenant_id,  root_pipeline_id, batch_id , model_registry, response_format, imageDPI," +
+          "group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry, response_format, imageDPI," +
           " imageWidth, imageHeight, extractedImageUnit ";
   public static final String VAL_STRING_LIST = "VALUES( ?,?,?,?,?," +
           "?,?,?,?,?" +
           ",?,?,?,?,?," +
-          "?,?, ?, ?, ?, ?,?)";
+          "?,?, ?, ?, ?,? ,?,?)";
 
   public static final String READ_BATCH_SIZE = "read.batch.size";
   private final int threadSleepTime;

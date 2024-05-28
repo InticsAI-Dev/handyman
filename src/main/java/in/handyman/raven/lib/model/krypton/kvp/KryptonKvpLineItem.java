@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,7 +26,7 @@ public class KryptonKvpLineItem {
     private Integer paperNo;
     private Long processId;
     private String responseFormat;
-    private String response;
+    private Map<String, Object> response;
     private Integer imageDPI;
     private Integer imageWidth;
     private Integer imageHeight;

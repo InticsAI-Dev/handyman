@@ -30,6 +30,7 @@ public class KryptonQueryOutputTable implements CoproProcessor.Entity{
     private String process;
     private Long groupId;
     private Long tenantId;
+    private Long actionId;
     private Long rootPipelineId;
     private String batchId;
     private String modelRegistry;
@@ -46,7 +47,7 @@ public class KryptonQueryOutputTable implements CoproProcessor.Entity{
         public List<Object> getRowData() {
             return Stream.of(this.createdUserId,this.createdOn, this.lastUpdatedUserId, this.lastUpdatedOn,
                     this.inputFilePath,this.totalResponseJson, this.textModel,this.paperType, this.paperNo, this.originId,
-                    this.processId, this.process, this.groupId, this.tenantId, this.rootPipelineId, this.batchId,
+                    this.processId, this.process, this.groupId, this.tenantId,this.actionId, this.rootPipelineId, this.batchId,
                     this.modelRegistry,this.responseFormat, this.imageDPI, this.imageWidth, this.imageHeight, this.extractedImageUnit,
                     this.status, this.stage, this.message).collect(Collectors.toList());
     }

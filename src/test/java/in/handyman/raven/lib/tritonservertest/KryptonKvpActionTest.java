@@ -15,9 +15,14 @@ public class KryptonKvpActionTest {
                 .name("krypton kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("")
+                .endpoint("http://192.168.10.239:9700/v2/models/krypton-service/versions/1/infer")
                 .outputTable("krypton.krypton_kvp_output")
-                .querySet("")
+                .querySet("select '/data/output/pdf_to_image/SYNT_166838894_c1/SYNT_166838894_c1_0.jpg' as input_file_path, 'Please extract all key-value pairs from the document and provide the results in a JSON format. \n" +
+                        "Ensure that the keys and values are clearly identified and represented. \n" +
+                        "Group them into sections based upon the information. \n" +
+                        "Note: Maintain the proper JSON format in the response' as prompt,\n" +
+                        "'XENON' as text_model, 'KVP_ARGON' as process, 1 as root_pipeline_id, 1 as action_id, 'PRINTED' as paper_type, 'KRYPTON' as model_registry,\n" +
+                        "1 as paper_no, 'ORIGIN-1' as origin_id, 1 as process_id, 1 as group_id, 1 as tenant_id, 'JSON' as response_format, 1 as action_id;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -27,7 +32,7 @@ public class KryptonKvpActionTest {
         ac.getContext().put("krypton.kvp.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
-        ac.getContext().put("triton.request.krypton.kvp.activator", "false");
+        ac.getContext().put("triton.request.krypton.kvp.activator", "true");
 
 
         KryptonKvpAction kryptonKvpAction = new KryptonKvpAction(ac, log, kryptonKvp);

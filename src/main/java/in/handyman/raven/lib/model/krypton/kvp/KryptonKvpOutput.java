@@ -16,5 +16,5 @@ public class KryptonKvpOutput {
     private String name;
     private String datatype;
     private List<Integer> shape;
-    private List<KryptonKvpLineItem> data;
+    private List<String> data;
 }
