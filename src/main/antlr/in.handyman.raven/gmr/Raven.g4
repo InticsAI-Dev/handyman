@@ -160,6 +160,7 @@ action:
     |p2pNameValidation
     |convertExcelToDatabase
     |kryptonKvp
+    |kryptonJsonParser
     );
 
 
@@ -1195,6 +1196,18 @@ kryptonKvp:
     'using' '{'
             querySet=STRING
     '}' ('on-condition' condition=expression)* ;
+
+
+kryptonJsonParser:
+    'kryptonJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+
 //rules
 
 resource : STRING;
