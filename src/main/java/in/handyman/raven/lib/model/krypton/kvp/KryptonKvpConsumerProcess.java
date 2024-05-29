@@ -1,7 +1,6 @@
 package in.handyman.raven.lib.model.krypton.kvp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -34,14 +33,12 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
 
-    private final int timeOut;
-
     public KryptonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,  KryptonKvpAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
-        this.timeOut = aAction.getTimeOut();
-        this.httpclient = new OkHttpClient.Builder().connectTimeout(this.timeOut, TimeUnit.MINUTES).writeTimeout(this.timeOut, TimeUnit.MINUTES).readTimeout(this.timeOut, TimeUnit.MINUTES).build();
+        int timeOut = aAction.getTimeOut();
+        this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
     }
 
 
@@ -105,7 +102,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, prompt);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint,filePath, prompt);
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
@@ -154,7 +151,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                         .groupId(groupId)
                         .inputFilePath(entity.getInputFilePath())
                         .tenantId(tenantId)
-                        .actionId(entity.getActionId())
+                        .actionId(action.getActionId())
                         .processId(processId)
                         .rootPipelineId(rootPipelineId)
                         .process(entity.getProcess())
@@ -178,7 +175,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                     .tenantId(tenantId)
                     .processId(processId)
                     .rootPipelineId(rootPipelineId)
-                    .actionId(entity.getActionId())
+                    .actionId(action.getActionId())
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(PROCESS_NAME)
@@ -219,7 +216,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 .totalResponseJson(modelResponse.getResponse().toString())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
-                .actionId(entity.getActionId())
+                .actionId(action.getActionId())
                 .tenantId(tenantId)
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
@@ -230,6 +227,9 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 .imageHeight(modelResponse.getImageHeight())
                 .responseFormat(modelResponse.getResponseFormat())
                 .textModel(modelResponse.getTextModel())
+                .batchId(entity.getBatchId())
+                .modelRegistry(entity.getModelRegistry())
+                .paperType(entity.getPaperType())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
@@ -267,7 +267,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                         .paperNo(paperNo)
                         .groupId(groupId)
                         .inputFilePath(entity.getInputFilePath())
-                        .actionId(entity.getActionId())
+                        .actionId(action.getActionId())
                         .tenantId(tenantId)
                         .processId(processId)
                         .rootPipelineId(rootPipelineId)
@@ -286,7 +286,7 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                     .groupId(groupId)
                     .inputFilePath(entity.getInputFilePath())
                     .tenantId(tenantId)
-                    .actionId(entity.getActionId())
+                    .actionId(action.getActionId())
                     .processId(processId)
                     .rootPipelineId(rootPipelineId)
                     .process(entity.getProcess())
@@ -324,10 +324,12 @@ public class KryptonKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 .totalResponseJson(modelResponse.getResponse().toString())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
-                .actionId(entity.getActionId())
+                .actionId(action.getActionId())
                 .tenantId(tenantId)
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
+                .paperType(entity.getPaperType())
+                .modelRegistry(entity.getModelRegistry())
                 .process(entity.getProcess())
                 .imageDPI(modelResponse.getImageDPI())
                 .imageWidth(modelResponse.getImageWidth())
