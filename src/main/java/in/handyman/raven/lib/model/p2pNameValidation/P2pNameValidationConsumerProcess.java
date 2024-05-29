@@ -45,19 +45,49 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
 
             String finalConcatenatedName;
             String finalBBox;
-            if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
-                finalConcatenatedName = p2pFirstName;
-                finalBBox = firstNameBBox;
-            } else if (p2pFirstName.contains(p2pLastName)) {
-                finalConcatenatedName = p2pFirstName;
-                finalBBox = firstNameBBox;
-            } else if (p2pLastName.contains(p2pFirstName)) {
-                finalConcatenatedName = p2pLastName;
-                finalBBox = lastNameBBox;
+
+            // Check if both p2pFirstName and p2pLastName are blank or empty
+            if ((p2pFirstName.isBlank() || p2pFirstName.isEmpty()) && (p2pLastName.isBlank() || p2pLastName.isEmpty())) {
+                finalConcatenatedName = p2pFullName;
+                finalBBox = fullNameBBox;
+            } else if (!p2pFullName.isBlank() && !p2pFullName.isEmpty()) {
+                // Check if either p2pFirstName or p2pLastName is blank, and return p2pFullName if so
+                if (p2pFirstName.isBlank() || p2pFirstName.isEmpty() || p2pLastName.isBlank() || p2pLastName.isEmpty()) {
+                    finalConcatenatedName = p2pFullName;
+                    finalBBox = fullNameBBox;
+                } else {
+                    // Handle other concatenation cases
+                    if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
+                        finalConcatenatedName = p2pFirstName;
+                        finalBBox = firstNameBBox;
+                    } else if (p2pFirstName.contains(p2pLastName)) {
+                        finalConcatenatedName = p2pFirstName;
+                        finalBBox = firstNameBBox;
+                    } else if (p2pLastName.contains(p2pFirstName)) {
+                        finalConcatenatedName = p2pLastName;
+                        finalBBox = lastNameBBox;
+                    } else {
+                        finalConcatenatedName = p2pFirstName + " " + p2pLastName;
+                        finalBBox = firstNameBBox;
+                    }
+                }
             } else {
-                finalConcatenatedName = p2pFirstName + " " + p2pLastName;
-                finalBBox = firstNameBBox;
+                // Handle other concatenation cases if p2pFullName is blank
+                if (p2pFirstName.equalsIgnoreCase(p2pLastName)) {
+                    finalConcatenatedName = p2pFirstName;
+                    finalBBox = firstNameBBox;
+                } else if (p2pFirstName.contains(p2pLastName)) {
+                    finalConcatenatedName = p2pFirstName;
+                    finalBBox = firstNameBBox;
+                } else if (p2pLastName.contains(p2pFirstName)) {
+                    finalConcatenatedName = p2pLastName;
+                    finalBBox = lastNameBBox;
+                } else {
+                    finalConcatenatedName = p2pFirstName + " " + p2pLastName;
+                    finalBBox = firstNameBBox;
+                }
             }
+
             log.info(aMarker, "Concatenated Name before Full name validation {}", finalConcatenatedName);
             boolean isContains = finalConcatenatedName.contains(p2pFullName) && finalConcatenatedName.equalsIgnoreCase(p2pFullName);
             if (!p2pFullName.isBlank() && !p2pFullName.isEmpty() && isContains) {
@@ -66,7 +96,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
             }
 
             log.info(aMarker, "Concatenated Name after Full name validation {}", finalConcatenatedName);
-
+            System.out.println(finalConcatenatedName);
             p2PNameValidationOutputTableArrayList.add(P2PNameValidationOutputTable.builder()
                     .p2pConcatenatedName(finalConcatenatedName)
                     .groupId(entity.getGroupId())
@@ -127,6 +157,6 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
     }
 
     private String cleanAndExtractAlphabets(String value) {
-        return value.replaceAll("[^a-zA-Z]+", "");
+        return value.replaceAll("[^a-zA-Z ]+", "");
     }
 }
