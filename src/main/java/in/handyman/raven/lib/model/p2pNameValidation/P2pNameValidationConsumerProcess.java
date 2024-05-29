@@ -65,7 +65,6 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                 finalBBox = fullNameBBox;
             }
 
-            System.out.println(finalConcatenatedName);
             log.info(aMarker, "Concatenated Name after Full name validation {}", finalConcatenatedName);
 
             p2PNameValidationOutputTableArrayList.add(P2PNameValidationOutputTable.builder()
