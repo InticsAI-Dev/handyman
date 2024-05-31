@@ -77,9 +77,14 @@ public class TransformAction implements IActionExecution {
                             //log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
                             throw new HandymanException("Transform failed for statement "+statementId, ex, actionExecutionAudit);
                         } catch (SQLException ex) {
-                            log.error(aMarker, "Continuing to execute, even though SQL Error executing sql for {} ", sqlToExecute, ex);
-                           // log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
-                            throw new HandymanException("Transform failed for statement "+statementId, ex, actionExecutionAudit);
+                            if (ex.getErrorCode() == 955) {
+                                log.error(aMarker, "{} - Oracle table or sequence creation is already present", sqlToExecute);
+                            }
+                            else {
+                                log.error(aMarker, "Continuing to execute, even though SQL Error executing sql for {} ", sqlToExecute, ex);
+                                // log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
+                                throw new HandymanException("Transform failed for statement " + statementId, ex, actionExecutionAudit);
+                            }
                         } catch (Exception ex) {
                             log.error(aMarker, "Stopping execution, General Error executing sql for {} with for {}", sqlToExecute, ExceptionUtil.toString(ex));
                             //log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
