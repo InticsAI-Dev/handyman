@@ -17,9 +17,13 @@ class MultipartUploadActionTest {
                 .name("multipart file upload for paper itemization")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endPoint("paper.itemizer.multipart.upload.url")
-                .querySet("SELECT '/home/manikandan.tm@zucisystems.com/data/full_full_0_default.jpg' as filepath, " +
-                        "'/data/output' as outputDir;")
+                .endPoint("http://text.extraction.multipart.instance1:10001/multipart-upload")
+                .querySet("SELECT ar.processed_file_path as file_path, ar.template_id as template_id,\n" +
+                        "ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,\n" +
+                        "ar.tenant_id as tenant_id, ar.process_id as process_id,\n" +
+                        "ar.root_pipeline_id as root_pipeline_id, ar.batch_id\n" +
+                        "FROM info.auto_rotation ar\n" +
+                        "WHERE ar.status ='COMPLETED' AND ar.group_id='162' AND ar.tenant_id=1 and ar.batch_id='BATCH-162_0';")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();

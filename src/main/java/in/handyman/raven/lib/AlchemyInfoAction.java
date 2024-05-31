@@ -165,7 +165,6 @@ public class AlchemyInfoAction implements IActionExecution {
                             .height(originUploadResponse.getHeight())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
-
                             .build()));
                     log.info(aMarker, "Execute for alchemy Info {}", response);
                 }
