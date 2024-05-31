@@ -69,6 +69,7 @@ public class ScalarAdapterAction implements IActionExecution {
         this.numericAction = new NumericvalidatorAction(action, log, Numericvalidator.builder().build());
         this.alphaNumericAction = new AlphanumericvalidatorAction(action, log, Alphanumericvalidator.builder().build());
         this.dateAction = new DatevalidatorAction(action, log, Datevalidator.builder().build());
+//        String scalarAdapterDateRegexPattern = this.action.getContext().get(DATE_REGEX);
     }
 
     @Override
@@ -536,7 +537,6 @@ public class ScalarAdapterAction implements IActionExecution {
         private String modelName;
         private String modelVersion;
         private String modelRegistry;
-        private String category;
         private int wordLimit;
         private int wordThreshold;
         private int charLimit;
