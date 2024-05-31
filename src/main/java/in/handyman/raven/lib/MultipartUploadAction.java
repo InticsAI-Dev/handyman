@@ -152,15 +152,6 @@ public class MultipartUploadAction implements IActionExecution {
         final Integer paperNo = entity.getPaperNo();
         final String originId = entity.getOriginId();
         final Long rootPipelineId = entity.getRootPipelineId();
-        // Retrieving input parameters
-        final String inputFilePath = entity.getFilePath();
-        final Integer groupId = entity.getGroupId();
-        final Long processId = entity.getProcessId();
-        final String templateId = entity.getTemplateId();
-        final Long tenantId = entity.getTenantId();
-        final Integer paperNo = entity.getPaperNo();
-        final String originId = entity.getOriginId();
-        final Long rootPipelineId = entity.getRootPipelineId();
         final String batchId = entity.getBatchId();
         String outputDir;
 
@@ -200,16 +191,6 @@ public class MultipartUploadAction implements IActionExecution {
             if (response.isSuccessful()) {
                 // Handle successful response
                 log.info("Response Details: {}", response);
-                if (response.body() != null) {
-                    final String responseBody = response.body().string();
-                    final MultipartUploadOutputTable multipartUploadOutputTable = objectMapper.readValue(responseBody, MultipartUploadOutputTable.class);
-                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable);
-                }
-            } else {
-                // Handle unsuccessful response
-                log.error("Request was not successful. HTTP Status: {}", response.code());
-                final MultipartUploadOutputTable multipartUploadOutputTable = new MultipartUploadOutputTable();
-                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable);
                 if (response.body() != null) {
                     final String responseBody = response.body().string();
                     final MultipartUploadOutputTable multipartUploadOutputTable = objectMapper.readValue(responseBody, MultipartUploadOutputTable.class);

@@ -35,7 +35,8 @@ public class P2PNameValidationOutputTable implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.p2pBbox, this.p2pConfidenceScore, this.p2pFilterScore
-                , this.p2pMaximumScore, this.p2pConcatenatedName, this.paperNo, this.rootPipelineId, this.tenantId, this.sorItemName, this.batchId,this.questionId, this.synonymId, this.modelRegistry).collect(Collectors.toList());
+        return Stream.of(this.originId, this.groupId, this.p2pBBox, this.p2pConfidenceScore, this.p2pMaximumScore,
+                this.p2pConcatenatedName, this.paperNo, this.rootPipelineId, this.tenantId, this.sorItemName,
+                this.questionId, this.synonymId, this.modelRegistry, this.batchId).collect(Collectors.toList());
     }
 }

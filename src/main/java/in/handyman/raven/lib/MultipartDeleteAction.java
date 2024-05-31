@@ -146,6 +146,7 @@ public class MultipartDeleteAction implements IActionExecution {
         final Integer paperNo = entity.getPaperNo();
         final String originId = entity.getOriginId();
         final Long rootPipelineId = entity.getRootPipelineId();
+        final String batchId = entity.getBatchId();
 
         // Creating URL for the request
         final URL url = new URL(endpoint.toString() + "/?filepath=" + deleteFilePath);
@@ -165,13 +166,13 @@ public class MultipartDeleteAction implements IActionExecution {
                 if (response.body() != null) {
                     final String responseBody = response.body().string();
                     final MultipartDeleteOutputTable multipartDeleteOutputTable = objectMapper.readValue(responseBody, MultipartDeleteOutputTable.class);
-                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartDeleteOutputTable);
+                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartDeleteOutputTable, batchId);
                 }
             } else {
                 // Handle unsuccessful response
                 log.error("Request was not successful. HTTP Status: {}", response.code());
                 final MultipartDeleteOutputTable multipartDeleteOutputTable = new MultipartDeleteOutputTable();
-                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartDeleteOutputTable);
+                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartDeleteOutputTable, batchId);
             }
         } catch (final Exception e) {
             log.error(aMarker, "Exception occurred in multipart file delete for file {} with exception {}", deleteFilePath, e.getMessage());
@@ -182,7 +183,7 @@ public class MultipartDeleteAction implements IActionExecution {
     }
 
 
-    private void handleResponse(Jdbi jdbi, Integer groupId, Long processId, String templateId, Long tenantId, Integer paperNo, String originId, Long rootPipelineId, MultipartDeleteOutputTable multipartDeleteOutputTable) {
+    private void handleResponse(Jdbi jdbi, Integer groupId, Long processId, String templateId, Long tenantId, Integer paperNo, String originId, Long rootPipelineId, MultipartDeleteOutputTable multipartDeleteOutputTable, String batchId) {
         try {
             multipartDeleteOutputTable.setGroupId(groupId);
             multipartDeleteOutputTable.setRootPipelineId(rootPipelineId);
@@ -191,14 +192,15 @@ public class MultipartDeleteAction implements IActionExecution {
             multipartDeleteOutputTable.setTemplateId(templateId);
             multipartDeleteOutputTable.setProcessId(processId);
             multipartDeleteOutputTable.setTenantId(tenantId);
+            multipartDeleteOutputTable.setBatchId(batchId);
             multipartDeleteOutputTable.setDeletedTime(LocalDateTime.now());
 
             jdbi.useHandle(handle -> {
                 String sql = "INSERT INTO multipart_info.multipart_delete(" +
                         "filepath, message, status, template_id, origin_id, " +
-                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, deleted_time) " +
+                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, deleted_time, batch_id) " +
                         "VALUES (:filepath, :message, :status, :templateId, :originId, " +
-                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :deletedTime)";
+                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :deletedTime, :batchId)";
 
                 handle.createUpdate(sql)
                         .bindBean(multipartDeleteOutputTable)
@@ -223,6 +225,7 @@ public class MultipartDeleteAction implements IActionExecution {
         private String templateId;
         private Long processId;
         private Long rootPipelineId;
+        private String batchId;
     }
 
 
@@ -241,6 +244,7 @@ public class MultipartDeleteAction implements IActionExecution {
         private Long processId;
         private Long rootPipelineId;
         private LocalDateTime deletedTime;
+        private String batchId;
     }
 
     @Override
