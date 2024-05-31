@@ -39,7 +39,7 @@ action:
     |spawnProcess
     |dogLeg
 	|copyData
-	|copyOracleData
+	|copyDataToOracle
 	|dropFile
 	|loadCsv
 	|restApi
@@ -180,8 +180,8 @@ copyData:
 	'}' ('on-condition' condition=expression)* ('fielding' writeThreadCount=NON_ZERO_DIGIT)* ('with-fetch-batch-size' fetchBatchSize=NON_ZERO_DIGIT)* ('with-write-batch-size' writeBatchSize=NON_ZERO_DIGIT)*)
 	 ;
 
-copyOracleData:
-	('copyOracleData' 'as' name=STRING 'from' source=STRING 'to' to=STRING  'using'
+copyDataToOracle:
+	('copyDataToOracle' 'as' name=STRING 'from' source=STRING 'to' to=STRING  'using'
 	'{'
 		value=STRING
 	'}' ('on-condition' condition=expression)* ('fielding' writeThreadCount=NON_ZERO_DIGIT)* ('with-fetch-batch-size' fetchBatchSize=NON_ZERO_DIGIT)* ('with-write-batch-size' writeBatchSize=NON_ZERO_DIGIT)*)

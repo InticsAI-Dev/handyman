@@ -1,19 +1,20 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.CopyOracleData;
+import in.handyman.raven.lib.model.CopyDataToOracle;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 @Slf4j
-class CopyOracleDataActionTest {
+class CopyDataToOracleActionTest {
 
     @Test
     void execute() throws Exception {
-
-        CopyOracleData copyData = CopyOracleData.builder()
+        CopyDataToOracle copyData = CopyDataToOracle.builder()
                 .name("copy Data")
                 .source("intics_zio_db_conn")
                 .to("intics_oracle_db_conn")
@@ -34,7 +35,7 @@ class CopyOracleDataActionTest {
                 Map.entry("paper.itemizer.multipart.upload.url", "http://localhost:8002/multipart-download"),
                 Map.entry("write.batch.size", "5")));
 
-        CopyOracleDataAction copyDataAction = new CopyOracleDataAction(actionExecutionAudit, log, copyData);
-        copyDataAction.execute();
+        CopyDataToOracleAction copyDataToOracleAction = new CopyDataToOracleAction(actionExecutionAudit, log, copyData);
+        copyDataToOracleAction.execute();
     }
 }

@@ -19,9 +19,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "CopyOracleData"
+    actionName = "CopyDataToOracle"
 )
-public class CopyOracleData implements IActionContext {
+public class CopyDataToOracle implements IActionContext {
   private String name;
 
   private String source;

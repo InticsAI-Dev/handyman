@@ -4,7 +4,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.process.LambdaEngine;
-import in.handyman.raven.lib.model.CopyOracleData;
+import in.handyman.raven.lib.model.CopyDataToOracle;
 import in.handyman.raven.util.Table;
 import in.handyman.raven.util.UniqueID;
 import net.sf.jsqlparser.schema.Column;
@@ -19,7 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
-public class CopyOracleDataJdbcWriter implements Callable<Void> {
+public class CopyDataToOracleJdbcWriter implements Callable<Void> {
 
     private final Insert insert;
     private final Table.Row poisonPill;
@@ -33,19 +33,19 @@ public class CopyOracleDataJdbcWriter implements Callable<Void> {
     private final String columnList;
     private final Logger log;
 
-    public CopyOracleDataJdbcWriter(final Map<String, String> configMap, final Insert insert,
-                                    final Table.Row poisonPill, final CopyOracleData copyOracleData, final ActionExecutionAudit actionExecutionAudit,
-                                    final LinkedBlockingDeque<Table.Row> rowQueue, final CountDownLatch countDownLatch) {
+    public CopyDataToOracleJdbcWriter(final Map<String, String> configMap, final Insert insert,
+                                      final Table.Row poisonPill, final CopyDataToOracle copyDataToOracle, final ActionExecutionAudit actionExecutionAudit,
+                                      final LinkedBlockingDeque<Table.Row> rowQueue, final CountDownLatch countDownLatch) {
         this.insert = insert;
         this.poisonPill = poisonPill;
         this.actionExecutionAudit = actionExecutionAudit;
         this.rowQueue = rowQueue;
         this.countDownLatch = countDownLatch;
 
-        this.target = Optional.ofNullable(copyOracleData.getTo()).map(String::trim)
+        this.target = Optional.ofNullable(copyDataToOracle.getTo()).map(String::trim)
                 .filter(s -> !s.isEmpty() && !s.isBlank())
-                .orElseThrow(() -> new HandymanException("target data source cannot be empty for copyOracleData for " + copyOracleData.getName()));
-        this.writeSize = Optional.ofNullable(copyOracleData.getWriteBatchSize())
+                .orElseThrow(() -> new HandymanException("target data source cannot be empty for copyDataToOracle for " + copyDataToOracle.getName()));
+        this.writeSize = Optional.ofNullable(copyDataToOracle.getWriteBatchSize())
                 .map(String::trim)
                 .map(Integer::valueOf)
                 .filter(integer -> integer > 0)
