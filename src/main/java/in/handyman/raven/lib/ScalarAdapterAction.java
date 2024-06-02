@@ -213,6 +213,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setStatus("COMPLETED");
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
+                    result.setCategory(result.getCategory());
                     resultQueue.add(result);
                     log.info(aMarker, "executed  validator {}", result);
 
@@ -547,6 +548,7 @@ public class ScalarAdapterAction implements IActionExecution {
         private int restrictedAdapterFlag;
         private String sorItemName;
         private String batchId;
+        private String category;
     }
 
 }

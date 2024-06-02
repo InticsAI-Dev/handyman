@@ -71,7 +71,7 @@ public class P2pNameValidationAction implements IActionExecution {
             final String insertQuery = "INSERT INTO " + p2pNameValidation.getOutputTable() +
                     "(origin_id, group_id, b_box, confidence_score, filter_score, maximum_score, extracted_value, " +
                     "paper_no, root_pipeline_id, tenant_id, sor_item_name, batch_id,question_id, synonym_id, model_registry) "
-                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,)";
+                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
             log.info(aMarker, "p2p name concatenation insert query p2p name concatenation insert query {}", insertQuery);
 
             final List<URL> urls = Optional.ofNullable(p2pUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
