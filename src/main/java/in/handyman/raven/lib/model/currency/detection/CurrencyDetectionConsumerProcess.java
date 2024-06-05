@@ -60,8 +60,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
-        Long rootPipelineId = action.getRootPipelineId();
-
+        String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         Integer paperNo = entity.getPaperNo();
         String filePath = String.valueOf(entity.getFilePath());
         Long actionId = action.getActionId();
@@ -71,7 +70,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         CurrencyDetectionRequest currencyDetectionRequest = new CurrencyDetectionRequest();
 
 
-        currencyDetectionRequest.setRootPipelineId(rootPipelineId);
+        currencyDetectionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         currencyDetectionRequest.setActionId(actionId);
         currencyDetectionRequest.setProcess(PROCESS_NAME);
         currencyDetectionRequest.setInputFilePath(filePath);

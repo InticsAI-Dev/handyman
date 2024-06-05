@@ -5,10 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TrinityModelAction;
-import in.handyman.raven.lib.model.triton.ProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.TrinityProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.TrinityTritonResponse;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jetbrains.annotations.NotNull;
@@ -20,16 +20,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final TrinityModelAction aAction;
     private final OkHttpClient httpclient;
-    List<ProcessAuditOutputTable> processAuditOutputTables = new ArrayList<>();
+    List<TrinityProcessAuditOutputTable> processAuditOutputTables = new ArrayList<>();
 
     private final Jdbi jdbi;
+
+    private final Logger log;
 
     private final String node;
 
@@ -42,9 +43,10 @@ public class TrinityModelApiCaller {
                 .readTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .build();
         this.jdbi = jdbi;
+        this.log = log;
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public TrinityTritonResponse computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
@@ -78,34 +80,27 @@ public class TrinityModelApiCaller {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-
-                processAuditOutputTables.add( ProcessAuditOutputTable.builder()
-                        .originId(trinityModelPayload.getOriginId())
-                        .stage("VQA_TRANSACTION")
-                        .status("COMPLETED")
-                        .request(jsonInputRequest)
-                        .response(responseBody)
+                return TrinityTritonResponse.builder()
+                        .filePath(inputPath)
+                        .request(jsonRequest)
                         .endpoint(node)
-                        .message("trinity model completed")
-                        .tenantId(tenantId)
-                        .rootPipelineId(rootpipelineId)
-                        .build());
-                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
-                return responseBody;
+                        .responseBody(responseBody)
+                        .build();
             } else {
                 log.error("Error in the trinity model response {}", responseBody);
-                processAuditOutputTables.add( ProcessAuditOutputTable.builder()
-                        .originId(trinityModelPayload.getOriginId())
-                        .stage("VQA_TRANSACTION")
-                        .status("FAILED")
-                        .request(jsonInputRequest)
-                        .response(response.message())
-                        .endpoint(node)
-                        .message("Error in the trinity model response")
-                        .tenantId(tenantId)
-                        .rootPipelineId(rootpipelineId)
-                        .build());
-                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
+//                processAuditOutputTables.add( TrinityProcessAuditOutputTable.builder()
+//                        .originId(trinityModelPayload.getOriginId())
+//                        .stage("VQA_TRANSACTION")
+//                        .status("FAILED")
+//                        .request(jsonInputRequest)
+//                        .response(response.message())
+//                        .endpoint(node)
+//                        .message("Error in the trinity model response")
+//                        .tenantId(tenantId)
+//                        .rootPipelineId(rootpipelineId)
+//                        .filePath(trinityModelPayload.getInputFilePath())
+//                        .build());
+//                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
@@ -164,33 +159,35 @@ public class TrinityModelApiCaller {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                processAuditOutputTables.add( ProcessAuditOutputTable.builder()
-                        .originId(trinityModelPayload.getOriginId())
-                        .stage("VQA_TRANSACTION")
-                        .status("COMPLETED")
-                        .request(jsonInputRequest)
-                        .response(responseBody)
-                        .endpoint(node)
-                        .message("Trinity model completed")
-                        .tenantId(tenantId)
-                        .rootPipelineId(rootPipelineId)
-                        .build());
-                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
+//                processAuditOutputTables.add( TrinityProcessAuditOutputTable.builder()
+//                        .originId(trinityModelPayload.getOriginId())
+//                        .stage("VQA_TRANSACTION")
+//                        .status("COMPLETED")
+//                        .request(jsonInputRequest)
+//                        .response(responseBody)
+//                        .endpoint(node)
+//                        .message("Trinity model completed")
+//                        .tenantId(tenantId)
+//                        .rootPipelineId(rootPipelineId)
+//                        .filePath(trinityModelPayload.getInputFilePath())
+//                        .build());
+//                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
                 return responseBody;
 
             } else {
                 log.error("Error in the trinity model response {}", responseBody);
-                processAuditOutputTables.add( ProcessAuditOutputTable.builder()
-                        .originId(trinityModelPayload.getOriginId())
-                        .stage("VQA_TRANSACTION")
-                        .status("FAILED")
-                        .request(jsonInputRequest)
-                        .response(response.message())
-                        .endpoint(node)
-                        .message("Error in the trinity model response")
-                        .tenantId(tenantId)
-                        .rootPipelineId(rootPipelineId)
-                        .build());
+//                processAuditOutputTables.add( TrinityProcessAuditOutputTable.builder()
+//                        .originId(trinityModelPayload.getOriginId())
+//                        .stage("VQA_TRANSACTION")
+//                        .status("FAILED")
+//                        .request(jsonInputRequest)
+//                        .response(response.message())
+//                        .endpoint(node)
+//                        .message("Error in the trinity model response")
+//                        .tenantId(tenantId)
+//                        .rootPipelineId(rootPipelineId)
+//                        .filePath(trinityModelPayload.getInputFilePath())
+//                        .build());
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
@@ -198,12 +195,12 @@ public class TrinityModelApiCaller {
             throw new HandymanException("Failed to execute the rest api call " + node, e);
         }
     }
-    private void insertRowsProcessedIntoProcessAudit(Jdbi jdbi, List<ProcessAuditOutputTable> auditResults, ActionExecutionAudit actionExecutionAudit) throws Exception {
+    private void insertRowsProcessedIntoProcessAudit(Jdbi jdbi, List<TrinityProcessAuditOutputTable> auditResults, ActionExecutionAudit actionExecutionAudit) throws Exception {
         try {
             jdbi.useTransaction(handle -> {
                 System.out.println(auditResults.size());
-                for (ProcessAuditOutputTable auditResult : auditResults) {
-                    handle.createUpdate("INSERT INTO audit.process_audit_output" +
+                for (TrinityProcessAuditOutputTable auditResult : auditResults) {
+                    handle.createUpdate("INSERT INTO audit.trinity_process_audit_output" +
                                     " (tenant_id, root_pipeline_id, origin_id, created_on, endpoint, request, response, status, stage, message) " +
                                     "VALUES(:tenantId,:rootPipelineId, :originId, now(), :endpoint, :request, :response, :status, :stage, :message)")
                             .bindBean(auditResult)
