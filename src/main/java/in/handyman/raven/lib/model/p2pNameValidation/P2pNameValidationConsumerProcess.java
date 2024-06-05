@@ -110,10 +110,10 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                     .p2pMaximumScore(finalMaxScore)
                     .tenantId(entity.getTenantId())
                     .sorItemName(entity.getSorItemName())
-                    .batchId(entity.getBatchId())
                     .synonymId(finalSynonymId)
                     .questionId(finalQuestionId)
                     .modelRegistry(entity.getModelRegistry())
+                    .batchId(entity.getBatchId())
                     .build());
             log.info(aMarker, "p2PNameValidationOutputTableArrayList {}", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {
