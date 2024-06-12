@@ -417,7 +417,8 @@ public class ScalarAdapterAction implements IActionExecution {
 
     private Validator removePrefixAndSuffix(Validator validator) {
         String dateRegValue = validator.getInputValue();
-        if (dateRegValue != null && !dateRegValue.isEmpty()){
+        String correctedValue = dateRegValue;
+        if (dateRegValue != null && !dateRegValue.isEmpty()) {
             int startIndex = 0;
             while (startIndex < dateRegValue.length() && (isAlphabetic(dateRegValue.charAt(startIndex)) || dateRegValue.charAt(startIndex) == ' ')) {
                 startIndex++;
@@ -428,12 +429,15 @@ public class ScalarAdapterAction implements IActionExecution {
                 endIndex--;
             }
             if (startIndex > endIndex) {
-                validator.setInputValue(dateRegValue);
-            }
-            else {
-                validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
+                correctedValue = dateRegValue;
+//                validator.setInputValue(dateRegValue);
+            } else {
+                correctedValue = dateRegValue.substring(startIndex, endIndex + 1);
+//                validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
             }
         }
+        assert correctedValue != null;
+        validator.setInputValue(correctedValue.replaceAll("\\s", ""));
         return validator;
     }
 

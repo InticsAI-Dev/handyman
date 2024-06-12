@@ -160,6 +160,8 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |convertExcelToDatabase
+    |kryptonKvp
+    |kryptonJsonParser
     );
 
 
@@ -1193,6 +1195,36 @@ convertExcelToDatabase:
     'using' '{'
                         querySet=STRING
     '}' ('on-condition' condition=expression)* ;
+
+
+kryptonKvp:
+    'kryptonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+kryptonJsonParser:
+    'kryptonJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+
+promptGenerateEngine:
+    'promptGenerateEngine' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'output-table' inputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
 //rules
 
 resource : STRING;

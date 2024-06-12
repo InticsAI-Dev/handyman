@@ -368,6 +368,8 @@ public class TrinityModelAction implements IActionExecution {
                     }catch (Exception e){
                         log.info(aMarker, " persisted {} in trinity model_action", e);
                     }
+
+
                 });
             });
         } catch (JsonProcessingException e) {

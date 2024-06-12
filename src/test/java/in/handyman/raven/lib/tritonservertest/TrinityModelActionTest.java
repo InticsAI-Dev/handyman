@@ -58,7 +58,7 @@ class TrinityModelActionTest {
                         "FROM macro.sor_transaction_final_tqa_audit a\n" +
                         "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=a.origin_id\n" +
                         "where a.model_registry = 'ARGON' and a.category = 'PRIMARY'\n" +
-                        "and a.tenant_id = 1 and st.group_id='297'\n" +
+                        "and a.tenant_id = 1 and st.group_id='227'\n" +
                         "group by a.file_path, a.paper_type, a.model_registry,a.origin_id, a.paper_no , a.tenant_id,a.group_id ,a.category, a.root_pipeline_id LIMIT 1;\n")
                 .responseAs("sor_transaction.vqa_transaction")
                 .build();

@@ -19,16 +19,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-        actionName = "MultipartDelete"
+    actionName = "MultipartDelete"
 )
 public class MultipartDelete implements IActionContext {
-    private String name;
+  private String name;
 
-    private String resourceConn;
+  private String resourceConn;
 
-    private String endPoint;
+  private String endPoint;
 
-    private String querySet;
+  private String querySet;
 
-    private Boolean condition = true;
+  private Boolean condition = true;
 }
