@@ -111,6 +111,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                     .synonymId(finalSynonymId)
                     .questionId(finalQuestionId)
                     .modelRegistry(entity.getModelRegistry())
+                    .category(entity.getCategory())
                     .build());
             log.info(aMarker, "p2PNameValidationOutputTableArrayList {}", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {

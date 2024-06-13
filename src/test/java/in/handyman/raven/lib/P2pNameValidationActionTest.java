@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 @Slf4j
 class P2pNameValidationActionTest {
 
@@ -16,19 +18,21 @@ class P2pNameValidationActionTest {
         P2pNameValidation p2pNameValidation = P2pNameValidation.builder()
                 .name("p2p name concatenation action")
                 .processId("123456")
-                .querySet("SELECT 'test bbox' as p2p_first_Name_bBox , 'test bbox' as p2p_last_name_bBox," +
-                        "                    90 as p2p_first_name_confidence_score, 80 as p2p_last_name_confidence_score," +
-                        "                    'micky' as p2p_first_name, 'mouse' as p2p_last_name, 0 as p2p_first_name_filter_score, 0 as p2p_last_name_filter_score," +
-                        "                    1 as group_id, 80 as p2p_first_name_maximum_score, 70 as p2p_last_name_maximum_score," +
+                .querySet("SELECT 'test bbox' as p2p_first_Name_bBox , 'test bbox' as p2p_last_name_bBox, 'test bbox' as p2p_full_name_bBox," +
+                        "                    90 as p2p_first_name_confidence_score, 80 as p2p_last_name_confidence_score, 80 as p2p_full_name_confidence_score, " +
+                        "                    'micky' as p2p_first_name, 'mouse' as p2p_last_name, 'mouse' as p2p_full_name, 0 as p2p_first_name_filter_score, 0 as p2p_last_name_filter_score," +
+                        "                    1 as group_id, 80 as p2p_first_name_maximum_score, 70 as p2p_last_name_maximum_score, 80 as p2p_full_name_maximum_score, " +
                         "                    'ORIGIN-123' as origin_id, 1 as paper_no, 50884 as root_pipeline_id, 1 as tenant_id, 'patient_name' as sor_item_name")
                 .resourceConn("intics_zio_db_conn")
+                .inputTable("voting.cumulative_patient_name_audit")
+                .outputTable("voting.p2p_result_temp_table_13025")
                 .condition(true)
                 .build();
-
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+//        actionExecutionAudit.setRootPipelineId(12345L);
         actionExecutionAudit.setProcessId(13898007L);
         actionExecutionAudit.getContext().put("p2p.url", "http://localhost:10181/copro/preprocess/autorotation");
-        actionExecutionAudit.getContext().put("p2p.output.table", "cumulative_result_p2p_result_table_1");
+        actionExecutionAudit.getContext().put("p2p.output.table", "voting.p2p_result_temp_table_13025");
         actionExecutionAudit.getContext().put("p2p.schema.name", "voting");
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "1"),
                 Map.entry("p2p.name.concat.consumer.API.count", "1"),
@@ -36,10 +40,16 @@ class P2pNameValidationActionTest {
                 Map.entry("action_id", "100"),
                 Map.entry("write.batch.size", "1"))
         );
-
         P2pNameValidationAction p2pNameValidationAction = new P2pNameValidationAction(actionExecutionAudit, log, p2pNameValidation);
         p2pNameValidationAction.execute();
+    }
 
-
+    @Test
+    public void testExactMatch() {
+        String finalConcatenatedName = "dinesh kumar";
+        String p2pFullName = "dinesh kumar";
+        boolean isContains = finalConcatenatedName.equalsIgnoreCase(p2pFullName) && finalConcatenatedName.contains(p2pFullName);
+        System.out.println(isContains);
+        assertTrue(isContains);
     }
 }

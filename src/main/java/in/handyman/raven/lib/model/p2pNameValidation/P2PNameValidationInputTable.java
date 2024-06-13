@@ -41,6 +41,7 @@ public class P2PNameValidationInputTable implements CoproProcessor.Entity {
     private Integer lastNameSynonymId;
     private Integer synonymId;
     private String modelRegistry;
+    private String category;
 
     @Override
     public List<Object> getRowData() {
