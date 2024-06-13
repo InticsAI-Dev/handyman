@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.UrgencyTriageBeta;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -71,7 +70,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
         final String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
         if (Objects.equals("false", tritonRequestActivator)) {
-            log.info(aMarker, "Request has been build for copro ");
+            log.info(aMarker, "Request for copro API");
         } else {
             final Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
@@ -117,7 +116,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
 
                     if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                         modelResponse.getOutputs().forEach(o -> o.getData().forEach(urgencyTriageModelDataItem -> {
-                            extractedTritonOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelVersion());
+                            extractedTritonOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelVersion(), modelResponse.getModelName());
                             log.info(aMarker, "Execute for urgency triage {}", response.isSuccessful());
                         }));
                     }
@@ -166,7 +165,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
     }
 
 
-    private static void extractedTritonOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String modelVersion) {
+    private static void extractedTritonOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String modelVersion, String modelName) {
         final String createdUserId = entity.getCreatedUserId();
         final String templateId = entity.getTemplateId();
         final Long modelId = entity.getModelId();
@@ -221,6 +220,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
+                    .modelName(modelName)
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

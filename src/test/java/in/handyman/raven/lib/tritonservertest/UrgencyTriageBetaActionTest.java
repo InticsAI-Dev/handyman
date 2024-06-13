@@ -17,9 +17,9 @@ public class UrgencyTriageBetaActionTest {
                 .condition(true)
                 .name("urgency triage")
                 .outputDir("/data/output/")
-                .outputTable("urgency_triage_beta.urgency_triage_beta_result")
+                .outputTable("urgency_triage_beta.urgency_triage_beta_pipeline_result")
                 .endPoint("http://192.168.10.248:9700/v2/models/ut-service/versions/1/infer")
-                .querySet("SELECT 'INT-3' as originId, '1234567' as preprocessedFileId, 1 as paperNo, '/data/output/1/preprocess/autorotation/auto_rotation/SYNT_166730538_c1_2.jpg' as inputFilePath,\n" +
+                .querySet("SELECT 'ORIGIN-3' as originId, '1234567' as preprocessedFileId, 1 as paperNo, '/data/output/1/preprocess/autorotation/auto_rotation/SYNT_166730538_c1_2.jpg' as inputFilePath,\n" +
                         "                1 as createdUserId, 1 as lastUpdatedUserId,\n" +
                         "                1 as tenantId,'TMP-1' as templateId, 12345 as processId,123 as modelId, 1 as groupId,\n" +
                         "               12345 as root_pipeline_id, 'BATCH_0_1' as batch_id, '/data/output/' as outputDir")

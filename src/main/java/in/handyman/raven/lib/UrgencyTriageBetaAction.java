@@ -39,8 +39,6 @@ import org.slf4j.MarkerFactory;
 )
 public class UrgencyTriageBetaAction implements IActionExecution {
 
-    public static final String COPRO_URGENCY_TRIAGE_MODEL_URL = "copro.urgency-triage-model.url";
-
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -54,7 +52,6 @@ public class UrgencyTriageBetaAction implements IActionExecution {
         UrgencyTriageBetaAction.urgencyTriageBeta = (UrgencyTriageBeta) urgencyTriageBeta;
         this.action = action;
         this.log = log;
-        String URI = action.getContext().get(COPRO_URGENCY_TRIAGE_MODEL_URL);
         this.aMarker = MarkerFactory.getMarker(" UrgencyTriageBeta:" + UrgencyTriageBetaAction.urgencyTriageBeta.getName());
     }
 
@@ -68,8 +65,11 @@ public class UrgencyTriageBetaAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(urgencyTriageBeta.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Urgency Triage Action for {} has been started", urgencyTriageBeta.getName());
-            final String insertQuery = "INSERT INTO " + urgencyTriageBeta.getOutputTable() + "(created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, origin_id, paper_no, template_id, model_id, status, stage, message, root_pipeline_id, model_version, batch_id, checkbox_result, hw_result, binary_result, checkbox_bbox, hw_bbox, binary_bbox, checkbox_score, hw_score, binary_score)" +
-                    "VALUES (now(), ?, now(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            final String insertQuery = "INSERT INTO " + urgencyTriageBeta.getOutputTable() + "(created_on, created_user_id, last_updated_on, " +
+                    "last_updated_user_id, process_id, group_id, tenant_id, origin_id, paper_no, template_id, model_id, status, stage, message, " +
+                    "root_pipeline_id, model_version, batch_id, checkbox_result, hw_result, binary_result, checkbox_bbox, hw_bbox, binary_bbox, " +
+                    "checkbox_score, hw_score, binary_score, model_name)" +
+                    "VALUES (now(), ?, now(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             final List<URL> urls = Optional.ofNullable(urgencyTriageBeta.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
