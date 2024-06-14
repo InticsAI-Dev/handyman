@@ -159,6 +159,7 @@ action:
     |paragraphExtraction
     |bulletInExtraction
     |p2pNameValidation
+    |urgencyTriageBeta
     );
 
 
@@ -1183,6 +1184,15 @@ p2pNameValidation:
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
+
+
+urgencyTriageBeta:
+    'urgencyTriageBeta' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'copro-url' endPoint=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
 
 //rules
 
