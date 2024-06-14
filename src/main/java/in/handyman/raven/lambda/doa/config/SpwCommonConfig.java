@@ -20,7 +20,7 @@ public class SpwCommonConfig extends Auditable {
 
     private String variable;
     private String value;
-    private boolean active;
+    private String active;
     private Integer version;
 
 }

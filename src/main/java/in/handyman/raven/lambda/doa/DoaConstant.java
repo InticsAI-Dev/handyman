@@ -2,7 +2,7 @@ package in.handyman.raven.lambda.doa;
 
 public interface DoaConstant {
 
-    String AUDIT_SCHEMA_NAME = "audit";
+    String AUDIT_SCHEMA_NAME = "\"audit\"";
     String CONFIG_SCHEMA_NAME = "config";
 
     String SEA_TABLE_NAME = "statement_execution_audit";

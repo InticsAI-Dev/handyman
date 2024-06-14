@@ -19,7 +19,7 @@ class CopyDataToOracleActionTest {
                 .source("intics_zio_db_conn")
                 .to("intics_oracle_db_conn")
                 .value("INSERT INTO CONFIG.SPW_COMMON_CONFIG (VARIABLE, VALUE, ACTIVE, CREATED_BY, CREATED_DATE, LAST_MODIFIED_BY, LAST_MODIFIED_DATE, \"version\")\n" +
-                        "SELECT variable, value, active, created_by, created_date, last_modified_by, last_modified_date, version FROM config.spw_common_config;")
+                        "SELECT variable, value, active, created_by, created_date, last_modified_by, last_modified_date, version FROM config.spw_common_config")
                 .fetchBatchSize("10")
                 .condition(true)
                 .writeBatchSize("10")

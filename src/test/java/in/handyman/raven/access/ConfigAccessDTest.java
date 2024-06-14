@@ -11,9 +11,10 @@ class ConfigAccessDTest {
 
     @Test
     void getResourceConfig() {
-        final Map<String, String> commonConfig = ConfigAccess.getCommonConfig();
+        var commonConfig = ConfigAccess.getResourceConfig("intics_zio_db_conn");
         assert commonConfig != null;
         log.info(commonConfig.toString());
+        System.out.println(commonConfig);
     }
 
 

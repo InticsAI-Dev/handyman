@@ -20,7 +20,7 @@ public class HRequestResolver {
 
     private static final String BASE_PATH = "basepath";
 
-    protected static String doResolve(final String lambdaName, final String processLoadType, final Map<String, String> context) {
+    public static String doResolve(final String lambdaName, final String processLoadType, final Map<String, String> context) {
         final LoadType loadType = LoadType.valueOf(processLoadType);
         if (LoadType.DB == loadType) {
             return dbResolve(context, loadType);

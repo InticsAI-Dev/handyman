@@ -159,12 +159,17 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
     @Override
     public void insertAction(final ActionExecutionAudit audit) {
-
         JDBI.useHandle(handle -> {
             audit.setLastModifiedDate(LocalDateTime.now());
             var repo = handle.attach(ActionExecutionAuditRepo.class);
-            Long actionId = repo.insert(audit);
-            audit.setActionId(actionId);
+            try {
+                Long actionId = repo.insert(audit);
+                System.out.println("Generated Action ID: " + actionId);
+                audit.setActionId(actionId);
+            } catch (Exception e) {
+                System.err.println("Error inserting action: " + e.getMessage());
+                e.printStackTrace();
+            }
         });
 
     }
@@ -207,14 +212,14 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     @Override
     public void save(final PipelineExecutionStatusAudit audit) {
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.PESA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, execution_status_id, pipeline_id,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :executionStatusId, :pipelineId,:rootPipelineId);")
+        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.PESA_TABLE_NAME + " ( id, created_by, created_date, last_modified_by, last_modified_date, execution_status_id, pipeline_id,root_pipeline_id) VALUES(\"audit\".\"ISEQ$$_76366\".nextval, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :executionStatusId, :pipelineId, :rootPipelineId)")
                 .bindBean(audit).execute());
     }
 
     @Override
     public void save(final ActionExecutionStatusAudit audit) {
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AESA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, execution_status_id, pipeline_id,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :executionStatusId, :pipelineId,:rootPipelineId);")
+        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AESA_TABLE_NAME + " ( id, created_by, created_date, last_modified_by, last_modified_date, action_id, execution_status_id, pipeline_id,root_pipeline_id) VALUES( \"audit\".\"ISEQ$$_76338\".nextval, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :executionStatusId, :pipelineId, :rootPipelineId)")
                 .bindBean(audit).execute());
     }
 
@@ -423,7 +428,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                 .lastModifiedBy(actionExecutionAudit.getLastModifiedBy())
                 .lastModifiedDate(actionExecutionAudit.getLastModifiedDate()).build();
         JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO audit.handyman_exception_audit (group_id, root_pipeline_id, root_pipeline_name, pipeline_name, action_id, action_name, exception_Info, message, process_id, created_by, created_date, last_modified_by, last_modified_date) " +
-                        "VALUES(:groupId, :rootPipelineId, :rootPipelineName, :pipelineName, :actionId, :actionName, :exceptionInfo, :message, :processId, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate);")
+                        "VALUES(:groupId, :rootPipelineId, :rootPipelineName, :pipelineName, :actionId, :actionName, :exceptionInfo, :message, :processId, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate)")
                 .bindBean(exceptionAuditDetails).execute());
         log.info("inserting exception audit details has been completed");
 

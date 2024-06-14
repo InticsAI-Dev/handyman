@@ -24,19 +24,19 @@ public interface SpwResourceConfigRepo {
             " user_name= :userName, password= :password, driver_class= :driverClass, host= :host, port= :port, database_name= :databaseName WHERE id = :id ")
     void update(@BindBean final SpwResourceConfig spwResourceConfig);
 
-    @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + " where active=true ; ")
+    @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + " where active='TRUE'")
     @RegisterBeanMapper(value = SpwResourceConfig.class)
     List<SpwResourceConfig> findAll();
 
-    @SqlQuery("SELECT count(1)+1 FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + " where config_name= :configName ; ")
+    @SqlQuery("SELECT count(1)+1 FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + " where config_name= :configName ")
     @RegisterBeanMapper(value = SpwResourceConfig.class)
     Long getNextVersion(@BindBean final SpwResourceConfig spwResourceConfig);
 
-    @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + " where config_name= :configName  and active=true order by version desc limit 1; ")
+    @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + " where config_name= :configName  and active='TRUE' ")
     @RegisterBeanMapper(value = SpwResourceConfig.class)
     Optional<SpwResourceConfig> findOne(@Bind("configName") final String variable);
 
-    @SqlQuery("SELECT max(id)+1 FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME + "; ")
+    @SqlQuery("SELECT max(id)+1 FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SRC_TABLE_NAME )
     @RegisterBeanMapper(value = SpwResourceConfig.class)
     Long getId();
 }

@@ -77,7 +77,8 @@ class RestApiActionTestExecutionAudit {
     public void
     performanceOpt() {
         LContext request = LContext.builder()
-                .pipelineName("root.processor#1")
+                .processLoadType("FILE")
+                .pipelineName("root.processor#10")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
                 .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
                         Map.entry("batch_id", "TMP-AGD-001"),
