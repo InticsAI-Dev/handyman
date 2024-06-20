@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.agadia.adapters;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.CharacterCountAdapter;
 import in.handyman.raven.lib.adapters.NameAdapter;
 import in.handyman.raven.lib.adapters.WordCountAdapter;
@@ -13,7 +14,7 @@ public class PatientNameAdapter implements ScalarEvaluationInterface {
     AdapterInterface nameValidatorAdapter = new NameAdapter();
 
     @Override
-    public int getConfidenceScore(String patientName, AgadiaAdapter adapter) throws Exception {
+    public int getConfidenceScore(String patientName, AgadiaAdapter adapter, ActionExecutionAudit action) throws Exception {
         int confidenceScore = 0;
         int wcLimit = adapter.getWordCountLimit();
         int wcThresold = adapter.getWordCountThreshold();
@@ -22,7 +23,7 @@ public class PatientNameAdapter implements ScalarEvaluationInterface {
         int validatorThresold = adapter.getValidatorThreshold();
         String validatorFeature = adapter.getValidatorDetail();
 
-        boolean nameValidator = nameValidatorAdapter.getValidationModel(patientName, validatorFeature);
+        boolean nameValidator = nameValidatorAdapter.getValidationModel(patientName, validatorFeature, action);
         confidenceScore = nameValidator ? confidenceScore + validatorThresold : confidenceScore;
 
         int formatScore = 0;

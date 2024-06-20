@@ -10,6 +10,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.lib.model.ImportCsvToDB;
+import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.slf4j.Logger;
@@ -52,36 +53,38 @@ public class ImportCsvToDBAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
+        try {
+            final int threadCount = Optional.ofNullable(importCsvToDB.getWriteThreadCount()).map(Integer::valueOf).orElse(1);
+            final Integer batchSize = Optional.ofNullable(importCsvToDB.getBatchSize()).map(Integer::valueOf).orElse(10000);
 
-        final int threadCount = Optional.ofNullable(importCsvToDB.getWriteThreadCount()).map(Integer::valueOf).orElse(1);
-        final Integer batchSize = Optional.ofNullable(importCsvToDB.getBatchSize()).map(Integer::valueOf).orElse(10000);
+            final SpwResourceConfig target = importCsvToDB.getTarget();
+            if (Objects.isNull(target)) {
+                throw new HandymanException("target connection not provided");
+            }
+            log.info(aMarker, "Resource provided " + target.getConfigName());
 
-        final SpwResourceConfig target = importCsvToDB.getTarget();
-        if (Objects.isNull(target)) {
-            throw new HandymanException("target connection not provided");
-        }
-        log.info(aMarker, "Resource provided " + target.getConfigName());
-
-        final Jdbi jdbi = Jdbi.create(target.getResourceUrl(), target.getUserName(), target.getPassword());
-        final int size = importCsvToDB.getValue().size();
-        if (threadCount > 1 && size > 1) {
-            final ExecutorService taskList
-                    = Executors.newWorkStealingPool(threadCount);
-            final CountDownLatch downLatch = new CountDownLatch(size);
-            for (var path : importCsvToDB.getValue()) {
-                taskList.execute(() -> {
+            final Jdbi jdbi = Jdbi.create(target.getResourceUrl(), target.getUserName(), target.getPassword());
+            final int size = importCsvToDB.getValue().size();
+            if (threadCount > 1 && size > 1) {
+                final ExecutorService taskList
+                        = Executors.newWorkStealingPool(threadCount);
+                final CountDownLatch downLatch = new CountDownLatch(size);
+                for (var path : importCsvToDB.getValue()) {
+                    taskList.execute(() -> {
+                        doImport(batchSize, jdbi, path);
+                        downLatch.countDown();
+                    });
+                }
+                downLatch.await();
+            } else {
+                for (var path : importCsvToDB.getValue()) {
                     doImport(batchSize, jdbi, path);
-                    downLatch.countDown();
-                });
+                }
             }
-            downLatch.await();
-        } else {
-            for (var path : importCsvToDB.getValue()) {
-                doImport(batchSize, jdbi, path);
-            }
+        } catch (Exception e) {
+            log.error(aMarker, "Error in import csvToDb action", e);
+            throw new HandymanException("Error in import csvToDb action" , e, actionExecutionAudit);
         }
-
-
     }
 
     private void doImport(final Integer batchSize, final Jdbi jdbi, final String path) {
@@ -102,15 +105,16 @@ public class ImportCsvToDBAction implements IActionExecution {
                 }
             }
         } catch (Exception e) {
-            throw new HandymanException("Exception for file " + path, e);
+            log.error("Exception for file {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Exception for file " + path, e, actionExecutionAudit);
         }
     }
 
-    private void extracted(final Integer batchSize, final Jdbi jdbi, final File file) throws IOException {
+    private void extracted(final Integer batchSize, final Jdbi jdbi, final File file) {
         final List<Map<String, Object>> maps = readObjectsFromCsv(file);
 
         final int size = maps.size();
-        log.info(aMarker, "extracted data from CSV file with size " + size);
+        log.info(aMarker, "Extracted data from CSV file with size " + size);
 
         if (size != 0) {
             final Map<String, Object> map = maps.get(0);
@@ -140,12 +144,17 @@ public class ImportCsvToDBAction implements IActionExecution {
         }
     }
 
-    private List<Map<String, Object>> readObjectsFromCsv(final File file) throws IOException {
-        var bootstrap = CsvSchema.emptySchema().withHeader();
-        var csvMapper = new CsvMapper();
-        final MappingIterator<Map<String, Object>> mappingIterator = csvMapper.readerFor(new TypeReference<Map<String, Object>>() {
-        }).with(bootstrap).readValues(file);
-        return mappingIterator.readAll();
+    private List<Map<String, Object>> readObjectsFromCsv(final File file){
+        try {
+            var bootstrap = CsvSchema.emptySchema().withHeader();
+            var csvMapper = new CsvMapper();
+            final MappingIterator<Map<String, Object>> mappingIterator = csvMapper.readerFor(new TypeReference<Map<String, Object>>() {
+            }).with(bootstrap).readValues(file);
+            return mappingIterator.readAll();
+        } catch (Exception e) {
+            log.error(aMarker, "Error in reading objects from csv {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Error in reading objects from csv", e, actionExecutionAudit);
+        }
     }
 
     @Override

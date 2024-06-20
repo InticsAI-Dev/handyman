@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.QrAttribution;
+import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -61,11 +62,12 @@ public class QrAttributionAction implements IActionExecution {
                     action.getContext().put(name, mapper.readTree(responseBody).toString());
                     log.info(aMarker, "The Successful Response  {} {}", name, responseBody);
                 } else {
-                    log.info(aMarker, "The Failure Response  {} {}", name, responseBody);
+                    log.error(aMarker, "The Failure Response  {} {}", name, responseBody);
+                    throw new HandymanException(responseBody);
                 }
             } catch (Exception e) {
-                log.info(aMarker, "The Exception occurred ", e);
-                throw new HandymanException("Failed to execute", e);
+                log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(e));
+                throw new HandymanException("Failed to execute", e, action);
             }
         }
     }

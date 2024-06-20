@@ -19,22 +19,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "Hwdetection"
+    actionName = "CoproStart"
 )
-public class Hwdetection implements IActionContext {
+public class CoproStart implements IActionContext {
   private String name;
+
+  private String moduleName;
+
+  private String coproServerUrl;
+
+  private String exportCommand;
+
+  private String processID;
 
   private String resourceConn;
 
-  private String handwrittenTable;
-
-  private String auditTable;
-
-  private String directorypath;
-
-  private String modelpath;
-
-  private String input;
+  private String command;
 
   private Boolean condition = true;
 }

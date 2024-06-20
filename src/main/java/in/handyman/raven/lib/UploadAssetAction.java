@@ -74,12 +74,13 @@ public class UploadAssetAction implements IActionExecution {
                 log.info(aMarker, "The Successful Response  {} {}", name, responseBody);
             } else {
                 log.info(aMarker, "The Failure Response  {} {}", name, responseBody);
+                throw new HandymanException(responseBody);
             }
             log.info(aMarker, "The response got it successfully for upload Asset as ==> {}",
                     action);
         } catch (Exception e) {
             log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            throw new HandymanException("Failed to execute", e, action);
         }
     }
 

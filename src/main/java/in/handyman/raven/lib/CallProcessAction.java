@@ -44,7 +44,7 @@ public class CallProcessAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "<-------Call Process Action for {} has been started------->" + callProcess.getName());
+        log.info(aMarker, "Call Process Action for {} has been started" , callProcess.getName());
         final String fileRelativePath = callProcess.getSource();
         var targetProcess = callProcess.getTarget();
         var dbSrc = callProcess.getDatasource();
@@ -82,7 +82,7 @@ public class CallProcessAction implements IActionExecution {
             });
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            throw new HandymanException("Failed to execute call process action for call process "+ callProcess.getName(), e, actionExecutionAudit);
         }
 
         log.info(aMarker, "Completed name#{}, calledProcess#{}, calledFile#{}, db=#{}", callProcess.getName(), targetProcess, fileRelativePath, dbSrc);
@@ -101,7 +101,7 @@ public class CallProcessAction implements IActionExecution {
                     counter.await();
                 } catch (InterruptedException e) {
                     log.error(aMarker, "The Exception occurred ", e);
-                    throw new HandymanException("Call process parallel failed ", e);
+                    throw new HandymanException("Call process parallel failed ", e, actionExecutionAudit);
                 }
 
             } else {
@@ -117,10 +117,10 @@ public class CallProcessAction implements IActionExecution {
             }
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            throw new HandymanException("Failed to execute", e, actionExecutionAudit);
         }
 
-        log.info(aMarker, "<-------Call Process Action for {} has been Completed------->" + callProcess.getName());
+        log.info(aMarker, "Call Process Action for {} has been Completed" , callProcess.getName());
     }
 
 

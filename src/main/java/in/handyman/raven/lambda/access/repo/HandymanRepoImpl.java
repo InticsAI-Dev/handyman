@@ -1,5 +1,6 @@
 package in.handyman.raven.lambda.access.repo;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionStatusAudit;
@@ -10,7 +11,12 @@ import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
 import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
 import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
+import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -19,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -123,7 +130,11 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         JDBI.useHandle(handle -> {
             audit.setLastModifiedDate(LocalDateTime.now());
             var repo = handle.attach(PipelineExecutionAuditRepo.class);
-            repo.insert(audit);
+            Long pipelineId = repo.insert(audit);
+            if (Objects.equals(audit.getPipelineId(), audit.getRootPipelineId())) {
+                audit.setRootPipelineId(pipelineId);
+            }
+            audit.setPipelineId(pipelineId);
         });
     }
 
@@ -133,7 +144,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         JDBI.useHandle(handle -> {
             audit.setLastModifiedDate(LocalDateTime.now());
             var repo = handle.attach(ActionExecutionAuditRepo.class);
-            repo.insert(audit);
+            Long actionId = repo.insert(audit);
+            audit.setActionId(actionId);
         });
 
     }
@@ -169,21 +181,21 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     @Override
     public void insertStatement(final StatementExecutionAudit audit) {
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " (statement_id, created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES(:statementId, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
+        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
                 .bindBean(audit).execute());
     }
 
     @Override
     public void save(final PipelineExecutionStatusAudit audit) {
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.PESA_TABLE_NAME + " (id, created_by, created_date, last_modified_by, last_modified_date, execution_status_id, pipeline_id,root_pipeline_id) VALUES(:id, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :executionStatusId, :pipelineId,:rootPipelineId);")
+        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.PESA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, execution_status_id, pipeline_id,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :executionStatusId, :pipelineId,:rootPipelineId);")
                 .bindBean(audit).execute());
     }
 
     @Override
     public void save(final ActionExecutionStatusAudit audit) {
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AESA_TABLE_NAME + " (id, created_by, created_date, last_modified_by, last_modified_date, action_id, execution_status_id, pipeline_id,root_pipeline_id) VALUES(:id, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :executionStatusId, :pipelineId,:rootPipelineId);")
+        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AESA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, execution_status_id, pipeline_id,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :executionStatusId, :pipelineId,:rootPipelineId);")
                 .bindBean(audit).execute());
     }
 
@@ -375,5 +387,45 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             var repo = handle.attach(SpwResourceConfigRepo.class);
             return repo.findAll();
         });
+    }
+    public void insertExceptionLog(ActionExecutionAudit actionExecutionAudit, Throwable exception, String message) {
+        HandymanExceptionAuditDetails exceptionAuditDetails = HandymanExceptionAuditDetails.builder()
+          //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
+                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                .rootPipelineName(actionExecutionAudit.getParentPipelineName())
+                .pipelineName(actionExecutionAudit.getPipelineName())
+                .actionId(actionExecutionAudit.getActionId())
+                .actionName(actionExecutionAudit.getActionName())
+                .exceptionInfo(ExceptionUtil.toString(exception))
+                .message(message)
+                .processId(actionExecutionAudit.getProcessId())
+                .createdBy(actionExecutionAudit.getCreatedBy())
+                .createdDate(actionExecutionAudit.getCreatedDate())
+                .lastModifiedBy(actionExecutionAudit.getLastModifiedBy())
+                .lastModifiedDate(actionExecutionAudit.getLastModifiedDate()).build();
+        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO audit.handyman_exception_audit (group_id, root_pipeline_id, root_pipeline_name, pipeline_name, action_id, action_name, exception_Info, message, process_id, created_by, created_date, last_modified_by, last_modified_date) " +
+                        "VALUES(:groupId, :rootPipelineId, :rootPipelineName, :pipelineName, :actionId, :actionName, :exceptionInfo, :message, :processId, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate);")
+                .bindBean(exceptionAuditDetails).execute());
+        log.info("inserting exception audit details has been completed");
+
+    }
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class HandymanExceptionAuditDetails {
+        private Integer groupId;
+        private Long rootPipelineId;
+        private String rootPipelineName;
+        private String pipelineName;
+        private Long actionId;
+        private String actionName;
+        private String exceptionInfo;
+        private String message;
+        private Long processId;
+        private Long createdBy;
+        private LocalDateTime createdDate;
+        private Long lastModifiedBy;
+        private LocalDateTime lastModifiedDate;
     }
 }

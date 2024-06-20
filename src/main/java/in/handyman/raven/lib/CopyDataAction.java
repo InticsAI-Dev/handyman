@@ -94,49 +94,50 @@ public class CopyDataAction implements IActionExecution {
             log.info(aMarker, "CopyData Insert Sql input post parameter ingestion \n : {}", insert);
             log.info(aMarker, "CopyData Select Sql input post parameter ingestion \n : {}", insert);
             //initializing the connection related statement
-            var hikariDataSource = ResourceAccess.rdbmsConn(source);
-            final Long statementId = UniqueID.getId();
-            final ExecutorService executor = Executors.newWorkStealingPool();
-            var rand = new Random();
-            var rowQueueMap = new LinkedHashMap<Integer, BlockingQueue<Table.Row>>();
-            var rowsProcessed = new AtomicInteger(0);
+            try (var hikariDataSource = ResourceAccess.rdbmsConn(source)) {
+                final Long statementId = UniqueID.getId();
+                final ExecutorService executor = Executors.newWorkStealingPool();
+                var rand = new Random();
+                var rowQueueMap = new LinkedHashMap<Integer, BlockingQueue<Table.Row>>();
+                var rowsProcessed = new AtomicInteger(0);
 
-            try (final Connection sourceConnection = hikariDataSource.getConnection()) {
-                //TODO AUDIT
-                try (final Statement stmt = sourceConnection.createStatement()) {
-                    stmt.setFetchSize(fetchSize);
-                    var countDownLatch = new CountDownLatch(upperThreadCount);
-                    IntStream.range(lowerThreadCount, upperThreadCount + 1).forEach(i -> {
-                        var rowQueue = new LinkedBlockingDeque<Table.Row>();
-                        var poisonPill = new Table.Row(i, null);
-                        log.info(aMarker, " action is prepping up writer thread with poison pill {}", poisonPill);
-                        final CopyDataJdbcWriter jdbcWriter = new CopyDataJdbcWriter(configMap, insert, poisonPill, copyData,
-                                actionExecutionAudit, rowQueue, countDownLatch);
-                        executor.submit(jdbcWriter);
-                        rowQueueMap.put(poisonPill.getRowId(), rowQueue);
-                    });
-                    //Retrieving the data from the source
-                    var selectStatement = select.toString();
-                    try (var rs = stmt.executeQuery(selectStatement)) {
-                        var nrCols = rs.getMetaData().getColumnCount();
-                        while (rs.next()) {
-                            var startTime = System.currentTimeMillis();
-                            var row = getRow(rs, nrCols);
-                            addRowToQueue(upperThreadCount, lowerThreadCount, rand, rowQueueMap, row);
-                            addAudit(pipelineId, name, fetchSize, statementId, rowsProcessed, startTime);
-                            rowQueueMap.forEach((integer, rows) -> rows.add(new Table.Row(integer, null)));
-                            try {
-                                countDownLatch.await();
-                            } catch (final InterruptedException ex) {
-                                log.error(aMarker, "{} error during waiting for worker threads to finish their job", pipelineId, ex);
-                                throw ex;
+                try (final Connection sourceConnection = hikariDataSource.getConnection()) {
+                    //TODO AUDIT
+                    try (final Statement stmt = sourceConnection.createStatement()) {
+                        stmt.setFetchSize(fetchSize);
+                        var countDownLatch = new CountDownLatch(upperThreadCount);
+                        IntStream.range(lowerThreadCount, upperThreadCount + 1).forEach(i -> {
+                            var rowQueue = new LinkedBlockingDeque<Table.Row>();
+                            var poisonPill = new Table.Row(i, null);
+                            log.info(aMarker, " action is prepping up writer thread with poison pill {}", poisonPill);
+                            final CopyDataJdbcWriter jdbcWriter = new CopyDataJdbcWriter(configMap, insert, poisonPill, copyData,
+                                    actionExecutionAudit, rowQueue, countDownLatch);
+                            executor.submit(jdbcWriter);
+                            rowQueueMap.put(poisonPill.getRowId(), rowQueue);
+                        });
+                        //Retrieving the data from the source
+                        var selectStatement = select.toString();
+                        try (var rs = stmt.executeQuery(selectStatement)) {
+                            var nrCols = rs.getMetaData().getColumnCount();
+                            while (rs.next()) {
+                                var startTime = System.currentTimeMillis();
+                                var row = getRow(rs, nrCols);
+                                addRowToQueue(upperThreadCount, lowerThreadCount, rand, rowQueueMap, row);
+                                addAudit(pipelineId, name, fetchSize, statementId, rowsProcessed, startTime);
+                                rowQueueMap.forEach((integer, rows) -> rows.add(new Table.Row(integer, null)));
+                                try {
+                                    countDownLatch.await();
+                                } catch (final InterruptedException ex) {
+                                    log.error(aMarker, "{} error during waiting for worker threads to finish their job", pipelineId, ex);
+                                    throw ex;
+                                }
                             }
                         }
                     }
+                } catch (Exception ex) {
+                    log.error(aMarker, "{} error closing source connection for database {}", pipelineId, source, ex);
+                    throw new HandymanException("Error closing source connection for database", ex, actionExecutionAudit);
                 }
-            } catch (Exception ex) {
-                log.error(aMarker, "{} error closing source connection for database {}", pipelineId, source, ex);
-                throw ex;
             }
         } else {
             throw new HandymanException("Insert stmt not found");
@@ -180,7 +181,7 @@ public class CopyDataAction implements IActionExecution {
             return new Table.ColumnInARow(columnType, columnTypeName, columnName, columnLabel,
                     scale, value, null, isLastColumn);
         } catch (Exception ex) {
-            throw new HandymanException("Column mapping failed", ex);
+            throw new HandymanException("Column mapping failed", ex, actionExecutionAudit);
         }
     }
 

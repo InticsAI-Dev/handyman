@@ -102,9 +102,9 @@ public class SorGroupDetailsAction implements IActionExecution {
                                     new TypeReference<>() {
                                     });
                             final Map<String, String> stringMap = stringStringMap.entrySet().stream()
-                                    .filter(field -> (Arrays.stream(searchsplitarr).anyMatch(field.getKey()::equals)))
+                                    .filter(field -> (Arrays.asList(searchsplitarr).contains(field.getKey())))
                                     .collect(Collectors
-                                            .toMap(stringStringEntry -> stringStringEntry.getKey(),
+                                            .toMap(Map.Entry::getKey,
                                                     Map.Entry::getValue, (p, q) -> p));
                             // TODO add logic to use any number of keys
                             key = rs.getString(keysplitarr[0]) + "#" + rs.getString(keysplitarr[1]);
@@ -184,7 +184,7 @@ public class SorGroupDetailsAction implements IActionExecution {
         } catch (Exception ex) {
             log.error("SorGroupDetailsAction: {} error closing source connection for database: {} ",
                     action.getActionId(), targebtable, ex);
-            throw new HandymanException("writeToDb failed", ex);
+            throw new HandymanException("writeToDb failed", ex, action);
         }
     }
 

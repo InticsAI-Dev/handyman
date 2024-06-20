@@ -6,8 +6,12 @@ import in.handyman.raven.lambda.process.HRequestResolver;
 import in.handyman.raven.lambda.process.LContext;
 import in.handyman.raven.lambda.process.LambdaEngine;
 import lombok.extern.slf4j.Slf4j;
+
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
 
@@ -60,7 +64,7 @@ class RestApiActionTestExecutionAudit {
     @Test
     public void denoiseMainCaller() {
         LContext request = LContext.builder()
-                .pipelineName("denoise.main.caller")
+                .pipelineName("master.data.caller")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
                 .build();
         log.info(request.toString());
@@ -68,15 +72,41 @@ class RestApiActionTestExecutionAudit {
     }
 
     @Test
-    public void rootTest() {
+    public void
+    performanceOpt()
+    {
         LContext request = LContext.builder()
-                .pipelineName("root.producer")
+                .pipelineName("root.processor#1")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
+                        Map.entry("batch_id","TMP-AGD-001"),
+                        Map.entry("tenant_id","TND-001"),
+                        Map.entry("document_id","TMP-AGD-001"),
+                        Map.entry("last_updated_user_id","-1"),
+                        Map.entry("dir_path","/home/balasoundarya.thanga@zucisystems.com/workspace/gitdev/input/1.pdf/"),
+                        Map.entry("target_directory_path","/home/balasoundarya.thanga@zucisystems.com/workspace/gitdev/output")))
                 .build();
         log.info(request.toString());
         LambdaEngine.start(request);
     }
 
+    @Test
+    public void qrcode()
+    {
+        LContext request = LContext.builder()
+                .pipelineName("qr.extraction.processor")
+                .processLoadType(HRequestResolver.LoadType.FILE.name())
+                .inheritedContext(Map.ofEntries(Map.entry("created_user_id", "-1"),
+                        Map.entry("batch_id","TMP-AGD-001"),
+                        Map.entry("tenant_id","TND-001"),
+                        Map.entry("document_id","TMP-AGD-001"),
+                        Map.entry("last_updated_user_id","-1"),
+                        Map.entry("dir_path","/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia/input/"),
+                        Map.entry("target_directory_path","/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia/agadia_output") ))
+                .build();
+        log.info(request.toString());
+        LambdaEngine.start(request);
+    }
     @Test
     public void testTruthAttributionSummoning() {
         LContext request = LContext.builder()
@@ -91,10 +121,40 @@ class RestApiActionTestExecutionAudit {
     @Test
     void executeQR() {
         LambdaEngine.start(LContext.builder()
-                .pipelineName("qr.grouping.process")
+                .pipelineName("root.processor")
                 .processLoadType(HRequestResolver.LoadType.FILE.name())
-                .inheritedContext(Map.of("batch_id", "12"))
+                .inheritedContext(Map.of("group_id", "32"))
                 .build());
     }
 
+
+    @Test
+    public void shellScript() throws IOException, InterruptedException {
+
+        String homeDir=System.getProperty("user.home");
+        System.out.println("home Directory " +homeDir);
+        boolean IS_WINDOWS=System.getProperty("os.name")
+                .toLowerCase().startsWith("windows");
+        System.out.println("Is windows " +IS_WINDOWS);
+        Process process;
+        if (IS_WINDOWS){
+            process=Runtime.getRuntime().exec(String.format("cmd.exe /c dir %s", homeDir));
+            System.out.println("Executed for windows " +process);
+        }else {
+            process=Runtime.getRuntime().exec(String.format("/bin/sh -c ls %s", homeDir));
+            System.out.println("Executed for linux " +process);
+        }
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+        StringBuilder stringBuilder=new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null){
+            stringBuilder.append(line).append("\n");
+            System.out.println(stringBuilder);
+        }
+
+        int exitCode = process.waitFor();
+        assert exitCode == 0;
+
+    }
 }

@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
@@ -13,11 +14,12 @@ import java.util.List;
 
 public interface ActionExecutionAuditRepo {
 
-    String COLUMNS = " action_id, created_by, created_date, last_modified_by, last_modified_date, context_node, execution_status_id, lambda_name, parent_action_id, parent_action_name, parent_pipeline_id, parent_pipeline_name, pipeline_name, action_name, execution_group_id, input_node, log, pipeline_id, root_pipeline_id ";
+    String COLUMNS = " created_by, created_date, last_modified_by, last_modified_date, context_node, execution_status_id, lambda_name, parent_action_id, parent_action_name, parent_pipeline_id, parent_pipeline_name, pipeline_name, action_name, execution_group_id, input_node, log, pipeline_id, root_pipeline_id ";
     String DOT = ".";
 
-    @SqlUpdate("insert into " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + "  ( " + COLUMNS + " ) VALUES(:actionId, :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :contextNode, :executionStatusId, :lambdaName, :parentActionId, :parentActionName, :parentPipelineId, :parentPipelineName, :pipelineName, :actionName, :executionGroupId, :inputNode, :log, :pipelineId ,:rootPipelineId); ")
-    void insert(@BindBean final ActionExecutionAudit actionExecutionAudit);
+    @SqlUpdate("insert into " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + "  ( " + COLUMNS + " ) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :contextNode, :executionStatusId, :lambdaName, :parentActionId, :parentActionName, :parentPipelineId, :parentPipelineName, :pipelineName, :actionName, :executionGroupId, :inputNode, :log, :pipelineId ,:rootPipelineId); ")
+    @GetGeneratedKeys
+    Long insert(@BindBean final ActionExecutionAudit actionExecutionAudit);
 
     @SqlUpdate("update  " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + " SET created_by = :createdBy, created_date = :createdDate, last_modified_by = :lastModifiedBy," +
             " last_modified_date = :lastModifiedDate, context_node = :contextNode, execution_status_id = :executionStatusId, lambda_name = :lambdaName, " +

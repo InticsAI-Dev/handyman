@@ -1,9 +1,11 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.ExtractTAR;
+import in.handyman.raven.util.ExceptionUtil;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
@@ -71,7 +73,8 @@ public class ExtractTARAction implements IActionExecution {
             unTarFile(tarFile, destFile);
             deleteDirectory(new File(tarFolder));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(aMarker, "Error in extractTar Action with the exception {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Error in extractTar Action", e, actionExecutionAudit);
         }
     }
 
@@ -110,14 +113,14 @@ public class ExtractTARAction implements IActionExecution {
         tis.close();
     }
 
-    boolean deleteDirectory(File directoryToBeDeleted) {
+    void deleteDirectory(File directoryToBeDeleted) {
         File[] allContents = directoryToBeDeleted.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
                 deleteDirectory(file);
             }
         }
-        return directoryToBeDeleted.delete();
+        directoryToBeDeleted.delete();
     }
 
     @Override

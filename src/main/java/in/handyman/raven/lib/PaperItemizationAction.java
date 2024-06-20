@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PaperItemization;
+import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -19,6 +20,7 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 
 /**
@@ -63,7 +65,7 @@ public class PaperItemizationAction implements IActionExecution {
         log.debug(aMarker, "Request has been build with the parameters \n URI : {} \n Input-File-Path : {} \n Output-Directory : {}", URI, paperItemization.getFilePath(), paperItemization.getOutputDir());
 
         try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = response.body().string();
+            String responseBody = Objects.requireNonNull(response.body()).string();
             log.info(aMarker, "The response received successfully for Asset ID and Attribution List {}", responseBody);
             String name = paperItemization.getName() + "-Paper-itemized-response";
             if (response.isSuccessful()) {
@@ -74,14 +76,14 @@ public class PaperItemizationAction implements IActionExecution {
                 action.getContext().put(name.concat(".error"), "false");
                 log.info(aMarker, "The Successful Response  {} {}", name, responseBody);
             } else {
-                log.info(aMarker, "Paper Itemization has failed with bad response");
+                log.error(aMarker, "Paper Itemization has failed with bad response");
                 action.getContext().put(name.concat(".error"), "true");
                 action.getContext().put(name.concat(".errorMessage"), responseBody);
-                log.info(aMarker, "The Failure Response  {} {}", name, responseBody);
+                log.error(aMarker, "The Failure Response  {} {}", name, responseBody);
             }
         } catch (Exception e) {
-            log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Failed to execute", e, action);
         }
 
     }

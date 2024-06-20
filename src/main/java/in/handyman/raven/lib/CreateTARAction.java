@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -79,31 +80,39 @@ public class CreateTARAction implements IActionExecution {
 
     }
 
-    private double calculateSize(final String fileName) throws IOException {
-        return BigDecimal.valueOf(Files.size(new File(fileName).toPath()) / (1024.0 * 1024)).setScale(2, RoundingMode.CEILING).doubleValue();
+    private double calculateSize(final String fileName)  {
+        try {
+            return BigDecimal.valueOf(Files.size(new File(fileName).toPath()) / (1024.0 * 1024)).setScale(2, RoundingMode.CEILING).doubleValue();
+        } catch (IOException e) {
+            throw new HandymanException("Error in getting file details", e, actionExecutionAudit);
+        }
     }
 
-    private void addFilesToTarGZ(final String filePath, final String parent, final TarArchiveOutputStream tarArchive) throws IOException {
-        log.info(aMarker, " source {} parent {}", filePath, parent);
-        final File file = new File(filePath);
-        final String baseName = parent + file.getName();
-        final TarArchiveEntry archiveEntry = new TarArchiveEntry(file);
-        tarArchive.putArchiveEntry(archiveEntry);
-        if (file.isFile()) {
-            try (var fileInputStream = new FileInputStream(file)) {
-                IOUtils.copy(fileInputStream, tarArchive);
+    private void addFilesToTarGZ(final String filePath, final String parent, final TarArchiveOutputStream tarArchive){
+        try {
+            log.info(aMarker, " source {} parent {}", filePath, parent);
+            final File file = new File(filePath);
+            final String baseName = parent + file.getName();
+            final TarArchiveEntry archiveEntry = new TarArchiveEntry(file);
+            tarArchive.putArchiveEntry(archiveEntry);
+            if (file.isFile()) {
+                try (var fileInputStream = new FileInputStream(file)) {
+                    IOUtils.copy(fileInputStream, tarArchive);
+                    tarArchive.closeArchiveEntry();
+                }
+            } else if (file.isDirectory()) {
+                tarArchive.closeArchiveEntry();
+                final Optional<File[]> files = Optional.ofNullable(file.listFiles());
+                if (files.isPresent()) {
+                    for (var childFile : files.get()) {
+                        addFilesToTarGZ(childFile.getAbsolutePath(), baseName + File.separator, tarArchive);
+                    }
+                }
+            } else {
                 tarArchive.closeArchiveEntry();
             }
-        } else if (file.isDirectory()) {
-            tarArchive.closeArchiveEntry();
-            final Optional<File[]> files = Optional.ofNullable(file.listFiles());
-            if (files.isPresent()) {
-                for (var childFile : files.get()) {
-                    addFilesToTarGZ(childFile.getAbsolutePath(), baseName + File.separator, tarArchive);
-                }
-            }
-        } else {
-            tarArchive.closeArchiveEntry();
+        } catch (Exception e) {
+            throw new HandymanException("Error in adding files to tar", e, actionExecutionAudit);
         }
     }
 

@@ -103,9 +103,50 @@ action:
     |numericvalidator
     |nervalidator
     |donutDocQa
-    |intellimatch
     |scalarAdapter
-    |hwdetection);
+    |phraseMatchPaperFilter
+    |zeroShotClassifierPaperFilter
+    |dataExtraction
+    |assetInfo
+    |episodeOfCoverage
+    |userRegistration
+    |authToken
+    |eocJsonGenerator
+    |zipContentList
+    |hwDetection
+    |intellimatch
+    |checkboxVqa
+    |pixelClassifierUrgencyTriage
+    |qrExtraction
+    |paperItemizer
+    |nerAdapter
+    |coproStart
+    |coproStop
+    |outboundDeliveryNotify
+    |masterdataComparison
+    |zipBatch
+    |drugMatch
+    |urgencyTriageModel
+    |donutImpiraQa
+    |trinityModel
+    |templateDetection
+    |fileBucketing
+    |alchemyInfo
+    |alchemyAuthToken
+    |alchemyResponse
+    |productResponse
+    |tableExtraction
+    |mailServer
+    |alchemyKvpResponse
+    |alchemyTableResponse
+    |productOutboundZipfile
+    |mailServer
+    |fileMergerPdf
+    |zipFileCreationOutbound
+    |outboundKvpResponse
+    |outboundTableResponse
+    |ftpUpload
+    );
 
 
 multitude:
@@ -177,8 +218,7 @@ assign:
 	'assign' 'as' name=STRING 'source' source=STRING 'using'
 	'{'
 		value=STRING
-	'}' ('on-condition' condition=expression)*
-;
+	'}' ('on-condition' condition=expression)*;
 
 
 dropFile:
@@ -271,12 +311,12 @@ pushJson :
 
 mapJsonContext :
       'map-json-into-context' 'as' name=STRING  'using'  '{'
-                        autoRotation                              value=STRING
+               value=STRING
                                                    '}' ('on-condition' condition=expression)* ;
-                                                   
+
 sharePoint:
-	'sharepoint' 'as' name=STRING 'client-id' shpClientId=STRING 'tenant-id' shpTenantId=STRING 'client-secret' shpClientSecret=STRING 
-	'org-name' orgName=STRING 'action-type' actionType=STRING 'site-url' siteUrl=STRING 'source-relative-path' sourceRelativePath=STRING 
+	'sharepoint' 'as' name=STRING 'client-id' shpClientId=STRING 'tenant-id' shpTenantId=STRING 'client-secret' shpClientSecret=STRING
+	'org-name' orgName=STRING 'action-type' actionType=STRING 'site-url' siteUrl=STRING 'source-relative-path' sourceRelativePath=STRING
 	'file-name' fileName=STRING 'target-relative-path' targetRelativePath=STRING 'using'
 	'{'
 		value=STRING
@@ -303,12 +343,11 @@ paperItemization:
     'paper-itemization' 'as' name=STRING 'from-target-file' filePath=STRING 'using' outputDir=STRING  'using'  '{' '}' ('on-condition' condition=expression)* ;
 
 autoRotation:
-    'autoRotation' 'as' name=STRING 'from-target-file'
-     filePath=STRING 'using' outputDir=STRING  'using'  '{' '}'
-     ('on-condition' condition=expression)* ;
+    'autoRotation' 'as' name=STRING 'output-dir' outputDir=STRING 'process-id' processId=STRING  'resource-conn' resourceConn=STRING 'using'  '{' querySet=STRING '}' ('on-condition' condition=expression)*  ;
+
 
 blankPageRemover:
-    'blankPageRemover' 'as' name=STRING 'from-target-file' filePath=STRING 'using' outputDir=STRING  'using'  '{' '}' ('on-condition' condition=expression)* ;
+    'blankPageRemover' 'as' name=STRING  'output-dir' outputDir=STRING 'process-id' processId=STRING 'resource-conn' resourceConn=STRING  'using'  '{'  querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 qrAttribution:
     'qrAttribution' 'as' name=STRING 'using'  '{' filePath=STRING '}' ('on-condition' condition=expression)* ;
@@ -610,28 +649,388 @@ scalarAdapter:
       '{' resultSet=STRING  '}'
        ('on-condition' condition=expression)*;
 
-intellimatch:
-         'intellimatch' 'as' name=STRING
+phraseMatchPaperFilter:
+    'phrase-match-paper-filter' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'for-process-id' processID=STRING
+    'thread-count' threadCount=STRING
+    'read-batch-size' readBatchSize=STRING
+    'write-batch-size' writeBatchSize=STRING
+    'with-input-query'
+    '{'
+        querySet=STRING
+
+     '}'('on-condition' condition=expression)* ;
+
+zeroShotClassifierPaperFilter:
+    'zero-shot-classifier-paper-filter' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'for-process-id' processID=STRING
+    'thread-count' threadCount=STRING
+    'read-batch-size' readBatchSize=STRING
+    'write-batch-size' writeBatchSize=STRING
+    'with-input-query'
+    '{'
+        querySet=STRING
+
+     '}'('on-condition' condition=expression)* ;
+
+
+assetInfo:
+	'assetInfo' 'as' name=STRING
+	'on-resource-conn' resourceConn=STRING
+	'get-audit-table' auditTable=STRING
+	'result-table' assetTable=STRING
+	'using' '{' values=STRING '}' ('on-condition' condition=expression)* ;
+
+dataExtraction:
+	'dataExtraction' 'as' name=STRING
+	'resource-conn' resourceConn=STRING
+	'result-table' resultTable=STRING
+	'process-id' processId=STRING
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+episodeOfCoverage:
+  'episodeOfCoverage' 'as' name=STRING
+  'on-resource-conn' resourceConn=STRING
+  'origin-id' originId=STRING
+  'group-id' groupId=STRING
+  'total-pages' totalPages=STRING
+  'output-table' outputTable=STRING
+  'grouping-item'  eocGroupingItem=STRING
+  'patient-eoc-count' eocIdCount=STRING
+  'input-file-path' '{' filepath=STRING '}'
+  'qr-grouping' '{' qrInput=STRING '}'
+  'eoc-grouping' '{' value=STRING '}'
+  'pnd-grouping' '{' pndValue=STRING '}'  ('on-condition' condition=expression)* ;
+
+userRegistration:
+        'userRegistration' 'as' name=STRING
+        'on-resource-conn' resourceConn=STRING
+        'using'  '{' '}' ('on-condition' condition=expression)* ;
+
+authToken:
+         'authToken' 'as' name=STRING
          'on-resource-conn' resourceConn=STRING
-         'match-result' matchResult=STRING
-         'audit-table' auditTable=STRING
-         'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+         'using'  '{' '}' ('on-condition' condition=expression)* ;
 
-hwdetection:
-    'hwdetection' 'as' name=STRING
+eocJsonGenerator:
+          'eocJsonGenerator' 'as' name=STRING
+          'on-resource-conn' resourceConn=STRING
+          'document-id' documentId=STRING
+          'eoc-id' eocId=STRING
+          'origin-id' originId=STRING
+          'group-id' groupId=STRING
+          'auth-token' authtoken=STRING
+          'using'  '{' '}' ('on-condition' condition=expression)* ;
+
+zipContentList:
+            'zipContentList' 'as' name=STRING
+            'on-resource-conn' resourceConn=STRING
+            'document-id' documentId=STRING
+            'origin-id' originId=STRING
+            'zip-file-path' zipFilePath=STRING
+            'using'  '{' '}' ('on-condition' condition=expression)* ;
+
+
+hwDetection:
+    'hwDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' directoryPath=STRING
+    'modelPath' modelPath=STRING
+    'using'  '{'
+        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+intellimatch:
+     'intellimatch' 'as' name=STRING
      'on-resource-conn' resourceConn=STRING
-     'handwritten-table' handwrittenTable=STRING
-      'audit-table' auditTable=STRING
-     'outputDir' directorypath=STRING
-     'modelPath' modelpath=STRING 'using'  '{' input=STRING '}'
-     ('on-condition' condition=expression)* ;
+     'match-result' matchResult=STRING
+     'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+
+checkboxVqa:
+    'checkbox-vqa' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'process-id' processID=STRING
+    'cad-model-path' cadModelPath=STRING
+    'cd-model-path' cdModelPath=STRING
+    'cr-model-path' crModelPath=STRING
+    'text-model' textModel=STRING
+    'cr-width' crWidth=STRING
+    'cr-height' crHeight=STRING
+    'output-dir' outputDir=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)*;
+
+pixelClassifierUrgencyTriage:
+    'pixel-classifier-urgency-triage' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'process-id' processID=STRING
+    'binary-classifier-model-file-path' binaryClassifierModelFilePath=STRING
+    'multi-classifier-model-file-path' multiClassifierModelFilePath=STRING
+    'checkbox-classifier-model-file-path' checkboxClassifierModelFilePath=STRING
+    'synonyms' synonyms=STRING
+    'binary-classifier-labels' binaryClassifierLabels=STRING
+    'multi-classifier-labels' multiClassifierLabels=STRING
+    'checkbox-classifier-labels' checkboxClassifierLabels=STRING
+    'output-dir' outputDir=STRING
+    'binary-image-width' binaryImageWidth=STRING
+    'binary-image-height' binaryImageHeight=STRING
+    'multi-image-width' multiImageWidth=STRING
+    'multi-image-height' multiImageHeight=STRING
+    'checkbox-image-width' checkboxImageWidth=STRING
+    'checkbox-image-height' checkboxImageHeight=STRING
+    'using'  '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+qrExtraction:
+	'qr-extraction' 'as' name=STRING
+	'on-resource-conn' resourceConn=STRING
+	'process-id' processId=STRING
+	'output-table' outputTable=STRING
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+paperItemizer:
+	'paperItemizer' 'as' name=STRING
+	'outputDir' outputDir=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+nerAdapter:
+      'nerAdapter' 'as' name=STRING
+      'on-resource-conn' resourceConn=STRING
+      'result-table' resultTable=STRING
+      'using-docnut-result'
+      '{' resultSet=STRING  '}'
+       ('on-condition' condition=expression)*;
 
 
 
-resource : STRING;
+coproStart:
+	'coproStart' 'as' name=STRING
+	'for' moduleName=STRING
+	'copro-server-url' coproServerUrl=STRING
+	'export-command' exportCommand=STRING
+	'process-id' processID=STRING
+	'resource-conn' resourceConn=STRING
+	'using'
+	'{' command=STRING '}'
+	('on-condition' condition=expression)*;
 
+coproStop:
+	'coproStop' 'as' name=STRING
+	'for' moduleName=STRING
+	'copro-server-url' coproServerUrl=STRING
+	'process-id' processID=STRING
+	'resource-conn' resourceConn=STRING
+	'using'
+	'{' command=STRING '}'
+	('on-condition' condition=expression)*;
+
+ outboundDeliveryNotify:
+     'outbound-delivery-notify' 'as' name=STRING
+     'document-id' documentId=STRING
+     'intics-zip-uri' inticsZipUri=STRING
+     'checksum' zipChecksum=STRING
+     'resource-conn' resourceConn=STRING
+     'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
+ masterdataComparison:
+     'masterdataComparison' 'as' name=STRING
+     'on-resource-conn' resourceConn=STRING
+     'match-result' matchResult=STRING
+     'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+
+zipBatch:
+    'zipBatch' 'as' name=STRING
+    'group-id' groupId=STRING
+    'output-dir' outputDir=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{' '}' ('on-condition' condition=expression)* ;
+
+drugMatch:
+    'drugMatch' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'drug-compare' drugCompare=STRING
+    'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)* ;
+
+urgencyTriageModel:
+    'urgencyTriageModel' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
+
+donutImpiraQa:
+     'donut-impira-qa' 'as' name=STRING
+     'in-output-dir' outputDir=STRING
+     'on-resource-conn' resourceConn=STRING
+     'save-response-as' responseAs=STRING
+     'using'  '{' questionSql=STRING '}'
+     ('on-condition' condition=expression)*
+     ('on-parallel-fielding' forkBatchSize=STRING)*;
+
+templateDetection:
+	'templateDetection'  'as' name=STRING
+	'copro-url' coproUrl=STRING
+	'resource-conn' resourceConn=STRING
+	'input-table' inputTable=STRING
+	'process-id' processId=STRING
+	'ouput-table' ouputTable=STRING
+	'using'  '{'
+	 querySet=STRING
+	'}'('on-condition' condition=expression)*;
+
+trinityModel:
+     'trinity-docqa' 'as' name=STRING
+     'in-output-dir' outputDir=STRING
+     'on-resource-conn' resourceConn=STRING
+     'save-response-as' responseAs=STRING
+     'api-endpoint' requestUrl=STRING
+     'using'  '{' questionSql=STRING '}'
+     ('on-condition' condition=expression)*
+     ('on-parallel-fielding' forkBatchSize=STRING)*;
+
+
+fileBucketing:
+     'file-bucketing' 'as' name=STRING
+     'output-dir' outputDir=STRING
+     'using'  '{' inputDirectory=STRING '}'
+     ('on-condition' condition=expression)*;
+
+alchemyInfo:
+    'alchemyInfo' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
+
+alchemyAuthToken:
+    'alchemyAuthToken' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+    '}' ('on-condition' condition=expression)* ;
+
+alchemyResponse:
+    'alchemyResponse' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
+
+productResponse:
+    'productResponse' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'result-table' resultTable=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
+
+
+tableExtraction:
+	'tableExtraction' 'as' name=STRING
+	'outputDir' outputDir=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+mailServer:
+	'mailServer' 'as' name=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+alchemyKvpResponse:
+    'alchemyKvpResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+alchemyTableResponse:
+    'alchemyTableResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+productOutboundZipfile:
+    'productOutboundZipfile' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'outputdirectory' outputDir=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+fileMergerPdf:
+    'file-merger-pdf' 'as' name=STRING
+    'result-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'output-directory' outputDir=STRING
+    'using' '{'
+        		querySet=STRING
+        	'}' ('on-condition' condition=expression)* ;
+
+
+zipFileCreationOutbound:
+    'outbound-Zipfile' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'outputdirectory' outputDir=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+outboundKvpResponse:
+    'outboundKvpResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+outboundTableResponse:
+    'outboundTableResponse' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+ftpUpload:
+       'ftpUpload' 'as' name=STRING
+       'result-table' resultTable=STRING
+       'resource-conn' resourceConn=STRING
+       'using' '{'
+       		querySet=STRING
+       	'}' ('on-condition' condition=expression)* ;
 //rules
 
+resource : STRING;
 fragment DIGIT : [0-9];
 fragment NON_Z_DIGIT : [1-9];
 fragment TWODIGIT : DIGIT DIGIT;
