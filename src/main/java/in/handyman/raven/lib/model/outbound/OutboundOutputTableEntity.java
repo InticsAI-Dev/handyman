@@ -27,6 +27,7 @@ public class OutboundOutputTableEntity {
     private String message;
     private String fileName;
     private String alchemyOriginId;
+    private String batchId;
 
 
 }

@@ -264,6 +264,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonMappingException e) {
 
@@ -280,6 +281,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
             throw new HandymanException("exception in processing triton output response node", e, action);
         } catch (JsonProcessingException e) {
@@ -296,6 +298,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
             throw new HandymanException("exception in processing triton input node", e, action);
         }
@@ -390,6 +393,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonMappingException e) {
 
@@ -406,6 +410,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
             throw new HandymanException("exception in processing triton output response node", e, action);
         } catch (JsonProcessingException e) {
@@ -422,6 +427,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .tenantId(tenantId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
             throw new HandymanException("exception in processing triton input node", e, action);
         }

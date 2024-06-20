@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
+import in.handyman.raven.lib.model.Validator;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterDataItem;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterPayload;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterResponse;
@@ -32,12 +33,17 @@ public class NameAdapter implements AdapterInterface {
 
     @Override
     public boolean getValidationModel(String sentence, String uri, ActionExecutionAudit audit) throws Exception {
+return false;
+    }
+
+    @Override
+    public boolean getNameValidationModel(Validator input, String uri, ActionExecutionAudit audit) throws Exception {
 
         try {
 
 
             MediaType mediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-            String[] patientName = new String[]{sentence};
+            String[] patientName = new String[]{input.getInputValue()};
             final String trinityProcessName = "VQA_VALUATION";
             final String tritonRequestActivator = audit.getContext().get(TRITON_REQUEST_ACTIVATOR);
             OkHttpClient httpclient = new OkHttpClient.Builder()
@@ -56,6 +62,10 @@ public class NameAdapter implements AdapterInterface {
             nerAdapterPayload.setRootPipelineId(rootPipelineId);
             nerAdapterPayload.setProcess(process);
             nerAdapterPayload.setActionId(actionId);
+            nerAdapterPayload.setOriginId(input.getOriginId());
+            nerAdapterPayload.setPaperNo(input.getPaperNo());
+            nerAdapterPayload.setBatchId(input.getBatchId());
+            nerAdapterPayload.setGroupId(input.getGroupId());
             nerAdapterPayload.setInputString(List.of(patientName));
             nerAdapterPayload.setProcessId(audit.getProcessId());
 

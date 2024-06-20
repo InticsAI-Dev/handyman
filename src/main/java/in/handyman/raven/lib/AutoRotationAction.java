@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -9,6 +10,7 @@ import in.handyman.raven.lib.model.AutoRotation;
 import in.handyman.raven.lib.model.autorotation.AutoRotationConsumerProcess;
 import in.handyman.raven.lib.model.autorotation.AutoRotationInputTable;
 import in.handyman.raven.lib.model.autorotation.AutoRotationOutputTable;
+import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -42,9 +44,10 @@ public class AutoRotationAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "info";
   public static final String AUTO_ROTATION = "auto_rotation";
-  public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version";
-  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+  public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,batch_id";
+  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
+  public static final String COPRO_AUTOROTATION_URL1 = "copro.autorotation.url";
   private final int threadSleepTime;
   private final Integer consumerApiCount;
   private final Integer writeBatchSize;
@@ -61,6 +64,7 @@ public class AutoRotationAction implements IActionExecution {
   private final Logger log;
   private final AutoRotation autoRotation;
   private final Marker aMarker;
+  private final ObjectMapper mapper = new ObjectMapper();
   private final String URI;
   private final int readBatchSize;
 

@@ -16,19 +16,19 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final TrinityModelAction aAction;
     private final OkHttpClient httpclient;
-
+    private final Logger log;
     private final String node;
 
     public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log) {
         this.aAction = aAction;
         this.node = node;
+        this.log=log;
         this.httpclient = new OkHttpClient.Builder()
                 .connectTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .writeTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)

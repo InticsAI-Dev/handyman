@@ -3,8 +3,12 @@ package in.handyman.raven.lib.model.neradaptors;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
+import in.handyman.raven.lib.adapters.AlphaAdapter;
+import in.handyman.raven.lib.adapters.NameAdapter;
+import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.ExceptionUtil;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -21,7 +25,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess<NerInputTable, NerOutputTable> {
-
+    private static final MediaType MediaTypeJSON = MediaType
+            .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
     private static final String HTTP_CLIENT_TIMEOUT = "100";
 
@@ -29,6 +34,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     private final Marker aMarker;
     private final NervalidatorAction nerAction;
     private final WordcountAction wordcountAction;
+    AdapterInterface alphaAdapter;
+    AdapterInterface nameAdapter;
     private final CharactercountAction charactercountAction;
     private final AlphavalidatorAction alphaAction;
     private final NumericvalidatorAction numericAction;
@@ -44,6 +51,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     boolean multiverseValidator;
     String[] restrictedAnswers;
     String URI;
+    final String NAME_NUMBER_REGEX = "^(.+?)\\s*(\\d+)$";
 
     public NerAdapterConsumerProcess(Logger log, Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
@@ -56,6 +64,8 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         this.numericAction = new NumericvalidatorAction(action, log, Numericvalidator.builder().build());
         this.alphaNumericAction = new AlphanumericvalidatorAction(action, log, Alphanumericvalidator.builder().build());
         this.dateAction = new DatevalidatorAction(action, log, Datevalidator.builder().build());
+        this.alphaAdapter = new AlphaAdapter();
+        this.nameAdapter = new NameAdapter();
     }
 
     private static void updateEmptyValueAndCf(NerInputTable result) {
@@ -149,6 +159,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message("Ner validation macro completed")
                             .modelRegistry(modelRegistry)
                             .rootPipelineId(rootPipelineId)
+                            .batchId(result.getBatchId())
                             .category(result.getCategory())
                             .build());
 
@@ -185,6 +196,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message("Confidence Score is less than 0")
                             .modelRegistry(result.getModelRegistry())
                             .rootPipelineId(rootPipelineId)
+                            .batchId(result.getBatchId())
                             .category(result.getCategory())
                             .build());
             log.error(aMarker, "The Exception occurred in confidence score validation by {} ", valConfidenceScore);

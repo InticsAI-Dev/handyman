@@ -16,10 +16,10 @@ class MultipartDeleteActionTest {
                 .name("multipart file delete for paper itemization")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endPoint("http://127.0.0.1:8002/multipart-delete")
-                .querySet("SELECT '/home/dineshkumar.anandan@zucisystems.com/Documents/test/output/1.jpeg' as filepath, " +
+                .endPoint("http://192.168.10.248:10002/multipart-delete")
+                .querySet("SELECT '/home/bolt1/intics-build/data/data/input/batch_test/batch_test_output/1/64/58072/evaluation_output/SYNT_166529664/SYNT_166529664_05042024/SYNT_166529664_001.pdf' as filepath, " +
                         "'ORIGIN-1' as originId, 1 as paperNo, 1 as groupId, 1 as tenantId, " +
-                        "'tmp-1' as templateId, 1112 as processId, 52732 as rootPipelineId;")
+                        "'tmp-1' as templateId, 1112 as processId, 52732 as rootPipelineId, 'batch_1' as batch_id;")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

@@ -64,8 +64,8 @@ public class OutboundKvpResponseAction implements IActionExecution {
       log.info(aMarker, "alchemy table response Action output table {}",outboundKvpResponse.getResultTable());
       //5. build insert prepare statement with output table columns
       final String insertQuery = "INSERT INTO " +outboundKvpResponse.getResultTable()+
-              "(process_id,group_Id,alchemy_origin_id,pipeline_origin_id,kvp_response, tenant_id,file_name,root_pipeline_id,status,stage,message) " +
-              " VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+              "(process_id,group_Id,alchemy_origin_id,pipeline_origin_id,kvp_response, tenant_id,file_name,root_pipeline_id,status,stage,message,batch_id) " +
+              " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
 
       log.info(aMarker, "alchemy kvp Insert query {}", insertQuery);
 

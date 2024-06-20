@@ -36,13 +36,14 @@ public class BulletinQueryOutputTable implements CoproProcessor.Entity{
    private String bulletinSection;
    private String bulletinPoints;
     private Integer synonymId;
+    private String batchId;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.paperNo, this.groupId, this.filePath, this.tenantId,
                 this.processId, this.outputDir, this.rootPipelineId, this.process, this.status, this.stage, this.message,
-                this.modelName, this.modelVersion,this.synonymId,this.bulletinSection,this.bulletinPoints).collect(Collectors.toList());
+                this.modelName, this.modelVersion,this.synonymId,this.bulletinSection,this.bulletinPoints,this.batchId).collect(Collectors.toList());
 
 
     }

@@ -58,7 +58,7 @@ public class EocJsonGeneratorAction implements IActionExecution {
         final String originId = eocJsonGenerator.getOriginId();
         final String groupId = eocJsonGenerator.getGroupId();
         final long tenantId = Long.parseLong(action.getContext().get("tenant_id"));
-
+        final String batchId = action.getContext().get("batch_id");
         String apiUrl = urlEncoder(URI + "api/v1/" + documentId + "/docdetaillineitem/" + eocId + "?tenantId=" + tenantId);
 
         String authtoken = eocJsonGenerator.getAuthtoken();
@@ -79,11 +79,12 @@ public class EocJsonGeneratorAction implements IActionExecution {
                             .eocId(eocId)
                             .originId(originId)
                             .groupId(Integer.valueOf(groupId))
+                            .batchId(batchId)
                             .eocResponse(responseBody).rootPipelineId(action.getRootPipelineId()).build();
 
                     jdbi.useTransaction(handle -> {
-                        handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id) " +
-                                        "VALUES( :documentId, :eocId, :originId, :groupId, :eocResponse::json, :rootPipelineId);")
+                        handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id, batch_id) " +
+                                        "VALUES( :documentId, :eocId, :originId, :groupId, :eocResponse::json, :rootPipelineId, :batchId);")
                                 .bindBean(eocResponse).execute();
                         log.debug(aMarker, "inserted {} into eoc response details", eocResponse);
                         action.getContext().put(name + ".isSuccessful", String.valueOf(response.isSuccessful()));
@@ -132,5 +133,6 @@ public class EocJsonGeneratorAction implements IActionExecution {
         private Integer groupId;
         private String eocResponse;
         private Long rootPipelineId;
+        private String batchId;
     }
 }

@@ -139,6 +139,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                                 .message(response.message())
                                 .createdOn(LocalDateTime.now())
                                 .rootPipelineId(entity.getRootPipelineId())
+                                .batchId(entity.getBatchId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -156,6 +157,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message(exception.getMessage())
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(entity.getRootPipelineId())
+                            .batchId(entity.getBatchId())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("NOISE_DETECTION_MODEL  consumer failed for originId " + originId, handymanException, this.action);
@@ -220,6 +222,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .message("noise detection completed")
                         .modelName(modelName)
                         .modelVersion(modelVersion)
+                        .batchId(entity.getBatchId())
                         .build());
             }
 
@@ -237,6 +240,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .message(e.getMessage())
                             .createdOn(LocalDateTime.now())
                             .rootPipelineId(entity.getRootPipelineId())
+                            .batchId(entity.getBatchId())
                             .build());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("NOISE_DETECTION_MODEL consumer failed for originId " + originId, handymanException, this.action);
@@ -298,6 +302,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                             .stage(NOISE_DETECTION)
                             .message("noise detection completed")
+                            .batchId(entity.getBatchId())
                             .build());
 
 
@@ -311,6 +316,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                             .status(ConsumerProcessApiStatus.ABSENT.getStatusDescription())
                             .stage(NOISE_DETECTION)
                             .message("noise detection code absent in the given file")
+                            .batchId(entity.getBatchId())
                             .build());
                 }
 
@@ -324,6 +330,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(NOISE_DETECTION)
                         .message(response.message())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.error(aMarker, "The Exception occurred in episode of coverage in response {}", response);
             }
@@ -338,6 +345,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                     .rootPipelineId(rootPipelineId)
                     .stage(NOISE_DETECTION)
                     .message(e.getMessage())
+                    .batchId(entity.getBatchId())
                     .build());
             log.error("Error in the copro process api hit {}", request);
             HandymanException handymanException = new HandymanException(e);

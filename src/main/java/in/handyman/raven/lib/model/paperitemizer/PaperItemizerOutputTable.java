@@ -31,12 +31,13 @@ public class PaperItemizerOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String modelName;
     private String modelVersion;
+    private String batchId;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processedFilePath,
                 this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId,
-                this.modelName, this.modelVersion).collect(Collectors.toList());
+                this.modelName, this.modelVersion,this.batchId).collect(Collectors.toList());
     }
 }

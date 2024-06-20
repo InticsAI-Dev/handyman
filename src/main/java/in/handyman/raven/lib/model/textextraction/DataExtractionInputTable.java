@@ -23,6 +23,7 @@ public class DataExtractionInputTable implements CoproProcessor.Entity {
     private Long processId;
     private Long rootPipelineId;
     private String templateName;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

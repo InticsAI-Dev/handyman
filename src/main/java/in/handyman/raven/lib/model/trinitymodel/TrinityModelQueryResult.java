@@ -28,4 +28,5 @@ public class TrinityModelQueryResult {
     private Long rootPipelineId;
     private Long processId;
     private Long modelRegistryId;
+    private String batchId;
 }

@@ -4,6 +4,8 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import org.jetbrains.annotations.NotNull;
+import in.handyman.raven.lib.P2pNameValidationAction;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -112,6 +114,7 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
                     .questionId(finalQuestionId)
                     .modelRegistry(entity.getModelRegistry())
                     .category(entity.getCategory())
+                    .batchId(entity.getBatchId())
                     .build());
             log.info(aMarker, "p2PNameValidationOutputTableArrayList {}", p2PNameValidationOutputTableArrayList);
         } catch (Exception e) {

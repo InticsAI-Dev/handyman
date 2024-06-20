@@ -24,6 +24,7 @@ public class UrgencyTriageInputTable implements CoproProcessor.Entity {
     private Long modelId;
     private String inputFilePath;
     private Long rootPipelineId;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

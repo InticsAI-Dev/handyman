@@ -68,8 +68,8 @@ public class OutboundTableResponseAction implements IActionExecution {
             log.info(aMarker, "alchemy table response Action output table {}", outboundTableResponse.getResultTable());
             //5. build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + outboundTableResponse.getResultTable() +
-                    "(process_id,group_id,alchemy_origin_id,pipeline_origin_id,table_response, tenant_id,root_pipeline_id,status,stage,message,paper_no) " +
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+                    "(process_id,group_id,alchemy_origin_id,pipeline_origin_id,table_response, tenant_id,root_pipeline_id,status,stage,message,paper_no,batch_id) " +
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
 
             log.info(aMarker, "alchemy table Insert query {}", insertQuery);
 

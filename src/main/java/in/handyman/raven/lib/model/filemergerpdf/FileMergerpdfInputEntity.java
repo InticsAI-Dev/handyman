@@ -23,6 +23,7 @@ public class FileMergerpdfInputEntity implements CoproProcessor.Entity {
     private Long groupId;
     private String fileId;
     private String outputFileName;
+    private String batchId;
 
 
     @Override

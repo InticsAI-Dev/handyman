@@ -27,6 +27,7 @@ public class TrinityModelLineItem {
     private Long rootPipelineId;
     private Long processId;
     private Long modelRegistryId;
+    private String batchId;
 
 
 }

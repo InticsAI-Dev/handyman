@@ -62,8 +62,8 @@ public class AlchemyInfoAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(alchemyInfo.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Alchemy Info Action for {} has been started", alchemyInfo.getName());
-            final String insertQuery = "INSERT INTO alchemy_migration.alchemy_papers (tenant_id, group_id, paper_no, pipeline_origin_id, alchemy_origin_id, origin_file_path, width, height, created_on, root_pipeline_id)" +
-                    "VALUES(?, ?, ?, ?, ?, ?, ?, ?, now(), ?)";
+            final String insertQuery = "INSERT INTO alchemy_migration.alchemy_papers (tenant_id, group_id, paper_no, pipeline_origin_id, alchemy_origin_id, origin_file_path, width, height, created_on, root_pipeline_id, batch_id)" +
+                    "VALUES(?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?)";
             final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.origin.upload.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
@@ -164,6 +164,7 @@ public class AlchemyInfoAction implements IActionExecution {
                             .width(originUploadResponse.getWidth())
                             .height(originUploadResponse.getHeight())
                             .rootPipelineId(rootPipelineId)
+                            .batchId(entity.getBatchId())
                             .build()));
                     log.info(aMarker, "Execute for alchemy Info {}", response);
                 }
@@ -185,6 +186,7 @@ public class AlchemyInfoAction implements IActionExecution {
         private Long rootPipelineId;
         private Integer groupId;
         private String filePath;
+        private String batchId;
 
         @Override
         public List<Object> getRowData() {
@@ -206,12 +208,13 @@ public class AlchemyInfoAction implements IActionExecution {
         private Integer width;
         private Integer height;
         private Long rootPipelineId;
+        private String batchId;
 
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.tenantId, this.groupId, this.paperNo, this.pipelineOriginId,
-                    this.alchemyOriginId, this.originFilePath, this.width, this.height, this.rootPipelineId).collect(Collectors.toList());
+                    this.alchemyOriginId, this.originFilePath, this.width, this.height, this.rootPipelineId, this.batchId).collect(Collectors.toList());
         }
     }
 
