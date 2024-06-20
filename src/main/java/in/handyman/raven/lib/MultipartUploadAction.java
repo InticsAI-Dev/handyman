@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -19,6 +20,7 @@ import okhttp3.Response;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -29,6 +31,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -105,9 +108,9 @@ public class MultipartUploadAction implements IActionExecution {
 
                     multipartUploadInputTables.parallelStream().forEach(multipartUploadInputTable -> {
                         urls.forEach(url -> executorService.submit(() -> {
-                            String filepath = multipartUploadInputTable.getFilepath();
+                            String filepath = multipartUploadInputTable.getFilePath();
                             try {
-                                uploadFile(url, multipartUploadInputTable);
+                                uploadFile(url, multipartUploadInputTable, jdbi);
                             } catch (Exception e) {
                                 log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", filepath, e.getMessage());
                                 HandymanException handymanException = new HandymanException(e);
@@ -129,60 +132,145 @@ public class MultipartUploadAction implements IActionExecution {
                 } else {
                     log.error(aMarker, "Endpoints for multipart upload is empty");
                 }
-            }
-            else {
+            } else {
                 log.info("Multipart upload input request list is empty");
             }
 
-            } catch(Exception e){
-                throw new HandymanException("Error in Multipart upload", e, action);
-            }
+        } catch (Exception e) {
+            throw new HandymanException("Error in Multipart upload", e, action);
+        }
     }
 
-    public void uploadFile(URL endpoint, MultipartUploadInputTable entity) throws Exception {
+    public void uploadFile(final URL endpoint, final MultipartUploadInputTable entity, final Jdbi jdbi) throws Exception {
 
-        String inputFilePath = entity.getFilepath();
+        // Retrieving input parameters
+        final String inputFilePath = entity.getFilePath();
+        final Integer groupId = entity.getGroupId();
+        final Long processId = entity.getProcessId();
+        final String templateId = entity.getTemplateId();
+        final Long tenantId = entity.getTenantId();
+        final Integer paperNo = entity.getPaperNo();
+        final String originId = entity.getOriginId();
+        final Long rootPipelineId = entity.getRootPipelineId();
         String outputDir;
+
+        // Setting output directory
         if (entity.getOutputDir() != null) {
             outputDir = entity.getOutputDir();
         } else {
-            Path path = Paths.get(inputFilePath);
-            Path directory = path.getParent();
+            final Path path = Paths.get(inputFilePath);
+            final Path directory = path.getParent();
             outputDir = directory.toString();
         }
 
-        File file = new File(inputFilePath);
-        MediaType MEDIA_TYPE = MediaType.parse("application/*");
+        // Creating file object
+        final File file = new File(inputFilePath);
 
-        RequestBody requestBody = new MultipartBody.Builder()
+        // Defining media type
+        final MediaType MEDIA_TYPE = MediaType.parse("application/*");
+
+        // Building request body
+        final RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.getName(), RequestBody.create(file, MEDIA_TYPE))
                 .build();
 
-        URL url = new URL(endpoint.toString() + "/?outputDir=" + outputDir);
-        Request request = new Request.Builder().url(url)
+        // Creating URL for the request
+        final URL url = new URL(endpoint.toString() + "/?outputDir=" + outputDir);
+
+        // Building request
+        final Request request = new Request.Builder()
+                .url(url)
                 .addHeader("accept", "*/*")
                 .post(requestBody)
                 .build();
 
-
-        try (Response response = httpclient.newCall(request).execute()) {
+        try (final Response response = httpclient.newCall(request).execute()) {
+            final ObjectMapper objectMapper = new ObjectMapper();
             if (response.isSuccessful()) {
+                // Handle successful response
                 log.info("Response Details: {}", response);
+                if (response.body() != null) {
+                    final String responseBody = response.body().string();
+                    final MultipartUploadOutputTable multipartUploadOutputTable = objectMapper.readValue(responseBody, MultipartUploadOutputTable.class);
+                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable);
+                }
+            } else {
+                // Handle unsuccessful response
+                log.error("Request was not successful. HTTP Status: {}", response.code());
+                final MultipartUploadOutputTable multipartUploadOutputTable = new MultipartUploadOutputTable();
+                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable);
             }
-        } catch (Exception e) {
-            log.error(aMarker, "The Exception occurred in multipart file upload for file {} with exception {}", inputFilePath, e.getMessage());
-            HandymanException handymanException = new HandymanException(e);
+        } catch (final Exception e) {
+            log.error(aMarker, "Exception occurred in multipart file upload for file {} with exception {}", inputFilePath, e.getMessage());
+            final HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Exception occurred in multipart upload for file - " + inputFilePath, handymanException, this.action);
         }
     }
+
+
+    private void handleResponse(Jdbi jdbi, Integer groupId, Long processId, String templateId, Long tenantId, Integer paperNo, String originId, Long rootPipelineId, MultipartUploadOutputTable multipartUploadOutputTable) {
+        try {
+            multipartUploadOutputTable.setGroupId(groupId);
+            multipartUploadOutputTable.setRootPipelineId(rootPipelineId);
+            multipartUploadOutputTable.setPaperNo(paperNo);
+            multipartUploadOutputTable.setOriginId(originId);
+            multipartUploadOutputTable.setTemplateId(templateId);
+            multipartUploadOutputTable.setProcessId(processId);
+            multipartUploadOutputTable.setTenantId(tenantId);
+            multipartUploadOutputTable.setUploadedTime(LocalDateTime.now());
+
+            jdbi.useHandle(handle -> {
+                String sql = "INSERT INTO multipart_info.multipart_upload(" +
+                        "filepath, filename, message, status, template_id, origin_id, " +
+                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, uploaded_time) " +
+                        "VALUES (:filepath, :filename, :message, :status, :templateId, :originId, " +
+                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :uploadedTime)";
+
+                handle.createUpdate(sql)
+                        .bindBean(multipartUploadOutputTable)
+                        .execute();
+            });
+        } catch (UnableToExecuteStatementException exception) {
+            log.error(aMarker, "Exception occurred in multipart insert: {}", exception.getMessage(), exception);
+            HandymanException handymanException = new HandymanException(exception);
+            HandymanException.insertException("Exception occurred in multipart insert for the file -  " + multipartUploadOutputTable.getFilepath(), handymanException, this.action);
+        }
+    }
+
 
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
     public static class MultipartUploadInputTable {
-        private String filepath;
+        private String originId;
+        private Integer paperNo;
+        private Integer groupId;
+        private String filePath;
+        private Long tenantId;
+        private String templateId;
+        private Long processId;
         private String outputDir;
+        private Long rootPipelineId;
+    }
+
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    public static class MultipartUploadOutputTable {
+        private String filepath;
+        private String filename;
+        private String message;
+        private String status;
+        private String originId;
+        private Integer paperNo;
+        private Integer groupId;
+        private Long tenantId;
+        private String templateId;
+        private Long processId;
+        private Long rootPipelineId;
+        private LocalDateTime uploadedTime;
     }
 
 
@@ -190,4 +278,5 @@ public class MultipartUploadAction implements IActionExecution {
     public boolean executeIf() throws Exception {
         return multipartUpload.getCondition();
     }
+
 }

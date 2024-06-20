@@ -4,7 +4,11 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.ScalarAdapter;
 import in.handyman.raven.lib.model.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 class ScalarAdapterActionTest {
@@ -50,7 +54,7 @@ class ScalarAdapterActionTest {
     @Test
     public void removePrefixAndSuffix() {
         Validator validator = Validator.builder()
-                .inputValue("123 ak NPI")
+                .inputValue("1 0/19/2021")
                 .build();
         if (validator.getInputValue().length() > 2) {
             String originalString = validator.getInputValue();
@@ -67,6 +71,85 @@ class ScalarAdapterActionTest {
             validator.setInputValue(modifiedString.toString());
         }
         System.out.println(validator);
+    }
+
+    @Test
+    public void testScrubbingDate() {
+        Validator validator = Validator.builder()
+                .inputValue("42511974")
+                .build();
+        if (!StringUtils.isNumeric(validator.getInputValue())) {
+            System.out.println("yes");
+        }
+        Pattern pattern = Pattern.compile("(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})");
+        Matcher matcher = pattern.matcher(validator.getInputValue());
+        if (matcher.find()) {
+            // Extract matched groups (month, separator, day, year)
+            String month = matcher.group(1);
+            String separator = matcher.group(2);
+            String day = matcher.group(3);
+            String separator2 = matcher.group(4);
+            String year = matcher.group(5);
+            String inputValue = "";
+            // Insert a default separator if it's missing
+            if (separator.trim().isEmpty()) {
+                separator = "-";
+                inputValue = inputValue.concat(month + separator + day + separator + year);
+                validator.setInputValue(inputValue);
+                log.info("With Formatted date: " + month + separator + day + separator + year);
+            } else {
+                inputValue = inputValue.concat(month + separator + day + separator2 + year);
+                validator.setInputValue(inputValue);
+                log.info("Extracted date: " + month + separator + day + separator2 + year);
+            }
+        }
+        System.out.println(validator);
+    }
+
+
+    @Test
+    public void testScrubbingDate1() {
+        Validator validator = Validator.builder()
+                .inputValue("20/10/2021")
+                .build();
+        Pattern pattern = Pattern.compile("(0?[1-9]|1[0-2])([-./\\s])(0?[1-9]|[12]\\d|3[01])\\2(\\d{4}|\\d{2})");
+        Matcher matcher = pattern.matcher(validator.getInputValue());
+        if (matcher.find()) {
+            String month = matcher.group(1);
+            String separator = matcher.group(2);
+            String day = matcher.group(3);
+            String year = matcher.group(4);
+            validator.setInputValue(month + separator + day + separator + year);
+            System.out.println(validator);
+        }
+        System.out.println(validator);
+    }
+
+
+    @Test
+    public void testPrefSuf() {
+//        String dateRegValue = "1 0/12/2021";
+        String dateRegValue = "1 0/1 2/ 2021";
+        String correctedValue = dateRegValue;
+        if (dateRegValue != null && !dateRegValue.isEmpty()) {
+            int startIndex = 0;
+            while (startIndex < dateRegValue.length() && (isAlphabetic(dateRegValue.charAt(startIndex)) || dateRegValue.charAt(startIndex) == ' ')) {
+                startIndex++;
+            }
+
+            int endIndex = dateRegValue.length() - 1;
+            while (endIndex >= 0 && (isAlphabetic(dateRegValue.charAt(endIndex)) || dateRegValue.charAt(endIndex) == ' ')) {
+                endIndex--;
+            }
+            if (startIndex > endIndex) {
+                correctedValue = dateRegValue;
+//                validator.setInputValue(dateRegValue);
+            } else {
+                correctedValue = dateRegValue.substring(startIndex, endIndex + 1);
+//                validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
+            }
+        }
+        System.out.println(correctedValue.replaceAll("\\s", ""));
     }
 
     @Test
