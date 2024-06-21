@@ -61,7 +61,7 @@ public class NerAdapterAction implements IActionExecution {
             // build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + nerAdapter.getResultTable() +
                     "(" + COLUMN_LIST + ")" +
-                    " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?, ?,?,?,?,?,?,?,?,?,?,?,?);";
+                    " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?, ?,?,?,?,?,?,?,?,?,?,?,?,?);";
             log.info(aMarker, "ner adapter Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
