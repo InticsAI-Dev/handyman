@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
         actionName = "PhraseMatchPaperFilter"
 )
 public class PhraseMatchPaperFilterAction implements IActionExecution {
-  public static final String SCHEMA_NAME = "paper";
+  private final String SCHEMA_NAME;
   public static final String OUTPUT_TABLE_NAME = "phrase_match_filtering_result_";
   public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,truth_entity, synonym, is_key_present,status,stage,message, created_on,root_pipeline_id,model_name,model_version,tenant_id,batch_id";
   public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,now(), ?, ?,?,?,?";
@@ -44,6 +44,7 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
     this.action = action;
     this.log = log;
     this.aMarker = MarkerFactory.getMarker(" PhraseMatchPaperFilter:" + this.phraseMatchPaperFilter.getName());
+    this.SCHEMA_NAME = this.action.getContext().get("paper");
   }
 
   @Override

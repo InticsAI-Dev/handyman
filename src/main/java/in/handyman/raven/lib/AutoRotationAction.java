@@ -42,7 +42,6 @@ public class AutoRotationAction implements IActionExecution {
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String THREAD_SLEEP_TIME = "1000";
   public static final String INSERT_INTO = "INSERT INTO";
-  public static final String DEFAULT_INFO_SCHEMA_NAME = "info";
   public static final String AUTO_ROTATION = "auto_rotation";
   public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,batch_id";
   public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -88,7 +87,7 @@ public class AutoRotationAction implements IActionExecution {
     String writeBatchSizeStr = this.action.getContext().get(WRITE_BATCH_SIZE);
     this.writeBatchSize = Integer.valueOf(writeBatchSizeStr);
     this.readBatchSize = Integer.parseInt(action.getContext().get(READ_BATCH_SIZE));
-    this.schemaName = DEFAULT_INFO_SCHEMA_NAME;
+    this.schemaName = this.action.getContext().get("INFO");
     this.targetTableName = AUTO_ROTATION;
     this.columnList = COLUMN_LIST;
     this.autoRotateUrl = this.autoRotation.getEndPoint();

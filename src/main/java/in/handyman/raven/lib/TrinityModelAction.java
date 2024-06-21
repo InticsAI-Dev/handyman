@@ -80,7 +80,7 @@ public class TrinityModelAction implements IActionExecution {
 
             // Create DDL
 
-            jdbi.useTransaction(handle -> handle.execute("create table if not exists macro." + trinityModel.getResponseAs() + " ( " + CREATE_TABLE_COLUMN + ");"));
+            jdbi.useTransaction(handle -> handle.execute("create table if not exists " + trinityModel.getResponseAs() + " ( " + CREATE_TABLE_COLUMN + ");"));
             jdbi.useTransaction(handle -> handle.execute("create table if not exists macro." + trinityModel.getResponseAs() + "_error ( " + CREATE_ERROR_TABLE_COLUMN + ");"));
             final List<TrinityModelLineItem> trinityModelLineItems = new ArrayList<>();
             trinityModelQueryResults.stream().forEach(trinityModelQueryResult -> {
