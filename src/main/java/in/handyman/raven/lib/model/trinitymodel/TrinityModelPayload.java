@@ -24,4 +24,5 @@ public class TrinityModelPayload {
     private Integer groupId;
     private Long tenantId;
     private String modelRegistry;
+    private String templateVersion;
 }
