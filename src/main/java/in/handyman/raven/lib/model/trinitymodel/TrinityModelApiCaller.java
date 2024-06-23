@@ -22,7 +22,7 @@ public class TrinityModelApiCaller {
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
     public static final String XENON_VQA_START = "XENON VQA START";
     public static final String ARGON_VQA_START = "ARGON VQA START";
-    public static final String KRYPTON_VQA_START = "KRYPTON VQA START";
+    public static final String KRYPTON_VQA_START = "KRYPTON MODEL START";
     public static final String BORON_VQA_START = "BORON VQA START";
     public static final String VQA_VALUATION = "VQA_VALUATION";
     private final TrinityModelAction aAction;
