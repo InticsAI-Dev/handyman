@@ -90,7 +90,7 @@ public class TrinityModelApiCaller {
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
-            log.error("Failed to execute the Triton rest api call");
+            log.error("Failed to execute the Triton rest api call {1}" , e);
             throw new HandymanException("Failed to execute the Copro rest api call " + node, e);
         }
     }
