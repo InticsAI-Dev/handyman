@@ -90,7 +90,7 @@ public class TrinityModelApiCaller {
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
-            log.error("Failed to execute the Triton rest api call {1}" , e);
+            log.error("Failed to execute the Triton rest api call {1}", e);
             throw new HandymanException("Failed to execute the Copro rest api call " + node, e);
         }
     }
@@ -105,19 +105,20 @@ public class TrinityModelApiCaller {
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
             if (Objects.equals(modelRegistry, ModelRegistry.ARGON.name())) {
                 tritonRequest.setName(ARGON_VQA_START);
-                log.info("Triton request set api call based on paper type : "+paperType+"api request: "+ARGON_VQA_START);
+
             } else if (Objects.equals(modelRegistry, ModelRegistry.XENON.name())) {
                 tritonRequest.setName(XENON_VQA_START);
-                log.info("Triton request set api call based on paper type : "+paperType+"api request: "+XENON_VQA_START);
+
             }
         } else if (Objects.equals(paperType, "Handwritten")) {
             tritonRequest.setShape(List.of(1, 1));
             tritonRequest.setName(XENON_VQA_START);
             tritonRequest.setDatatype(TritonDataTypes.BYTES.name());
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
-            log.info("Triton request set api call based on paper type : "+paperType+"api request: "+XENON_VQA_START);
+
 
         }
+        log.info("Triton request set api call based on paper type : {} api request: {} ", paperType, tritonRequest.getName());
         return tritonRequest;
     }
 
@@ -130,17 +131,18 @@ public class TrinityModelApiCaller {
 
         if (Objects.equals(modelRegistry, ModelRegistry.ARGON.name())) {
             tritonRequest.setName(ARGON_VQA_START);
-            log.info("Triton request set api call based on model registry : "+modelRegistry+"api request: "+ARGON_VQA_START);
+
         } else if (Objects.equals(modelRegistry, ModelRegistry.XENON.name())) {
             tritonRequest.setName(XENON_VQA_START);
-            log.info("Triton request set api call based on model registry : "+modelRegistry+"api request: "+XENON_VQA_START);
+
         } else if (Objects.equals(modelRegistry, ModelRegistry.KRYPTON.name())) {
             tritonRequest.setName(KRYPTON_VQA_START);
-            log.info("Triton request set api call based on model registry : "+modelRegistry+"api request: "+KRYPTON_VQA_START);
+
         } else if (Objects.equals(modelRegistry, ModelRegistry.BORON.name())) {
             tritonRequest.setName(BORON_VQA_START);
-            log.info("Triton request set api call based on model registry : "+modelRegistry+"api request: "+BORON_VQA_START);
+
         }
+        log.info("Triton request set api call based on model registry : {} api request: {} ", modelRegistry, tritonRequest.getName());
         return tritonRequest;
     }
 
