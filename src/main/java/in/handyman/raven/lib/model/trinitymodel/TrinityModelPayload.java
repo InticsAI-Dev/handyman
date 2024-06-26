@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.trinitymodel;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,4 +25,6 @@ public class TrinityModelPayload {
     private Integer groupId;
     private Long tenantId;
     private String modelRegistry;
+    @JsonProperty("template_version")
+    private String templateVersion;
 }

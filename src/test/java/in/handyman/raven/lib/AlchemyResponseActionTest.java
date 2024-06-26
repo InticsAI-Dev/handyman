@@ -13,17 +13,19 @@ class AlchemyResponseActionTest {
 
         AlchemyResponse alchemyResponse = AlchemyResponse.builder()
                 .name("alchemy response action")
-                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjg5MzU1MjA2LCJpYXQiOjE2ODkzMTIwMDYsImVtYWlsIjoiZGVtb0BpbnRpY3MuY29tIn0.0AUSfuHkA1iEGHr0qQ0EYl2zdJci0ZhOFWylE1wdHxM")
-                .tenantId(1L)
-                .querySet("SELECT ar.bbox, ar.alchemy_origin_id as origin_id, ar.paper_no, ar.tenant_id, ampq.root_pipeline_id, ar.confidence_score, ar.extracted_value, ar.sor_item_name, ar.synonym_id\n" +
-                        "            FROM alchemy_migration.alchemy_response ar join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ar.pipeline_origin_id;")
-                .resourceConn("intics_agadia_db_conn")
+                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzE3ODQ4NDAzLCJpYXQiOjE3MTc3NjIwMDMsImVtYWlsIjoibml2YXJhX2RlbW9AaW50aWNzLmFpIn0.iKZtp1SyCEWX934YP6xKGSGlSgy6SMWeE6ur16W_Q_Y")
+                .tenantId(74L)
+                .querySet("select cr.b_box ,cr.origin_id ,cr.paper_no ,cr.tenant_id ,cr.root_pipeline_id , cr.confidence_score,cr.extracted_value,\n" +
+                        "                cr.sor_item_name,cr.synonym_id,cr.question_id ,'KIE' as feature,null as state ,null as table_data\n" +
+                        "                FROM voting.cummulative_result cr\n where tenant_id =105")
+                .resourceConn("intics_zio_db_conn_bl")
                 .condition(true).build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("alchemy.origin.valuation.url","http://localhost:8189/alchemy/api/v1/valuation/origin");
-        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjg5MzU1MjA2LCJpYXQiOjE2ODkzMTIwMDYsImVtYWlsIjoiZGVtb0BpbnRpY3MuY29tIn0.0AUSfuHkA1iEGHr0qQ0EYl2zdJci0ZhOFWylE1wdHxM");
-        actionExecutionAudit.getContext().put("alchemyAuth.tenantId","1");
+        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzE3ODQ4NDAzLCJpYXQiOjE3MTc3NjIwMDMsImVtYWlsIjoibml2YXJhX2RlbW9AaW50aWNzLmFpIn0.iKZtp1SyCEWX934YP6xKGSGlSgy6SMWeE6ur16W_Q_Y");
+        actionExecutionAudit.getContext().put("alchemyAuth.tenantId","74");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
+        actionExecutionAudit.getContext().put("write.batch.size","1");
         actionExecutionAudit.getContext().put("read.batch.size","1");
 
         AlchemyResponseAction alchemyResponseAction = new AlchemyResponseAction(actionExecutionAudit, log, alchemyResponse);
