@@ -159,7 +159,7 @@ action:
     |paragraphExtraction
     |bulletInExtraction
     |p2pNameValidation
-    |convertExcelToDatabase
+    |urgencyTriageBeta
     );
 
 
@@ -1185,14 +1185,15 @@ p2pNameValidation:
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
 
-convertExcelToDatabase:
-    'convert-excel-to-database' 'as' name=STRING
-    'on-resource-conn' resourceConn=STRING
-    'fileType' fileType=STRING
-    'target' targetConn=STRING
-    'using' '{'
-                        querySet=STRING
-    '}' ('on-condition' condition=expression)* ;
+
+urgencyTriageBeta:
+    'urgencyTriageBeta' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'copro-url' endPoint=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
 //rules
 
 resource : STRING;
