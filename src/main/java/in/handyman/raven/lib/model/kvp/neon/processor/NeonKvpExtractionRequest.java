@@ -1,30 +1,27 @@
-package in.handyman.raven.lib.model.trinitymodel;
+package in.handyman.raven.lib.model.kvp.neon.processor;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Data
-public class TrinityModelPayload {
+public class NeonKvpExtractionRequest {
     private Long rootPipelineId;
     private Long actionId;
     private String process;
     private String inputFilePath;
-    private List<String> attributes;
+    private String prompt;
+    private String textModel;
     private String paperType;
+    private String modelRegistry;
     private Integer paperNo;
     private String originId;
     private Long processId;
-    private Integer groupId;
+    private Long groupId;
     private Long tenantId;
-    private String modelRegistry;
-    @JsonProperty("template_version")
-    private String templateVersion;
+    private String responseFormat;
 }

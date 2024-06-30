@@ -19,16 +19,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "Documentparser"
+    actionName = "NeonJsonParser"
 )
-public class Documentparser implements IActionContext {
+public class NeonJsonParser implements IActionContext {
   private String name;
 
   private String resourceConn;
 
-  private String outputDir;
-
-  private String endpoint;
+  private String inputTable;
 
   private String outputTable;
 

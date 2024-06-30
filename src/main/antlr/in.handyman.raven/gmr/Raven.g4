@@ -162,6 +162,8 @@ action:
     |faceDetection
     |figureDetection
     |documentparser
+    |neonKvp
+    |neonJsonParser
     );
 
 
@@ -1214,6 +1216,26 @@ documentparser:
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
     ('on-condition' condition=expression)* ;
+
+
+neonKvp:
+    'neonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+neonJsonParser:
+    'neonJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 //rules
 

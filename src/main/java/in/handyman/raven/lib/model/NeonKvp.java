@@ -19,14 +19,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "FaceDetection"
+    actionName = "NeonKvp"
 )
-public class FaceDetection implements IActionContext {
+public class NeonKvp implements IActionContext {
   private String name;
 
   private String resourceConn;
-
-  private String outputDir;
 
   private String endpoint;
 
