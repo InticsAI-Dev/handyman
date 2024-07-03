@@ -110,7 +110,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         return outputObjectList;
     }
 
-    private void coproRequestBuider(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) throws IOException {
+    private void coproRequestBuider(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
