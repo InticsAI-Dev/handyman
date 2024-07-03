@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
+
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
@@ -60,6 +60,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setAttributes(questions);
         trinityModelPayload.setInputFilePath(inputPath);
         trinityModelPayload.setModelRegistry(modelRegistry);
+        trinityModelPayload.setTemplateVersion("vqa");
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
