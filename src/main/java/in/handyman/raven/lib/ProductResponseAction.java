@@ -20,6 +20,7 @@ import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -63,16 +64,18 @@ public class ProductResponseAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Product Response Action for {} has been started", productResponse.getName());
             final String insertQuery = "INSERT INTO " + productResponse.getResultTable() +
-                    "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,batch_id) " +
-                    " VALUES(?,?,?,?,?,?,?,?,?,?)";
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.product.response.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new RuntimeException(e);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+                    "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,feature,triggered_url, batch_id) " +
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?, ?)";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.product.response.url"))
+                    .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                        try {
+                            return new URL(s1);
+                        } catch (MalformedURLException e) {
+                            log.error("Error in processing the URL ", e);
+                            throw new HandymanException("Malformed URL: " + s1, e);
+                        }
+                    }).collect(Collectors.toList()))
+                    .orElse(Collections.emptyList());
 
             final CoproProcessor<ProductResponseAction.ProductResponseInputTable, ProductResponseAction.ProductResponseOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
@@ -85,7 +88,6 @@ public class ProductResponseAction implements IActionExecution {
             coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
             log.info(aMarker, "Product Response has been completed {}  ", productResponse.getName());
         } catch (Exception t) {
-            action.getContext().put(productResponse.getName() + ".isSuccessful", "false");
             log.error(aMarker, "Error at Product Response execute method {}", ExceptionUtil.toString(t));
             throw new HandymanException("Error at Product Response execute method ", t, action);
         }
@@ -126,18 +128,14 @@ public class ProductResponseAction implements IActionExecution {
         public List<ProductResponseAction.ProductResponseOutputTable> process(URL endpoint, ProductResponseAction.ProductResponseInputTable entity) throws Exception {
 
             List<ProductResponseAction.ProductResponseOutputTable> parentObj = new ArrayList<>();
-            Long rootPipelineId=entity.getRootPipelineId();
+            Long rootPipelineId = entity.getRootPipelineId();
 
             RequestBody requestBody = RequestBody.create("", MediaType.parse("application/json; charset=utf-8"));
 
             String originId = entity.getOriginId();
-            URL url = new URL(endpoint.toString() + "/" + entity.getTransactionId() + "/" + originId + "/?tenantId=" + this.tenantId);
-            Request request = new Request.Builder().url(url)
-                    .addHeader("accept", "*/*")
-                    .addHeader("Authorization", "Bearer " + authToken)
-                    .addHeader("Content-Type", "application/json")
-                    .post(requestBody)
-                    .build();
+
+            Request request = getUrlFromFeature(endpoint, entity.getFeature(), entity.getTransactionId(), originId, entity.getTenantId(), requestBody);
+
 
             try (Response response = httpclient.newCall(request).execute()) {
                 if (response.isSuccessful()) {
@@ -155,8 +153,10 @@ public class ProductResponseAction implements IActionExecution {
                                 .originId(originId)
                                 .rootPipelineId(rootPipelineId)
                                 .stage("PRODUCT_OUBOUND")
+                                .triggeredUrl(request.url().toString())
+                                .feature(entity.getFeature())
                                 .status("COMPLETED")
-                                .message("alchemy product response completed for origin_id - "+ originId)
+                                .message("alchemy product response completed for origin_id - " + originId)
                                 .batchId(entity.getBatchId())
                                 .build());
                     }
@@ -168,9 +168,11 @@ public class ProductResponseAction implements IActionExecution {
                             .groupId(entity.getGroupId())
                             .originId(originId)
                             .rootPipelineId(rootPipelineId)
+                            .triggeredUrl(request.url().toString())
+                            .feature(entity.getFeature())
                             .stage("PRODUCT_OUBOUND")
                             .status("FAILED")
-                            .message("alchemy product response failed for origin_id - "+ originId)
+                            .message("alchemy product response failed for origin_id - " + originId)
                             .batchId(entity.getBatchId())
                             .build());
                 }
@@ -180,6 +182,37 @@ public class ProductResponseAction implements IActionExecution {
                 HandymanException.insertException("Exception occurred in Product Response action for originId - " + originId, handymanException, this.action);
             }
             return parentObj;
+        }
+
+        @NotNull
+        public Request getUrlFromFeature(URL baseUrl,@NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody) throws MalformedURLException {
+            Request request;
+            if (Objects.equals(feature, "Product")) {
+
+                URL url = new URL(baseUrl + "response/" + transactionId + "/" + originId + "/?tenantId=" + tenantId);
+                log.info(aMarker, "product api called with the url {}", url);
+                request = new Request.Builder().url(url)
+                        .addHeader("accept", "*/*")
+                        .addHeader("Authorization", "Bearer " + authToken)
+                        .addHeader("Content-Type", "application/json")
+                        .post(requestBody)
+                        .build();
+
+                return request;
+
+
+            } else {
+                URL url = new URL(baseUrl + "response/featureResponse/" + transactionId + "/" + originId + "/" + feature + "?tenantId=" + tenantId);
+                log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
+                request = new Request.Builder().url(url)
+                        .addHeader("accept", "*/*")
+                        .addHeader("Authorization", "Bearer " + authToken)
+                        .addHeader("Content-Type", "application/json")
+                        .build();
+
+            }
+            return request;
+
         }
     }
 
@@ -194,12 +227,16 @@ public class ProductResponseAction implements IActionExecution {
         private Long groupId;
         private Long tenantId;
         private Long rootPipelineId;
+        private String baseUrl;
+        private String feature;
         private String batchId;
+
         @Override
         public List<Object> getRowData() {
             return null;
         }
     }
+
 
     @AllArgsConstructor
     @Data
@@ -215,11 +252,13 @@ public class ProductResponseAction implements IActionExecution {
         private String status;
         private String stage;
         private String message;
+        private String triggeredUrl;
+        private String feature;
         private String batchId;
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId,this.productResponse, this.tenantId, this.rootPipelineId,this.stage,this.stage,this.message,this.batchId).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId).collect(Collectors.toList());
         }
     }
 }
