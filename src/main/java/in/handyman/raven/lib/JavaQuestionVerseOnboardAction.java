@@ -1,16 +1,17 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.JavaQuestionVerseOnboard;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jetbrains.annotations.NotNull;
@@ -18,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -99,7 +101,7 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
                 doDocumentTypeInsertion(jdbi, documentType, documentTypeMasterId, tenantId, schemaName, userId, documentInsertQuery, channels, channelInsertQuery, sipType, sipInsertQuery, synonymInsertQuery, modelRegistryId, questionInsertQuery);
             }
         } catch (IOException e) {
-            log.info("Error scanning project: {}" , e.getMessage());
+            log.info("Error scanning project: {}", e.getMessage());
             throw new HandymanException("Error scanning project: {}", e, action);
         }
     }
@@ -184,8 +186,26 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
         channel.sips.add(sip);
 
         try {
-            List<String> lines = Files.readAllLines(path);
-            List<String> methodNames = extractMethodsWithParameters(lines);
+
+            JavaParser javaParser = new JavaParser();
+            FileInputStream in = new FileInputStream(path.toFile());
+
+            CompilationUnit compilationUnit = new CompilationUnit();
+            Optional<CompilationUnit> optionalCompilationUnit = javaParser.parse(in).getResult();
+            if (optionalCompilationUnit.isPresent()) {
+                compilationUnit = optionalCompilationUnit.get();
+            } else {
+                log.error("Could not parse the file for reading method names");
+            }
+
+            // Create a MethodVisitor instance
+            MethodVisitor methodVisitor = new MethodVisitor();
+
+            // Visit methods
+            methodVisitor.visit(compilationUnit, null);
+
+            // Get the method signatures
+            List<String> methodNames = methodVisitor.getMethodSignatures();
 
             for (String methodName : methodNames) {
                 Synonym synonym = new Synonym();
@@ -195,7 +215,7 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
                 sip.synonyms.add(synonym);
             }
         } catch (IOException e) {
-            log.info("Could not read file: {}" , path);
+            log.info("Could not read file: {}", path);
             throw new HandymanException("Could not read file: " + path, e, action);
         }
     }
@@ -220,6 +240,43 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
                     return line.substring(start, end).trim();
                 })
                 .collect(Collectors.toList());
+    }
+
+    @Getter
+    private static class MethodVisitor extends VoidVisitorAdapter<Void> {
+        private final List<String> methodSignatures = new ArrayList<>();
+
+        @Override
+        public void visit(MethodDeclaration md, Void arg) {
+            super.visit(md, arg);
+            methodSignatures.add(getMethodSignature(md));
+        }
+
+        private String getMethodSignature(MethodDeclaration md) {
+            StringBuilder methodSignature = new StringBuilder();
+            methodSignature.append(md.getName())
+                    .append("(");
+
+            md.getParameters().forEach(parameter -> {
+                if (parameter.isFinal()) {
+                    methodSignature.append("final ");
+                }
+                methodSignature.append(parameter.getType())
+                        .append(" ")
+                        .append(parameter.getName())
+                        .append(", ");
+            });
+
+            // Remove the trailing comma and space if parameters exist
+            if (!md.getParameters().isEmpty()) {
+                methodSignature.setLength(methodSignature.length() - 2);
+            }
+
+            methodSignature.append(")");
+
+            return methodSignature.toString();
+        }
+
     }
 
     private Long insertDocumentMasterData(final Jdbi jdbi, String documentType, String schemaName, Long userId, String documentMasterDataInsertQuery) {

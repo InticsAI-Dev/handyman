@@ -1,6 +1,12 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -8,10 +14,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.JavaTestCaseGenerator;
 import in.handyman.raven.util.InstanceUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import okhttp3.*;
 import org.apache.commons.text.StringSubstitutor;
 import org.jdbi.v3.core.Jdbi;
@@ -20,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -33,6 +37,7 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,6 +65,8 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" JavaTestCaseGenerator:" + this.javaTestCaseGenerator.getName());
     }
 
+    private final ObjectMapper mapper = new ObjectMapper();
+
     @Override
     public void execute() throws Exception {
 
@@ -84,8 +91,11 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
 
         String documentType = javaTestCaseQueryResult.getDocumentType();
         String projectType = javaTestCaseQueryResult.getProjectType();
-        List<String> generatingClasses = javaTestCaseQueryResult.getClassValues();
 
+        String classValues = javaTestCaseQueryResult.getClassValues();
+
+        List<JavaClassMap> javaClassMapList = mapper.readValue(classValues, new TypeReference<>() {
+        });
 
         Long groupId = javaTestCaseQueryResult.getGroupId();
         Long tenantId = javaTestCaseQueryResult.getTenantId();
@@ -99,71 +109,92 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
 
         int batchSize = Integer.parseInt(action.getContext().get("codeGen.thread.count"));
         final ExecutorService executorService = Executors.newFixedThreadPool(batchSize);
-        final CountDownLatch countDownLatch = getCountDownLatch(channels, generatingClasses, urls);
+        final CountDownLatch countDownLatch = getCountDownLatch(channels, javaClassMapList, urls);
         log.info("Total consumers {}", countDownLatch.getCount());
 
         if (!urls.isEmpty()) {
-
             channels.forEach(channel -> {
                 String packageName = channel.getPackageName();
                 List<SIP> classInfos = channel.getSips();
-                classInfos.forEach(sip -> {
-                    if (generatingClasses != null) {
-                        String className = sip.getClassName();
-                        if (generatingClasses.contains(className)) {
-                            List<Synonym> methodsName = sip.getSynonyms();
-                            methodsName.forEach(methodName -> {
-                                String method = methodName.getMethodName();
-                                log.info(aMarker, "Generating JUnit test case for method: {} in class: {}", methodName, sip.className);
-                                String prompt = methodName.getQuestion().getPrompt();
 
-                                urls.forEach(url -> executorService.submit(() -> {
-                                    try {
-                                        doGenerateTestCase(documentType, projectType, packageName, method, prompt, jdbi, outputTable, tenantId, url, groupId, className);
-                                    } catch (Exception e) {
-                                        log.error(aMarker, "The Exception occurred in test case generation for class: {}, \n method: \n {}", className, methodsName);
-                                        HandymanException handymanException = new HandymanException(e);
-                                        HandymanException.insertException("Exception occurred in test case generation for class - " + className + "\n method: \n" + methodsName, handymanException, this.action);
-                                    } finally {
-                                        log.info("Consumer {} completed the process for class {}, \n method: \n {}", countDownLatch.getCount(), className, methodsName);
-                                        countDownLatch.countDown();
-                                    }
-                                }));
+                classInfos.forEach(sip -> {
+                    String className = sip.getClassName();
+
+                    javaClassMapList.stream()
+                            .filter(javaClassMap -> compareIgnoringWhitespace(javaClassMap.getClassName(), className))
+                            .forEach(javaClassMap -> {
+
+                                log.info(aMarker, "Started the test case generation for class: {}", className);
+
+                                List<Synonym> methodsName = sip.getSynonyms();
+                                methodsName.forEach(methodName -> {
+                                    String method = methodName.getMethodName();
+                                    List<String> mapMethods = javaClassMap.getMethods();
+                                    mapMethods.stream()
+                                            .filter(s -> compareIgnoringWhitespace(s, method))
+                                            .forEach(s -> {
+                                                log.info(aMarker, "Generating test case for method: {} in class: {}", method, className);
+                                                String prompt = methodName.getQuestion().getPrompt();
+                                                urls.forEach(url -> executorService.submit(() -> {
+                                                    try {
+                                                        doGenerateTestCase(documentType, projectType, packageName, method, prompt, jdbi, outputTable, tenantId, url, groupId, className);
+                                                    } catch (Exception e) {
+                                                        log.error(aMarker, "The Exception occurred in test case generation for class: {}, \n method: \n {}", className, method);
+                                                        HandymanException handymanException = new HandymanException(e);
+                                                        HandymanException.insertException("Exception occurred in test case generation for class - " + className + "\n method: \n" + method, handymanException, this.action);
+                                                    } finally {
+                                                        log.info("Consumer {} completed the process for class {}, \n method: \n {}", countDownLatch.getCount(), className, method);
+                                                        countDownLatch.countDown();
+                                                    }
+                                                }));
+                                            });
+                                });
                             });
-                        }
-                    }
                 });
             });
             try {
                 countDownLatch.await();
             } catch (InterruptedException e) {
                 log.error("Consumer Interrupted with exception", e);
-                throw new HandymanException("Error in Multipart upload execute method for mapping query set", e, action);
-            } finally {
-                executorService.shutdown();
+                throw new HandymanException("Consumer Interrupted with exception", e, action);
             }
         } else {
             log.error(aMarker, "Endpoints for test case generation is empty");
         }
     }
 
-    private @NotNull CountDownLatch getCountDownLatch(List<Channel> channels, List<String> generatingClasses, List<URL> urls) {
-        int methodSize = 0;
+    private @NotNull CountDownLatch getCountDownLatch(List<Channel> channels, List<JavaClassMap> generatingClasses, List<URL> urls) {
+        AtomicInteger methodSize = new AtomicInteger();
 
-        for (Channel channel : channels) {
-            List<SIP> sips = channel.getSips();
-            for (SIP sip : sips) {
-                if (generatingClasses != null && generatingClasses.contains(sip.getClassName())) {
-                    List<Synonym> methods = sip.getSynonyms();
-                    methodSize += methods.size();
-                }
-            }
-        }
+        channels.stream()
+                .flatMap(channel -> channel.getSips().stream())
+                .forEach(sip ->
+                        generatingClasses.stream()
+                                .filter(generatingClass -> compareIgnoringWhitespace(sip.getClassName(), generatingClass.getClassName()))
+                                .forEach(generatingClass ->
+                                        sip.getSynonyms().stream()
+                                                .filter(synonym -> generatingClass.getMethods().stream()
+                                                        .anyMatch(method -> {
+                                                            System.out.println(method);
+                                                            System.out.println(synonym.getMethodName());
+                                                            boolean matched = compareIgnoringWhitespace(synonym.getMethodName(), method);
+                                                            return matched;
+                                                        })
+                                                )
+                                                .forEach(synonym -> methodSize.incrementAndGet())
+                                )
+                );
+
         int endpointSize = urls.size();
-        CountDownLatch countDownLatch = new CountDownLatch(methodSize * endpointSize);
+        CountDownLatch countDownLatch = new CountDownLatch(methodSize.get() * endpointSize);
         log.info("Total methods: {}, Total endpoints: {}, and countDownLatch count {}", methodSize, endpointSize, countDownLatch.getCount());
         return countDownLatch;
     }
+
+    public boolean compareIgnoringWhitespace(String firstValue, String secondValue) {
+        return firstValue.replaceAll("\\s+", "").equalsIgnoreCase(secondValue.replaceAll("\\s+", ""));
+    }
+
 
     private void doGenerateTestCase(String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, String outputTable, Long tenantId, URL url, Long groupId, String className) {
 
@@ -262,7 +293,27 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                             List<String> lines = Files.readAllLines(path);
                             String content = String.join(System.lineSeparator(), lines);
 
-                            List<String> methodNames = extractMethodsWithParameters(lines);
+                            JavaParser javaParser = new JavaParser();
+                            FileInputStream in = new FileInputStream(path.toFile());
+
+                            CompilationUnit compilationUnit = new CompilationUnit();
+                            Optional<CompilationUnit> optionalCompilationUnit = javaParser.parse(in).getResult();
+                            if (optionalCompilationUnit.isPresent()) {
+                                compilationUnit = optionalCompilationUnit.get();
+                            }
+                            else {
+                                log.error("Could not parse the file for reading method names");
+                            }
+
+                            // Create a MethodVisitor instance
+                            MethodVisitor methodVisitor = new MethodVisitor();
+
+                            // Visit methods
+                            methodVisitor.visit(compilationUnit, null);
+
+                            // Get the method signatures
+                            List<String> methodNames = methodVisitor.getMethodSignatures();
+
 
                             for (String methodName : methodNames) {
                                 Synonym synonym = new Synonym();
@@ -318,6 +369,43 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                 .collect(Collectors.toList());
     }
 
+    @Getter
+    private static class MethodVisitor extends VoidVisitorAdapter<Void> {
+        private final List<String> methodSignatures = new ArrayList<>();
+
+        @Override
+        public void visit(MethodDeclaration md, Void arg) {
+            super.visit(md, arg);
+            methodSignatures.add(getMethodSignature(md));
+        }
+
+        private String getMethodSignature(MethodDeclaration md) {
+            StringBuilder methodSignature = new StringBuilder();
+            methodSignature.append(md.getName())
+                    .append("(");
+
+            md.getParameters().forEach(parameter -> {
+                if (parameter.isFinal()) {
+                    methodSignature.append("final ");
+                }
+                methodSignature.append(parameter.getType())
+                        .append(" ")
+                        .append(parameter.getName())
+                        .append(", ");
+            });
+
+            // Remove the trailing comma and space if parameters exist
+            if (!md.getParameters().isEmpty()) {
+                methodSignature.setLength(methodSignature.length() - 2);
+            }
+
+            methodSignature.append(")");
+
+            return methodSignature.toString();
+        }
+
+    }
+
 
     private static String getPackageName(String relativePath) {
         String[] parts = relativePath.split(FileSystems.getDefault().getSeparator());
@@ -347,9 +435,21 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
         private String folderPath;
         private Long tenantId;
         private Long userId;
-        private List<String> classValues;
+        private String classValues;
         private Long groupId;
         private String questionVerseSchema;
+    }
+
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class JavaClassMap {
+
+        private String className;
+        private List<String> methods;
     }
 
 
