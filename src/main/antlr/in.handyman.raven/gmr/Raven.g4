@@ -162,6 +162,8 @@ action:
     |faceDetection
     |figureDetection
     |documentparser
+    |javaTestCaseGenerator
+    |javaQuestionVerseOnboard
     );
 
 
@@ -1211,6 +1213,22 @@ documentparser:
     'on-resource-conn' resourceConn=STRING
     'outputDir' outputDir=STRING
     'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+
+javaQuestionVerseOnboard:
+    'javaQuestionVerseOnboard' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'schema-name' schemaName=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+
+javaTestCaseGenerator:
+    'javaTestCaseGenerator' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
     ('on-condition' condition=expression)* ;
