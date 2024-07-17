@@ -13,16 +13,18 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-        actionName = "ProductOutboundZipfile"
+        actionName = "GreyScaleConversion"
 )
-public class ProductOutboundZipFile implements IActionContext {
+public class GreyScaleConversion implements IActionContext {
     private String name;
-
-    private String resultTable;
 
     private String outputDir;
 
     private String processId;
+
+    private String endPoint;
+
+    private String outputTable;
 
     private String resourceConn;
 

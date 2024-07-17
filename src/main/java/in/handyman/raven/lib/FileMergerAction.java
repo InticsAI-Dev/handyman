@@ -114,7 +114,6 @@ public class FileMergerAction implements IActionExecution {
 
     } catch (Exception e) {
       action.getContext().put(name.concat(".error"), "true");
-      log.error(aMarker, "The Exception {} fileMerger ", e);
       throw new HandymanException("Failed to execute", e, action);
     }
   }
@@ -130,7 +129,6 @@ public class FileMergerAction implements IActionExecution {
 
     } catch (Exception e) {
       action.getContext().put(name.concat(".error"), "true");
-      log.error(aMarker, "The Exception {} fileMerger ", e);
       throw new HandymanException("Failed to execute", e, action);
     }
   }
@@ -139,7 +137,7 @@ public class FileMergerAction implements IActionExecution {
     try {
       action.getContext().put(name, mapper.readTree(responseBody).toString());
     } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+      throw new HandymanException("Error in the the response body binding into the output context name " + name, e);
     }
     action.getContext().put(name.concat(".success"), "true");
     log.info(aMarker, "The Successful Response  {} {}", name, responseBody);

@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
@@ -14,7 +16,9 @@ import lombok.NoArgsConstructor;
 public class TrinityModelQueryResult {
 
     private String filePath;
-    private String question;
+    private List<String> questions;
     private String paperType;
+    private String modelRegistry;
+    private Long tenantId;
 
 }

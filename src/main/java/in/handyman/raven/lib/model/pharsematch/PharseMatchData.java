@@ -16,7 +16,7 @@ public class PharseMatchData {
 
 
         private Integer rootPipelineId;
-        private Integer actionId;
+        private Long actionId;
         private String process;
         private String originId;
         private Long paperNo;

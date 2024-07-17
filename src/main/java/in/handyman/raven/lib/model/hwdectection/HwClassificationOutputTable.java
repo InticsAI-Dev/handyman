@@ -21,11 +21,12 @@ public class HwClassificationOutputTable implements CoproProcessor.Entity{
     private Long tenantId;
     private String originId;
     private Integer groupId;
+    private Long processId;
     private Integer paperNo;
     private String templateId;
     private Long modelId;
     private String documentType;
-    private Long confidenceScore;
+    private Float confidenceScore;
     private String status;
     private String stage;
     private String message;

@@ -6,15 +6,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.Alphanumericvalidator;
-import in.handyman.raven.lib.model.Alphavalidator;
-import in.handyman.raven.lib.model.Charactercount;
-import in.handyman.raven.lib.model.Datevalidator;
-import in.handyman.raven.lib.model.Nervalidator;
-import in.handyman.raven.lib.model.Numericvalidator;
-import in.handyman.raven.lib.model.ScalarAdapter;
-import in.handyman.raven.lib.model.Validator;
-import in.handyman.raven.lib.model.Wordcount;
+import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
@@ -63,6 +55,7 @@ public class ScalarAdapterAction implements IActionExecution {
     String[] restrictedAnswers;
     private final String PHONE_NUMBER_REGEX = "^\\(?(\\d{3})\\)?[-]?(\\d{3})[-]?(\\d{4})$";
     private final String NUMBER_REGEX = "^[+-]?(\\d+\\.?\\d*|\\.\\d+)$";
+    String dateRegexPattern;
 
     public ScalarAdapterAction(final ActionExecutionAudit action, final Logger log,
                                final Object scalarAdapter) {
@@ -76,6 +69,7 @@ public class ScalarAdapterAction implements IActionExecution {
         this.numericAction = new NumericvalidatorAction(action, log, Numericvalidator.builder().build());
         this.alphaNumericAction = new AlphanumericvalidatorAction(action, log, Alphanumericvalidator.builder().build());
         this.dateAction = new DatevalidatorAction(action, log, Datevalidator.builder().build());
+//        String scalarAdapterDateRegexPattern = this.action.getContext().get(DATE_REGEX);
     }
 
     @Override
@@ -88,6 +82,7 @@ public class ScalarAdapterAction implements IActionExecution {
             URI = action.getContext().get("copro.text-validation.url");
             multiverseValidator = Boolean.valueOf(action.getContext().get("validation.multiverse-mode"));
             restrictedAnswers = action.getContext().get("validation.restricted-answers").split(",");
+            dateRegexPattern = action.getContext().get("validation.date.regex.pattern");
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(scalarAdapter.getResultSet());
@@ -172,55 +167,74 @@ public class ScalarAdapterAction implements IActionExecution {
         try {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
             for (ValidatorConfigurationDetail result : listOfDetails) {
-                log.info(aMarker, "Build 19- scalar executing  validator {}", result);
 
-                String inputValue = result.getInputValue();
-                int wordScore = wordcountAction.getWordCount(inputValue,
-                        result.getWordLimit(), result.getWordThreshold());
-                int charScore = charactercountAction.getCharCount(inputValue,
-                        result.getCharLimit(), result.getCharThreshold());
-                Validator configurationDetails = Validator.builder()
-                        .inputValue(inputValue)
-                        .adapter(result.getAllowedAdapter())
-                        .allowedSpecialChar(result.getAllowedCharacters())
-                        .comparableChar(result.getComparableCharacters())
-                        .threshold(result.getValidatorThreshold())
-                        .build();
+                if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
 
-                int validatorScore = computeAdapterScore(configurationDetails);
-                int validatorNegativeScore = 0;
-                if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
-                    configurationDetails.setAdapter(result.getRestrictedAdapter());
-                    validatorNegativeScore = computeAdapterScore(configurationDetails);
+                    log.info(aMarker, "Build 19- scalar executing  validator {}", result);
+
+//                String inputValue = result.getInputValue();
+                    Validator scrubbingInput = Validator.builder()
+                            .inputValue(result.getInputValue())
+                            .adapter(result.getAllowedAdapter())
+                            .allowedSpecialChar(result.getAllowedCharacters())
+                            .comparableChar(result.getComparableCharacters())
+                            .threshold(result.getValidatorThreshold())
+                            .build();
+
+                    Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
+                    String inputValue = configurationDetails.getInputValue();
+                    result.setInputValue(inputValue);
+                    int wordScore = wordcountAction.getWordCount(inputValue,
+                            result.getWordLimit(), result.getWordThreshold());
+                    int charScore = charactercountAction.getCharCount(inputValue,
+                            result.getCharLimit(), result.getCharThreshold());
+
+                    int validatorScore = computeAdapterScore(configurationDetails);
+                    int validatorNegativeScore = 0;
+                    if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
+                        configurationDetails.setAdapter(result.getRestrictedAdapter());
+                        validatorNegativeScore = computeAdapterScore(configurationDetails);
+                    }
+
+                    double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
+                    log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+
+                    updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    updateEmptyValueForRestrictedAns(result, inputValue);
+                    log.info(aMarker, "Build 19-validator vqa score {}", result.getVqaScore());
+
+                    result.setWordScore(wordScore);
+                    result.setCharScore(charScore);
+                    result.setValidatorScore(validatorScore);
+                    result.setValidatorNegativeScore(validatorNegativeScore);
+                    result.setRootPipelineId(action.getRootPipelineId());
+                    result.setConfidenceScore(valConfidenceScore);
+                    result.setProcessId(String.valueOf(action.getProcessId()));
+                    result.setStatus("COMPLETED");
+                    result.setStage("SCALAR_VALIDATION");
+                    result.setMessage("scalar validation macro completed");
+                    resultQueue.add(result);
+                    log.info(aMarker, "executed  validator {}", result);
+
+                    if (resultQueue.size() == this.writeBatchSize) {
+                        log.info(aMarker, "executing  batch {}", resultQueue.size());
+                        consumerBatch(jdbi, resultQueue);
+                        log.info(aMarker, "executed  batch {}", resultQueue.size());
+                        insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
+                        resultQueue.clear();
+                        log.info(aMarker, "cleared batch {}", resultQueue.size());
+                    }
+                } else {
+                    result.setRootPipelineId(action.getRootPipelineId());
+                    result.setConfidenceScore(0L);
+                    result.setProcessId(String.valueOf(action.getProcessId()));
+                    result.setStatus("COMPLETED");
+                    result.setStage("SCALAR_VALIDATION");
+                    result.setMessage("scalar validation macro completed");
+                    resultQueue.add(result);
+                    log.info(aMarker, "executed  validator else {}", result);
                 }
 
-                double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
-                log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
-
-                updateEmptyValueIfLowCf(result, valConfidenceScore);
-                updateEmptyValueForRestrictedAns(result, inputValue);
-                log.info(aMarker, "Build 19-validator vqa score {}", result.getVqaScore());
-
-                result.setWordScore(wordScore);
-                result.setCharScore(charScore);
-                result.setValidatorScore(validatorScore);
-                result.setValidatorNegativeScore(validatorNegativeScore);
-                result.setConfidenceScore(valConfidenceScore);
-                result.setProcessId(String.valueOf(action.getProcessId()));
-                result.setStatus("COMPLETED");
-                result.setStage("SCALAR_VALIDATION");
-                result.setMessage("scalar validation macro completed");
-                resultQueue.add(result);
-                log.info(aMarker, "executed  validator {}", result);
-
-                if (resultQueue.size() == this.writeBatchSize) {
-                    log.info(aMarker, "executing  batch {}", resultQueue.size());
-                    consumerBatch(jdbi, resultQueue);
-                    log.info(aMarker, "executed  batch {}", resultQueue.size());
-                    insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
-                    resultQueue.clear();
-                    log.info(aMarker, "cleared batch {}", resultQueue.size());
-                }
             }
             if (!resultQueue.isEmpty()) {
                 log.info(aMarker, "executing final batch {}", resultQueue.size());
@@ -267,8 +281,8 @@ public class ScalarAdapterAction implements IActionExecution {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
-                                String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question, answer, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,vqa_score,question_id,synonym_id";
-                                String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:inputValue, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:vqaScore,:questionId,:synonymId";
+                                String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question,question_id, synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,root_pipeline_id,model_name,model_version, model_registry, category";
+                                String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:questionId, :synonymId, :inputValue,:vqaScore, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:rootPipelineId,:modelName,:modelVersion, :modelRegistry, :category";
                                 Update update = handle.createUpdate("  INSERT INTO sor_transaction.adapter_result_" + scalarAdapter.getProcessID() +
                                         " ( " + COLUMN_LIST + ") " +
                                         " VALUES( " + COLUMN_BINDED_LIST + ");" +
@@ -307,6 +321,11 @@ public class ScalarAdapterAction implements IActionExecution {
                     break;
                 case "date":
                     confidenceScore = this.dateAction.getDateScore(inputDetail);
+//                    confidenceScore = inputDetail.getThreshold();
+                    break;
+                case "date_reg":
+//                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+                    confidenceScore = inputDetail.getThreshold();
                     break;
                 case "phone_reg":
                     confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
@@ -322,6 +341,34 @@ public class ScalarAdapterAction implements IActionExecution {
         }
         return confidenceScore;
 
+    }
+
+    Validator computeScrubbingForValue(Validator inputDetail) {
+        try {
+            switch (inputDetail.getAdapter()) {
+                case "alpha":
+                    //Special character removed
+                    inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9 ]");
+                    break;
+                case "numeric":
+                case "numeric_reg":
+                    //Special character and alphabets removed
+                    inputDetail = removePrefixAndSuffix(inputDetail);
+                    inputDetail = scrubbingInput(inputDetail, "[^0-9 ]");
+                    break;
+                case "date_reg":
+                    //Remove prefix and suffix alphabets
+                    // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
+                    inputDetail = removePrefixAndSuffix(inputDetail);
+                    inputDetail = scrubbingDate(inputDetail);
+                    break;
+            }
+        } catch (Exception t) {
+            log.error(aMarker, "error adpater validation{}", inputDetail, t);
+            HandymanException handymanException = new HandymanException(t);
+            HandymanException.insertException("Exception occurred in computing adapter score", handymanException, action);
+        }
+        return inputDetail;
     }
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount) {
@@ -342,14 +389,14 @@ public class ScalarAdapterAction implements IActionExecution {
 
     private int regValidator(Validator validator, String regForm) {
         String inputValue = validator.getInputValue();
-        inputValue = replaceSplChars(validator.getAllowedSpecialChar(), inputValue);
+        inputValue = replaceAllowedChars(validator.getAllowedSpecialChar(), inputValue);
         Pattern pattern = Pattern.compile(regForm);
         Matcher matcher = pattern.matcher(inputValue);
         boolean matchValue = matcher.matches();
         return matchValue ? validator.getThreshold() : 0;
     }
 
-    private String replaceSplChars(final String specialCharacters, String input) {
+    private String replaceAllowedChars(final String specialCharacters, String input) {
         if (specialCharacters != null) {
             for (int i = 0; i < specialCharacters.length(); i++) {
                 if (input.contains(Character.toString(specialCharacters.charAt(i)))) {
@@ -358,6 +405,79 @@ public class ScalarAdapterAction implements IActionExecution {
             }
         }
         return input;
+    }
+
+    private Validator scrubbingInput(Validator validator, String regix) {
+        if (validator.getInputValue() != null) {
+            String correctedValue = validator.getInputValue().replaceAll(regix, "");
+            validator.setInputValue(correctedValue);
+        }
+        return validator;
+    }
+
+    private Validator removePrefixAndSuffix(Validator validator) {
+        String dateRegValue = validator.getInputValue();
+        if (dateRegValue != null && !dateRegValue.isEmpty()){
+            int startIndex = 0;
+            while (startIndex < dateRegValue.length() && (isAlphabetic(dateRegValue.charAt(startIndex)) || dateRegValue.charAt(startIndex) == ' ')) {
+                startIndex++;
+            }
+
+            int endIndex = dateRegValue.length() - 1;
+            while (endIndex >= 0 && (isAlphabetic(dateRegValue.charAt(endIndex)) || dateRegValue.charAt(endIndex) == ' ')) {
+                endIndex--;
+            }
+            if (startIndex > endIndex) {
+                validator.setInputValue(dateRegValue);
+            }
+            else {
+                validator.setInputValue(dateRegValue.substring(startIndex, endIndex + 1));
+            }
+        }
+        return validator;
+    }
+
+    private static boolean isAlphabetic(char ch) {
+        return Character.isLetter(ch);
+    }
+
+    private Validator scrubbingDate(Validator validator) {
+        if (validator.getInputValue() != null) {
+
+            int confidenceScore = this.dateAction.getDateScore(validator);
+
+            if (confidenceScore == 0) {
+
+                // Define regex pattern to match date format "MM dd yyy"
+//                String regexPattern = "(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})";
+                // Create pattern object
+                Pattern pattern = Pattern.compile(dateRegexPattern);
+                // Create matcher object
+                Matcher matcher = pattern.matcher(validator.getInputValue());
+
+                if (matcher.find()) {
+                    // Extract matched groups (month, separator, day, year)
+                    String month = matcher.group(1);
+                    String separator = matcher.group(2);
+                    String day = matcher.group(3);
+                    String separator2 = matcher.group(4);
+                    String year = matcher.group(5);
+                    String inputValue = "";
+                    // Insert a default separator if it's missing
+                    if (separator.trim().isEmpty()) {
+                        separator = "-";
+                        inputValue = inputValue.concat(month + separator + day + separator + year);
+                        validator.setInputValue(inputValue);
+                        log.info("With Formatted date: " + month + separator + day + separator + year);
+                    } else {
+                        inputValue = inputValue.concat(month + separator + day + separator2 + year);
+                        validator.setInputValue(inputValue);
+                        log.info("Extracted date: " + month + separator + day + separator2 + year);
+                    }
+                }
+            }
+        }
+        return validator;
     }
 
     @Override
@@ -383,14 +503,37 @@ public class ScalarAdapterAction implements IActionExecution {
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ValidatorConfigurationDetail {
-        private int sorId;
         private String originId;
+        private int paperNo;
+        private Integer groupId;
         private String ProcessId;
+        private int sorId;
+        private int sorItemId;
         private String sorKey;
         private String question;
+        private Integer questionId;
+        private Integer synonymId;
         private String inputValue;
+        private float vqaScore;
+        private int weight;
+        private String createdUserId;
+        private Long tenantId;
+        private double wordScore;
+        private double charScore;
+        private double validatorScore;
+        private double validatorNegativeScore;
+        private double confidenceScore;
         private String allowedAdapter;
         private String restrictedAdapter;
+        private String bbox;
+        private String status;
+        private String stage;
+        private String message;
+        private Long rootPipelineId;
+        private String modelName;
+        private String modelVersion;
+        private String modelRegistry;
+        private String category;
         private int wordLimit;
         private int wordThreshold;
         private int charLimit;
@@ -399,25 +542,7 @@ public class ScalarAdapterAction implements IActionExecution {
         private String allowedCharacters;
         private String comparableCharacters;
         private int restrictedAdapterFlag;
-        private int paperNo;
-        private Integer groupId;
-        private String bbox;
-        private int sorItemId;
-        private String createdUserId;
-        private Long tenantId;
-        private double wordScore;
-        private double charScore;
-        private double validatorScore;
-        private double validatorNegativeScore;
-        private double confidenceScore;
         private String sorItemName;
-        private float vqaScore;
-        private int weight;
-        private String status;
-        private String stage;
-        private String message;
-        private Integer synonymId;
-        private Integer questionId;
     }
 
 }

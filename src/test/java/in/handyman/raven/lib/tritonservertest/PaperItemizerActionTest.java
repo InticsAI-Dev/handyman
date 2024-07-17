@@ -46,17 +46,18 @@ class PaperItemizerActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .processId("138980184199100180")
-                .endpoint("${copro.paper-itemizer.url}")
+               .endpoint("http://192.168.10.239:10180/copro/preprocess/paper-iterator")
                 .resultTable("info.paper_itemizer")
                 .outputDir("/data/output")
-                .querySet("SELECT 'INT-1' AS origin_id, 1 AS group_id, '/data/multipart-files/139164742559210010/144313556-7-Bill-of-Landing.pdf' AS file_path, 1 AS tenant_id, 'TMP-1' AS template_id, '138980184199100180' AS process_id \n")
+                .querySet("SELECT 'INT-1' AS origin_id, 1 AS group_id, '/data/multipart-files/data/10/workspace/29/139221723374160245/h_hart_packet.pdf' AS file_path, 1 AS tenant_id, 'TMP-1' AS template_id, '138980184199100180' AS process_id, 1 as rootPipelineId \n")
                 .build();
-        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
-        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.paper-itemizer.url", "http://192.168.10.245:8100/v2/models/paper-iterator-service/versions/1/infer"),
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.paper-itemizer.url", "http://192.168.10.239:10180/copro/preprocess/paper-iterator"),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("paper.itemizer.consumer.API.count", "1"),
+                Map.entry("actionId", "1"),
                 Map.entry("read.batch.size", "5"),
                 Map.entry("write.batch.size", "5")));
 

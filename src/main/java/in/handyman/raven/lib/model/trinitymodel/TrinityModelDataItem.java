@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.trinitymodel;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,5 +19,7 @@ public class TrinityModelDataItem {
     private Integer imageWidth;
     private Integer imageHeight;
     private String extractedImageUnit;
+    private String inputFilePath;
+    private Long tenantId;
 
 }

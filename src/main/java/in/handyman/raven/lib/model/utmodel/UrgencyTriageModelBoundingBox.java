@@ -13,4 +13,6 @@ public class UrgencyTriageModelBoundingBox {
     private int topLeftX;
     private int topLeftY;
     private int bottomRightX;
-    private int bottomRightY;}
+    private int bottomRightY;
+
+}

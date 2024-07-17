@@ -15,11 +15,13 @@ import java.util.List;
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
     public class MasterDataInputTable implements CoproProcessor.Entity {
-        String originId;
-        Integer paperNo;
-        String eocIdentifier;
-        String extractedValue;
-        String actualValue;
+        private String originId;
+        private Integer paperNo;
+        private Integer groupId;
+        private Long tenantId;
+        private String eocIdentifier;
+        private String extractedValue;
+        private String actualValue;
         private Long rootPipelineId;
 
         @Override

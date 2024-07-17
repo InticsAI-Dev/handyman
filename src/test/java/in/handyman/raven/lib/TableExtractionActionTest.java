@@ -1,46 +1,86 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.TableExtraction;
+import in.handyman.raven.lib.model.TableExtractionHeaders;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 class TableExtractionActionTest {
 
     @Test
     void tableExtractionTest() throws Exception {
-        TableExtraction tableExtraction= TableExtraction.builder()
+        TableExtraction tableExtraction = TableExtraction.builder()
                 .name("Text extraction macro test after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .processId("999")
                 .resultTable("table_extraction.table_extraction_result")
                 .outputDir("/data/output/")
-                .querySet(" \n" +
-                        "                        SELECT a.origin_id, a.group_id ,c.file_path,b.tenant_id,b.document_id as template_id,a.producer_process_id as process_id,a.root_pipeline_id\n" +
-                        "                        from table_extraction.table_extraction_payload_queue a\n" +
-                        "                       join info.source_of_origin b on a.origin_id=b.origin_id\n" +
-                        "                        join info.asset c on b.file_id=c.file_id\n" +
-                        "                        where a.status='IN_PROGRESS' and a.group_id=7;")
+                .querySet("SELECT  'ORIGIN-ss' as origin_id, 1 as group_id ,'/data/output/186/preprocess/autorotation/auto_rotation/(Galvanized___Heavy_Duty)_Racks_Quotation_0.jpg' as file_path," +
+                        "1 as tenant_id,1 as template_id,1 as process_id,1 as root_pipeline_id")
                 .build();
-        ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
 
-        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url","http://192.168.10.245:10198/copro/table-attribution"),
-                Map.entry("read.batch.size","1"),
-                Map.entry("table.extraction.consumer.API.count","1"),
-                Map.entry("consumer.API.count","1"),
-                Map.entry("write.batch.size","1")));
 
-        TableExtractionAction tableExtractionAction=new TableExtractionAction(actionExecutionAudit,log,tableExtraction);
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.248:18888/copro/table-attribution"),
+                Map.entry("read.batch.size", "1"),
+                Map.entry("table.extraction.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        TableExtractionAction tableExtractionAction = new TableExtractionAction(actionExecutionAudit, log, tableExtraction);
         tableExtractionAction.execute();
     }
 
     @Test
-    public void fileNameTest(){
+    void tableExtractionVersion1Test() throws Exception {
+        TableExtractionHeaders tableExtraction = TableExtractionHeaders.builder()
+                .name("Text extraction macro test after copro optimization")
+                .resourceConn("intics_zio_db_conn")
+                .endpoint("http://192.168.10.245:18889/copro/table-attribution-with-header")
+                .condition(true)
+                .processId("999")
+                .resultTable("table_extraction.table_extraction_result")
+                .outputDir("/data/output/")
+                .querySet("select * from macro.table_extraction_line_items_1234")
+                .build();
+
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
+                Map.entry("read.batch.size", "1"),
+                Map.entry("mulipart.file.utpload.activator", "false"),
+                Map.entry("table.extraction.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        TableExtractionHeadersAction tableExtractionAction = new TableExtractionHeadersAction(actionExecutionAudit, log, tableExtraction);
+        tableExtractionAction.execute();
+    }
+
+    @Test
+    public void fileNameTest() {
         String input = "filename_2_2__121212_0_1.jpg";
 
         // Split the string by underscore
@@ -49,7 +89,7 @@ class TableExtractionActionTest {
         // Check if there are at least two parts (0 and 1 after the first underscore)
         if (parts.length >= 3) {
             // Extract the second part (index 1 in the array after splitting)
-            String number = parts[parts.length-2];
+            String number = parts[parts.length - 2];
 
             // Convert the extracted string to an integer if needed
             int extractedNumber = Integer.parseInt(number);
@@ -62,13 +102,139 @@ class TableExtractionActionTest {
     }
 
     @Test
-    void tableCsvTest() throws JsonProcessingException {
-        ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        TableExtraction tableExtraction=new TableExtraction();
+    public void tableExtractionCsvRead(){
 
-        TableExtractionAction tableExtractionAction=new TableExtractionAction(actionExecutionAudit,log,tableExtraction);
+        String filePath = "";
+        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
+            String removeFirstRow = "true";
+            if (Objects.equals("true", removeFirstRow)) {
+                reader.readNext();
+            }
 
-        String tableExtractionAction2=tableExtractionAction.tableDataJson("");
-        System.out.println(tableExtractionAction2);
+            String[] headers = reader.readNext(); // Read the headers
+
+            JSONArray dataArray = new JSONArray(); // Array for data rows
+            JSONArray headersArray = new JSONArray(); // Array for column headers
+
+            // Convert headers to JSON
+            for (String header : headers) {
+                headersArray.put(header);
+            }
+
+            String[] row;
+
+            while ((row = reader.readNext()) != null) {
+                JSONArray rowArray = new JSONArray();
+
+                // Convert data row to JSON
+                for (int i = 0; i < headers.length; i++) {
+                    rowArray.put(row[i]);
+                }
+                dataArray.put(rowArray);
+            }
+
+            // Create the main JSON object
+            JSONObject json = new JSONObject();
+            json.put("csvFilePath", filePath);
+            json.put("data", dataArray);
+            json.put("columnHeaders", headersArray);
+            String outputResult = json.toString();
+
+
+        } catch (CsvValidationException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
+
+    @Test
+    public void readColumn(){
+
+        // Path to your CSV file
+        String filePath = "/home/anandh.andrews@zucisystems.com/intics-workspace/Demo/spendly/output/output/v2/2023-10-7T14_28_42 Payment Processing GenSales-4/Table/1/1_2023-10-7T14_28_42 Payment Processing GenSales-4_0.csv";
+
+        // Column name to calculate sum
+        String columnName = "Number of Sales";
+
+        try {
+            // Create a reader for the CSV file
+
+            Long rowCount=extractRowCount(filePath);
+            extractedFromFilepath(filePath, columnName,rowCount);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void extractedFromFilepath(String filePath, String columnName,Long rowCount) throws IOException {
+        Reader reader = Files.newBufferedReader(Paths.get(filePath));
+
+        // Create a CSVParser object
+        CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader());
+
+
+        double columnSum = 0.0;
+
+        // Iterate through each record in the CSV file
+        for (CSVRecord csvRecord : csvParser) {
+            // Parse the value of the specified column as a double and add it to the sum
+
+            Long totalRowCount = csvParser.getRecordNumber();
+
+            String cellValue = csvRecord.get(columnName) != null & !csvRecord.get(columnName).isEmpty() ? csvRecord.get(columnName) : "0";
+            double value = Double.parseDouble(cellValue);
+            if (rowCount != totalRowCount) {
+
+                String indexValue = csvRecord.get(1);
+                columnSum += value;
+            } else {
+                if (columnSum == value) {
+                    break;
+                }
+
+            }
+
+
+        }
+
+
+        // Calculate the sum of values in the specified column
+
+
+        // Close the CSVParser
+        csvParser.close();
+
+        // Print the sum of the specified column
+        System.out.println("Sum of values in column '" + columnName + "': " + columnSum);
+    }
+
+    public Long extractRowCount(String filePath) throws IOException {
+
+        Reader reader = Files.newBufferedReader(Paths.get(filePath));
+
+        // Create a CSVParser object
+        CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader());
+
+        Long rowCount = 0L;
+        for (CSVRecord record : csvParser) {
+            rowCount++;
+        }
+
+        // Close the CSVParser
+        csvParser.close();
+
+        return rowCount;
+
+    }
+
+//    @Test
+//    void tableCsvTest() throws JsonProcessingException {
+//        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+//        TableExtraction tableExtraction = new TableExtraction();
+//
+//        TableExtractionAction tableExtractionAction = new TableExtractionAction(actionExecutionAudit, log, tableExtraction);
+//
+//        String tableExtractionAction2 = tableExtractionAction.tableDataJson("", actionExecutionAudit);
+//        System.out.println(tableExtractionAction2);
+//    }
+
 }

@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class PharseMatchDataItem {
+        private String entity;
+        private String isKeyPresent;
         private String originId;
         private String groupId;
-        private String isKeyPresent;
         private Integer paperNo;
         private String truthEntity;
-        private String entity;
 }

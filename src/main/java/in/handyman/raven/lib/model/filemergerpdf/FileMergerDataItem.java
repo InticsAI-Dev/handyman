@@ -11,4 +11,9 @@ import lombok.NoArgsConstructor;
 @Builder
 public class FileMergerDataItem {
     private String processedFilePath;
+    private String outputFileName;
+    private String originId;
+    private Long processId;
+    private Long groupId;
+    private Long tenantId;
 }

@@ -16,6 +16,12 @@ public class TrinityModelPayload {
     private Long actionId;
     private String process;
     private String inputFilePath;
-    private String paperType;
     private List<String> attributes;
+    private String paperType;
+    private Integer paperNo;
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
+    private String modelRegistry;
 }

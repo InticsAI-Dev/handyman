@@ -11,5 +11,13 @@ import lombok.NoArgsConstructor;
 @Data
 public class ComparisonDataItem {
     private String sentence;
+    private String inputSentence;
     private Double similarityPercent;
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
+    private Long actionId;
+    private String process;
+    private Long rootPipelineId;
 }

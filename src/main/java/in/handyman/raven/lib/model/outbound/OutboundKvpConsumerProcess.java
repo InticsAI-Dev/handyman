@@ -1,6 +1,9 @@
 package in.handyman.raven.lib.model.outbound;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
@@ -25,7 +28,10 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
 
     private final Logger log;
     private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = JsonMapper.builder()
+            .configure(SerializationFeature.INDENT_OUTPUT, true)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .build().registerModule(new JavaTimeModule());
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
 

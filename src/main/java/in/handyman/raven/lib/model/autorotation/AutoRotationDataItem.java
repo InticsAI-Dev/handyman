@@ -11,6 +11,12 @@ import lombok.NoArgsConstructor;
 @Builder
 public class AutoRotationDataItem {
     private String processedFilePaths;
-
+    private String originId;
+    private Integer paperNo;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
+    private Long actionId;
+    private Long rootPipelineId;
 }
 

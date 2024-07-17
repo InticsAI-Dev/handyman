@@ -1,5 +1,7 @@
 package in.handyman.raven.lib.model.paperitemizer;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.util.List;
@@ -10,10 +12,14 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class PaperItemizerDataItem {
-        private List<String> itemizedPapers;
-
-
-        }
+        @JsonProperty("itemizedPath")
+        private String itemizedPapers;
+        private Long paperNumber;
+        private String originId;
+        private Long processId;
+        private Integer groupId;
+        private Long tenantId;
+}
 
 
 

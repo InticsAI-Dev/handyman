@@ -14,5 +14,10 @@ public class TemplateDetectionAttributes {
     private String predictedAttributionValue;
     private float scores;
     private String bboxes;
+    private String originId;
+    private Integer paperNo;
+    private  Long processId;
+    private Integer groupId;
+    private Integer tenantId;
 
 }

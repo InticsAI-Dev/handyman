@@ -15,15 +15,15 @@ import java.util.List;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class NerInputTable implements CoproProcessor.Entity {
-    private int sorId;
-    private String originId;
-    private String processId;
+    private int sorItemId;
     private String sorKey;
     private String question;
     private String inputValue;
+    private int weight;
     private float vqaScore;
     private String allowedAdapter;
     private String restrictedAdapter;
+    private String processId;
     private int wordLimit;
     private int wordThreshold;
     private int charLimit;
@@ -32,21 +32,24 @@ public class NerInputTable implements CoproProcessor.Entity {
     private String allowedCharacters;
     private String comparableCharacters;
     private int restrictedAdapterFlag;
+    private String originId;
     private int paperNo;
     private Integer groupId;
-    private String bbox;
-    private int sorItemId;
     private String createdUserId;
+    private Long rootPipelineId;
     private Long tenantId;
+    private String bbox;
+    private Integer questionId;
+    private Integer synonymId;
+    private String modelRegistry;
+    private String category;
+    private int sorId;
     private double wordScore;
     private double charScore;
     private double validatorScore;
     private double validatorNegativeScore;
     private double confidenceScore;
     private String sorItemName;
-    private int weight;
-    private Integer synonymId;
-    private Integer questionId;
 
     @Override
     public List<Object> getRowData() {

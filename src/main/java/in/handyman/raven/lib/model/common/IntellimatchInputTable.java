@@ -8,23 +8,25 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public class IntellimatchInputTable implements CoproProcessor.Entity {
-        private String fileName;
-        private String originId;
-        private Integer groupId;
-        private Long rootPipelineId;
-        private String actualValue;
-        private String extractedValue;
-        private Double similarity;
-        private Integer confidenceScore;
-        @Override
-        public List<Object> getRowData() {
-            return null;
-        }
+
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+@Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class IntellimatchInputTable implements CoproProcessor.Entity {
+    private String fileName;
+    private String originId;
+    private Integer groupId;
+    private Long tenantId;
+    private Long rootPipelineId;
+    private String actualValue;
+    private String extractedValue;
+    private Integer confidenceScore;
+
+    @Override
+    public List<Object> getRowData() {
+        return null;
     }
+}
 

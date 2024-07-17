@@ -117,7 +117,6 @@ action:
     |intellimatch
     |checkboxVqa
     |pixelClassifierUrgencyTriage
-    |qrExtraction
     |paperItemizer
     |nerAdapter
     |coproStart
@@ -145,7 +144,24 @@ action:
     |zipFileCreationOutbound
     |outboundKvpResponse
     |outboundTableResponse
-    |ftpUpload
+    |integratedNoiseModelApi
+    |loadBalancerQueueUpdate
+    |qrExtraction
+    |multipartUpload
+    |multipartDownload
+    |systemkeyTable
+    |tritonModelLoadUnload
+    |tableExtractionHeaders
+    |currencyDetection
+    |greyScaleConversion
+    |tableExtractionOutbound
+    |paragraphExtraction
+    |bulletInExtraction
+    |p2pNameValidation
+    |convertExcelToDatabase
+    |faceDetection
+    |figureDetection
+    |documentparser
     );
 
 
@@ -793,14 +809,6 @@ pixelClassifierUrgencyTriage:
     'checkbox-image-height' checkboxImageHeight=STRING
     'using'  '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
-qrExtraction:
-	'qr-extraction' 'as' name=STRING
-	'on-resource-conn' resourceConn=STRING
-	'copro-url' endPoint=STRING
-	'process-id' processId=STRING
-	'output-table' outputTable=STRING
-	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
-
 paperItemizer:
 	'paperItemizer' 'as' name=STRING
 	'outputDir' outputDir=STRING
@@ -853,9 +861,12 @@ coproStop:
 
  masterdataComparison:
      'masterdataComparison' 'as' name=STRING
-     'on-resource-conn' resourceConn=STRING
      'match-result' matchResult=STRING
-     'using' '{' inputSet=STRING '}' ('on-condition' condition=expression)*;
+     'on-resource-conn' resourceConn=STRING
+     'process-id' processId=STRING
+     'copro-url' endPoint=STRING
+     'using' '{' inputSet=STRING '}'
+     ('on-condition' condition=expression)*;
 
 zipBatch:
     'zipBatch' 'as' name=STRING
@@ -953,6 +964,7 @@ productResponse:
 
 tableExtraction:
 	'tableExtraction' 'as' name=STRING
+	'extraction-url' endpoint=STRING
 	'outputDir' outputDir=STRING
 	'result-table' resultTable=STRING
 	'processId' processId=STRING
@@ -1037,13 +1049,172 @@ outboundTableResponse:
     		querySet=STRING
     	'}' ('on-condition' condition=expression)* ;
 
-ftpUpload:
-       'ftpUpload' 'as' name=STRING
-       'result-table' resultTable=STRING
-       'resource-conn' resourceConn=STRING
-       'using' '{'
-       		querySet=STRING
-       	'}' ('on-condition' condition=expression)* ;
+integratedNoiseModelApi:
+	'noiseModel' 'as' name=STRING
+	'on-resource-conn' resourceConn=STRING
+	'copro-url' endPoint=STRING
+	'process-id' processId=STRING
+	'output-table' outputTable=STRING
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+loadBalancerQueueUpdate:
+    'loadBalancerQueueUpdate' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'load-balancer-ip' ipAddress=STRING
+    'load-balancer-port' port=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+qrExtraction:
+    'qr-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endPoint=STRING
+    'process-id' processId=STRING
+    'output-table' outputTable=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+multipartUpload:
+    'multipartUpload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'upload-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+multipartDownload:
+    'multipartDownload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'download-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+systemkeyTable:
+    'systemkeyTable' 'as' name=STRING
+    'resoruce-conn' resourceConn=STRING
+    'using' '{'
+        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+tritonModelLoadUnload:
+    'tritonModelLoadUnload' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'model-url' endPoint=STRING
+    'config-variable' configVariable=STRING
+    'load-type' loadType=STRING
+    'using' '{'  '}' ('on-condition' condition=expression)* ;
+
+
+tableExtractionHeaders:
+	'tableExtractionVersion2' 'as' name=STRING
+	'extraction-url' endpoint=STRING
+	'outputDir' outputDir=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+currencyDetection:
+    'currencyDetection' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'process-id' processId=STRING
+    'copro-url' endPoint=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+
+
+greyScaleConversion:
+    'greyScaleConversion' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'process-id' processId=STRING
+    'copro-url' endPoint=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+
+tableExtractionOutbound:
+    'TableExtractionOutbound' 'as' name=STRING
+    'result-table' resultTable=STRING
+    'processId' processId=STRING
+    'resource-conn' resourceConn=STRING
+    'input-from' inputAttribution=STRING
+    'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
+paragraphExtraction:
+    'paragraph-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+bulletInExtraction:
+    'bulletin-extraction' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+p2pNameValidation:
+    'p2pNameValidation' 'as' name=STRING
+    'process-id' processId=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+convertExcelToDatabase:
+    'convert-excel-to-database' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'fileType' fileType=STRING
+    'target' targetConn=STRING
+    'using' '{'
+                        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+faceDetection:
+    'faceDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+figureDetection:
+    'figureDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+documentparser:
+    'Document-parser' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
 //rules
 
 resource : STRING;

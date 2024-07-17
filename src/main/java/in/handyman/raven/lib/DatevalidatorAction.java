@@ -28,7 +28,7 @@ public class DatevalidatorAction implements IActionExecution {
     private final Logger log;
     private final Datevalidator datevalidator;
     private final Marker aMarker;
-    AdapterInterface dobValidatorAdapter ;
+    AdapterInterface dobValidatorAdapter;
 
 
     public DatevalidatorAction(final ActionExecutionAudit action, final Logger log,
@@ -44,9 +44,9 @@ public class DatevalidatorAction implements IActionExecution {
         try {
             int currentYear = Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date()));
             int comparableYear;
-            if(Optional.ofNullable(adapter.getComparableChar()).isPresent())
+            if (Optional.ofNullable(adapter.getComparableChar()).isPresent() && !adapter.getComparableChar().isEmpty()) {
                 comparableYear = Integer.parseInt(adapter.getComparableChar());
-            else comparableYear = currentYear;
+            } else comparableYear = currentYear;
             String[] dateFormats = adapter.getAllowedSpecialChar().split(",");
             boolean dobValidator = dobValidatorAdapter.getDateValidationModel(adapter.getInputValue(), comparableYear, dateFormats);
             return dobValidator ? adapter.getThreshold() : 0;
@@ -59,7 +59,7 @@ public class DatevalidatorAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            log.info(aMarker, "Date Validator Action for {} has been started" , datevalidator.getName());
+            log.info(aMarker, "Date Validator Action for {} has been started", datevalidator.getName());
 
             AdapterInterface dobValidatorAdapter = new DateAdapter();
             int comparableYear = Integer.parseInt(datevalidator.getComparableDate());
@@ -68,7 +68,7 @@ public class DatevalidatorAction implements IActionExecution {
             boolean dobValidator = dobValidatorAdapter.getDateValidationModel(datevalidator.getInputValue(), comparableYear, dateFormats);
             int confidenceScore = dobValidator ? Integer.parseInt(datevalidator.getThresholdValue()) : 0;
             action.getContext().put("validator.score", String.valueOf(confidenceScore));
-            log.info(aMarker, "Date Validator Action for {} has been completed" , datevalidator.getName());
+            log.info(aMarker, "Date Validator Action for {} has been completed", datevalidator.getName());
 
         } catch (Exception ex) {
             action.getContext().put(datevalidator.getName().concat(".error"), "true");

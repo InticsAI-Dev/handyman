@@ -24,9 +24,13 @@ import lombok.NoArgsConstructor;
 public class MasterdataComparison implements IActionContext {
   private String name;
 
+  private String matchResult;
+
   private String resourceConn;
 
-  private String matchResult;
+  private String processId;
+
+  private String endPoint;
 
   private String inputSet;
 

@@ -18,4 +18,9 @@ public class TrinityModelDataLineItem {
     private String predictedAttributionValue;
     private Float scores;
     private JsonNode bboxes;
+    private String originId;
+    private Integer paperNo;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
 }

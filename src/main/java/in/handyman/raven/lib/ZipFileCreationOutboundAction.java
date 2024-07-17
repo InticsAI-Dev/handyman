@@ -30,7 +30,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -51,7 +50,6 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
     private final ZipFileCreationOutbound zipFileCreationOutbound;
 
     private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     private final String OUTBOUND_FILES = "outbound-files";
 
@@ -114,8 +112,8 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
             createJsonFile(sourceJsonString, originFolderPath, sourcePdfName);
             createJsonFile(sourceKvpJsonString, originKvpFolderPath, sourcePdfName + "_kvp");
 
-            moveFileIntoOrigin(sourceCleanedPdfPath, originFolderPath);
-            moveFileIntoOrigin(sourceOriginPdfPath, originFolderPath);
+            copyFileIntoOrigin(sourceCleanedPdfPath, originFolderPath);
+            copyFileIntoOrigin(sourceOriginPdfPath, originFolderPath);
 
             List<TruthPaperList> truthPaperList = getTruthPaperList(outboundInputTableEntity.getOriginId(), jdbi);
             truthPaperList.stream().filter(Objects::nonNull).forEach(truthPaperList1 -> {
@@ -125,18 +123,13 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
 
                 createJsonFile(truthPaperList1.getTableResponse(), originPaperTablePath, sourcePdfName + "_" + truthPaperList1.getPaperNo() + "_table");
 
-                moveFileIntoOrigin(truthPaperList1.getFilePath(), originPaperTablePath);
+                copyFileIntoOrigin(truthPaperList1.getFilePath(), originPaperTablePath);
                 String processedJsonNodePath = truthPaperList1.getProcessedFilePath();
+                String cropppedImagePath = truthPaperList1.getCroppedimage();
+                //copy table csv file into the output zip folder
+                copyFileIntoOrigin(processedJsonNodePath, originPaperTablePath);
+                copyFileIntoOrigin(cropppedImagePath, originPaperTablePath);
 
-                Map<String, Object> processedFileJsonNode;
-                try {
-                    processedFileJsonNode = mapper.readValue(processedJsonNodePath.toString(), Map.class);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                processedFileJsonNode.forEach((s, o) -> {
-                    moveFileIntoOrigin(o.toString(), originPaperTablePath);
-                });
 
             });
             try {
@@ -202,7 +195,7 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
     }
 
 
-    public void moveFileIntoOrigin(String inputFilePath, String outputDirectory) {
+    public void copyFileIntoOrigin(String inputFilePath, String outputDirectory) {
         Path sourcePath = Path.of(inputFilePath);
 
         File sourceFile = new File(sourcePath.toString());
@@ -216,13 +209,13 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
         boolean isFileExists = sourceFile.exists();
         if (isFileExists) {
             try {
-                // Use Files.move() to move the file to the target directory
+                // Use Files.copy() to copy the file to the target directory
                 Path targetPath = targetDirectory.resolve(sourcePath.getFileName());
-                Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-                log.info("File moved from {} to {}", inputFilePath, outputDirectory);
+                log.info("File copied from {} to {}", inputFilePath, outputDirectory);
             } catch (IOException e) {
-                log.error("File moved failed for {} to {}", inputFilePath, outputDirectory);
+                log.error("File copied failed for {} to {}", inputFilePath, outputDirectory);
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("failed in moving the file", handymanException, action);
                 throw new HandymanException("Error in execute method for ner adapter", e, action);
@@ -336,7 +329,7 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
     }
 
     public List<TruthPaperList> getTruthPaperList(String originId, Jdbi jdbi) {
-        String querySet = "select a.file_path,sot.origin_id,sot.paper_no,ter.processed_file_path,atr.table_response " +
+        String querySet = "select a.file_path,sot.origin_id,sot.paper_no,ter.processed_file_path,atr.table_response ,ter.croppedimage " +
                 "from info.source_of_truth sot" +
                 " join info.asset a on sot.preprocessed_file_id  =a.file_id " +
                 "join alchemy_response.alchemy_table_response atr on atr.pipeline_origin_id=sot.origin_id and atr.paper_no=sot.paper_no " +
@@ -371,5 +364,6 @@ public class ZipFileCreationOutboundAction implements IActionExecution {
         private String originId;
         private String processedFilePath;
         private String tableResponse;
+        private String croppedimage;
     }
 }

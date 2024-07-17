@@ -17,4 +17,8 @@ public class NerAdapterPayload {
         private Long rootPipelineId;
         private Long actionId;
         private String process;
+        private String originId;
+        private Long processId;
+        private Integer groupId;
+        private Long tenantId;
 }

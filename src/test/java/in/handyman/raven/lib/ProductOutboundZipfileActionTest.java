@@ -1,7 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.ProductOutboundZipFile;
+import in.handyman.raven.lib.model.ProductOutboundZipfile;
 import in.handyman.raven.lib.model.ZipFileCreationOutbound;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ class ProductOutboundZipfileActionTest {
 
     @Test
     public void unitTestCase() throws Exception {
-        ProductOutboundZipFile productOutboundZipfile = ProductOutboundZipFile.builder()
+        ProductOutboundZipfile productOutboundZipfile = ProductOutboundZipfile.builder()
                 .name("product outbound zip file details")
                 .outputDir("/home/anandh.andrews@zucisystems.com/intics-workspace/testing/output")
                 .resultTable("product_outbound.product_outbound_zip_file_details")

@@ -24,6 +24,8 @@ import lombok.NoArgsConstructor;
 public class TableExtraction implements IActionContext {
   private String name;
 
+  private String endpoint;
+
   private String outputDir;
 
   private String resultTable;

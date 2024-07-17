@@ -8,6 +8,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.alchemy.common.BoundingBoxAlchemy;
+import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.lib.model.AlchemyResponse;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
@@ -44,7 +46,7 @@ import java.util.stream.Collectors;
 @ActionExecution(
         actionName = "AlchemyResponse"
 )
-public class AlchemyResponseAction implements IActionExecution {
+    public class AlchemyResponseAction implements IActionExecution {
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -146,23 +148,73 @@ public class AlchemyResponseAction implements IActionExecution {
                     .feature(feature)
                     .build();
 
-            if(feature.equals("KIE")){
+            if(feature.equals(Feature.KIE.name())){
                 alchemyRequestTable.setBbox(mapper.readTree(bbox));
                 alchemyRequestTable.setConfidenceScore(confidenceScore);
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setSynonymId(synonymId);
                 alchemyRequestTable.setQuestionId(questionId);
             }
-            if(feature.equals("CHECKBOX_EXTRACTION")){
+            if(feature.equals(Feature.CHECKBOX_EXTRACTION.name())){
                 alchemyRequestTable.setBbox(mapper.readTree(bbox));
                 alchemyRequestTable.setConfidenceScore(confidenceScore);
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setState(entity.getState());
             }
-            if(feature.equals("TABLE_EXTRACT")){
+            if(feature.equals(Feature.TABLE_EXTRACT.name())){
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
                 alchemyRequestTable.setTableData(tableNode);
+                alchemyRequestTable.setCsvFilePath(entity.getCsvFilePath());
+                alchemyRequestTable.setTruthEntityId(entity.getTruthEntityId());
             }
+            if(feature.equals(Feature.CURRENCY_DETECTION.name())){
+                alchemyRequestTable.setDetectedValue(entity.getDetectedValue());
+                alchemyRequestTable.setDetectedAsciiValue(entity.getDetectedAsciiValue());
+                alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
+            }
+            if(feature.equals(Feature.TABLE_EXTRACT_AGGREGATE.name())){
+                JsonNode tableAggregateNode = mapper.readTree(entity.getTableAggregateNode());
+                JsonNode tableNode = mapper.readTree(entity.getTableData());
+                alchemyRequestTable.setTableData(tableNode);
+                alchemyRequestTable.setAggregateJson(tableAggregateNode);
+                alchemyRequestTable.setSorItemId(entity.sorItemId);
+            }
+            if(feature.equals(Feature.BULLETIN_EXTRACTION.name())){
+                JsonNode bulletinOutput = mapper.readTree(entity.getBulletinPoints());
+                alchemyRequestTable.setBulletinPoints(bulletinOutput);
+                alchemyRequestTable.setBulletinSection(entity.getBulletinSection());
+                alchemyRequestTable.setSynonymId(entity.getSynonymId());
+            }
+            if(feature.equals(Feature.PARAGRAPH_EXTRACTION.name())){
+                JsonNode paragraphOutput = mapper.readTree(entity.getParagraphPoints());
+                alchemyRequestTable.setParagraphPoints(paragraphOutput);
+                alchemyRequestTable.setParagraphSection(entity.getParagraphSection());
+                alchemyRequestTable.setSynonymId(entity.getSynonymId());
+            }
+            if(feature.equals(Feature.FACE_DETECTION.name())){
+                 BoundingBoxAlchemy bboxJsonObject =new BoundingBoxAlchemy();
+                bboxJsonObject.setTopLeftX(Integer.parseInt(entity.getLeftPos()));
+                bboxJsonObject.setTopLeftY(Integer.parseInt(entity.getUpperPos()));
+                bboxJsonObject.setBottomRightX(Integer.parseInt(entity.getRightPos()));
+                bboxJsonObject.setBottomRightY(Integer.parseInt(entity.getLowerPos()));
+
+                String jsonNode = mapper.writeValueAsString(bboxJsonObject);
+                alchemyRequestTable.setBbox(mapper.readTree(jsonNode));
+                alchemyRequestTable.setEncode(entity.getEncode());
+                alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
+            }
+            if(feature.equals(Feature.FIGURE_DETECTION.name())){
+                alchemyRequestTable.setEncode(entity.getEncode());
+
+            }
+            if(feature.equals(Feature.DOCUMENT_PARSER.name())){
+                alchemyRequestTable.setEncode(entity.getEncode());
+
+            }
+
+
+
+
 
 
             Request request = new Request.Builder().url(endpoint + "/" + originId + "/?tenantId=" + this.tenantId)
@@ -209,13 +261,37 @@ public class AlchemyResponseAction implements IActionExecution {
         private String feature;
         private String state;
         private String tableData;
+        private String detectedValue;
+        private String detectedAsciiValue;
+        private String csvFilePath;
+        private Long truthEntityId;
+        private String tableAggregateNode;
+        private Long sorItemId;
+        private String bulletinSection;
+        private String bulletinPoints;
+        private String paragraphSection;
+        private String paragraphPoints;
+        private String encode;
+        private String leftPos;
+        private String upperPos;
+        private String rightPos;
+        private String lowerPos;
+
 
         @Override
         public List<Object> getRowData() {
             return null;
         }
     }
-
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    @Builder
+    public static class AlchemyCurrencyResponse{
+        private String detectedValue;
+        private String detectedAsciiValue;
+        private String confidenceScore;
+    }
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
@@ -230,7 +306,20 @@ public class AlchemyResponseAction implements IActionExecution {
         private Long rootPipelineId;
         private String feature;
         private String state;
+        private String csvFilePath;
+        private Long truthEntityId;
         private JsonNode tableData;
+        private String detectedValue;
+        private String detectedAsciiValue;
+        private JsonNode aggregateJson;
+        private Long sorItemId;
+        private String bulletinSection;
+        private JsonNode bulletinPoints;
+        private String paragraphSection;
+        private JsonNode paragraphPoints;
+        private String encode;
+
+
     }
 
     @AllArgsConstructor

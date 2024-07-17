@@ -13,9 +13,16 @@ import lombok.NoArgsConstructor;
 public class QrReader {
     private String value;
     private String type;
-    @JsonProperty("decode_type")
-    private String decodeType;
-    private Integer confidenceScore;
+    private Double confidenceScore;
     private QrExtractionBoundingBox boundingBox;
     private Integer angle;
+    @JsonProperty("decode_type")
+    private String decodeType;
+    private String originId;
+    private Long paperNo;
+    private Long processId;
+    private Integer groupId;
+    private Long tenantId;
+    private Long actionId;
+    private Long rootPipelineId;
 }

@@ -15,6 +15,7 @@ import java.util.Map;
 public class ZeroShotClassifierData {
         private String rootPipelineId;
         private Long actionId;
+        private String processId;
         private String process;
         private String originId;
         private String paperNo;

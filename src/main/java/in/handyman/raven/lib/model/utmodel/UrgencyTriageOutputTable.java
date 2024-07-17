@@ -20,7 +20,7 @@ public class UrgencyTriageOutputTable implements CoproProcessor.Entity {
     private Long processId;
     private Integer groupId;
     private Long tenantId;
-    private Long confScore;
+    private Float confScore;
     private String originId;
     private Integer paperNo;
     private String templateId;
