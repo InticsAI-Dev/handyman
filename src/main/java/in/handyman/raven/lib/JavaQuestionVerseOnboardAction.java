@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -66,6 +67,8 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
     private static final String SYNONYM_ID_COLUMN = "synonym_id";
     private static final String QUESTION_ID_COLUMN = "question_id";
 
+    private static final String JAVA_SRC_FOLDER = "/src/main/java";
+
     @Override
     public void execute() throws Exception {
         String javaTestCaseGeneratorName = javaQuestionVerseOnboard.getName();
@@ -87,7 +90,9 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
             String sipType = javaQuestionVerseOnboardQueryResult.getSipType();
             Long modelRegistryId = javaQuestionVerseOnboardQueryResult.getModelRegistryId();
 
-            List<Channel> channels = scanProject(projectPath, defaultPrompt);
+            String projectJavaFolder = projectPath + File.separator + JAVA_SRC_FOLDER;
+
+            List<Channel> channels = scanProject(projectJavaFolder, defaultPrompt);
 
             String documentMasterDataInsertQuery = getDocumentTypeMasterDataInsertQuery(schemaName);
             String documentInsertQuery = getDocumentInsertQuery(schemaName);
@@ -484,7 +489,7 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
 
         Integer questionCount = jdbi.withHandle(handle ->
         {
-            String assetIdQuery = "select count(1) from " + schemaName +".sor_question where synonym_id = " + synonymId + "' and tenant_id = " + tenantId  + ";";
+            String assetIdQuery = "select count(1) from " + schemaName +".sor_question where synonym_id = " + synonymId + " and tenant_id = " + tenantId  + ";";
             return handle.createQuery(assetIdQuery)
                     .mapTo(Integer.class)
                     .one();

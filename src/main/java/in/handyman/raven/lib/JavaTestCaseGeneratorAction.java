@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -67,6 +68,8 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private static final String JAVA_SRC_FOLDER = "/src/main/java";
+
     @Override
     public void execute() throws Exception {
 
@@ -103,7 +106,9 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
 
         String outputTable = javaTestCaseGenerator.getOutputTable();
 
-        Path projectDir = Paths.get(projectFolderPath);
+        String projectJavaFolder = projectFolderPath + File.separator + JAVA_SRC_FOLDER;
+
+        Path projectDir = Paths.get(projectJavaFolder);
         List<Channel> channels = new ArrayList<>();
         getChannelDetails(projectDir, channels, jdbi, tenantId, questionVerseSchema);
 
@@ -137,7 +142,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                                                 String prompt = methodName.getQuestion().getPrompt();
                                                 urls.forEach(url -> executorService.submit(() -> {
                                                     try {
-                                                        doGenerateTestCase(documentType, projectType, packageName, method, prompt, jdbi, outputTable, tenantId, url, groupId, className);
+                                                        doGenerateTestCase(documentType, projectType, packageName, method, prompt, jdbi, outputTable, tenantId, url, groupId, className, projectFolderPath);
                                                     } catch (Exception e) {
                                                         log.error(aMarker, "The Exception occurred in test case generation for class: {}, \n method: \n {}", className, method);
                                                         HandymanException handymanException = new HandymanException(e);
@@ -191,7 +196,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
     }
 
 
-    private void doGenerateTestCase(String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, String outputTable, Long tenantId, URL url, Long groupId, String className) {
+    private void doGenerateTestCase(String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, String outputTable, Long tenantId, URL url, Long groupId, String className, String projectFolderPath) {
 
         Request request = new Request.Builder()
                 .url(url + prompt)
@@ -203,26 +208,26 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            LocalDateTime responseTime = LocalDateTime.now();
             if (response.isSuccessful()) {
-                LocalDateTime responseTime = LocalDateTime.now();
-                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className);
+                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className, "COMPLETED", projectFolderPath);
                 log.info("Response: {}", responseBody);
             } else {
-                LocalDateTime responseTime = LocalDateTime.now();
-                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className);
+                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className, "FAILED", projectFolderPath);
             }
         } catch (Throwable t) {
             log.error(aMarker, "error in api response for test case generation {}", t.getMessage());
-            throw new HandymanException("error in api response for test case generation", t, action);
+            HandymanException handymanException = new HandymanException(t);
+            HandymanException.insertException("error in api response for test case generation", handymanException, this.action);
         }
     }
 
-    private void insertResponseDetails(String responseBody, String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, LocalDateTime requestedTime, LocalDateTime responseTime, String outputTable, Long tenantId, Long groupId, String className) {
+    private void insertResponseDetails(String responseBody, String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, LocalDateTime requestedTime, LocalDateTime responseTime, String outputTable, Long tenantId, Long groupId, String className, String status, String projectFolderPath) {
         long diffInSeconds = Duration.between(requestedTime, responseTime).getSeconds();
         String formattedTime = formatTime(diffInSeconds);
         Long rootPipelineId = action.getRootPipelineId();
-        String sql = "INSERT INTO " + outputTable + " (document_type, project_type, package_name, class_name, method_name, prompt, prompt_response, requested_time, responded_time, execution_time, tenant_id, root_pipeline_id, group_id) " +
-                "VALUES (:documentType, :projectType, :packageName, :className, :methodName, :prompt, :promptResponse, :requestedTime, :respondedTime, :executionTime, :tenantId, :rootPipelineId, :groupId)";
+        String sql = "INSERT INTO " + outputTable + " (document_type, project_type, package_name, class_name, method_name, prompt, prompt_response, requested_time, responded_time, execution_time, tenant_id, root_pipeline_id, group_id, status, project_base_path) " +
+                "VALUES (:documentType, :projectType, :packageName, :className, :methodName, :prompt, :promptResponse, :requestedTime, :respondedTime, :executionTime, :tenantId, :rootPipelineId, :groupId, :status, :projectBasePath)";
         jdbi.withHandle(handle -> handle.createUpdate(sql)
                 .bind("documentType", documentType)
                 .bind("projectType", projectType)
@@ -237,6 +242,8 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                 .bind("tenantId", tenantId)
                 .bind("rootPipelineId", rootPipelineId)
                 .bind("groupId", groupId)
+                .bind("status", status)
+                .bind("projectBasePath", projectFolderPath)
                 .execute());
     }
 
@@ -323,12 +330,13 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                                         "join " + questionVerseSchema + ".sor_question sq on sq.synonym_id = st.synonym_id \n" +
                                         "where te.sip_type = 'CODE_SIP' and sq.tenant_id = " + tenantId + " and ai.template_name= '" + packageName + "' and te.truth_entity_name = '" + className + "' and st.synonym = '" + methodName + "'";
 
-                                JavaTestCasePromptQueryResult javaTestCasePromptQueryResult;
+                                JavaTestCasePromptQueryResult javaTestCasePromptQueryResult = new JavaTestCasePromptQueryResult();
                                 try {
                                     javaTestCasePromptQueryResult = jdbi.withHandle(handle -> handle.createQuery(fileIdQuery).mapToBean(JavaTestCasePromptQueryResult.class).one());
                                 } catch (RuntimeException e) {
                                     log.error(aMarker, "error getting prompt from questionVerse for package: {}, class: {}, method:{} with exception {}", packageName, className, methodName, e.getMessage());
-                                    throw new HandymanException("error getting prompt from questionVerse for package:" + packageName + ",class:" + className + ",method:" + methodName, e, action);
+                                    HandymanException handymanException = new HandymanException(e);
+                                    HandymanException.insertException("error getting prompt from questionVerse for package:" + packageName + ",class:" + className + ",method:" + methodName, handymanException, this.action);
                                 }
 
                                 String basePrompt = javaTestCasePromptQueryResult.getQuestion();
@@ -343,12 +351,14 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                             }
                         } catch (IOException e) {
                             log.error("Could not read file: {} with exception {}", path, e.getMessage());
-                            throw new HandymanException("Could not read file", e, action);
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("Could not read file", handymanException, this.action);
                         }
                     });
         } catch (IOException e) {
             log.error(aMarker, "error in reading files for test case generation ", e);
-            throw new HandymanException("error in reading files for test case generation", e, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("error in reading files for test case generation", handymanException, this.action);
         }
     }
 
