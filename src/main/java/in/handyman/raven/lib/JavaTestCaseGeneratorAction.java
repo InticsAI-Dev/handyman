@@ -174,12 +174,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                                 .forEach(generatingClass ->
                                         sip.getSynonyms().stream()
                                                 .filter(synonym -> generatingClass.getMethods().stream()
-                                                        .anyMatch(method -> {
-                                                            System.out.println(method);
-                                                            System.out.println(synonym.getMethodName());
-                                                            boolean matched = compareIgnoringWhitespace(synonym.getMethodName(), method);
-                                                            return matched;
-                                                        })
+                                                        .anyMatch(method -> compareIgnoringWhitespace(synonym.getMethodName(), method))
                                                 )
                                                 .forEach(synonym -> methodSize.incrementAndGet())
                                 )

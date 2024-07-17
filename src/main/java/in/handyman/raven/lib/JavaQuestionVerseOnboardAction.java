@@ -122,7 +122,7 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
                                     for (Synonym synonym : sip.synonyms) {
                                         insertSynonym(jdbi, truthEntityId, synonym, tenantId, schemaName, userId, synonymInsertQuery);
                                         Long synonymId = synonym.getSynonymId();
-                                        insertQuestion(jdbi, synonymId, synonym.question, tenantId, userId, modelRegistryId, questionInsertQuery);
+                                        insertQuestion(jdbi, synonymId, synonym.question, tenantId, userId, modelRegistryId, questionInsertQuery, schemaName);
                                     }
                                 }
                             }
@@ -480,30 +480,40 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
         return synonymInsertQuery;
     }
 
-    private void insertQuestion(Jdbi jdbi, Long synonymId, Question question, Long tenantId, Long userId, Long modelRegistryId, String questionInsertQuery) {
-        try (Handle handle = jdbi.open()) {
-            String questionName = question.getPrompt();
-            List<Map<String, Object>> insertedRows = handle.createUpdate(questionInsertQuery)
-                    .bind(0, synonymId)
-                    .bind(1, questionName)
-                    .bind(2, QUESTION_WEIGHT)
-                    .bind(3, CATEGORY)
-                    .bind(4, userId)
-                    .bind(5, userId)
-                    .bind(6, STATUS)
-                    .bind(7, PRIORITY_INDEX)
-                    .bind(8, tenantId)
-                    .bind(9, VERSION)
-                    .bind(10, modelRegistryId)
-                    .executeAndReturnGeneratedKeys()
-                    .mapToMap()
-                    .list();
+    private void insertQuestion(Jdbi jdbi, Long synonymId, Question question, Long tenantId, Long userId, Long modelRegistryId, String questionInsertQuery, String schemaName) {
 
-            Optional<Map<String, Object>> optionalFoundRow = findRowByColumnValue(insertedRows, "question", questionName);
-            if (optionalFoundRow.isPresent()) {
-                Map<String, Object> foundRow = optionalFoundRow.get();
-                Object desiredColumnValue = foundRow.get(QUESTION_ID_COLUMN);
-                question.setQuestionId((Long) desiredColumnValue);
+        Integer questionCount = jdbi.withHandle(handle ->
+        {
+            String assetIdQuery = "select count(1) from " + schemaName +".sor_question where synonym_id = " + synonymId + "' and tenant_id = " + tenantId  + ";";
+            return handle.createQuery(assetIdQuery)
+                    .mapTo(Integer.class)
+                    .one();
+        });
+        if (questionCount == 0){
+            try (Handle handle = jdbi.open()) {
+                String questionName = question.getPrompt();
+                List<Map<String, Object>> insertedRows = handle.createUpdate(questionInsertQuery)
+                        .bind(0, synonymId)
+                        .bind(1, questionName)
+                        .bind(2, QUESTION_WEIGHT)
+                        .bind(3, CATEGORY)
+                        .bind(4, userId)
+                        .bind(5, userId)
+                        .bind(6, STATUS)
+                        .bind(7, PRIORITY_INDEX)
+                        .bind(8, tenantId)
+                        .bind(9, VERSION)
+                        .bind(10, modelRegistryId)
+                        .executeAndReturnGeneratedKeys()
+                        .mapToMap()
+                        .list();
+
+                Optional<Map<String, Object>> optionalFoundRow = findRowByColumnValue(insertedRows, "question", questionName);
+                if (optionalFoundRow.isPresent()) {
+                    Map<String, Object> foundRow = optionalFoundRow.get();
+                    Object desiredColumnValue = foundRow.get(QUESTION_ID_COLUMN);
+                    question.setQuestionId((Long) desiredColumnValue);
+                }
             }
         }
     }
