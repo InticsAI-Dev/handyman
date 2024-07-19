@@ -162,6 +162,7 @@ action:
     |faceDetection
     |figureDetection
     |documentparser
+    |validationLlm
     );
 
 
@@ -1214,6 +1215,16 @@ documentparser:
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
     ('on-condition' condition=expression)* ;
+
+
+validationLlm:
+    'validationLlm' 'as' name = STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
 
 //rules
 
