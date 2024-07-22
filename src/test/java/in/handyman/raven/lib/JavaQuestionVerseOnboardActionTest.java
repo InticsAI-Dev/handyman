@@ -17,8 +17,10 @@ class JavaQuestionVerseOnboardActionTest {
         JavaQuestionVerseOnboard javaQuestionVerseOnboard = JavaQuestionVerseOnboard.builder()
                 .name("java QuestionVerse Onboard Action")
                 .condition(true)
-                .querySet("SELECT '/home/manikandan.tm@zucisystems.com/workspace/alchemy/src/main/java' as folder_path, 'JAVA' as project_type, 'NPOS' as document_type, 'Generate Unit test cases using mockito for the method: ${methodName} for the class: ${className} covering all corner cases,\\n Here is the Code: \\n${code}' as default_prompt, 1 as tenant_id, 1 as user_id, 'CODE_SIP' as sip_type, 10 as model_registry_id;")
-                .schemaName("sor_meta_code")
+                .querySet("SELECT '/home/manikandan.tm@zucisystems.com/workspace/Load-balancer-spring-boot' as folder_path, 'JAVA' as project_type, 'PO' as document_type, 'Generate Unit test cases using mockito for the method: ${methodName} for the class: ${className} covering all corner cases. Make sure the generated test case should be compilable format.The test case name should be {className}{MethodNameWithoutParameters}Test.java\n" +
+                        "Here is the Code:\n" +
+                        "${code}' as default_prompt, 2 as tenant_id, 2 as user_id, 'CODE_SIP' as sip_type, 10 as model_registry_id;")
+                .schemaName("sor_meta")
                 .resourceConn("intics_agadia_db_conn")
                 .build();
 

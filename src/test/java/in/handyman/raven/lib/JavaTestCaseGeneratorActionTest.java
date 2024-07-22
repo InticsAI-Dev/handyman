@@ -81,7 +81,7 @@ class JavaTestCaseGeneratorActionTest {
 //        List<String> lines = Files.readAllLines(Paths.get("/home/manikandan.tm@zucisystems.com/workspace/alchemy/src/main/java/org/intics/alchemy/core/info/service/AssetService.java"));
 //        List<String> methodNames = extractMethodsWithParameters(lines);
 //        System.out.println(methodNames);
-        FileInputStream in = new FileInputStream("/home/manikandan.tm@zucisystems.com/workspace/alchemy/src/main/java/org/intics/alchemy/core/info/service/AssetService.java");
+        FileInputStream in = new FileInputStream("/home/manikandan.tm@zucisystems.com/workspace/alchemy/src/main/java/org/intics/alchemy/core/info/repo/TransactionInfosRepo.java");
 
         // Parse the file
         // Create an instance of JavaParser

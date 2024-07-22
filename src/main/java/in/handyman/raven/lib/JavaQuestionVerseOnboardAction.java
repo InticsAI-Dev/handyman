@@ -226,8 +226,15 @@ public class JavaQuestionVerseOnboardAction implements IActionExecution {
     }
 
     private static String getPackageName(String relativePath) {
-        String[] parts = relativePath.split(FileSystems.getDefault().getSeparator());
-        return String.join(".", parts).substring(0, relativePath.lastIndexOf(FileSystems.getDefault().getSeparator())).replace(".java", "");
+        String separator = FileSystems.getDefault().getSeparator();
+        String[] parts = relativePath.split(separator.equals("\\") ? "\\\\" : separator);
+
+        // If the last part ends with .java, remove it
+        if (parts.length > 0 && parts[parts.length - 1].endsWith(".java")) {
+            parts = java.util.Arrays.copyOf(parts, parts.length - 1);
+        }
+
+        return String.join(".", parts);
     }
 
     private static String getClassName(Path path) {

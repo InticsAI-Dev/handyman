@@ -103,6 +103,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
         Long groupId = javaTestCaseQueryResult.getGroupId();
         Long tenantId = javaTestCaseQueryResult.getTenantId();
         String questionVerseSchema = javaTestCaseQueryResult.getQuestionVerseSchema();
+        String transactionId = javaTestCaseQueryResult.getTransactionId();
 
         String outputTable = javaTestCaseGenerator.getOutputTable();
 
@@ -142,7 +143,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                                                 String prompt = methodName.getQuestion().getPrompt();
                                                 urls.forEach(url -> executorService.submit(() -> {
                                                     try {
-                                                        doGenerateTestCase(documentType, projectType, packageName, method, prompt, jdbi, outputTable, tenantId, url, groupId, className, projectFolderPath);
+                                                        doGenerateTestCase(documentType, projectType, packageName, method, prompt, jdbi, outputTable, tenantId, url, groupId, className, projectFolderPath, transactionId);
                                                     } catch (Exception e) {
                                                         log.error(aMarker, "The Exception occurred in test case generation for class: {}, \n method: \n {}", className, method);
                                                         HandymanException handymanException = new HandymanException(e);
@@ -196,7 +197,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
     }
 
 
-    private void doGenerateTestCase(String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, String outputTable, Long tenantId, URL url, Long groupId, String className, String projectFolderPath) {
+    private void doGenerateTestCase(String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, String outputTable, Long tenantId, URL url, Long groupId, String className, String projectFolderPath, String transactionId) {
 
         Request request = new Request.Builder()
                 .url(url + prompt)
@@ -210,10 +211,11 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
             String responseBody = Objects.requireNonNull(response.body()).string();
             LocalDateTime responseTime = LocalDateTime.now();
             if (response.isSuccessful()) {
-                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className, "COMPLETED", projectFolderPath);
+                responseBody = removeOuterQuotes(responseBody);
+                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className, "COMPLETED", projectFolderPath, transactionId);
                 log.info("Response: {}", responseBody);
             } else {
-                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className, "FAILED", projectFolderPath);
+                insertResponseDetails(responseBody, documentType, projectType, packageName, method, prompt, jdbi, requestedTime, responseTime, outputTable, tenantId, groupId, className, "FAILED", projectFolderPath, transactionId);
             }
         } catch (Throwable t) {
             log.error(aMarker, "error in api response for test case generation {}", t.getMessage());
@@ -222,12 +224,12 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
         }
     }
 
-    private void insertResponseDetails(String responseBody, String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, LocalDateTime requestedTime, LocalDateTime responseTime, String outputTable, Long tenantId, Long groupId, String className, String status, String projectFolderPath) {
+    private void insertResponseDetails(String responseBody, String documentType, String projectType, String packageName, String method, String prompt, Jdbi jdbi, LocalDateTime requestedTime, LocalDateTime responseTime, String outputTable, Long tenantId, Long groupId, String className, String status, String projectFolderPath, String transactionId) {
         long diffInSeconds = Duration.between(requestedTime, responseTime).getSeconds();
         String formattedTime = formatTime(diffInSeconds);
         Long rootPipelineId = action.getRootPipelineId();
-        String sql = "INSERT INTO " + outputTable + " (document_type, project_type, package_name, class_name, method_name, prompt, prompt_response, requested_time, responded_time, execution_time, tenant_id, root_pipeline_id, group_id, status, project_base_path) " +
-                "VALUES (:documentType, :projectType, :packageName, :className, :methodName, :prompt, :promptResponse, :requestedTime, :respondedTime, :executionTime, :tenantId, :rootPipelineId, :groupId, :status, :projectBasePath)";
+        String sql = "INSERT INTO " + outputTable + " (document_type, project_type, package_name, class_name, method_name, prompt, prompt_response, requested_time, responded_time, execution_time, tenant_id, root_pipeline_id, group_id, status, project_base_path, transaction_id) " +
+                "VALUES (:documentType, :projectType, :packageName, :className, :methodName, :prompt, :promptResponse, :requestedTime, :respondedTime, :executionTime, :tenantId, :rootPipelineId, :groupId, :status, :projectBasePath, :transactionId)";
         jdbi.withHandle(handle -> handle.createUpdate(sql)
                 .bind("documentType", documentType)
                 .bind("projectType", projectType)
@@ -244,6 +246,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                 .bind("groupId", groupId)
                 .bind("status", status)
                 .bind("projectBasePath", projectFolderPath)
+                .bind("transactionId", transactionId)
                 .execute());
     }
 
@@ -413,13 +416,38 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
 
 
     private static String getPackageName(String relativePath) {
-        String[] parts = relativePath.split(FileSystems.getDefault().getSeparator());
-        return String.join(".", parts).substring(0, relativePath.lastIndexOf(FileSystems.getDefault().getSeparator())).replace(".java", "");
+        String separator = FileSystems.getDefault().getSeparator();
+        String[] parts = relativePath.split(separator.equals("\\") ? "\\\\" : separator);
+
+        // If the last part ends with .java, remove it
+        if (parts.length > 0 && parts[parts.length - 1].endsWith(".java")) {
+            parts = java.util.Arrays.copyOf(parts, parts.length - 1);
+        }
+
+        return String.join(".", parts);
     }
 
     private static String getClassName(Path path) {
         String fileName = path.getFileName().toString();
         return fileName.substring(0, fileName.lastIndexOf('.'));
+    }
+
+    public static String removeOuterQuotes(String response) {
+        if (response == null || response.length() < 2) {
+            return response; // If the string is null or too short, return it as is
+        }
+
+        boolean startsWithQuote = response.startsWith("\"");
+        boolean endsWithQuote = response.endsWith("\"");
+
+        if (startsWithQuote && endsWithQuote) {
+            return response.substring(1, response.length() - 1);
+        } else if (startsWithQuote) {
+            return response.substring(1);
+        } else if (endsWithQuote) {
+            return response.substring(0, response.length() - 1);
+        }
+        return response;
     }
 
     @Override
@@ -443,6 +471,7 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
         private String classValues;
         private Long groupId;
         private String questionVerseSchema;
+        private String transactionId;
     }
 
 
