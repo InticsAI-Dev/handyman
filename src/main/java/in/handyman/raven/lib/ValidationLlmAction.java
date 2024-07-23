@@ -57,7 +57,7 @@ public class ValidationLlmAction implements IActionExecution {
   public static final String THREAD_SLEEP_TIME = "1000";
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "score";
-  public static final String VALIDATION_LLM_OUTPUT = "validation_llm_output_table";
+  public static final String VALIDATION_LLM_OUTPUT = "validation_llm_result_table";
   public static final String COLUMN_LIST = " origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, " +
           "sor_item_name, question, answer, validated_answer, vqa_score, weight, created_user_id, " +
           "tenant_id, created_on, confidence_score, validation_name, b_box, status, stage, message," +
