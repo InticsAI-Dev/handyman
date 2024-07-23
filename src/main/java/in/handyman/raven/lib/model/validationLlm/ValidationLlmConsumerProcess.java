@@ -25,6 +25,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ValidationLlmConsumerProcess implements CoproProcessor.ConsumerProcess<ValidationLlmInputTable, ValidationLlmOutputTable>{
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.validation.llm.activator";
@@ -249,7 +251,15 @@ public class ValidationLlmConsumerProcess implements CoproProcessor.ConsumerProc
             });
             detectionDataItem.forEach(validationExtractionResponse -> {
                 try {
-                    ValidationLineItem customObjects = mapper.readValue(validationExtractionResponse.getSectionPoints(), ValidationLineItem.class);
+                    String cleanedResponseBody = cleanJsonBlock(validationExtractionResponse.getSectionPoints());
+                    ValidationLineItem customObjects = mapper.readValue(cleanedResponseBody, new TypeReference<>() {
+                    });
+//                    if (customObjects.getValidatedOutput().contains("```json")) {
+//                        Pattern pattern = Pattern.compile("\\{(?:[^{}]|(?R))*\\}");
+//                        Matcher matcher = pattern.matcher(customObjects.getValidatedOutput());
+//                        if (matcher.find()) {
+//                            String jsonPart = matcher.group();
+
                     parentObj.add(ValidationLlmOutputTable.builder()
                             .originId(entity.getOriginId())
                             .paperNo(entity.getPaperNo())
@@ -276,7 +286,6 @@ public class ValidationLlmConsumerProcess implements CoproProcessor.ConsumerProc
                             .synonymId(entity.getSynonymId())
                             .modelRegistry(entity.getModelRegistry())
                             .build());
-
 
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
@@ -318,7 +327,24 @@ public class ValidationLlmConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
+    private String cleanJsonBlock(String responseBody) {
+        if (responseBody.contains("```json")) {
+            // Define the regex pattern to match the JSON object inside the ```json block
+            String regex = "\\{[^{}]*\\}";
 
+            // Compile the pattern
+            Pattern pattern = Pattern.compile(regex);
+
+            // Create a matcher for the input string
+            Matcher matcher = pattern.matcher(responseBody);
+
+            // Find and return the JSON object
+            if (matcher.find()) {
+                return matcher.group();
+            }
+        }
+        return responseBody;
+    }
 
     private void extractTritonOutputDataResponse(ValidationLlmInputTable entity, String validationLlmDataItem, List<ValidationLlmOutputTable> parentObj) {
         Integer groupId = entity.getGroupId();
