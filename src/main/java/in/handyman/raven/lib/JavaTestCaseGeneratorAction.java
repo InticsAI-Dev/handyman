@@ -393,6 +393,11 @@ public class JavaTestCaseGeneratorAction implements IActionExecution {
                     .append("(");
 
             md.getParameters().forEach(parameter -> {
+                parameter.getAnnotations().forEach(annotation -> {
+                    methodSignature.append(annotation)
+                            .append(" ");
+                });
+
                 if (parameter.isFinal()) {
                     methodSignature.append("final ");
                 }
