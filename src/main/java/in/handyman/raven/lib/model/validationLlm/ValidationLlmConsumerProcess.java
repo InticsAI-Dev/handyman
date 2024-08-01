@@ -279,7 +279,7 @@ public class ValidationLlmConsumerProcess implements CoproProcessor.ConsumerProc
                             .validationName(entity.getValidationName())
                             .bBox(entity.getBBox())
                             .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                            .stage("VALIDATION LLM")
+                            .stage(PROCESS_NAME)
                             .message("Validation llm macro completed")
                             .rootPipelineId(entity.getRootPipelineId())
                             .questionId(entity.getQuestionId())
