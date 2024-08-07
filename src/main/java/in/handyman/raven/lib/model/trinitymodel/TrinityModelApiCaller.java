@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TrinityModelAction;
+import in.handyman.raven.lib.model.NeonJsonParser;
 import in.handyman.raven.lib.model.triton.ModelRegistry;
 import in.handyman.raven.lib.model.triton.TritonDataTypes;
 import in.handyman.raven.lib.model.triton.TritonRequest;
@@ -23,7 +24,7 @@ public class TrinityModelApiCaller {
     public static final String XENON_VQA_START = "XENON VQA START";
     public static final String ARGON_VQA_START = "ARGON VQA START";
     public static final String KRYPTON_VQA_START = "KRYPTON MODEL START";
-    public static final String BORON_VQA_START = "BORON VQA START";
+    public static final String NEON_VQA_START = "NEON VQA START";
     public static final String VQA_VALUATION = "VQA_VALUATION";
     private final TrinityModelAction aAction;
     private final OkHttpClient httpclient;
@@ -90,7 +91,7 @@ public class TrinityModelApiCaller {
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
-            log.error("Failed to execute the Triton rest api call {1}", e);
+            log.error("Failed to execute the Triton rest api call {1}" , e);
             throw new HandymanException("Failed to execute the Copro rest api call " + node, e);
         }
     }
@@ -116,9 +117,8 @@ public class TrinityModelApiCaller {
             tritonRequest.setDatatype(TritonDataTypes.BYTES.name());
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
 
-
         }
-        log.info("Triton request set api call based on paper type : {} api request: {} ", paperType, tritonRequest.getName());
+        log.info("Triton request set api call based on paper type : "+paperType+"api request: "+tritonRequest.getName());
         return tritonRequest;
     }
 
@@ -138,11 +138,11 @@ public class TrinityModelApiCaller {
         } else if (Objects.equals(modelRegistry, ModelRegistry.KRYPTON.name())) {
             tritonRequest.setName(KRYPTON_VQA_START);
 
-        } else if (Objects.equals(modelRegistry, ModelRegistry.BORON.name())) {
-            tritonRequest.setName(BORON_VQA_START);
+        } else if (Objects.equals(modelRegistry, ModelRegistry.NEON.name())) {
+            tritonRequest.setName(NEON_VQA_START);
 
         }
-        log.info("Triton request set api call based on model registry : {} api request: {} ", modelRegistry, tritonRequest.getName());
+        log.info("Triton request set api call based on model registry : {} api request: {}", modelRegistry, tritonRequest.getName());
         return tritonRequest;
     }
 
