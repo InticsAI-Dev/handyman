@@ -1,6 +1,5 @@
 package in.handyman.raven.lib.model.trinitymodel;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,14 +16,14 @@ public class TrinityModelPayload {
     private Long actionId;
     private String process;
     private String inputFilePath;
-    private List<String> attributes;
+    private List<TrinityInputAttribute> attributes;
     private String paperType;
-    private Integer paperNo;
+    private Long paperNo;
     private String originId;
     private Long processId;
-    private Integer groupId;
+    private Long groupId;
     private Long tenantId;
     private String modelRegistry;
-    @JsonProperty("template_version")
-    private String templateVersion;
+    private String qnCategory;
+    private Long modelRegistryId;
 }

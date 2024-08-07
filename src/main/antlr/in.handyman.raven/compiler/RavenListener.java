@@ -1240,6 +1240,16 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitMultipartDownload(RavenParser.MultipartDownloadContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartDelete}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartDelete(RavenParser.MultipartDeleteContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartDelete}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartDelete(RavenParser.MultipartDeleteContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#systemkeyTable}.
 	 * @param ctx the parse tree
 	 */
@@ -1329,6 +1339,16 @@ public interface RavenListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitP2pNameValidation(RavenParser.P2pNameValidationContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#urgencyTriageBeta}.
+	 * @param ctx the parse tree
+	 */
+	void enterUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#urgencyTriageBeta}.
+	 * @param ctx the parse tree
+	 */
+	void exitUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree

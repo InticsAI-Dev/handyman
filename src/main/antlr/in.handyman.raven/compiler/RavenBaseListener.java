@@ -1495,6 +1495,18 @@ public class RavenBaseListener implements RavenListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterMultipartDelete(RavenParser.MultipartDeleteContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitMultipartDelete(RavenParser.MultipartDeleteContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSystemkeyTable(RavenParser.SystemkeyTableContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1598,6 +1610,18 @@ public class RavenBaseListener implements RavenListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitP2pNameValidation(RavenParser.P2pNameValidationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

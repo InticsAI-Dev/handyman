@@ -16,11 +16,9 @@ public class XenonResult {
     private String predictedAttributionValue;
     private Float scores;
     private JsonNode bboxes;
-    private String originId;
-    private Integer paperNo;
-    private  Long processId;
-    private Integer groupId;
-    private Long tenantId;
+    private Long questionId;
+    private Long synonymId;
+    private String sorItemName;
 
     public String getQuestion() {
         return question;
