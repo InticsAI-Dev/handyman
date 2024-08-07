@@ -22,11 +22,6 @@ import java.util.concurrent.TimeUnit;
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-//    public static final String XENON_VQA_START = action.getContext().get("XENON.VQA.START");
-//    public static final String ARGON_VQA_START = action.getContext().get("ARGON.VQA.START");
-//    public static final String KRYPTON_VQA_START = action.getContext().get("KRYPTON.MODEL.START");
-//    public static final String BORON_VQA_START = action.getContext().get("BORON.VQA.START");
-//    public static final String VQA_VALUATION = action.getContext().get("VQA.VALUATION");
     private final TrinityModelAction aAction;
     private final OkHttpClient httpclient;
     private final Logger log;
@@ -43,6 +38,7 @@ public class TrinityModelApiCaller {
                 .writeTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .readTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .build();
+
         this.action = action;
     }
 
