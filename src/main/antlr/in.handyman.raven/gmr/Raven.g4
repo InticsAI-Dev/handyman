@@ -162,6 +162,7 @@ action:
     |urgencyTriageBeta
     |validationLlm
     |neonKvp
+    |radonKvp
     |llmJsonParser
     );
 
@@ -1209,6 +1210,15 @@ validationLlm:
 
 neonKvp:
     'neonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+radonKvp:
+    'radonKvp' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'copro-url' endpoint=STRING
     'output-table' outputTable=STRING

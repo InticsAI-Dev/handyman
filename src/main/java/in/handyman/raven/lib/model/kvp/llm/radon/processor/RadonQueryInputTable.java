@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.kvp.llm.processor;
+package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
@@ -7,30 +7,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class NeonQueryInputTable implements CoproProcessor.Entity {
-    private String inputFilePath;
-    private String prompt;
-    private String textModel;
-    private String process;
-    private String paperType;
-    private Integer paperNo;
+public class RadonQueryInputTable implements CoproProcessor.Entity{
+
     private String originId;
+    private Integer paperNo;
     private Long processId;
     private Long groupId;
     private Long tenantId;
     private Long rootPipelineId;
-    private String batchId;
+    private Long actionId;
+    private String process;
+    private String inputFilePath;
+    private String prompt;
     private String modelRegistry;
-    private String responseFormat;
+    private String batchId;
 
 
     @Override
     public List<Object> getRowData() {
-        return null;
+        return List.of();
     }
 }

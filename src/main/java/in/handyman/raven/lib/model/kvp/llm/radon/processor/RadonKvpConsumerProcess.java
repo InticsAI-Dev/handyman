@@ -1,11 +1,16 @@
-package in.handyman.raven.lib.model.kvp.llm.processor;
+package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.NeonKvpAction;
+import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -22,9 +27,10 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<NeonQueryInputTable, NeonQueryOutputTable> {
-    public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.neon.kvp.activator";
-    public static final String PROCESS_NAME = PipelineName.NEON_KVP_ACTION.getProcessName();
+public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<RadonQueryInputTable, RadonQueryOutputTable> {
+
+    public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
+    public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -33,7 +39,7 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
 
-    public NeonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, NeonKvpAction aAction) {
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -43,44 +49,35 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
 
 
     @Override
-    public List<NeonQueryOutputTable> process(URL endpoint, NeonQueryInputTable entity) throws Exception {
-        List<NeonQueryOutputTable> parentObj = new ArrayList<>();
+    public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
+        List<RadonQueryOutputTable> parentObj = new ArrayList<>();
         String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         String filePath = String.valueOf(entity.getInputFilePath());
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
         String prompt = entity.getPrompt();
-        String textModel = entity.getTextModel();
-        String paperType = entity.getPaperType();
         String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
-        String responseFormat = entity.getResponseFormat();
-
 
         //payload
-        NeonKvpExtractionRequest neonKvpExtractionRequest = new NeonKvpExtractionRequest();
+        RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
+
+        radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
+        radonKvpExtractionRequest.setActionId(actionId);
+        radonKvpExtractionRequest.setProcess(PROCESS_NAME);
+        radonKvpExtractionRequest.setInputFilePath(filePath);
+        radonKvpExtractionRequest.setGroupId(groupId);
+        radonKvpExtractionRequest.setPrompt(prompt);
+        radonKvpExtractionRequest.setProcessId(processId);
+        radonKvpExtractionRequest.setPaperNo(paperNo);
+        radonKvpExtractionRequest.setTenantId(tenantId);
+        radonKvpExtractionRequest.setOriginId(originId);
 
 
-        neonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
-        neonKvpExtractionRequest.setActionId(actionId);
-        neonKvpExtractionRequest.setProcess(PROCESS_NAME);
-        neonKvpExtractionRequest.setInputFilePath(filePath);
-        neonKvpExtractionRequest.setGroupId(groupId);
-        neonKvpExtractionRequest.setPrompt(prompt);
-        neonKvpExtractionRequest.setProcessId(processId);
-        neonKvpExtractionRequest.setModelRegistry(modelRegistry);
-        neonKvpExtractionRequest.setPaperNo(paperNo);
-        neonKvpExtractionRequest.setTextModel(textModel);
-        neonKvpExtractionRequest.setTenantId(tenantId);
-        neonKvpExtractionRequest.setResponseFormat(responseFormat);
-        neonKvpExtractionRequest.setOriginId(originId);
-        neonKvpExtractionRequest.setPaperType(paperType);
-
-
-        String jsonInputRequest = mapper.writeValueAsString(neonKvpExtractionRequest);
+        String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
 
 
         TritonRequest requestBody = new TritonRequest();
@@ -119,7 +116,7 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
         return parentObj;
     }
 
-    private void tritonRequestBuilder(NeonQueryInputTable entity, Request request, List<NeonQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -131,11 +128,11 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
             if (response.isSuccessful()) {
                 assert response.body() != null;
                 String responseBody = response.body().string();
-                NeonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, NeonKvpExtractionResponse.class);
+                RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(neonDataItem -> {
+                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
-                            extractTritonOutputDataResponse(entity, neonDataItem, parentObj);
+                            extractTritonOutputDataResponse(entity, radonDataItem, parentObj);
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -143,7 +140,7 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
 
                 }
             } else {
-                parentObj.add(NeonQueryOutputTable.builder()
+                parentObj.add(RadonQueryOutputTable.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                         .paperNo(paperNo)
                         .groupId(groupId)
@@ -165,7 +162,7 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
                 log.info(aMarker, "Error in getting response from triton response {}", response.message());
             }
         } catch (IOException e) {
-            parentObj.add(NeonQueryOutputTable.builder()
+            parentObj.add(RadonQueryOutputTable.builder()
                     .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                     .paperNo(paperNo)
                     .groupId(groupId)
@@ -186,13 +183,12 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("neon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
         }
-
     }
 
-    private void extractTritonOutputDataResponse(NeonQueryInputTable entity, String neonDataItem, List<NeonQueryOutputTable> parentObj) throws JsonProcessingException {
+    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -201,17 +197,17 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
         Long rootPipelineId = entity.getRootPipelineId();
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
-        NeonKvpLineItem modelResponse = mapper.readValue(neonDataItem, NeonKvpLineItem.class);
+        RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
 
-        parentObj.add(NeonQueryOutputTable.builder()
+        parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                 .createdUserId(tenantId)
                 .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(modelResponse.getResponse()))
+                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferOutput()))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -219,26 +215,19 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .imageDPI(modelResponse.getImageDPI())
-                .imageWidth(modelResponse.getImageWidth())
-                .extractedImageUnit(modelResponse.getExtractedImageUnit())
-                .imageHeight(modelResponse.getImageHeight())
-                .responseFormat(modelResponse.getResponseFormat())
-                .textModel(modelResponse.getTextModel())
                 .batchId(entity.getBatchId())
                 .modelRegistry(entity.getModelRegistry())
-                .paperType(entity.getPaperType())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
-                .message("Neon kvp action macro completed")
+                .message("Radon kvp action macro completed")
                 .build()
         );
 
+
     }
 
-
-    private void coproResponseBuider(NeonQueryInputTable entity, Request request, List<NeonQueryOutputTable> parentObj) {
+    private void coproResponseBuider(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -248,11 +237,11 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                NeonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, NeonKvpExtractionResponse.class);
+                RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(neonDataItem -> {
+                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
-                            extractedCoproOutputResponse(entity, neonDataItem, parentObj);
+                            extractedCoproOutputResponse(entity, radonDataItem, parentObj);
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -260,7 +249,7 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
 
                 }
             } else {
-                parentObj.add(NeonQueryOutputTable.builder()
+                parentObj.add(RadonQueryOutputTable.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                         .paperNo(paperNo)
                         .groupId(groupId)
@@ -278,7 +267,7 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
                 log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
         } catch (IOException e) {
-            parentObj.add(NeonQueryOutputTable.builder()
+            parentObj.add(RadonQueryOutputTable.builder()
                     .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                     .paperNo(paperNo)
                     .groupId(groupId)
@@ -295,12 +284,12 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Neon kvp action consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Radon kvp action consumer failed for batch/group " + groupId, handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response from copro server {}", ExceptionUtil.toString(e));
         }
     }
 
-    private void extractedCoproOutputResponse(NeonQueryInputTable entity, String neonDataItem, List<NeonQueryOutputTable> parentObj) throws JsonProcessingException {
+    private void extractedCoproOutputResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -310,35 +299,28 @@ public class NeonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<Ne
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
 
-        NeonKvpLineItem modelResponse = mapper.readValue(neonDataItem, NeonKvpLineItem.class);
+        RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
-        parentObj.add(NeonQueryOutputTable.builder()
+        parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                 .createdUserId(tenantId)
                 .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(modelResponse.getResponse()))
+                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferOutput()))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
                 .tenantId(tenantId)
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
-                .paperType(entity.getPaperType())
                 .modelRegistry(entity.getModelRegistry())
                 .process(entity.getProcess())
-                .imageDPI(modelResponse.getImageDPI())
-                .imageWidth(modelResponse.getImageWidth())
-                .extractedImageUnit(modelResponse.getExtractedImageUnit())
-                .imageHeight(modelResponse.getImageHeight())
-                .responseFormat(modelResponse.getResponseFormat())
-                .textModel(modelResponse.getTextModel())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
-                .message("Neon kvp action macro completed")
+                .message("Radon kvp action macro completed")
                 .build()
         );
     }
