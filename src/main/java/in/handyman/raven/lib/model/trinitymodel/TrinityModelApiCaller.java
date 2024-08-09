@@ -26,7 +26,11 @@ public class TrinityModelApiCaller {
     private final Logger log;
     private final String node;
     public final ActionExecutionAudit action;
-
+    private final String argonVqaStart;
+    private final String xenonVqaStart;
+    private final String kryptonVqaStart;
+    private final String neonVqaStart;
+    private final String processName;
 
     public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log, ActionExecutionAudit action) {
         this.aAction = aAction;
@@ -39,31 +43,22 @@ public class TrinityModelApiCaller {
                 .build();
 
         this.action = action;
+        argonVqaStart = this.action.getContext().get("argon.vqa.start");
+        xenonVqaStart = this.action.getContext().get("xenon.vqa.start");
+        kryptonVqaStart= this.action.getContext().get("krypton.vqa.start");
+        neonVqaStart= this.action.getContext().get("neon.vqa.start");
+        processName=this.action.getContext().get("vqa.valuation");
     }
 
     public String computeTriton(TrinityModelLineItem asset, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
-        final String trinityProcessName = "VQA_VALUATION";
+
         ObjectMapper objectMapper = new ObjectMapper();
 
 
-        TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
-        trinityModelPayload.setActionId(actionId);
-        trinityModelPayload.setProcess(trinityProcessName);
-        trinityModelPayload.setRootPipelineId(rootpipelineId);
-        trinityModelPayload.setPaperType(asset.getPaperType());
-        trinityModelPayload.setTenantId(asset.getTenantId());
-        trinityModelPayload.setAttributes(asset.getAttributes());
-        trinityModelPayload.setInputFilePath(asset.getFilePath());
-        trinityModelPayload.setModelRegistry(asset.getModelRegistry());
-        trinityModelPayload.setOriginId(asset.getOriginId());
-        trinityModelPayload.setGroupId(asset.getGroupId());
-        trinityModelPayload.setPaperNo(asset.getPaperNo());
-        trinityModelPayload.setProcessId(asset.getProcessId());
-        trinityModelPayload.setQnCategory(asset.getQnCategory());
-        trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
+        TrinityModelPayload trinityModelPayload = getTrinityModelPayload(asset, actionId, rootpipelineId);
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
         TritonRequest tritonRequest;
@@ -100,6 +95,26 @@ public class TrinityModelApiCaller {
     }
 
     @NotNull
+    private TrinityModelPayload getTrinityModelPayload(TrinityModelLineItem asset, Long actionId, Long rootpipelineId) {
+        TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
+        trinityModelPayload.setActionId(actionId);
+        trinityModelPayload.setProcess(processName);
+        trinityModelPayload.setRootPipelineId(rootpipelineId);
+        trinityModelPayload.setPaperType(asset.getPaperType());
+        trinityModelPayload.setTenantId(asset.getTenantId());
+        trinityModelPayload.setAttributes(asset.getAttributes());
+        trinityModelPayload.setInputFilePath(asset.getFilePath());
+        trinityModelPayload.setModelRegistry(asset.getModelRegistry());
+        trinityModelPayload.setOriginId(asset.getOriginId());
+        trinityModelPayload.setGroupId(asset.getGroupId());
+        trinityModelPayload.setPaperNo(asset.getPaperNo());
+        trinityModelPayload.setProcessId(asset.getProcessId());
+        trinityModelPayload.setQnCategory(asset.getQnCategory());
+        trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
+        return trinityModelPayload;
+    }
+
+    @NotNull
     private TritonRequest getTritonRequestByPaperType(String paperType, String modelRegistry, String jsonInputRequest) {
         TritonRequest tritonRequest = new TritonRequest();
 
@@ -108,15 +123,15 @@ public class TrinityModelApiCaller {
             tritonRequest.setDatatype(TritonDataTypes.BYTES.name());
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
             if (Objects.equals(modelRegistry, ModelRegistry.ARGON.name())) {
-                tritonRequest.setName(action.getContext().get("ARGON.VQA.START"));
+                tritonRequest.setName(argonVqaStart);
 
             } else if (Objects.equals(modelRegistry, ModelRegistry.XENON.name())) {
-                tritonRequest.setName(action.getContext().get("XENON.VQA.START"));
+                tritonRequest.setName(xenonVqaStart);
 
             }
         } else if (Objects.equals(paperType, "Handwritten")) {
             tritonRequest.setShape(List.of(1, 1));
-            tritonRequest.setName(action.getContext().get("XENON.VQA.START"));
+            tritonRequest.setName(xenonVqaStart);
             tritonRequest.setDatatype(TritonDataTypes.BYTES.name());
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
 
@@ -134,16 +149,16 @@ public class TrinityModelApiCaller {
         tritonRequest.setData(Collections.singletonList(jsonInputRequest));
 
         if (Objects.equals(modelRegistry, ModelRegistry.ARGON.name())) {
-            tritonRequest.setName(action.getContext().get("ARGON.VQA.START"));
+            tritonRequest.setName(argonVqaStart);
 
         } else if (Objects.equals(modelRegistry, ModelRegistry.XENON.name())) {
-            tritonRequest.setName(action.getContext().get("XENON.VQA.START"));
+            tritonRequest.setName(xenonVqaStart);
 
         } else if (Objects.equals(modelRegistry, ModelRegistry.KRYPTON.name())) {
-            tritonRequest.setName(action.getContext().get("KRYPTON.MODEL.START"));
+            tritonRequest.setName(kryptonVqaStart);
 
         } else if (Objects.equals(modelRegistry, ModelRegistry.BORON.name())) {
-            tritonRequest.setName(action.getContext().get("BORON.VQA.START"));
+            tritonRequest.setName(neonVqaStart);
 
         }
         log.info("Triton request set api call based on model registry : {} api request: {} ", modelRegistry, tritonRequest.getName());
@@ -159,7 +174,7 @@ public class TrinityModelApiCaller {
 
         TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
         trinityModelPayload.setActionId(actionId);
-        trinityModelPayload.setProcess(action.getContext().get("VQA.VALUATION"));
+        trinityModelPayload.setProcess(processName);
         trinityModelPayload.setRootPipelineId(rootPipelineId);
         trinityModelPayload.setPaperType(asset.getPaperType());
         trinityModelPayload.setAttributes(asset.getAttributes());
@@ -172,7 +187,6 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setProcessId(asset.getProcessId());
         trinityModelPayload.setQnCategory(asset.getQnCategory());
         trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
-
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
