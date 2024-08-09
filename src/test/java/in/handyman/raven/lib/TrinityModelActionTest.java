@@ -109,7 +109,7 @@ class TrinityModelActionTest {
         actionExecutionAudit.getContext().put("XENON.VQA.START", "XENON VQA START");
         actionExecutionAudit.getContext().put("KRYPTON.MODEL.START", "KRYPTON MODEL START");
         actionExecutionAudit.getContext().put("BORON.VQA.START", "BORON VQA START");
-        actionExecutionAudit.getContext().put("VQA.VALUATION", "VQA_VALUATION");
+        actionExecutionAudit.getContext().put("VQA.VALUATION", "VQA VALUATION");
         actionExecutionAudit.getContext().put("triton.request.activator", "true");
         actionExecutionAudit.setActionId(12L);
         actionExecutionAudit.setRootPipelineId(1993L);
