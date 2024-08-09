@@ -225,7 +225,7 @@ public class AssetInfoAction implements IActionExecution {
                                 handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi, batch_id)" +
                                                 "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi, :batchId);")
                                         .bindBean(insert).execute();
-                                log.info(aMarker, "inserted {} into source of origin", insert);
+                                log.info(aMarker, "inserted {} into source of origin ",insert.filePath);
                             } catch (Throwable t) {
                                 insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(), tenantId);
                                 log.error(aMarker, "error inserting result {}", resultQueue, t);
