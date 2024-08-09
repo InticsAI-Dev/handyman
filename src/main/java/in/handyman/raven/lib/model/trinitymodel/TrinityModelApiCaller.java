@@ -8,7 +8,6 @@ import in.handyman.raven.lib.TrinityModelAction;
 import in.handyman.raven.lib.model.triton.ModelRegistry;
 import in.handyman.raven.lib.model.triton.TritonDataTypes;
 import in.handyman.raven.lib.model.triton.TritonRequest;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -22,18 +21,14 @@ import java.util.concurrent.TimeUnit;
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-    public static final String XENON_VQA_START = "XENON VQA START";
-    public static final String ARGON_VQA_START = "ARGON VQA START";
-    public static final String KRYPTON_VQA_START = "KRYPTON MODEL START";
-    public static final String BORON_VQA_START = "BORON VQA START";
-    public static final String VQA_VALUATION = "VQA_VALUATION";
     private final TrinityModelAction aAction;
     private final OkHttpClient httpclient;
     private final Logger log;
     private final String node;
+    public final ActionExecutionAudit action;
 
 
-    public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log) {
+    public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log, ActionExecutionAudit action) {
         this.aAction = aAction;
         this.node = node;
         this.log = log;
@@ -42,34 +37,41 @@ public class TrinityModelApiCaller {
                 .writeTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .readTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .build();
+
+        this.action = action;
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeTriton(TrinityModelLineItem asset, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
-        Long rootPipelineId = action.getRootPipelineId();
+        Long rootpipelineId = action.getRootPipelineId();
+        final String trinityProcessName = "VQA_VALUATION";
         ObjectMapper objectMapper = new ObjectMapper();
 
 
         TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
         trinityModelPayload.setActionId(actionId);
-        trinityModelPayload.setProcess(VQA_VALUATION);
-        trinityModelPayload.setRootPipelineId(rootPipelineId);
-        trinityModelPayload.setPaperType(paperType);
-        trinityModelPayload.setTenantId(tenantId);
-        trinityModelPayload.setAttributes(questions);
-        trinityModelPayload.setInputFilePath(inputPath);
-        trinityModelPayload.setModelRegistry(modelRegistry);
-        trinityModelPayload.setTemplateVersion("vqa");
-
+        trinityModelPayload.setProcess(trinityProcessName);
+        trinityModelPayload.setRootPipelineId(rootpipelineId);
+        trinityModelPayload.setPaperType(asset.getPaperType());
+        trinityModelPayload.setTenantId(asset.getTenantId());
+        trinityModelPayload.setAttributes(asset.getAttributes());
+        trinityModelPayload.setInputFilePath(asset.getFilePath());
+        trinityModelPayload.setModelRegistry(asset.getModelRegistry());
+        trinityModelPayload.setOriginId(asset.getOriginId());
+        trinityModelPayload.setGroupId(asset.getGroupId());
+        trinityModelPayload.setPaperNo(asset.getPaperNo());
+        trinityModelPayload.setProcessId(asset.getProcessId());
+        trinityModelPayload.setQnCategory(asset.getQnCategory());
+        trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
         TritonRequest tritonRequest;
 
         if (Objects.equals(action.getContext().get("sor.transaction.filter.by.paper.type"), "true")) {
-            tritonRequest = getTritonRequestByPaperType(paperType, modelRegistry, jsonInputRequest);
+            tritonRequest = getTritonRequestByPaperType(asset.getPaperType(), asset.getModelRegistry(), jsonInputRequest);
         } else {
-            tritonRequest = getTritonRequestByModelRegistry(modelRegistry, jsonInputRequest);
+            tritonRequest = getTritonRequestByModelRegistry(asset.getModelRegistry(), jsonInputRequest);
         }
 
 
@@ -80,7 +82,7 @@ public class TrinityModelApiCaller {
 
         final Request request = new Request.Builder().url(node)
                 .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-        log.info("Triton Request URL : {} Question List size {}", node, questions.size());
+        log.info("Triton Request URL : {} Question List size {}", node, asset.getAttributes().size());
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
@@ -106,15 +108,15 @@ public class TrinityModelApiCaller {
             tritonRequest.setDatatype(TritonDataTypes.BYTES.name());
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
             if (Objects.equals(modelRegistry, ModelRegistry.ARGON.name())) {
-                tritonRequest.setName(ARGON_VQA_START);
+                tritonRequest.setName(action.getContext().get("ARGON.VQA.START"));
 
             } else if (Objects.equals(modelRegistry, ModelRegistry.XENON.name())) {
-                tritonRequest.setName(XENON_VQA_START);
+                tritonRequest.setName(action.getContext().get("XENON.VQA.START"));
 
             }
         } else if (Objects.equals(paperType, "Handwritten")) {
             tritonRequest.setShape(List.of(1, 1));
-            tritonRequest.setName(XENON_VQA_START);
+            tritonRequest.setName(action.getContext().get("XENON.VQA.START"));
             tritonRequest.setDatatype(TritonDataTypes.BYTES.name());
             tritonRequest.setData(Collections.singletonList(jsonInputRequest));
 
@@ -132,23 +134,23 @@ public class TrinityModelApiCaller {
         tritonRequest.setData(Collections.singletonList(jsonInputRequest));
 
         if (Objects.equals(modelRegistry, ModelRegistry.ARGON.name())) {
-            tritonRequest.setName(ARGON_VQA_START);
+            tritonRequest.setName(action.getContext().get("ARGON.VQA.START"));
 
         } else if (Objects.equals(modelRegistry, ModelRegistry.XENON.name())) {
-            tritonRequest.setName(XENON_VQA_START);
+            tritonRequest.setName(action.getContext().get("XENON.VQA.START"));
 
         } else if (Objects.equals(modelRegistry, ModelRegistry.KRYPTON.name())) {
-            tritonRequest.setName(KRYPTON_VQA_START);
+            tritonRequest.setName(action.getContext().get("KRYPTON.MODEL.START"));
 
         } else if (Objects.equals(modelRegistry, ModelRegistry.BORON.name())) {
-            tritonRequest.setName(BORON_VQA_START);
+            tritonRequest.setName(action.getContext().get("BORON.VQA.START"));
 
         }
         log.info("Triton request set api call based on model registry : {} api request: {} ", modelRegistry, tritonRequest.getName());
         return tritonRequest;
     }
 
-    public String computeCopro(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeCopro(TrinityModelLineItem asset, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootPipelineId = action.getRootPipelineId();
@@ -157,20 +159,27 @@ public class TrinityModelApiCaller {
 
         TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
         trinityModelPayload.setActionId(actionId);
-        trinityModelPayload.setProcess(VQA_VALUATION);
+        trinityModelPayload.setProcess(action.getContext().get("VQA.VALUATION"));
         trinityModelPayload.setRootPipelineId(rootPipelineId);
-        trinityModelPayload.setPaperType(paperType);
-        trinityModelPayload.setAttributes(questions);
-        trinityModelPayload.setInputFilePath(inputPath);
-        trinityModelPayload.setModelRegistry(modelRegistry);
-        trinityModelPayload.setTenantId(tenantId);
+        trinityModelPayload.setPaperType(asset.getPaperType());
+        trinityModelPayload.setAttributes(asset.getAttributes());
+        trinityModelPayload.setInputFilePath(asset.getFilePath());
+        trinityModelPayload.setModelRegistry(asset.getModelRegistry());
+        trinityModelPayload.setTenantId(asset.getTenantId());
+        trinityModelPayload.setOriginId(asset.getOriginId());
+        trinityModelPayload.setGroupId(asset.getGroupId());
+        trinityModelPayload.setPaperNo(asset.getPaperNo());
+        trinityModelPayload.setProcessId(asset.getProcessId());
+        trinityModelPayload.setQnCategory(asset.getQnCategory());
+        trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
+
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
 
         final Request request = new Request.Builder().url(node)
                 .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-        log.info("Copro Request URL : {} Question List size {}", node, questions.size());
+        log.info("Copro Request URL : {} Question List size {}", node, asset.getAttributes());
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {

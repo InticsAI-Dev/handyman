@@ -230,7 +230,6 @@ public class AssetInfoAction implements IActionExecution {
                                 insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(), tenantId);
                                 log.error(aMarker, "error inserting result {}", resultQueue, t);
                             }
-
                         });
                     }
             );

@@ -1,23 +1,20 @@
 package in.handyman.raven.lib.model.trinitymodel;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-
-@Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Data
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 
-public class TrinityModelDataLineItem {
 
+public class TrinityInputAttribute {
     private String question;
-    private String predictedAttributionValue;
-    private Float scores;
-    private JsonNode bboxes;
     private Long questionId;
     private Long synonymId;
     private String sorItemName;
