@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TrinityModelAction;
-import in.handyman.raven.lib.model.NeonJsonParser;
 import in.handyman.raven.lib.model.triton.ModelRegistry;
 import in.handyman.raven.lib.model.triton.TritonDataTypes;
 import in.handyman.raven.lib.model.triton.TritonRequest;

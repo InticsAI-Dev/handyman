@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.kvp.neon.processor;
+package in.handyman.raven.lib.model.kvp.llm.processor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

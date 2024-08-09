@@ -1,16 +1,23 @@
-package in.handyman.raven.lib.model.kvp.neon.jsonparser;
+package in.handyman.raven.lib.model.kvp.llm.jsonparser;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class NeonJsonQueryInputTable {
-    private String response;
+public class LlmJsonQueryOutputTable {
+    private Timestamp createdOn;
+    private Long createdUserId;
+    private Timestamp lastUpdatedOn;
+    private Long lastUpdatedUserId;
+    private List<LlmJsonParsedResponse> parsedOutput;
     private Integer paperNo;
     private String originId;
     private Long groupId;
@@ -22,5 +29,4 @@ public class NeonJsonQueryInputTable {
     private Long imageDpi;
     private Long imageWidth;
     private Long imageHeight;
-
 }

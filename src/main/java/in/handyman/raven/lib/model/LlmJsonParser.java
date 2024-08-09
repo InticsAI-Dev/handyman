@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @ActionContext(
     actionName = "NeonJsonParser"
 )
-public class NeonJsonParser implements IActionContext {
+public class LlmJsonParser implements IActionContext {
   private String name;
 
   private String resourceConn;

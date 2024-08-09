@@ -162,7 +162,7 @@ action:
     |urgencyTriageBeta
     |validationLlm
     |neonKvp
-    |neonJsonParser
+    |llmJsonParser
     );
 
 
@@ -1217,8 +1217,8 @@ neonKvp:
     '}' ('on-condition' condition=expression)* ;
 
 
-neonJsonParser:
-    'neonJsonParser' 'as' name=STRING
+llmJsonParser:
+    'llmJsonParser' 'as' name=STRING
     'on-resource-conn' resourceConn= STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING

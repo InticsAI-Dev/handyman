@@ -6,9 +6,9 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.NeonKvp;
-import in.handyman.raven.lib.model.kvp.neon.processor.NeonKvpConsumerProcess;
-import in.handyman.raven.lib.model.kvp.neon.processor.NeonQueryInputTable;
-import in.handyman.raven.lib.model.kvp.neon.processor.NeonQueryOutputTable;
+import in.handyman.raven.lib.model.kvp.llm.processor.NeonKvpConsumerProcess;
+import in.handyman.raven.lib.model.kvp.llm.processor.NeonQueryInputTable;
+import in.handyman.raven.lib.model.kvp.llm.processor.NeonQueryOutputTable;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -45,7 +45,7 @@ public class NeonKvpAction implements IActionExecution {
   public static final String DEFAULT_SOCKET_TIME_OUT = "100";
   public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
   public static final String COPRO_CLIENT_API_SLEEPTIME = "copro.client.api.sleeptime";
-  public static final String CONSUMER_API_COUNT = "neon.kvp.consumer.API.count";
+  public static final String CONSUMER_API_COUNT = "llm.kvp.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String THREAD_SLEEP_TIME = "1000";
   public static final String INSERT_INTO = "INSERT INTO";
@@ -106,7 +106,7 @@ public class NeonKvpAction implements IActionExecution {
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(neonKvp.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-      log.info(aMarker, "kvp extraction with neon Action for {} has been started", neonKvp.getName());
+      log.info(aMarker, "kvp extraction with llm Action for {} has been started", neonKvp.getName());
 
       final List<URL> urls = Optional.ofNullable(neonKvpUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
         try {
@@ -121,11 +121,11 @@ public class NeonKvpAction implements IActionExecution {
       Thread.sleep(threadSleepTime);
       final NeonKvpConsumerProcess neonKvpConsumerProcess = new NeonKvpConsumerProcess(log, aMarker, action, this);
       coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, neonKvpConsumerProcess);
-      log.info(aMarker, " neon kvp Action has been completed {}  ", neonKvp.getName());
+      log.info(aMarker, " llm kvp Action has been completed {}  ", neonKvp.getName());
     } catch (Exception e) {
       action.getContext().put(neonKvp.getName() + ".isSuccessful", "false");
       HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("error in execute method for neon kvp action", handymanException, action);
+      HandymanException.insertException("error in execute method for llm kvp action", handymanException, action);
 
     }
 

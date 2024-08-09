@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.kvp.neon.processor;
+package in.handyman.raven.lib.model.kvp.llm.processor;
 
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;

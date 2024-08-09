@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.kvp.neon.jsonparser;
+package in.handyman.raven.lib.model.kvp.llm.jsonparser;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class NeonJsonParsedResponse {
+public class LlmJsonParsedResponse {
     private String sorContainerName;
     private String sorItemName;
     private String answer;
