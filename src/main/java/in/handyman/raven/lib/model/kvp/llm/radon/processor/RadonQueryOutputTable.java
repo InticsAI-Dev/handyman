@@ -16,19 +16,19 @@ import java.util.stream.Stream;
 @NoArgsConstructor
 @Builder
 public class RadonQueryOutputTable implements CoproProcessor.Entity {
-    private Long createdUserId;
     private Timestamp createdOn;
-    private Long lastUpdatedUserId;
+    private Long createdUserId;
     private Timestamp lastUpdatedOn;
+    private Long lastUpdatedUserId;
     private String inputFilePath;
     private String totalResponseJson;
     private Integer paperNo;
     private String originId;
     private Long processId;
+    private Long actionId;
     private String process;
     private Long groupId;
     private Long tenantId;
-    private Long actionId;
     private Long rootPipelineId;
     private String batchId;
     private String modelRegistry;
@@ -39,10 +39,11 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.createdUserId, this.createdOn, this.lastUpdatedUserId, this.lastUpdatedOn,
+        return Stream.of(this.createdOn,this.createdUserId,  this.lastUpdatedOn,this.lastUpdatedUserId,
                 this.inputFilePath, this.totalResponseJson,  this.paperNo, this.originId,
-                this.processId, this.process, this.groupId, this.tenantId, this.actionId, this.rootPipelineId, this.batchId,
+                this.processId,this.actionId, this.process, this.groupId, this.tenantId,  this.rootPipelineId, this.batchId,
                 this.modelRegistry, this.status, this.stage, this.message).collect(Collectors.toList());
 
     }
 }
+

@@ -52,19 +52,18 @@ public class RadonKvpAction implements IActionExecution {
   public static final String DEFAULT_SOCKET_TIME_OUT = "100";
   public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
   public static final String COPRO_CLIENT_API_SLEEPTIME = "copro.client.api.sleeptime";
-  public static final String CONSUMER_API_COUNT = "llm.kvp.consumer.API.count";
+  public static final String CONSUMER_API_COUNT = "Radon.kvp.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String THREAD_SLEEP_TIME = "1000";
   public static final String INSERT_INTO = "INSERT INTO";
 
-  public static final String COLUMN_LIST = "created_user_id,created_on,last_updated_user_id,  last_updated_on, " +
-          "input_file_path, total_response_json,text_model,paper_type, paper_no,origin_id ,process_id,process," +
-          "group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry, response_format, image_dpi," +
-          " image_width, image_height, extracted_image_unit , status, stage, message";
+  public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path," +
+          " total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, " +
+          "root_pipeline_id, batch_id, model_registry, status, stage, message";
   public static final String VAL_STRING_LIST = "VALUES( ?,?,?,?,?," +
           "?,?,?,?,?" +
           ",?,?,?,?,?," +
-          "?,?, ?, ?, ?,? ,?,?, ?, ?, ?)";
+          "?,?, ?, ?)";
 
   public static final String READ_BATCH_SIZE = "read.batch.size";
   private final int threadSleepTime;

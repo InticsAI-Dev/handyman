@@ -1,16 +1,13 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
-import in.handyman.raven.lib.RadonKvpAction;
-import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
-import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
-import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
-import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -81,7 +78,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("KRYPTON MODEL START");
+        requestBody.setName("RADON START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -207,7 +204,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferOutput()))
+                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferResponse()))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -308,7 +305,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferOutput()))
+                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferResponse()))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -323,5 +320,15 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .message("Radon kvp action macro completed")
                 .build()
         );
+    }
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    public Map<String, Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+            throws IOException {
+        String json = jsonParser.getText();
+        // Remove the ```json block and any leading/trailing spaces
+        json = json.replace("```json", "").replace("```", "").trim();
+        // Deserialize the cleaned JSON string into a Map
+        return objectMapper.readValue(json, Map.class);
     }
 }
