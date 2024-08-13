@@ -74,7 +74,7 @@ public class DbDataDartAction implements IActionExecution {
       for (String schemaTableName : schemaTableNamesList) {
         final String[] parts = schemaTableName.split("\\.");
         final String schemaName = parts[0];
-        final String truncateQuery = String.format("TRUNCATE TABLE %s", schemaTableName);
+        final String truncateQuery = String.format("TRUNCATE TABLE %s CASCADE", schemaTableName);
 
         try (final Statement stmt = connection.createStatement()) {
           performTruncation(schemaTableName, stmt, truncateQuery, jdbi, dataBaseTruncateInputTableList, schemaName);

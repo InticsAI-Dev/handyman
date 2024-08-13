@@ -21,7 +21,7 @@ class CreateExactZipActionTest {
                 .name("test")
                 .fileName("pdf_to_image.zip")
                 .destination("/home/anandh.andrews@zucisystems.com/intics-workspace/testing/database-backup")
-                .source("/home/anandh.andrews@zucisystems.com/intics-workspace/testing/pdf_to_image")
+                .source("/home/anandh.andrews@zucisystems.com/intics-workspace/Demo/BUILD-16-BATCH-May25/5-samples/SYNT_166522063.pdf")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
