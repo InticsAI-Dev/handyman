@@ -12,10 +12,11 @@ class CreateZipActionTest {
 
     @Test
     void execute() throws Exception {
-        CreateZip createZipAction = CreateZip.builder().name("test")
-                .fileName("SYNT_166730538_c3")
-                .destination("/home/dineshkumar.anandan@zucisystems.com/Documents/evaluation_output/47747/SYNT_166730538_c3")
-                .source("/home/dineshkumar.anandan@zucisystems.com/Documents/evaluation_output/47747/SYNT_166730538_c3/SYNT_166730538_c3_29022024")
+        CreateZip createZipAction = CreateZip.builder()
+                .name("test")
+                .fileName("batch-id")
+                .destination("/home/anandh.andrews@zucisystems.com/intics-workspace/testing/database-backup")
+                .source("/home/anandh.andrews@zucisystems.com/intics-workspace/testing/batch-id")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
