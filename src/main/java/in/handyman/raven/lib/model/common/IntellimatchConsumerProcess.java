@@ -104,6 +104,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is completed").
+                            batchId(result.getBatchId()).
                     build()
             );
         }
@@ -154,6 +155,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                         stage(CONTROL_DATA_PROCESS_NAME).
                         message(response.message()).
+                        batchId(result.getBatchId()).
                         build()
                 );
 
@@ -190,6 +192,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                         stage(CONTROL_DATA_PROCESS_NAME).
                         message(response.message()).
+                        batchId(result.getBatchId()).
                         build()
                 );
                 log.error(aMarker, "The Exception occurred in intelliMatch data comparison by {} ", response);
@@ -209,6 +212,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
+                    batchId(result.getBatchId()).
                     build()
             );
 
@@ -241,6 +245,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                                 message("data insertion is completed").
                                 modelName(modelName).
                                 modelVersion(modelVersion).
+                                batchId(result.getBatchId()).
                                 build());
             }
         } catch (Exception exception) {
@@ -257,6 +262,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
+                    batchId(result.getBatchId()).
                     build()
             );
         }
@@ -288,6 +294,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         message("data insertion is completed").
                         modelName(modelName).
                         modelVersion(modelVersion).
+                        batchId(result.getBatchId()).
                         build());
             }
 
@@ -306,6 +313,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
+                    batchId(result.getBatchId()).
                     build()
             );
         }

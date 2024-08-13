@@ -39,9 +39,9 @@ import java.util.stream.Collectors;
 @ActionExecution(actionName = "DataExtraction")
 public class DataExtractionAction implements IActionExecution {
     public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
-    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version";
+    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id";
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?)";
+    public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";

@@ -64,8 +64,8 @@ public class ProductResponseAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Product Response Action for {} has been started", productResponse.getName());
             final String insertQuery = "INSERT INTO " + productResponse.getResultTable() +
-                    "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,feature,triggered_url) " +
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+                    "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,feature,triggered_url, batch_id) " +
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?, ?)";
             final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.product.response.url"))
                     .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                         try {
@@ -157,6 +157,7 @@ public class ProductResponseAction implements IActionExecution {
                                 .feature(entity.getFeature())
                                 .status("COMPLETED")
                                 .message("alchemy product response completed for origin_id - " + originId)
+                                .batchId(entity.getBatchId())
                                 .build());
                     }
                 } else {
@@ -172,6 +173,7 @@ public class ProductResponseAction implements IActionExecution {
                             .stage("PRODUCT_OUBOUND")
                             .status("FAILED")
                             .message("alchemy product response failed for origin_id - " + originId)
+                            .batchId(entity.getBatchId())
                             .build());
                 }
             } catch (Exception e) {
@@ -227,6 +229,7 @@ public class ProductResponseAction implements IActionExecution {
         private Long rootPipelineId;
         private String baseUrl;
         private String feature;
+        private String batchId;
 
         @Override
         public List<Object> getRowData() {
@@ -251,10 +254,11 @@ public class ProductResponseAction implements IActionExecution {
         private String message;
         private String triggeredUrl;
         private String feature;
+        private String batchId;
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId).collect(Collectors.toList());
         }
     }
 }

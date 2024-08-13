@@ -23,7 +23,7 @@ public class GreyScaleConversionInputQuerySet implements CoproProcessor.Entity {
     private String outputDir;
     private Long rootPipelineId;
     public String process;
-
+    public String batchId;
     @Override
     public List<Object> getRowData() {
         return null;

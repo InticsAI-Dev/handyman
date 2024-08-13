@@ -36,7 +36,7 @@ public class PaperItemizerAction implements IActionExecution {
     public static final String READ_BATCH_SIZE = "read.batch.size";
     public static final String PAPER_ITEMIZER_CONSUMER_API_COUNT = "paper.itemizer.consumer.API.count";
     public static final String WRITE_BATCH_SIZE = "write.batch.size";
-    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,model_name,model_version";
+    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,model_name,model_version,batch_id";
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -65,7 +65,7 @@ public class PaperItemizerAction implements IActionExecution {
             //5. build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + paperItemizer.getResultTable() +
                     "(" + INSERT_COLUMNS + ") " +
-                    " VALUES(?,?, ?,?, ?,?, ?,?,?,? ,?,  ?,?,?)";
+                    " VALUES(?,?, ?,?, ?,?, ?,?,?,? ,?,  ?,?,?,?)";
             log.info(aMarker, "paper itemizer Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls

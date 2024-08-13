@@ -27,6 +27,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
     public static final String URGENCY_TRIAGE_PROCESS_NAME = PipelineName.URGENCY_TRIAGE.getProcessName();
     private final Logger log;
     private final Marker aMarker;
+    private final ObjectMapper mapper = new ObjectMapper();
     private final MediaType mediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
@@ -141,6 +142,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .stage("URGENCY_TRIAGE_MODEL")
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
@@ -159,6 +161,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .stage("URGENCY_TRIAGE_MODEL")
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -194,6 +197,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -231,11 +235,13 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .stage(URGENCY_TRIAGE_PROCESS_NAME)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
+                        .batchId(entity.getBatchId())
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
         } catch (Exception e) {
             String createdUserId = entity.getCreatedUserId();
+            String lastUpdatedUserId = entity.getLastUpdatedUserId();
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
             Integer groupId = entity.getGroupId();
@@ -259,6 +265,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -268,6 +275,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
     private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
         String createdUserId = entity.getCreatedUserId();
+        String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
         Integer groupId = entity.getGroupId();
@@ -299,6 +307,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

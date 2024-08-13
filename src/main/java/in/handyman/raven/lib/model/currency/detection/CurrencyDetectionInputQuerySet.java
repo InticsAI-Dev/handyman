@@ -24,6 +24,7 @@ public class CurrencyDetectionInputQuerySet implements CoproProcessor.Entity {
     private String outputDir;
     private Long rootPipelineId;
     private String process;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

@@ -37,6 +37,7 @@ public class NoiseModelOutputEntity implements CoproProcessor.Entity {
     private String message;
     private String modelName;
     private String modelVersion;
+    private String batchId;
     @Override
     public List<Object> getRowData() {
         return Stream.of( this.originId, this.paperNo,
@@ -44,6 +45,6 @@ public class NoiseModelOutputEntity implements CoproProcessor.Entity {
                 this.consolidatedClass,this.noiseModelsResult, this.hwNoiseDetectionOutput,
                 this.checkNoiseDetectionOutput, this.checkboxMarkDetectionOutput,
                 this.speckleNoiseDetectionOutput, this.createdOn,this.rootPipelineId,
-                this.status,this.stage,this.message,this.modelName,this.modelVersion).collect(Collectors.toList());
+                this.status,this.stage,this.message,this.modelName,this.modelVersion,this.batchId).collect(Collectors.toList());
     }
 }

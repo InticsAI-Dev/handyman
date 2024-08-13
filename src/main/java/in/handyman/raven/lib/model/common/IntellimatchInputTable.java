@@ -23,6 +23,7 @@ public class IntellimatchInputTable implements CoproProcessor.Entity {
     private String actualValue;
     private String extractedValue;
     private Integer confidenceScore;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {
