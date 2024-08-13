@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.ConfigAccess;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
@@ -22,7 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Types;
@@ -60,7 +63,7 @@ public class DbBackupEaseAction implements IActionExecution {
     public void execute() throws Exception {
 
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbBackupEase.getResourceConn());
-        SpwResourceConfig spwResourceConfig = ResourceAccess.resourceConfigs(dbBackupEase.getResourceConn());
+        SpwResourceConfig spwResourceConfig = ConfigAccess.getResourceConfig(dbBackupEase.getResourceConn());
         jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
         log.info(aMarker, "Database backup action {} has been started ", dbBackupEase.getName());
 
@@ -88,8 +91,8 @@ public class DbBackupEaseAction implements IActionExecution {
         final List<String> allRestrictedSchemaList = new ArrayList<>();
         dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
             // Collect restricted schema list
-            List<String> restrictedSchemaList = convertListFromString(dataBaseBackupInputTable.getRestrictedSchemaList());
-            List<String> backupSchemaList = convertListFromString(dataBaseBackupInputTable.getBackupSchemaList());
+            List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
+            List<String> backupSchemaList = dataBaseBackupInputTable.getBackupSchemaList();
             final List<String> allBackupSchemaList = getAllBackupSchemas(backupSchemaList, restrictedSchemaList);
 
             String backupCommand = !allBackupSchemaList.isEmpty() ?
@@ -105,7 +108,7 @@ public class DbBackupEaseAction implements IActionExecution {
 
                 Files.createDirectories(Paths.get(outputDir));
                 String fileNameWithDate = createFileName(action, dataBaseBackupInputTable.getTargetDirectory());
-                final boolean resultBool = executeBackupCommand(backupCommand, fileNameWithDate);
+                final boolean resultBool = executeBackupCommand(backupCommand, fileNameWithDate, spwResourceConfig.getPassword());
                 String formattedFileSize = getFormattedFileSize(fileNameWithDate);
 
                 handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, formattedFileSize, resultBool,
@@ -128,10 +131,12 @@ public class DbBackupEaseAction implements IActionExecution {
 
     public static String createFileName(ActionExecutionAudit action, String outputDir) {
 
-        final String fileNameWithDate = action.getContext().get("database.backup.file.name") + "_" +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss")) + ".sql";
+        String currentDateTimePattern = action.getContext().get("current.date.directory.format");
+        String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern(currentDateTimePattern));
+        String baseFileName = action.getContext().get("database.backup.file.name");
+        final String fileNameWithDate = outputDir + baseFileName + "_" + currentDateTime + ".sql";
 
-        return outputDir + fileNameWithDate;
+        return fileNameWithDate;
 
     }
 
@@ -150,18 +155,50 @@ public class DbBackupEaseAction implements IActionExecution {
         return formattedFileSize;
     }
 
-    private boolean executeBackupCommand(String backupCommand, String originalFileName) {
+    private boolean executeBackupCommand(String backupCommand, String originalFileName, String pgPassword) {
         try {
+            log.info(aMarker, "Backup started with command {}. Dump file saved as {}", backupCommand, originalFileName);
+
+            // Combine the command with the redirection within bash
+            String[] fullCommand = { "bash", "-c", backupCommand + " > " + originalFileName };
+
+            // Set the environment variable for the password
+            ProcessBuilder processBuilder = new ProcessBuilder(fullCommand);
+            processBuilder.environment().put("PGPASSWORD", pgPassword);
+
             // Execute backup command using ProcessBuilder
-            final Process process = new ProcessBuilder()
-                    .command("bash", "-c", backupCommand + " > " + originalFileName)
-                    .start();
+            final Process process = processBuilder.start();
+
+            // Capture output and error streams to prevent deadlock
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.info(aMarker, "Output: {}", line);
+                    }
+                } catch (IOException e) {
+                    log.error(aMarker, "Error reading process output:", e);
+                }
+            }).start();
+
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.error(aMarker, "Error: {}", line);
+                    }
+                } catch (IOException e) {
+                    log.error(aMarker, "Error reading process error output:", e);
+                }
+            }).start();
+
             // Wait for the process to finish
-            process.waitFor();
+            int exitCode = process.waitFor();
+
             // Check the exit status
-            int exitCode = process.exitValue();
             if (exitCode == 0) {
                 log.info(aMarker, "Backup successful. Dump file saved as {}", originalFileName);
+                return true;
             } else {
                 log.error(aMarker, "Backup failed. Exit code: {}", exitCode);
                 return false;
@@ -169,9 +206,12 @@ public class DbBackupEaseAction implements IActionExecution {
         } catch (IOException | InterruptedException exception) {
             // Log the exception
             log.error(aMarker, "Error during backup:", exception);
+            Thread.currentThread().interrupt();  // Restore interrupted status
+            return false;
         }
-        return true;
     }
+
+
 
     private List<String> getAllBackupSchemas(List<String> dataBaseBackupInput, List<String> restrictedSchemaList) {
 
@@ -206,8 +246,7 @@ public class DbBackupEaseAction implements IActionExecution {
 
 
     private String getCommandFormat() {
-        return "docker exec " + action.getContext().get("db.docker.container.name.value") +
-                " sh -c 'pg_dump %s %s'";
+        return "pg_dump %s %s";
     }
 
     private String getAdditionalOptions(SpwResourceConfig config) {
@@ -264,8 +303,8 @@ public class DbBackupEaseAction implements IActionExecution {
     @NoArgsConstructor
     @Data
     public static class DataBaseBackupInputTable {
-        private String backupSchemaList;
-        private String restrictedSchemaList;
+        private List<String> backupSchemaList;
+        private List<String> restrictedSchemaList;
         private String targetDirectory;
         private Integer groupId;
         private Long tenantId;

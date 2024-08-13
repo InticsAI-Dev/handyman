@@ -13,11 +13,11 @@ class DbDataDartActionTest {
         DbDataDart dbDataDart = DbDataDart.builder()
                 .name("database backup pipeline")
                 .condition(true)
-                .dataBaseName("zio_pipeline")
+                .dataBaseName("zio_pipeline_ui")
                 .auditTable("sanitary_hub.db_data_truncate_audit")
                 .resourceConn("intics_zio_db_conn")
                 .querySet("SELECT \n" +
-                        "    ARRAY['paper_classification', 'urgency_triage'] AS truncateSchemaList,\n" +
+                        "    ARRAY['urgency_triage'] AS truncateSchemaList,\n" +
                         "    ARRAY['urgency_triage.ut_model_result'] AS excludeTableWithSchemaList,\n" +
                         "    1 AS groupId,\n" +
                         "    1 AS tenantId,\n" +

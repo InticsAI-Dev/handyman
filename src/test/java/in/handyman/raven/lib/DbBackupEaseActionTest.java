@@ -18,13 +18,12 @@ class DbBackupEaseActionTest {
         DbBackupEase dataBaseModel = DbBackupEase.builder()
                 .name("database backup pipeline")
                 .condition(true)
-                .dataBaseName("zio_pipeline")
+                .dataBaseName("zio_pipeline_ui")
                 .auditTable("sanitary_hub.db_data_backup_audit")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("SELECT \n" +
-                        "    'info,sor_transaction,paper_classification, urgency_triage' AS backupSchemaList,\n" +
-                        "    'audit,sor_transaction' AS restrictedSchemaList,\n" +
-                        "    '/home/dineshkumar.anandan@zucisystems.com/Documents/database_backup/' AS targetDirectory,\n" +
+                .querySet("SELECT Array['config'] AS backupSchemaList,\n" +
+                        "    Array['audit'] AS restrictedSchemaList,\n" +
+                        "    '/home/anandh.andrews@zucisystems.com/intics-workspace/testing/database-backup/' AS targetDirectory,\n" +
                         "    1 AS groupId,\n" +
                         "    1 AS tenantId,\n" +
                         "    1112 AS processId,\n" +
@@ -33,6 +32,7 @@ class DbBackupEaseActionTest {
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("database.backup.file.name", "pg_dump_file");
         actionExecutionAudit.getContext().put("allow.backup.by.schema", "false");
+        actionExecutionAudit.getContext().put("current.date.directory.format", "DD_MM_YYYY");
         actionExecutionAudit.getContext().put("db.docker.user.name", "postgres");
         actionExecutionAudit.getContext().put("db.docker.host.value", "localhost");
         actionExecutionAudit.getContext().put("db.docker.port.value", "5432");
