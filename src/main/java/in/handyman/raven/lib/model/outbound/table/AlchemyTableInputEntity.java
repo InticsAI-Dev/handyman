@@ -22,7 +22,6 @@ public class AlchemyTableInputEntity implements CoproProcessor.Entity {
     private String pipelineOriginId;
     private String fileName;
     private Long paperNo;
-    private String batchId;
 
     @Override
     public List<Object> getRowData() {

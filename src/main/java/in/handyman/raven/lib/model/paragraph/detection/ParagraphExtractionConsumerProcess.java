@@ -141,7 +141,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
-                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -157,7 +156,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
-                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -196,7 +194,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
-                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -212,7 +209,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
-                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -256,7 +252,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                             .process(entity.getProcess())
                             .processId(entity.getProcessId())
                             .outputDir(entity.getOutputDir())
-                            .batchId(entity.getBatchId())
                             .build());
 
 
@@ -278,7 +273,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
-                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -322,7 +316,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                             .process(entity.getProcess())
                             .processId(entity.getProcessId())
                             .outputDir(entity.getOutputDir())
-                            .batchId(entity.getBatchId())
                             .build());
 
 
@@ -345,7 +338,6 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
-                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);

@@ -21,7 +21,6 @@ public class PaperItemizerInputTable implements CoproProcessor.Entity {
     private String filePath;
     private String outputDir;
     private Long rootPipelineId;
-    private String batchId;
 
     @Override
     public List<Object> getRowData() {

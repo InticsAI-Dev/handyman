@@ -34,7 +34,6 @@ public class P2PNameValidationInputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private Integer tenantId;
     private String sorItemName;
-    private String batchId;
     private Integer firstNameQuestionId;
     private Integer lastNameQuestionId;
     private Integer questionId;

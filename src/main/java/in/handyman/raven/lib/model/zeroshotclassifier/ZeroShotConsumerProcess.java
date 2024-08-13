@@ -139,7 +139,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .stage(PROCESS_NAME)
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
-                                .batchId(entity.getBatchId())
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
             }
@@ -154,7 +153,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
-                            .batchId(entity.getBatchId())
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -187,7 +185,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .stage(PROCESS_NAME)
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
-                                .batchId(entity.getBatchId())
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
             }
@@ -202,7 +199,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
-                            .batchId(entity.getBatchId())
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -235,7 +231,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
                         .build());
             });
         } catch (JsonProcessingException e) {
@@ -268,7 +263,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
                         .build());
             });
         } catch (JsonProcessingException e) {

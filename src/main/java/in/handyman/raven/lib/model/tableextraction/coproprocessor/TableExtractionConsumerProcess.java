@@ -139,7 +139,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                     .sorContainerId(entity.getSorContainerId())
                                     .channelId(entity.getChannelId())
                                     .modelName(action.getContext().get("NEON_MODEL_NAME"))
-                                    .batchId(entity.getBatchId())
                                     .build());
 
                 });
@@ -162,7 +161,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                                 .sorContainerId(entity.getSorContainerId())
                                 .channelId(entity.getChannelId())
                                 .modelName(action.getContext().get("NEON_MODEL_NAME"))
-                                .batchId(entity.getBatchId())
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -184,7 +182,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .sorContainerId(entity.getSorContainerId())
                             .channelId(entity.getChannelId())
                             .modelName(action.getContext().get("NEON_MODEL_NAME"))
-                            .batchId(entity.getBatchId())
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Table Extraction  consumer failed for originId " + originId, handymanException, this.action);

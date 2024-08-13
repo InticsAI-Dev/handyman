@@ -24,7 +24,6 @@ public class OutboundInputTableEntity {
     private Long tenantId;
     private String fileName;
     private String alchemyOriginId;
-    private String batchId;
 
 
 

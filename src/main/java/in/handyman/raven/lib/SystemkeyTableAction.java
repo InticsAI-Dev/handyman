@@ -93,7 +93,6 @@ public class SystemkeyTableAction implements IActionExecution {
               "paper_no INT4 NULL," +
               "eoc_identifier VARCHAR NULL," +
               "group_id INT4 NULL," +
-              "batch_id varchar NULL," +
               tableName + " VARCHAR NULL," +
               columns +
               "root_pipeline_id INT8 NULL," +
@@ -112,11 +111,10 @@ public class SystemkeyTableAction implements IActionExecution {
               "root_pipeline_id int8 null," +
               "model_name varchar NULL," +
               "model_version varchar NULL," +
-              "batch_id varchar NULL," +
               "tenant_id int8 NULL);" ;
       handle.execute(createTableSQL);
-      log.info("Table '{}' has been created.", tableName);
-      log.info("Table '{}_match' has been created", tableName);
+      System.out.println("Table '"+ tableName+ "' has been created.");
+      System.out.println("Table '" + tableName + "_match' has been created");
   }
 
 

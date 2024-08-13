@@ -23,7 +23,6 @@ import java.util.List;
         private String extractedValue;
         private String actualValue;
         private Long rootPipelineId;
-        private String batchId;
 
         @Override
         public List<Object> getRowData() {

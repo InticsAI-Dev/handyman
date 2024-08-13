@@ -152,7 +152,6 @@ public class MultipartUploadAction implements IActionExecution {
         final Integer paperNo = entity.getPaperNo();
         final String originId = entity.getOriginId();
         final Long rootPipelineId = entity.getRootPipelineId();
-        final String batchId = entity.getBatchId();
         String outputDir;
 
         // Setting output directory
@@ -194,13 +193,13 @@ public class MultipartUploadAction implements IActionExecution {
                 if (response.body() != null) {
                     final String responseBody = response.body().string();
                     final MultipartUploadOutputTable multipartUploadOutputTable = objectMapper.readValue(responseBody, MultipartUploadOutputTable.class);
-                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable, batchId);
+                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable);
                 }
             } else {
                 // Handle unsuccessful response
                 log.error("Request was not successful. HTTP Status: {}", response.code());
                 final MultipartUploadOutputTable multipartUploadOutputTable = new MultipartUploadOutputTable();
-                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable, batchId);
+                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable);
             }
         } catch (final Exception e) {
             log.error(aMarker, "Exception occurred in multipart file upload for file {} with exception {}", inputFilePath, e.getMessage());
@@ -210,7 +209,7 @@ public class MultipartUploadAction implements IActionExecution {
     }
 
 
-    private void handleResponse(Jdbi jdbi, Integer groupId, Long processId, String templateId, Long tenantId, Integer paperNo, String originId, Long rootPipelineId, MultipartUploadOutputTable multipartUploadOutputTable, String batchId) {
+    private void handleResponse(Jdbi jdbi, Integer groupId, Long processId, String templateId, Long tenantId, Integer paperNo, String originId, Long rootPipelineId, MultipartUploadOutputTable multipartUploadOutputTable) {
         try {
             multipartUploadOutputTable.setGroupId(groupId);
             multipartUploadOutputTable.setRootPipelineId(rootPipelineId);
@@ -220,14 +219,13 @@ public class MultipartUploadAction implements IActionExecution {
             multipartUploadOutputTable.setProcessId(processId);
             multipartUploadOutputTable.setTenantId(tenantId);
             multipartUploadOutputTable.setUploadedTime(LocalDateTime.now());
-            multipartUploadOutputTable.setBatchId(batchId);
 
             jdbi.useHandle(handle -> {
                 String sql = "INSERT INTO multipart_info.multipart_upload(" +
                         "filepath, filename, message, status, template_id, origin_id, " +
-                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, uploaded_time, batch_id) " +
+                        "root_pipeline_id, process_id, group_id, tenant_id, paper_no, uploaded_time) " +
                         "VALUES (:filepath, :filename, :message, :status, :templateId, :originId, " +
-                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :uploadedTime, :batchId)";
+                        ":rootPipelineId, :processId, :groupId, :tenantId, :paperNo, :uploadedTime)";
 
                 handle.createUpdate(sql)
                         .bindBean(multipartUploadOutputTable)
@@ -254,7 +252,6 @@ public class MultipartUploadAction implements IActionExecution {
         private Long processId;
         private String outputDir;
         private Long rootPipelineId;
-        private String batchId;
     }
 
 
@@ -274,7 +271,6 @@ public class MultipartUploadAction implements IActionExecution {
         private Long processId;
         private Long rootPipelineId;
         private LocalDateTime uploadedTime;
-        private String batchId;
     }
 
 

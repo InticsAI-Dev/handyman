@@ -50,7 +50,6 @@ public class NerInputTable implements CoproProcessor.Entity {
     private double validatorNegativeScore;
     private double confidenceScore;
     private String sorItemName;
-    private String batchId;
 
     @Override
     public List<Object> getRowData() {

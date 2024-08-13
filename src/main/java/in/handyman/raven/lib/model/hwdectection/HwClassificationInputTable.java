@@ -26,7 +26,6 @@ import java.util.List;
         private Long rootPipelineId;
         private String outputDir;
         private Long processId;
-        private String batchId;
 
 
 

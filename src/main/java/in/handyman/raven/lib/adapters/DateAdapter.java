@@ -2,7 +2,6 @@ package in.handyman.raven.lib.adapters;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
-import in.handyman.raven.lib.model.Validator;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -48,11 +47,6 @@ public class DateAdapter implements AdapterInterface {
 
     @Override
     public boolean getValidationModel(String sentence, String requiredFeature, ActionExecutionAudit audit) throws Exception {
-        return false;
-    }
-
-    @Override
-    public boolean getNameValidationModel(Validator input, String uri, ActionExecutionAudit audit) throws Exception {
         return false;
     }
 

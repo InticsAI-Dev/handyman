@@ -21,6 +21,4 @@ public class NerAdapterPayload {
         private Long processId;
         private Integer groupId;
         private Long tenantId;
-        private String batchId;
-        private Integer paperNo;
 }

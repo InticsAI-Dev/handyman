@@ -140,7 +140,6 @@ public class AlchemyResponseAction implements IActionExecution {
             Long questionId = entity.getQuestionId();
             String bbox = entity.getBbox();
             String feature = entity.getFeature();
-            String batchId = entity.getBatchId();
 
             AlchemyRequestTable alchemyRequestTable = AlchemyRequestTable
                     .builder()
@@ -155,14 +154,12 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setSynonymId(synonymId);
                 alchemyRequestTable.setQuestionId(questionId);
-                alchemyRequestTable.setBatchId(batchId);
             }
             if(feature.equals(Feature.CHECKBOX_EXTRACTION.name())){
                 alchemyRequestTable.setBbox(mapper.readTree(bbox));
                 alchemyRequestTable.setConfidenceScore(confidenceScore);
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setState(entity.getState());
-                alchemyRequestTable.setBatchId(entity.getBatchId());
             }
             if(feature.equals(Feature.TABLE_EXTRACT.name())){
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
@@ -263,7 +260,6 @@ public class AlchemyResponseAction implements IActionExecution {
         private String detectedAsciiValue;
         private String csvFilePath;
         private Long truthEntityId;
-        private String batchId;
         private String tableAggregateNode;
         private Long sorItemId;
         private String bulletinSection;
@@ -310,7 +306,6 @@ public class AlchemyResponseAction implements IActionExecution {
         private JsonNode tableData;
         private String detectedValue;
         private String detectedAsciiValue;
-        private String batchId;
         private JsonNode aggregateJson;
         private Long sorItemId;
         private String bulletinSection;

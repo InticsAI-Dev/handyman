@@ -143,7 +143,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .message(response.message())
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
-                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -163,8 +162,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .stage(STAGE)
                     .message(ExceptionUtil.toString(e))
                     .groupId(entity.getGroupId())
-                    .batchId(entity.getBatchId())
-                    .rootPipelineId(action.getRootPipelineId())
+                    .rootPipelineId(entity.getRootPipelineId())
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -215,7 +213,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .message(response.message())
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
-                        .batchId(entity.getBatchId())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -234,7 +231,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .message(ExceptionUtil.toString(e))
                     .groupId(entity.getGroupId())
                     .rootPipelineId(entity.getRootPipelineId())
-                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -248,7 +244,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
-        log.info("copro api response body {}", responseBody);
 
         HwDetectionDataItem hwDetectionDataItem = mapper.readValue(responseBody, new TypeReference<>() {
         });
@@ -270,7 +265,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
-                .batchId(entity.getBatchId())
                 .build());
     }
 
@@ -305,7 +299,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
-                .batchId(entity.getBatchId())
                 .build());
     }
 }

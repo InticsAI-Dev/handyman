@@ -25,7 +25,6 @@ public class ParagraphQueryInputTable implements CoproProcessor.Entity {
     private String prompt;
     private String sectionHeader;
     private Integer synonymId;
-    private String batchId;
     @Override
     public List<Object> getRowData() {
         return null;

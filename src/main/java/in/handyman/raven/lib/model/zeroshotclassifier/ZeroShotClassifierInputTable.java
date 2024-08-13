@@ -25,7 +25,6 @@ import java.util.List;
         private Long rootPipelineId;
         private String keyToFilter;
         private Long tenantId;
-        private String batchId;
 
         @Override
         public List<Object> getRowData() {
