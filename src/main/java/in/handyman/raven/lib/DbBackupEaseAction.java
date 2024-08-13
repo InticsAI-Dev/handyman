@@ -89,37 +89,40 @@ public class DbBackupEaseAction implements IActionExecution {
 
 
         final List<String> allRestrictedSchemaList = new ArrayList<>();
-        dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
-            // Collect restricted schema list
-            List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
-            List<String> backupSchemaList = dataBaseBackupInputTable.getBackupSchemaList();
-            final List<String> allBackupSchemaList = getAllBackupSchemas(backupSchemaList, restrictedSchemaList);
+        if (!dataBaseBackupInput.isEmpty()){
+            dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
+                // Collect restricted schema list
+                List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
+                List<String> backupSchemaList = dataBaseBackupInputTable.getBackupSchemaList();
+                final List<String> allBackupSchemaList = getAllBackupSchemas(backupSchemaList, restrictedSchemaList);
 
-            String backupCommand = !allBackupSchemaList.isEmpty() ?
-                    constructBackupCommandBySchema(backupSchemaList, spwResourceConfig) :
-                    constructBackupCommandExcludeSchema(restrictedSchemaList, spwResourceConfig);
-
-
-            if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
-                allRestrictedSchemaList.addAll(restrictedSchemaList);
-            }
-            final String outputDir = dataBaseBackupInputTable.getTargetDirectory();
-            try {
-
-                Files.createDirectories(Paths.get(outputDir));
-                String fileNameWithDate = createFileName(action, dataBaseBackupInputTable.getTargetDirectory());
-                final boolean resultBool = executeBackupCommand(backupCommand, fileNameWithDate, spwResourceConfig.getPassword());
-                String formattedFileSize = getFormattedFileSize(fileNameWithDate);
-
-                handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, formattedFileSize, resultBool,
-                        fileNameWithDate, outputDir, dataBaseBackupInput);
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+                String backupCommand = !allBackupSchemaList.isEmpty() ?
+                        constructBackupCommandBySchema(backupSchemaList, spwResourceConfig) :
+                        constructBackupCommandExcludeSchema(restrictedSchemaList, spwResourceConfig);
 
 
-        });
+                if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
+                    allRestrictedSchemaList.addAll(restrictedSchemaList);
+                }
+                final String outputDir = dataBaseBackupInputTable.getTargetDirectory();
+                try {
+
+                    Files.createDirectories(Paths.get(outputDir));
+                    String fileNameWithDate = createFileName(action, dataBaseBackupInputTable.getTargetDirectory());
+                    final boolean resultBool = executeBackupCommand(backupCommand, fileNameWithDate, spwResourceConfig.getPassword());
+                    String formattedFileSize = getFormattedFileSize(fileNameWithDate);
+
+                    handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, formattedFileSize, resultBool,
+                            fileNameWithDate, outputDir, dataBaseBackupInput);
+
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+
+            });
+        }
+
 
     }
 
