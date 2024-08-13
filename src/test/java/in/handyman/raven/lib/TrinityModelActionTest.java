@@ -84,20 +84,50 @@ class TrinityModelActionTest {
                 .name("DIE model testing")
                 .condition(true)
                 .outputDir("dir")
-                .requestUrl("http://192.168.10.248:9000/v2/models/xenon-vqa-service/versions/1/infer")
+                .requestUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
-                .questionSql("SELECT (jsonb_agg(json_build_object('question', (a.question), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)))::varchar as attributes,\n" +
-                        "'/data/input/ut_classify_filter/ut_input/paper_class_ut/SYNT_166731563_c3_04_1.jpg' as file_path, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, st.group_id, a.root_pipeline_id, a.model_registry_id, 'Primary' as qn_category, '1' as process_id,\n" +
-                        "a.batch_id FROM macro.sor_transaction_tqa_audit a\n" +
-                        "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=a.origin_id\n" +
-                        "where a.model_registry = 'XENON'\n" +
-                        "AND a.tenant_id = 1 \n" +
-                        "AND st.group_id = '3' \n" +
-                        "AND a.batch_id = 'BATCH-3_0'\n" +
-                        "and a.origin_id = 'ORIGIN-3'\n" +
-                        "group by a.file_path,  a.model_registry,a.origin_id, a.paper_no , a.tenant_id,st.group_id , a.root_pipeline_id, a.model_registry_id, a.batch_id\n" +
-                        "limit 1;")
+                .questionSql("SELECT \n" +
+                        "    (jsonb_agg(\n" +
+                        "        json_build_object(\n" +
+                        "            'question', (a.questions), \n" +
+                        "            'questionId', a.question_id, \n" +
+                        "            'synonymId', a.synonym_id, \n" +
+                        "            'sorItemName', a.sor_item_name)\n" +
+                        "        )\n" +
+                        "    )::varchar as attributes,\n" +
+                        "    a.file_path,\n" +
+                        "    a.paper_type as paper_type, \n" +
+                        "    a.model_registry,  \n" +
+                        "    a.origin_id,\n" +
+                        "    1 as paper_no,\n" +
+                        "    a.tenant_id, \n" +
+                        "    a.group_id, \n" +
+                        "    a.category as qn_category, \n" +
+                        "    a.root_pipeline_id, \n" +
+                        "    a.model_registry_id, \n" +
+                        "    '1' as process_id, \n" +
+                        "    a.batch_id\n" +
+                        "FROM macro.sor_transaction_final_tqa_audit a\n" +
+                        "JOIN sor_transaction.sor_transaction_payload_queue_archive st \n" +
+                        "    ON st.origin_id = a.origin_id\n" +
+                        "WHERE \n" +
+                        "    a.model_registry = 'ARGON' \n" +
+                        "    AND a.tenant_id = '1' \n" +
+                        "    AND st.group_id = '3' \n" +
+                        "    AND a.batch_id = 'BATCH-3_0'\n" +
+                        "GROUP BY \n" +
+                        "    a.file_path, \n" +
+                        "    a.paper_type, \n" +
+                        "    a.model_registry,\n" +
+                        "    a.origin_id, \n" +
+                        "    a.paper_no, \n" +
+                        "    a.tenant_id,\n" +
+                        "    a.group_id, \n" +
+                        "    a.category, \n" +
+                        "    a.root_pipeline_id, \n" +
+                        "    a.model_registry_id, \n" +
+                        "    a.batch_id\n")
                 .responseAs("macro.docnet_attribution_response_123888888")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
