@@ -163,6 +163,7 @@ action:
     |urgencyTriageBeta
     |dbBackupEase
     |dbDataDart
+    |createExactZip
     );
 
 
@@ -1220,6 +1221,10 @@ dbDataDart:
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
+
+createExactZip:
+       'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
+        '{' '}' ('on-condition' condition=expression)*;
 
 //rules
 
