@@ -161,6 +161,8 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |urgencyTriageBeta
+    |dbBackupEase
+    |dbDataDart
     );
 
 
@@ -1202,6 +1204,22 @@ urgencyTriageBeta:
     'output-table' outputTable=STRING
     'resource-conn' resourceConn=STRING
     'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
+dbBackupEase:
+    'dbBackupEase' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+dbDataDart:
+    'dbDataDart' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
 
 //rules
 
