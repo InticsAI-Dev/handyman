@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -13,6 +14,7 @@ import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
+import jakarta.json.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -23,6 +25,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<RadonQueryInputTable, RadonQueryOutputTable> {
 
@@ -187,6 +191,38 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+        try {
+            if (jsonResponse.contains("```json")) {
+                // Define the regex pattern to match content between ```json and ```
+                Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
+                Matcher matcher = pattern.matcher(jsonResponse);
+
+                if (matcher.find()) {
+                    // Extract the JSON string from the matched group
+                    String jsonString = matcher.group(1);
+                    jsonString = jsonString.replace("\n", "");
+
+
+                    // Convert the cleaned JSON string to a JsonNode
+                    JsonNode rootNode = objectMapper.readTree(jsonString);
+
+                    return rootNode;
+                }else {
+                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
+                    return rootNode;
+                }
+
+            } else {
+                // Handle the case where the expected markers are not found
+                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
@@ -197,6 +233,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
+        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
 
         parentObj.add(RadonQueryOutputTable.builder()
@@ -206,7 +243,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferResponse()))
+                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -310,7 +347,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(modelResponse.getInferResponse()))
+                .totalResponseJson(modelResponse.getInferResponse())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())

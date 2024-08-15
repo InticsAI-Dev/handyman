@@ -1,10 +1,14 @@
 package in.handyman.raven.lib.tritonservertest;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.LlmJsonParserAction;
 import in.handyman.raven.lib.model.LlmJsonParser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 @Slf4j
 public class LlmJsonParserActionTest {
@@ -13,11 +17,11 @@ public class LlmJsonParserActionTest {
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
                 .condition(true)
-                .resourceConn("intics_zio_db_conn")
-                .outputTable("sor_transaction.neon_json_parser_output_audit")
+                .resourceConn("intics_zio_db_conn_bl")
+                .outputTable("sor_transaction.llm_json_parser_output_30229")
                 .querySet("SELECT  total_response_json as response, paper_no, origin_id,group_id, tenant_id, root_pipeline_id, batch_id, model_registry\n" +
-                        "FROM sor_transaction.radon_kvp_output_audit\n" +
-                        "WHERE id =5;" )
+                        "FROM sor_transaction.radon_kvp_output_30197\n" +
+                        "WHERE id =3;" )
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -32,6 +36,8 @@ public class LlmJsonParserActionTest {
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 
         llmJsonParserAction.execute();
+
+
 
     }
 }

@@ -64,7 +64,7 @@ public class RadonKvpAction implements IActionExecution {
           "?,?,?,?,?" +
           ",?,?,?,?,?," +
           "?,?, ?, ?" +
-          "?)";
+          ",?)";
 
   public static final String READ_BATCH_SIZE = "read.batch.size";
   private final int threadSleepTime;

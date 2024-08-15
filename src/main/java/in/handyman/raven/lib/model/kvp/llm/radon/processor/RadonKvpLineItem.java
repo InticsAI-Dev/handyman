@@ -16,8 +16,7 @@ import java.util.Map;
 public class RadonKvpLineItem {
     private String model;
     @JsonProperty("infer_response")
-    @JsonDeserialize(using = StringToMapDeserializer.class)
-    private Map<String, Object> inferResponse;
+    private String inferResponse;
     @JsonProperty("confidence_score")
     private Integer confidenceScore;
     private String bboxes;

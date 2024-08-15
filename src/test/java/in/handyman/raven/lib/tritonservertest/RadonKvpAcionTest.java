@@ -13,11 +13,11 @@ public class RadonKvpAcionTest {
         RadonKvp radonKvp = RadonKvp.builder()
                 .name("radon kvp api call action")
                 .condition(true)
-                .resourceConn("intics_zio_db_conn")
+                .resourceConn("intics_zio_db_conn_bl")
                 .endpoint("http://192.168.10.239:7500/v2/models/radon-service/versions/1/infer")
-                .outputTable("sor_transaction.radon_kvp_output_audit")
+                .outputTable("sor_transaction.radon_kvp_output_30197")
                 .querySet("SELECT id, input_file_path, prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry\n" +
-                        "FROM sor_transaction.radon_kvp_input_audit\n" +
+                        "FROM sor_transaction.radon_kvp_input_30197\n" +
                         "WHERE id =1;")
                 .build();
 

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -22,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.lib.UrgencyTriageModelAction.urgencyTriageModel;
 
-public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProcess<UrgencyTriageInputTable, UrgencyTriageOutputTable> {
+public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.ConsumerProcess<UrgencyTriageInputTable, UrgencyTriageOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String URGENCY_TRIAGE_PROCESS_NAME = PipelineName.URGENCY_TRIAGE.getProcessName();
     private final Logger log;
@@ -38,7 +39,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             .build();
 
 
-    public UrgencyTriageConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
+    public UrgencyTriageConsumerProcessRadon(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -65,13 +66,13 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
-
+        urgencyTriageModelPayload.setPrompt(entity.getPrompt());
 
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("UT START");
+        requestBody.setName("RADON START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -107,7 +108,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         String createdUserId = entity.getCreatedUserId();
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
-        Integer groupId = entity.getGroupId();
+        Long groupId = Long.valueOf(entity.getGroupId());
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         String templateId = entity.getTemplateId();
@@ -133,7 +134,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .lastUpdatedUserId(createdUserId)
                         .tenantId(tenantId)
                         .processId(processId)
-                        .groupId(Long.valueOf(groupId))
+                        .groupId(groupId)
                         .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
                         .paperNo(paperNo)
                         .templateId(templateId)
@@ -151,7 +152,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .createdUserId(createdUserId)
                     .lastUpdatedUserId(createdUserId)
                     .tenantId(tenantId)
-                    .groupId(Long.valueOf(groupId))
+                    .groupId(groupId)
                     .processId(processId)
                     .originId(originId)
                     .paperNo(paperNo)
@@ -174,18 +175,20 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
         try {
-            UrgencyTriageModelDataItem urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItem.class);
-            JsonNode qrBoundingBox = objectMapper.valueToTree(urgencyTriageModelDataItem1.getBboxes());
-            Float confScore = urgencyTriageModelDataItem1.getConfidenceScore();
-            String paperType = urgencyTriageModelDataItem1.getPaperType();
+            RadonKvpLineItem modelResponse = objectMapper.readValue(urgencyTriageModelDataItem, RadonKvpLineItem.class);
+
+//            UrgencyTriageModelDataItem urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItem.class);
+            JsonNode qrBoundingBox = objectMapper.valueToTree(modelResponse.getBboxes());
+            Float confScore = Float.valueOf(modelResponse.getConfidenceScore()==null ? 0 :modelResponse.getConfidenceScore());
+            String paperType = modelResponse.getInferResponse();
             parentObj.add(UrgencyTriageOutputTable.builder()
                     .createdUserId(createdUserId)
                     .lastUpdatedUserId(createdUserId)
-                    .tenantId(urgencyTriageModelDataItem1.getTenantId())
-                    .processId(urgencyTriageModelDataItem1.getProcessId())
-                    .groupId(Long.valueOf(urgencyTriageModelDataItem1.getGroupId()))
-                    .originId(urgencyTriageModelDataItem1.getOriginId())
-                    .paperNo(urgencyTriageModelDataItem1.getPaperNo())
+                    .tenantId(modelResponse.getTenantId())
+                    .processId(modelResponse.getProcessId())
+                    .groupId(modelResponse.getGroupId())
+                    .originId(modelResponse.getOriginId())
+                    .paperNo(modelResponse.getPaperNo())
                     .templateId(templateId)
                     .modelId(modelId)
                     .utResult(paperType)
@@ -211,7 +214,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             String createdUserId = entity.getCreatedUserId();
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
-            Integer groupId = entity.getGroupId();
+            Long groupId = Long.valueOf(entity.getGroupId());
             String originId = entity.getOriginId();
             Integer paperNo = entity.getPaperNo();
             String templateId = entity.getTemplateId();
@@ -226,7 +229,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .lastUpdatedUserId(createdUserId)
                         .tenantId(tenantId)
                         .processId(processId)
-                        .groupId(Long.valueOf(groupId))
+                        .groupId(groupId)
                         .originId(originId)
                         .paperNo(paperNo)
                         .templateId(templateId)
@@ -244,7 +247,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             String lastUpdatedUserId = entity.getLastUpdatedUserId();
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
-            Integer groupId = entity.getGroupId();
+            Long groupId = Long.valueOf(entity.getGroupId());
             String originId = entity.getOriginId();
             Integer paperNo = entity.getPaperNo();
             String templateId = entity.getTemplateId();
@@ -255,7 +258,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .createdUserId(createdUserId)
                     .lastUpdatedUserId(createdUserId)
                     .tenantId(tenantId)
-                    .groupId(Long.valueOf(groupId))
+                    .groupId(groupId)
                     .processId(processId)
                     .originId(originId)
                     .paperNo(paperNo)
@@ -278,7 +281,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
-        Integer groupId = entity.getGroupId();
+        Long groupId = Long.valueOf(entity.getGroupId());
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         String templateId = entity.getTemplateId();
@@ -293,7 +296,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .lastUpdatedUserId(createdUserId)
                     .tenantId(tenantId)
                     .processId(processId)
-                    .groupId(Long.valueOf(groupId))
+                    .groupId(groupId)
                     .originId(originId)
                     .paperNo(paperNo)
                     .templateId(templateId)
