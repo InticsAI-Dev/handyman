@@ -164,6 +164,10 @@ action:
     |dbBackupEase
     |dbDataDart
     |createExactZip
+    |validationLlm
+    |neonKvp
+    |radonKvp
+    |llmJsonParser
     );
 
 
@@ -1226,6 +1230,43 @@ createExactZip:
        'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
         '{' '}' ('on-condition' condition=expression)*;
 
+
+validationLlm:
+    'validationLlm' 'as' name = STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+
+neonKvp:
+    'neonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+radonKvp:
+    'radonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+llmJsonParser:
+    'llmJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 //rules
 
 resource : STRING;
