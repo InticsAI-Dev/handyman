@@ -160,6 +160,7 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |urgencyTriageBeta
+    |urgencyTriageAggregation
     );
 
 
@@ -1193,6 +1194,15 @@ urgencyTriageBeta:
     'output-table' outputTable=STRING
     'resource-conn' resourceConn=STRING
     'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
+urgencyTriageAggregation:
+    'urgencyTriageAggregation' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'input-dir' inputDir=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{'querySet=STRING'}' ('on-condition' condition=expression)*;
+
+
 
 //rules
 
