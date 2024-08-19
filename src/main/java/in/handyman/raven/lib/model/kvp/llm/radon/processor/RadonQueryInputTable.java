@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.face.detection;
+package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
@@ -7,27 +7,29 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class FaceDetectionQueryInputTable implements CoproProcessor.Entity  {
+public class RadonQueryInputTable implements CoproProcessor.Entity{
 
     private String originId;
-    private String inputFilePath;
     private Integer paperNo;
-    private Long rootPipelineId;
-    private Long tenantId;
-    private Long groupId;
     private Long processId;
+    private Long groupId;
+    private Long tenantId;
+    private Long rootPipelineId;
+    private Long actionId;
     private String process;
+    private String inputFilePath;
+    private String prompt;
+    private String modelRegistry;
     private String batchId;
+    private String category;
 
 
     @Override
     public List<Object> getRowData() {
-        return null;
+        return List.of();
     }
 }

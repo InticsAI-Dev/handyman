@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.face.detection.triton;
+package in.handyman.raven.lib.model.kvp.llm.neon.processor;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 
-public class FaceDetectionOutput {
+public class NeonKvpOutput {
     private String name;
     private String datatype;
     private List<Integer> shape;
