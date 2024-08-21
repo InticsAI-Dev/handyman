@@ -14,12 +14,11 @@ class ParagraphExtractionActionTest {
         ParagraphExtraction paragraphExtraction = ParagraphExtraction.builder()
                 .name("paragraph extraction")
                 .condition(true)
-                .endpoint("http://192.168.10.240:10195/copro/mistral_llm_based_on_image")
+                .endpoint("http://192.168.10.240:10196/copro/mistral_llm_based_on_image")
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/")
                 .outputTable("paragraph_extraction.paragraph_extraction_result")
-                .querySet("SELECT 'ORIGIN-1' as origin_id, '1' as paper_no,1 as group_id,'/data/output/68/87/3126/autorotation/auto_rotation/2022-10-26T9_58_10-Dooliquor-LLC_1.jpg' file_path, " +
-                        "1 as tenant_id,1 as process_id,'/data/output/' output_dir,1 as root_pipeline_id,'PARAGRAPH_EXTRACTION' as process,1 as synonym_id,'extract all the key value pairs' prompt,'KVP' as section_header\n")
+                .querySet("SELECT 'ORIGIN-2093' as origin_id, 1 as paper_no, 1503 as group_id, '/data/output/81/1503/42793/autorotation/auto_rotation/QTN3864 - BOQ for the Fit-Out Works in Polo Ralph Lauren at MOE_1.jpg' as file_path, 81 as tenant_id, 1 as process_id, '/data/output/1503/paragraph_extraction/' as output_dir, 42793 as root_pipeline_id, 'PARAGRAPH_EXTRACTION' as process, 13658 as synonym_id, 'You are an intelligent bullet point extractor specialized in extracting payment terms from quotations. Payment terms typically include percentages of payments split into four bullet points. Your task is to extract payment terms from the provided quotations. Payment terms are usually found in the second part and at the end of the quotation content.     Your output should be in the array of string not array of dict or others like this Please ensure that your response starts with, ###response_Start and ends with ###response_End. Make sure to read the prompt thoroughly for complete understanding.' as prompt, 'Payment terms' as section_header, 'batch_id' as batch_id\n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

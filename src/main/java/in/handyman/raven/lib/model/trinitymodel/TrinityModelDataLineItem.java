@@ -23,4 +23,7 @@ public class TrinityModelDataLineItem {
     private Long processId;
     private Integer groupId;
     private Long tenantId;
+    private Long questionId;
+    private Long synonymId;
+    private String sorItemName;
 }

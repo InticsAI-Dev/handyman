@@ -150,6 +150,7 @@ action:
     |multipartUpload
     |multipartDownload
     |multipartDelete
+    |multipartFolderDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -160,6 +161,17 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |urgencyTriageBeta
+    |convertExcelToDatabase
+    |faceDetection
+    |figureDetection
+    |documentparser
+    |dbBackupEase
+    |dbDataDart
+    |createExactZip
+    |validationLlm
+    |neonKvp
+    |radonKvp
+    |llmJsonParser
     );
 
 
@@ -1184,6 +1196,42 @@ p2pNameValidation:
     'resource-conn' resourceConn=STRING
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
+
+convertExcelToDatabase:
+    'convert-excel-to-database' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'fileType' fileType=STRING
+    'target' targetConn=STRING
+    'using' '{'
+                        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+faceDetection:
+    'faceDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+figureDetection:
+    'figureDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+documentparser:
+    'Document-parser' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
 
 
 urgencyTriageBeta:

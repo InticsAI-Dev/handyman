@@ -20,12 +20,20 @@ class CurrencyDetectionActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/output/")
                 .condition(true)
-                .endPoint("http://0.0.0.0:10187/copro/currency-attribution")
-                .querySet("select 'INT-1' as origin_id,1 as group_id,'/data/output/grey_scale_converted_output/2022-10-26T9_58_10 Dooliquor LLC_0.jpg' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,'138980744174170252' as process_id, 1 as root_pipeline_id\n")
+                .endPoint("http://192.168.10.245:10187/copro/currency-attribution")
+                .querySet("select 'ORIGIN-2004' as origin_id ,\n" +
+                        "   1 as paper_no,\n" +
+                        "   '/data/output/81/1414/40818/autorotation/auto_rotation/INV3730 23 Polo Ralphs Coffee MOE_30Advance Invoice_1.jpg' as file_path,\n" +
+                        "   81 as tenant_id,\n" +
+                        "   'TMP-AGD-001' as template_id,\n" +
+                        "   '40818' as process_id,\n" +
+                        "   '1414' as group_id,\n" +
+                        "   '40818' as root_pipeline_id,\n" +
+                        "   'batch_id_10' as batch_id")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.currency.detection.url", "http://0.0.0.0:10187/copro/currency-attribution");
+        actionExecutionAudit.getContext().put("copro.currency.detection.url", "http://192.168.10.245:10187/copro/currency-attribution");
         actionExecutionAudit.setProcessId(13898007L);
         actionExecutionAudit.setRootPipelineId(13898007L);
         actionExecutionAudit.setActionId(13898007L);
