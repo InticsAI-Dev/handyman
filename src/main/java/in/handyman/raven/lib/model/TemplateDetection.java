@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "TemplateDetection"
+        actionName = "TemplateDetection"
 )
 public class TemplateDetection implements IActionContext {
   private String name;

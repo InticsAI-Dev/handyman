@@ -149,8 +149,6 @@ action:
     |qrExtraction
     |multipartUpload
     |multipartDownload
-    |multipartDelete
-    |multipartFolderDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -160,18 +158,10 @@ action:
     |paragraphExtraction
     |bulletInExtraction
     |p2pNameValidation
-    |urgencyTriageBeta
     |convertExcelToDatabase
     |faceDetection
     |figureDetection
     |documentparser
-    |dbBackupEase
-    |dbDataDart
-    |createExactZip
-    |validationLlm
-    |neonKvp
-    |radonKvp
-    |llmJsonParser
     );
 
 
@@ -1100,14 +1090,6 @@ multipartDownload:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
-multipartDelete:
-    'multipartDelete' 'as' name=STRING
-    'resource-conn' resourceConn=STRING
-    'delete-url' endPoint=STRING
-    'using' '{'
-    	querySet=STRING
-    '}' ('on-condition' condition=expression)* ;
-
 systemkeyTable:
     'systemkeyTable' 'as' name=STRING
     'resoruce-conn' resourceConn=STRING
@@ -1232,15 +1214,6 @@ documentparser:
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
     ('on-condition' condition=expression)* ;
-
-
-urgencyTriageBeta:
-    'urgencyTriageBeta' 'as' name=STRING
-    'output-dir' outputDir=STRING
-    'copro-url' endPoint=STRING
-    'output-table' outputTable=STRING
-    'resource-conn' resourceConn=STRING
-    'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
 
 //rules
 

@@ -17,15 +17,13 @@ class TemplateDetectionActionTest {
         TemplateDetection templateDetection=TemplateDetection.builder()
                 .condition(true)
                 .name("template detection")
-                .coproUrl("http://localhost:10193/copro/attribution/kvp-printed-old")
+                .coproUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .inputTable("info.auto_rotation")
                 .ouputTable("macro.template_detection_response_12345")
-                .resourceConn("intics_agadia_db_conn")
+                .resourceConn("intics_zio_db_conn")
                 .processId("12345")
-                .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/pdf_to_image/SYNT_166838894_c1/SYNT_166838894_c1_0.jpg' as file_path,'TNT-1' as tenant_id\n" +
-                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , '{\"what is patient name\"}'  as questions\n"
-                )
-                                                                                        .build();
+                .querySet("")
+                .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.template.detection.url","http://localhost:10182/copro/preprocess/text_extraction");
@@ -44,13 +42,21 @@ class TemplateDetectionActionTest {
         TemplateDetection templateDetection=TemplateDetection.builder()
                 .condition(true)
                 .name("template detection")
-                .coproUrl("http://192.168.10.239:10193/copro/attribution/kvp-printed")
+                .coproUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .inputTable("info.auto_rotation")
-                .ouputTable("macro.template_detection_response_12345")
+                .ouputTable("macro.template_detection_response_audit")
                 .resourceConn("intics_zio_db_conn")
                 .processId("12345")
-                .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path,1 as tenant_id\n" +
-                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , ARRAY['what is logo']  as questions" )
+                .querySet("select  ar.origin_id ,ar.paper_no ,ar.group_id , '/data/input/batch_id/noisy_SYNT_AVMED_1PAGE_2_1_1_1.jpg' as file_path, ar.tenant_id\n" +
+                        " ,ar.template_id ,ar.process_id ,ar.root_pipeline_id , sq.model_registry_id,\n" +
+                        "       (jsonb_agg(json_build_object('question', (sq.question), 'questionId', sq.question_id, 'synonymId', st.synonym_id, 'sorItemName', 'template_name')))::varchar as questions, b.batch_id\n" +
+                        "from info.auto_rotation ar\n" +
+                        "   join sor_meta.sor_tsynonym st on 1=1\n" +
+                        " join sor_meta.sor_question sq on st.synonym_id  =sq.synonym_id\n" +
+                        " join preprocess.preprocess_payload_queue_archive b on ar.origin_id=b.origin_id and b.tenant_id=ar.tenant_id and b.batch_id = ar.batch_id\n" +
+                        " where st.synonym ='Template Name' and ar.status ='COMPLETED' and ar.group_id='1' and sq.tenant_id=1 and sq.weights=150 and b.batch_id='BATCH-1_0'\n" +
+                        "  group by ar.origin_id ,ar.paper_no ,ar.group_id ,ar.processed_file_path , ar.tenant_id ,ar.template_id ,ar.process_id ,ar.root_pipeline_id,sq.model_registry_id,b.batch_id\n" +
+                        "      limit 1" )
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
@@ -58,7 +64,7 @@ class TemplateDetectionActionTest {
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("consumer.API.count","1"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size","5")));
 
