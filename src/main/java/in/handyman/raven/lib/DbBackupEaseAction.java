@@ -92,8 +92,8 @@ public class DbBackupEaseAction implements IActionExecution {
     if (!dataBaseBackupInput.isEmpty()){
       dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
         // Collect restricted schema list
-        List<String> restrictedSchemaList = dataBaseBackupInputTable.getRestrictedSchemaList();
-        List<String> backupSchemaList = dataBaseBackupInputTable.getBackupSchemaList();
+        List<String> restrictedSchemaList = convertListFromString(dataBaseBackupInputTable.getRestrictedSchemaList());
+        List<String> backupSchemaList = convertListFromString(dataBaseBackupInputTable.getBackupSchemaList());
         final List<String> allBackupSchemaList = getAllBackupSchemas(backupSchemaList, restrictedSchemaList);
 
         String backupCommand = !allBackupSchemaList.isEmpty() ?
@@ -306,8 +306,8 @@ public class DbBackupEaseAction implements IActionExecution {
   @NoArgsConstructor
   @Data
   public static class DataBaseBackupInputTable {
-    private List<String> backupSchemaList;
-    private List<String> restrictedSchemaList;
+    private String backupSchemaList;
+    private String restrictedSchemaList;
     private String targetDirectory;
     private Integer groupId;
     private Long tenantId;
