@@ -164,6 +164,7 @@ action:
     |documentparser
     |javaTestCaseGenerator
     |javaQuestionVerseOnboard
+    |gitHubAuthenticator
     );
 
 
@@ -1232,6 +1233,13 @@ javaTestCaseGenerator:
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
     ('on-condition' condition=expression)* ;
+
+gitHubAuthenticator:
+     'gitHubAuthenticator' 'as' name=STRING
+     'on-resource-conn' resourceConn=STRING
+     'output-table' outputTable=STRING
+     'using' '{'querySet=STRING'}'
+     ('on-condition' condition=expression)* ;
 
 //rules
 

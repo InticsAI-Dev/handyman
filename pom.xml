@@ -50,6 +50,13 @@
             <artifactId>mariadb-java-client</artifactId>
             <version>3.0.6</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit -->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>6.10.0.202406032230-r</version>
+        </dependency>
+
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
