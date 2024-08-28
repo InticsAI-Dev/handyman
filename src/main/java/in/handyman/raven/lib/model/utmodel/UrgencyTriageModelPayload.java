@@ -20,4 +20,5 @@ public class UrgencyTriageModelPayload {
     private String process;
     private String inputFilePath;
     private String outputDir;
+    private String prompt;
 }

@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.templatedetection;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import in.handyman.raven.lib.agadia.xenon.model.XenonResult;
+import in.handyman.raven.lib.model.trinitymodel.TrinityModelDataLineItem;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,4 +21,14 @@ public class TemplateDetectionDataItem {
     private String extractedImageUnit;
     @JsonIgnore
     private String inputFilePath;
+    private String qnCategory;
+    private String modelRegistry;
+    private String paperType;
+    private String originId;
+    private Long processId;
+    private Integer paperNo;
+    private Integer groupId;
+    private Long tenantId;
+    private Long rootPipelineId;
+    private Long modelRegistryId;
 }
