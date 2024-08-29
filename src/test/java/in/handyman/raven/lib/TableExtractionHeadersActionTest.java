@@ -16,16 +16,16 @@ class TableExtractionHeadersActionTest {
     void tableExtractionTest() throws Exception {
         TableExtractionHeaders tableExtraction = TableExtractionHeaders.builder()
                 .name("Text extraction macro test after copro optimization")
-                .endpoint("http://192.168.10.245:18889/copro/table-attribution-with-header")
+                .endpoint("http://192.168.10.240:18889/copro/table-attribution-with-header")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .processId("999")
                 .resultTable("table_extraction.table_extraction_result")
                 .outputDir("/data/output/")
-                .querySet(" SELECT 1 as tenant_id,1 as root_pipeline_id, 1 as group_id,'ORIGIN-1' as origin_id,1 as paper_no," +
-                        "'PRINTED' as document_type,'KRYPTON' as template_name," +
-                        "'/data/output/86/preprocess/paper_itemizer/pdf_to_image/2023-10-7T14_28_42 Payment Processing GenSales-4/2023-10-7T14_28_42 Payment Processing GenSales-4_0.jpg' as file_path," +
-                        "'[{\"columnHeaders\": [\"Number of Credits\", \"Amount of Credits\", \"Average Ticket\", \"Disc %\", \"Discount Due\", \"Disk P/I\", \"Net sales\", \"Plan code\", \"Amount of Sales\", \"Number of Sales\"], \"TruthEntity\": \"PLAN_SUMMARY\"}]' as table_headers,'KRYPTON' as model_name;")
+                .querySet(" SELECT a.tenant_id, a.root_pipeline_id, a.group_id, a.origin_id, a.paper_no, a.document_type, a.template_name, a.file_path,a.table_headers,a.model_name as model_name,a.truth_entity_id,a.sor_container_id,a.channel_id, a.batch_id\n" +
+                        "from macro.table_extraction_line_items_audit a\n" +
+                        "join table_extraction.table_extraction_payload_queue b on a.origin_id=b.origin_id and a.batch_id = b.batch_id\n" +
+                        "where b.status='IN_PROGRESS' and a.group_id='92' and a.tenant_id =81 and a.model_name='XENON' and b.batch_id ='BATCH-92_0' limit 1;")
                 .build();
 
 
@@ -35,7 +35,7 @@ class TableExtractionHeadersActionTest {
                 Map.entry("read.batch.size", "1"),
                 Map.entry("table.extraction.consumer.API.count", "1"),
                 Map.entry("multipart.file.upload.activator", "false"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.table.headers.activator", "false"),
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
 

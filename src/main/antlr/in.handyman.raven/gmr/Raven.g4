@@ -159,7 +159,15 @@ action:
     |paragraphExtraction
     |bulletInExtraction
     |p2pNameValidation
+    |convertExcelToDatabase
+    |faceDetection
     |urgencyTriageBeta
+    |figureDetection
+    |documentparser
+    |validationLlm
+    |neonKvp
+    |radonKvp
+    |llmJsonParser
     );
 
 
@@ -1185,7 +1193,14 @@ p2pNameValidation:
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
 
-
+convertExcelToDatabase:
+    'convert-excel-to-database' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'fileType' fileType=STRING
+    'target' targetConn=STRING
+    'using' '{'
+                        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 urgencyTriageBeta:
     'urgencyTriageBeta' 'as' name=STRING
     'output-dir' outputDir=STRING
@@ -1193,6 +1208,70 @@ urgencyTriageBeta:
     'output-table' outputTable=STRING
     'resource-conn' resourceConn=STRING
     'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
+faceDetection:
+    'faceDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+validationLlm:
+    'validationLlm' 'as' name = STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+figureDetection:
+    'figureDetection' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+documentparser:
+    'Document-parser' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+neonKvp:
+    'neonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+radonKvp:
+    'radonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+llmJsonParser:
+    'llmJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
 
 //rules
 
