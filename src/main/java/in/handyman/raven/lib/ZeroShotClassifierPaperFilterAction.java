@@ -12,6 +12,7 @@ import in.handyman.raven.lib.model.zeroshotclassifier.ZeroShotConsumerProcess;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -71,13 +72,7 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor =
-                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                            ZeroShotClassifierOutputTable.class,
-                            ZeroShotClassifierInputTable.class,
-                            jdbi, log,
-                            new ZeroShotClassifierInputTable(), urls, action);
-            coproProcessor.startProducer(zeroShotClassifierPaperFilter.getQuerySet(), Integer.parseInt(zeroShotClassifierPaperFilter.getReadBatchSize()));
+            final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor = getZeroShotClassifierOutputTableCoproProcessor(jdbi, urls);
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.parseInt(zeroShotClassifierPaperFilter.getThreadCount()),
                     Integer.parseInt(zeroShotClassifierPaperFilter.getWriteBatchSize()),
@@ -88,6 +83,18 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
             log.error(aMarker, "Error in zero shot paper filter action", e);
             throw new HandymanException("Error in zero shot paper filter action", e, action);
         }
+    }
+
+    @NotNull
+    private CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> getZeroShotClassifierOutputTableCoproProcessor(Jdbi jdbi, List<URL> urls) {
+        final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor =
+                new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                        ZeroShotClassifierOutputTable.class,
+                        ZeroShotClassifierInputTable.class,
+                        jdbi, log,
+                        new ZeroShotClassifierInputTable(), urls, action);
+        coproProcessor.startProducer(zeroShotClassifierPaperFilter.getQuerySet(), Integer.parseInt(zeroShotClassifierPaperFilter.getReadBatchSize()));
+        return coproProcessor;
     }
 
     @Override

@@ -53,7 +53,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
 
         ObjectMapper objectMapper = new ObjectMapper();
 
-//payload
         UrgencyTriageModelPayload urgencyTriageModelPayload = new UrgencyTriageModelPayload();
         urgencyTriageModelPayload.setRootPipelineId(entity.getRootPipelineId());
         urgencyTriageModelPayload.setProcess(PipelineName.URGENCY_TRIAGE.getProcessName());
@@ -66,9 +65,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
 
-
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
-
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("UT START");
@@ -76,15 +73,11 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
-
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
-
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
-
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -95,11 +88,9 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
             tritonRequestBuilder(entity, request, objectMapper, parentObj);
         }
-
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} ,outputDir {} ", endpoint, inputFilePath, outputDir);
         }
-
         return parentObj;
     }
 
@@ -120,9 +111,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(urgencyTriageModelDataItem -> {
-
                             extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
-
                             log.info(aMarker, "Execute for urgency triage {}", response.isSuccessful());
                         });
                     });
@@ -273,7 +262,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -310,7 +299,9 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error("The Exception occurred in urgency triage", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Exception occurred in urgency triage model action for group id - " + groupId + " and originId - " + originId, handymanException, this.action);
         }
     }
 }

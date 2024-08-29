@@ -117,7 +117,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         try (Response response = httpclient.newCall(request).execute()) {
 
             if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
+                log.info(aMarker, "CoproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
             }
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
@@ -177,7 +177,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
 
             if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
+                log.info(aMarker, "Copro Processor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
             }
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();

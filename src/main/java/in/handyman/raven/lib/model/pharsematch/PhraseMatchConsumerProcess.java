@@ -50,11 +50,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
 
-
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
-
         //payload
         PharseMatchData data = new PharseMatchData();
         data.setRootPipelineId(Math.toIntExact(action.getRootPipelineId()));
@@ -81,9 +79,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
         String tritonRequestActivator = action.getContext().get("triton.request.activator");
-
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -94,7 +90,6 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
             tritonRequestBuilder(entity, parentObj, request);
         }
-
         return parentObj;
     }
 
@@ -106,7 +101,6 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
                 extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
-
             } else {
                 parentObj.add(
                         PhraseMatchOutputTable
@@ -121,7 +115,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .rootPipelineId(rootPipelineId)
                                 .batchId(entity.getBatchId())
                                 .build());
-                log.info(aMarker, "The Exception occurred in Phrase match API call");
+                log.error(aMarker, "The Exception occurred in Phrase matcher API call");
             }
 
         } catch (Exception exception) {
@@ -140,7 +134,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Error in inserting Intellimatch result table", handymanException, this.action);
+            HandymanException.insertException("Error in inserting intelli match result table", handymanException, this.action);
 
         }
     }
@@ -172,7 +166,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .rootPipelineId(rootPipelineId)
                                     .batchId(entity.getBatchId())
                                     .build());
-                    log.info(aMarker, "The Exception occurred in Phrase match API call");
+                    log.error(aMarker, "The Exception occurred in Phrase match API call");
                 }
             }
         } catch (Exception exception) {
@@ -191,20 +185,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Error in inserting Intellimatch result table", handymanException, this.action);
-
+            HandymanException.insertException("Error in inserting intelli match result table", handymanException, this.action);
         }
     }
 
-    private static void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+    private void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
         Long tenantId = entity.getTenantId();
-
         Long rootPipelineId = entity.getRootPipelineId();
         try {
             List<PharseMatchDataItem> phraseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
-
             });
-
             for (PharseMatchDataItem item : phraseMatchOutputData) {
                 parentObj.add(
                         PhraseMatchOutputTable
@@ -227,11 +217,13 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             }
 
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error(this.aMarker, "Failed to process JSON for phrase matcher data items", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Failed to process JSON for phrase matcher data items", handymanException, this.action);
         }
     }
 
-    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
@@ -260,9 +252,11 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .build());
             }
-
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error(this.aMarker, "Failed to process JSON for phrase matcher data items", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Failed to process JSON for phrase matcher data items", handymanException, this.action);
+
         }
     }
 }

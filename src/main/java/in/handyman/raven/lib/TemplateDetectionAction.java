@@ -78,10 +78,10 @@ public class TemplateDetectionAction implements IActionExecution {
         String readBatchSizeStr = Optional.ofNullable(this.action.getContext().get(READ_BATCH_SIZE)).orElse(DEFAULT_BATCH_SIZE);
         String writeBatchSizeStr = Optional.ofNullable(this.action.getContext().get(WRITE_BATCH_SIZE)).orElse(DEFAULT_BATCH_SIZE);
         String consumerCount = Optional.ofNullable(this.action.getContext().get(CONSUMER_API_COUNT)).orElse("1000");
-        String socketTimeStr= Optional.ofNullable(this.action.getContext().get(COPRO_CLIENT_SOCKET_TIMEOUT)).orElse(DEFAULT_SOCKET_TIME_OUT);
+        String socketTimeStr = Optional.ofNullable(this.action.getContext().get(COPRO_CLIENT_SOCKET_TIMEOUT)).orElse(DEFAULT_SOCKET_TIME_OUT);
         String threadSleep = Optional.ofNullable(this.action.getContext().get(THREAD_SLEEP_TIME)).orElse(DEFAULT_THREAD_SLEEP);
 
-        insertQuery = INSERT_INTO +  targetTableName + "(" + columnList + ")" + " " + VAL_STRING_LIST;
+        insertQuery = INSERT_INTO + targetTableName + "(" + columnList + ")" + " " + VAL_STRING_LIST;
         this.timeout = Integer.parseInt(socketTimeStr);
         this.writeBatchSize = Integer.parseInt(writeBatchSizeStr);
         this.readBatchSize = Integer.parseInt(readBatchSizeStr);
@@ -144,25 +144,6 @@ public class TemplateDetectionAction implements IActionExecution {
     @Override
     public boolean executeIf() throws Exception {
         return templateDetection.getCondition();
-    }
-    private List<URL> extractCoproEndPoints(String endpoint) {
-        final List<URL> urls;
-        if (endpoint.isEmpty() && endpoint.isBlank()) {
-            urls = Optional.of(endpoint).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new HandymanException("Error in processing the URL", e, action);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
-            log.info(aMarker, "paper itemizer copro urls {}", urls);
-        } else {
-            log.info(aMarker, "paper itemizer copro url not found");
-            return Collections.emptyList();
-
-        }
-        return urls;
     }
 
 

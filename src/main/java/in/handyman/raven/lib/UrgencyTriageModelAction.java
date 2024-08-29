@@ -59,7 +59,6 @@ public class UrgencyTriageModelAction implements IActionExecution {
             Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
             Integer consumerCount = Integer.valueOf(action.getContext().get("ut.consumer.API.count"));
             Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
-            String outputDir = urgencyTriageModel.getOutputDir();
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(urgencyTriageModel.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));

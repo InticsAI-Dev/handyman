@@ -76,10 +76,8 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
     @Override
     public List<FileMergerpdfOutputEntity> process(URL endpoint, FileMergerpdfInputEntity entity) throws JsonProcessingException {
         List<FileMergerpdfOutputEntity> parentObj = new ArrayList<>();
-
         try {
             log.info(aMarker, "File merger Action for {} has been started", fileMergerPdf.getName());
-
             try {
                 final List<String> filePathString = entity.getFilePaths();
                 final String outputDir = fileMergerPdf.getOutputDir();
@@ -94,7 +92,6 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 log.info(aMarker, "created file {}", file);
                 log.info("check file is directory {}", file.isDirectory());
                 log.info("check file is a file path {}", file.isFile());
-
 
                 FileMergerPayload fileMergerPayload = new FileMergerPayload();
                 fileMergerPayload.setRootPipelineId(rootPipelineId);
@@ -121,8 +118,6 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
                 String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
-
                 String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
                 if (Objects.equals("false", tritonRequestActivator)) {
@@ -134,30 +129,20 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                             .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
                     tritonRequestBuilder(entity, request, parentObj);
                 }
-
-
                 if (log.isInfoEnabled()) {
                     log.info("input object node in the consumer fileMerger  inputFilePath {}", filePathString);
                 }
-
-
                 if (log.isInfoEnabled()) {
                     log.info("input object node in the consumer fileMerger coproURL {}, inputFilePath {}", endpoint, filePathString);
                 }
-
-
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
-
-
             log.info(aMarker, "file merger Info Action for has been completed");
-
         } catch (Exception e) {
             log.error(aMarker, "Error in file merger execute", e);
             throw new HandymanException("Exception occurred in file merger execute", e, action);
         }
-
         return parentObj;
     }
 
@@ -165,15 +150,15 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
             } else {
                 // Handle non-successful response here
                 log.error(aMarker, "Unsuccessful response received in copro: {}", response.code());
             }
-
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Exception occurred in file merger pdf copro request builder", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("An exception occurred in file merge pdf copro request builder", handymanException, action);
         }
 
     }
@@ -195,6 +180,8 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             }
         } catch (Exception e) {
             log.error(aMarker, "Unsuccessful response received in triton: {}", e.getMessage());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Unsuccessful response received in triton", handymanException, action);
         }
     }
 
@@ -267,7 +254,6 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .batchId(entity.getBatchId())
                     .build());
         } catch (JsonMappingException e) {
-
             parentObj.add(FileMergerpdfOutputEntity
                     .builder()
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
@@ -283,7 +269,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .build());
-            throw new HandymanException("exception in processing triton output response node", e, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.
+                    insertException("An exception occurred in triton output response node", handymanException, action);
         } catch (JsonProcessingException e) {
             parentObj.add(FileMergerpdfOutputEntity
                     .builder()
@@ -300,7 +288,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .build());
-            throw new HandymanException("exception in processing triton input node", e, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.
+                    insertException("An exception occurred in triton input node", handymanException, action);
         }
     }
 
@@ -322,6 +312,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 downloadResponseFile(processedFilePath, action, httpclient, log, aMarker, urls);
             } catch (MalformedURLException e) {
                 log.error("Error in downloading merger response file with exception: {}", e.getMessage());
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.
+                        insertException("Error in downloading merger response file with exception", handymanException, action);
             }
         }
     }
@@ -355,6 +348,8 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
                 } catch (IOException e) {
                     log.error("Error in calculating width, height, dpi with exception {}", e.getMessage());
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Error in calculating width, height, dpi with exception", handymanException, action);
                 }
             } else {
                 BufferedImage image = null;
@@ -369,7 +364,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     float width_inches = pageWidth / 72;
                     dpi = (int) (pageWidth / width_inches);
                 } else {
-                    System.err.println("Failed to read the image.");
+                    log.error("Failed to read the image.");
                 }
             }
             parentObj.add(FileMergerpdfOutputEntity
@@ -396,7 +391,6 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .batchId(entity.getBatchId())
                     .build());
         } catch (JsonMappingException e) {
-
             parentObj.add(FileMergerpdfOutputEntity
                     .builder()
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
@@ -412,7 +406,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .build());
-            throw new HandymanException("exception in processing triton output response node", e, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.
+                    insertException("An exception occurred in copro output response node", handymanException, action);
         } catch (JsonProcessingException e) {
             parentObj.add(FileMergerpdfOutputEntity
                     .builder()
@@ -429,7 +425,9 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .build());
-            throw new HandymanException("exception in processing triton input node", e, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.
+                    insertException("An exception occurred in copro input node", handymanException, action);
         }
     }
 

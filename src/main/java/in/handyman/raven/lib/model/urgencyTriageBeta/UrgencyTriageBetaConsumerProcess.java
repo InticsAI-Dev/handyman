@@ -165,7 +165,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
     }
 
 
-    private static void extractedTritonOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String modelVersion, String modelName) {
+    private void extractedTritonOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String modelVersion, String modelName) {
         final String createdUserId = entity.getCreatedUserId();
         final String templateId = entity.getTemplateId();
         final Long modelId = entity.getModelId();
@@ -223,7 +223,9 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
                     .modelName(modelName)
                     .build());
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error("The Exception occurred in urgency triage", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Exception occurred in urgency triage model action for group id - " + groupId + " and originId - " + originId, handymanException, this.action);
         }
     }
 

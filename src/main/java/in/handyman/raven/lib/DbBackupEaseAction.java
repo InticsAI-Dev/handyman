@@ -43,299 +43,298 @@ import java.util.stream.Collectors;
 )
 public class DbBackupEaseAction implements IActionExecution {
 
-  private final ActionExecutionAudit action;
+    private final ActionExecutionAudit action;
 
-  private final Logger log;
+    private final Logger log;
 
-  private final DbBackupEase dbBackupEase;
+    private final DbBackupEase dbBackupEase;
 
-  private final Marker aMarker;
+    private final Marker aMarker;
 
-  public DbBackupEaseAction(final ActionExecutionAudit action, final Logger log,
-                            final Object dbBackupEase) {
-    this.dbBackupEase = (DbBackupEase) dbBackupEase;
-    this.action = action;
-    this.log = log;
-    this.aMarker = MarkerFactory.getMarker(" DbBackupEase:" + this.dbBackupEase.getName());
-  }
-
-  @Override
-  public void execute() throws Exception {
-
-    final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbBackupEase.getResourceConn());
-    SpwResourceConfig spwResourceConfig = ConfigAccess.getResourceConfig(dbBackupEase.getResourceConn());
-    jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-    log.info(aMarker, "Database backup action {} has been started ", dbBackupEase.getName());
-
-    final List<DataBaseBackupInputTable> dataBaseBackupInput = new ArrayList<>();
-
-    // Execute SQL queries to get backup information
-    jdbi.useTransaction(handle -> {
-      final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(dbBackupEase.getQuerySet());
-      AtomicInteger atomicInteger = new AtomicInteger(0);
-      for (String sqlToExecute : formattedQuery) {
-        log.info(aMarker, "Executing query {} from index {}", sqlToExecute, atomicInteger.getAndIncrement());
-        Query query = handle.createQuery(sqlToExecute);
-        ResultIterable<DataBaseBackupInputTable> dataBaseBackupInputTables = query.mapToBean(DataBaseBackupInputTable.class);
-        dataBaseBackupInput.addAll(dataBaseBackupInputTables.stream().collect(Collectors.toList()));
-        log.info(aMarker, "Executed query from index {}", atomicInteger.get());
-      }
-    });
-
-    // Create file name for the database backup
-
-
-    // Get backup schemas and construct backup command
-
-
-    final List<String> allRestrictedSchemaList = new ArrayList<>();
-    if (!dataBaseBackupInput.isEmpty()){
-      dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
-        // Collect restricted schema list
-        List<String> restrictedSchemaList = convertListFromString(dataBaseBackupInputTable.getRestrictedSchemaList());
-        List<String> backupSchemaList = convertListFromString(dataBaseBackupInputTable.getBackupSchemaList());
-        final List<String> allBackupSchemaList = getAllBackupSchemas(backupSchemaList, restrictedSchemaList);
-
-        String backupCommand = !allBackupSchemaList.isEmpty() ?
-                constructBackupCommandBySchema(backupSchemaList, spwResourceConfig) :
-                constructBackupCommandExcludeSchema(restrictedSchemaList, spwResourceConfig);
-
-
-        if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
-          allRestrictedSchemaList.addAll(restrictedSchemaList);
-        }
-        final String outputDir = dataBaseBackupInputTable.getTargetDirectory();
-        try {
-
-          Files.createDirectories(Paths.get(outputDir));
-          String fileNameWithDate = createFileName(action, dataBaseBackupInputTable.getTargetDirectory());
-          final boolean resultBool = executeBackupCommand(backupCommand, fileNameWithDate, spwResourceConfig.getPassword());
-          String formattedFileSize = getFormattedFileSize(fileNameWithDate);
-
-          handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, formattedFileSize, resultBool,
-                  fileNameWithDate, outputDir, dataBaseBackupInput);
-
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-
-
-      });
+    public DbBackupEaseAction(final ActionExecutionAudit action, final Logger log,
+                              final Object dbBackupEase) {
+        this.dbBackupEase = (DbBackupEase) dbBackupEase;
+        this.action = action;
+        this.log = log;
+        this.aMarker = MarkerFactory.getMarker(" DbBackupEase:" + this.dbBackupEase.getName());
     }
 
+    @Override
+    public void execute() throws Exception {
 
-  }
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbBackupEase.getResourceConn());
+        SpwResourceConfig spwResourceConfig = ConfigAccess.getResourceConfig(dbBackupEase.getResourceConn());
+        jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+        log.info(aMarker, "Database backup action {} has been started ", dbBackupEase.getName());
 
+        final List<DataBaseBackupInputTable> dataBaseBackupInput = new ArrayList<>();
 
-  public List<String> convertListFromString(String inputString) {
-
-    return Optional.ofNullable(inputString).map(s -> Arrays.stream(s.split(",")).map(String::new).collect(Collectors.toList())).orElse(Collections.emptyList());
-  }
-
-  public static String createFileName(ActionExecutionAudit action, String outputDir) {
-
-    String currentDateTimePattern = action.getContext().get("current.date.directory.format");
-    String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern(currentDateTimePattern));
-    String baseFileName = action.getContext().get("database.backup.file.name");
-    final String fileNameWithDate = outputDir + baseFileName + "_" + currentDateTime + ".sql";
-
-    return fileNameWithDate;
-
-  }
-
-  private static @NotNull String getFormattedFileSize(String originalFileName) throws IOException {
-    // getting backup file size
-    final long fileSize = Files.size(Paths.get(originalFileName));
-    final double fileSizeInMB = (double) fileSize / (1024 * 1024);
-
-    String formattedFileSize;
-    if (fileSizeInMB >= 1024) {
-      final double fileSizeInGB = fileSizeInMB / 1024;
-      formattedFileSize = String.format("%.3f GB", fileSizeInGB);
-    } else {
-      formattedFileSize = String.format("%.3f MB", fileSizeInMB);
-    }
-    return formattedFileSize;
-  }
-
-  private boolean executeBackupCommand(String backupCommand, String originalFileName, String pgPassword) {
-    try {
-      log.info(aMarker, "Backup started with command {}. Dump file saved as {}", backupCommand, originalFileName);
-
-      // Combine the command with the redirection within bash
-      String[] fullCommand = { "bash", "-c", backupCommand + " > " + originalFileName };
-
-      // Set the environment variable for the password
-      ProcessBuilder processBuilder = new ProcessBuilder(fullCommand);
-      processBuilder.environment().put("PGPASSWORD", pgPassword);
-
-      // Execute backup command using ProcessBuilder
-      final Process process = processBuilder.start();
-
-      // Capture output and error streams to prevent deadlock
-      new Thread(() -> {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-          String line;
-          while ((line = reader.readLine()) != null) {
-            log.info(aMarker, "Output: {}", line);
-          }
-        } catch (IOException e) {
-          log.error(aMarker, "Error reading process output:", e);
-        }
-      }).start();
-
-      new Thread(() -> {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-          String line;
-          while ((line = reader.readLine()) != null) {
-            log.error(aMarker, "Error: {}", line);
-          }
-        } catch (IOException e) {
-          log.error(aMarker, "Error reading process error output:", e);
-        }
-      }).start();
-
-      // Wait for the process to finish
-      int exitCode = process.waitFor();
-
-      // Check the exit status
-      if (exitCode == 0) {
-        log.info(aMarker, "Backup successful. Dump file saved as {}", originalFileName);
-        return true;
-      } else {
-        log.error(aMarker, "Backup failed. Exit code: {}", exitCode);
-        return false;
-      }
-    } catch (IOException | InterruptedException exception) {
-      // Log the exception
-      log.error(aMarker, "Error during backup:", exception);
-      Thread.currentThread().interrupt();  // Restore interrupted status
-      return false;
-    }
-  }
-
-
-
-  private List<String> getAllBackupSchemas(List<String> dataBaseBackupInput, List<String> restrictedSchemaList) {
-
-    return dataBaseBackupInput.stream()
-            .flatMap(inputTable -> {
-              return dataBaseBackupInput.stream()
-                      .filter(schema -> !restrictedSchemaList.contains(schema));
-            })
-            .distinct()
-            .collect(Collectors.toList());
-  }
-
-
-  private String constructBackupCommandBySchema(List<String> backupSchemas, SpwResourceConfig config) {
-    final String additionalOptions = getAdditionalOptions(config);
-    final String schemaOptions = backupSchemas.stream()
-            .map(schema -> "-n " + schema)
-            .collect(Collectors.joining(" "));
-
-    return String.format(getCommandFormat(), additionalOptions, schemaOptions);
-  }
-
-  private String constructBackupCommandExcludeSchema(List<String> dataBaseBackupInput, SpwResourceConfig config) {
-    final String additionalOptions = getAdditionalOptions(config);
-    final String restrictedSchemas = dataBaseBackupInput.stream()
-            .filter(Objects::nonNull)
-            .map(schema -> "-N " + schema)
-            .collect(Collectors.joining(" "));
-
-    return String.format(getCommandFormat(), additionalOptions, restrictedSchemas);
-  }
-
-
-  private String getCommandFormat() {
-    return "pg_dump %s %s";
-  }
-
-  private String getAdditionalOptions(SpwResourceConfig config) {
-
-    return " -U " + config.getUserName() +
-            " -d " + config.getDatabaseName() +
-            " -h " + config.getHost() +
-            " -p " + config.getPort();
-  }
-
-  private void handleResponse(final Jdbi jdbi, final List<String> allBackupSchemaList,
-                              final List<String> allRestrictedSchemaList, final String fileSize, boolean resultBool,
-                              final String originalFileName, final String outputDir, final List<DataBaseBackupInputTable> dataBaseBackupInputTable) {
-
-    final DataBaseBackupOutputTable dataBaseBackupOutputTable = new DataBaseBackupOutputTable();
-    final String backupStatus = resultBool ? "SUCCESS" : "FAILED";
-    final LocalDateTime localDateTime = LocalDateTime.now();
-
-    dataBaseBackupInputTable.forEach(dataBaseBackupInputTableMap -> {
-      dataBaseBackupOutputTable.setGroupId(dataBaseBackupInputTableMap.getGroupId());
-      dataBaseBackupOutputTable.setRootPipelineId(dataBaseBackupInputTableMap.getRootPipelineId());
-      dataBaseBackupOutputTable.setProcessId(dataBaseBackupInputTableMap.getProcessId());
-      dataBaseBackupOutputTable.setTenantId(dataBaseBackupInputTableMap.getTenantId());
-      dataBaseBackupOutputTable.setDataBaseBackupStatus(backupStatus);
-      dataBaseBackupOutputTable.setBackupSchemaList(allBackupSchemaList);
-      dataBaseBackupOutputTable.setRestrictedSchemaList(allRestrictedSchemaList);
-      dataBaseBackupOutputTable.setCreatedOn(localDateTime);
-      dataBaseBackupOutputTable.setDbBackupDirPath(outputDir);
-      dataBaseBackupOutputTable.setDbBackupFileName(originalFileName);
-      dataBaseBackupOutputTable.setDbBackupFileSize(fileSize);
-
-      try {
-        jdbi.useHandle(handle -> {
-          String sql = "INSERT INTO sanitary_hub.db_data_backup_audit (" +
-                  "created_on, db_backup_status, process_id, root_pipeline_id, group_id, tenant_id, backup_schema_list, " +
-                  "restricted_schema_list, db_backup_file_path, db_backup_file_name, backup_file_size) " +
-                  "VALUES (:createdOn, :dataBaseBackupStatus, :processId, :rootPipelineId, :groupId, :tenantId, " +
-                  ":backupSchemaList, :restrictedSchemaList, :dbBackupDirPath, :dbBackupFileName, :dbBackupFileSize)";
-
-          handle.createUpdate(sql)
-                  .bindBean(dataBaseBackupOutputTable)
-                  .execute();
+        // Execute SQL queries to get backup information
+        jdbi.useTransaction(handle -> {
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(dbBackupEase.getQuerySet());
+            AtomicInteger atomicInteger = new AtomicInteger(0);
+            for (String sqlToExecute : formattedQuery) {
+                log.info(aMarker, "Executing query {} from index {}", sqlToExecute, atomicInteger.getAndIncrement());
+                Query query = handle.createQuery(sqlToExecute);
+                ResultIterable<DataBaseBackupInputTable> dataBaseBackupInputTables = query.mapToBean(DataBaseBackupInputTable.class);
+                dataBaseBackupInput.addAll(dataBaseBackupInputTables.stream().collect(Collectors.toList()));
+                log.info(aMarker, "Executed query from index {}", atomicInteger.get());
+            }
         });
-      } catch (UnableToExecuteStatementException exception) {
-        log.error(aMarker, "Exception occurred in database backup audit insert: {}", exception.getMessage(), exception);
-        HandymanException handymanException = new HandymanException(exception);
-        HandymanException.insertException("Exception occurred in database backup audit insert for the file -  " + dataBaseBackupOutputTable.getDbBackupFileName(), handymanException, this.action);
-      }
-    });
-  }
+
+        // Create file name for the database backup
 
 
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @Data
-  public static class DataBaseBackupInputTable {
-    private String backupSchemaList;
-    private String restrictedSchemaList;
-    private String targetDirectory;
-    private Integer groupId;
-    private Long tenantId;
-    private Long processId;
-    private Long rootPipelineId;
-  }
-
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @Data
-  public static class DataBaseBackupOutputTable {
-
-    private LocalDateTime createdOn;
-    private String dataBaseBackupStatus;
-    private Long processId;
-    private Long rootPipelineId;
-    private Long tenantId;
-    private Integer groupId;
-    private List<String> backupSchemaList;
-    private List<String> restrictedSchemaList;
-    private String dbBackupFileName;
-    private String dbBackupDirPath;
-    private String dbBackupFileSize;
-  }
+        // Get backup schemas and construct backup command
 
 
-  @Override
-  public boolean executeIf() throws Exception {
-    return dbBackupEase.getCondition();
-  }
+        final List<String> allRestrictedSchemaList = new ArrayList<>();
+        if (!dataBaseBackupInput.isEmpty()) {
+            dataBaseBackupInput.forEach(dataBaseBackupInputTable -> {
+                // Collect restricted schema list
+                List<String> restrictedSchemaList = convertListFromString(dataBaseBackupInputTable.getRestrictedSchemaList());
+                List<String> backupSchemaList = convertListFromString(dataBaseBackupInputTable.getBackupSchemaList());
+                final List<String> allBackupSchemaList = getAllBackupSchemas(backupSchemaList, restrictedSchemaList);
+
+                String backupCommand = !allBackupSchemaList.isEmpty() ?
+                        constructBackupCommandBySchema(backupSchemaList, spwResourceConfig) :
+                        constructBackupCommandExcludeSchema(restrictedSchemaList, spwResourceConfig);
+
+
+                if (restrictedSchemaList != null && !restrictedSchemaList.isEmpty()) {
+                    allRestrictedSchemaList.addAll(restrictedSchemaList);
+                }
+                final String outputDir = dataBaseBackupInputTable.getTargetDirectory();
+                try {
+
+                    Files.createDirectories(Paths.get(outputDir));
+                    String fileNameWithDate = createFileName(action, dataBaseBackupInputTable.getTargetDirectory());
+                    final boolean resultBool = executeBackupCommand(backupCommand, fileNameWithDate, spwResourceConfig.getPassword());
+                    String formattedFileSize = getFormattedFileSize(fileNameWithDate);
+
+                    handleResponse(jdbi, allBackupSchemaList, allRestrictedSchemaList, formattedFileSize, resultBool,
+                            fileNameWithDate, outputDir, dataBaseBackupInput);
+
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+
+            });
+        }
+
+
+    }
+
+
+    public List<String> convertListFromString(String inputString) {
+
+        return Optional.ofNullable(inputString).map(s -> Arrays.stream(s.split(",")).map(String::new).collect(Collectors.toList())).orElse(Collections.emptyList());
+    }
+
+    public static String createFileName(ActionExecutionAudit action, String outputDir) {
+
+        String currentDateTimePattern = action.getContext().get("current.date.directory.format");
+        String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern(currentDateTimePattern));
+        String baseFileName = action.getContext().get("database.backup.file.name");
+        final String fileNameWithDate = outputDir + baseFileName + "_" + currentDateTime + ".sql";
+
+        return fileNameWithDate;
+
+    }
+
+    private static @NotNull String getFormattedFileSize(String originalFileName) throws IOException {
+        // getting backup file size
+        final long fileSize = Files.size(Paths.get(originalFileName));
+        final double fileSizeInMB = (double) fileSize / (1024 * 1024);
+
+        String formattedFileSize;
+        if (fileSizeInMB >= 1024) {
+            final double fileSizeInGB = fileSizeInMB / 1024;
+            formattedFileSize = String.format("%.3f GB", fileSizeInGB);
+        } else {
+            formattedFileSize = String.format("%.3f MB", fileSizeInMB);
+        }
+        return formattedFileSize;
+    }
+
+    private boolean executeBackupCommand(String backupCommand, String originalFileName, String pgPassword) {
+        try {
+            log.info(aMarker, "Backup started with command {}. Dump file saved as {}", backupCommand, originalFileName);
+
+            // Combine the command with the redirection within bash
+            String[] fullCommand = {"bash", "-c", backupCommand + " > " + originalFileName};
+
+            // Set the environment variable for the password
+            ProcessBuilder processBuilder = new ProcessBuilder(fullCommand);
+            processBuilder.environment().put("PGPASSWORD", pgPassword);
+
+            // Execute backup command using ProcessBuilder
+            final Process process = processBuilder.start();
+
+            // Capture output and error streams to prevent deadlock
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.info(aMarker, "Output: {}", line);
+                    }
+                } catch (IOException e) {
+                    log.error(aMarker, "Error reading process output:", e);
+                }
+            }).start();
+
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.error(aMarker, "Error: {}", line);
+                    }
+                } catch (IOException e) {
+                    log.error(aMarker, "Error reading process error output:", e);
+                }
+            }).start();
+
+            // Wait for the process to finish
+            int exitCode = process.waitFor();
+
+            // Check the exit status
+            if (exitCode == 0) {
+                log.info(aMarker, "Backup successful. Dump file saved as {}", originalFileName);
+                return true;
+            } else {
+                log.error(aMarker, "Backup failed. Exit code: {}", exitCode);
+                return false;
+            }
+        } catch (IOException | InterruptedException exception) {
+            // Log the exception
+            log.error(aMarker, "Error during backup:", exception);
+            Thread.currentThread().interrupt();  // Restore interrupted status
+            return false;
+        }
+    }
+
+
+    private List<String> getAllBackupSchemas(List<String> dataBaseBackupInput, List<String> restrictedSchemaList) {
+
+        return dataBaseBackupInput.stream()
+                .flatMap(inputTable -> {
+                    return dataBaseBackupInput.stream()
+                            .filter(schema -> !restrictedSchemaList.contains(schema));
+                })
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+
+    private String constructBackupCommandBySchema(List<String> backupSchemas, SpwResourceConfig config) {
+        final String additionalOptions = getAdditionalOptions(config);
+        final String schemaOptions = backupSchemas.stream()
+                .map(schema -> "-n " + schema)
+                .collect(Collectors.joining(" "));
+
+        return String.format(getCommandFormat(), additionalOptions, schemaOptions);
+    }
+
+    private String constructBackupCommandExcludeSchema(List<String> dataBaseBackupInput, SpwResourceConfig config) {
+        final String additionalOptions = getAdditionalOptions(config);
+        final String restrictedSchemas = dataBaseBackupInput.stream()
+                .filter(Objects::nonNull)
+                .map(schema -> "-N " + schema)
+                .collect(Collectors.joining(" "));
+
+        return String.format(getCommandFormat(), additionalOptions, restrictedSchemas);
+    }
+
+
+    private String getCommandFormat() {
+        return "pg_dump %s %s";
+    }
+
+    private String getAdditionalOptions(SpwResourceConfig config) {
+
+        return " -U " + config.getUserName() +
+                " -d " + config.getDatabaseName() +
+                " -h " + config.getHost() +
+                " -p " + config.getPort();
+    }
+
+    private void handleResponse(final Jdbi jdbi, final List<String> allBackupSchemaList,
+                                final List<String> allRestrictedSchemaList, final String fileSize, boolean resultBool,
+                                final String originalFileName, final String outputDir, final List<DataBaseBackupInputTable> dataBaseBackupInputTable) {
+
+        final DataBaseBackupOutputTable dataBaseBackupOutputTable = new DataBaseBackupOutputTable();
+        final String backupStatus = resultBool ? "SUCCESS" : "FAILED";
+        final LocalDateTime localDateTime = LocalDateTime.now();
+
+        dataBaseBackupInputTable.forEach(dataBaseBackupInputTableMap -> {
+            dataBaseBackupOutputTable.setGroupId(dataBaseBackupInputTableMap.getGroupId());
+            dataBaseBackupOutputTable.setRootPipelineId(dataBaseBackupInputTableMap.getRootPipelineId());
+            dataBaseBackupOutputTable.setProcessId(dataBaseBackupInputTableMap.getProcessId());
+            dataBaseBackupOutputTable.setTenantId(dataBaseBackupInputTableMap.getTenantId());
+            dataBaseBackupOutputTable.setDataBaseBackupStatus(backupStatus);
+            dataBaseBackupOutputTable.setBackupSchemaList(allBackupSchemaList);
+            dataBaseBackupOutputTable.setRestrictedSchemaList(allRestrictedSchemaList);
+            dataBaseBackupOutputTable.setCreatedOn(localDateTime);
+            dataBaseBackupOutputTable.setDbBackupDirPath(outputDir);
+            dataBaseBackupOutputTable.setDbBackupFileName(originalFileName);
+            dataBaseBackupOutputTable.setDbBackupFileSize(fileSize);
+
+            try {
+                jdbi.useHandle(handle -> {
+                    String sql = "INSERT INTO sanitary_hub.db_data_backup_audit (" +
+                            "created_on, db_backup_status, process_id, root_pipeline_id, group_id, tenant_id, backup_schema_list, " +
+                            "restricted_schema_list, db_backup_file_path, db_backup_file_name, backup_file_size) " +
+                            "VALUES (:createdOn, :dataBaseBackupStatus, :processId, :rootPipelineId, :groupId, :tenantId, " +
+                            ":backupSchemaList, :restrictedSchemaList, :dbBackupDirPath, :dbBackupFileName, :dbBackupFileSize)";
+
+                    handle.createUpdate(sql)
+                            .bindBean(dataBaseBackupOutputTable)
+                            .execute();
+                });
+            } catch (UnableToExecuteStatementException exception) {
+                log.error(aMarker, "Exception occurred in database backup audit insert: {}", exception.getMessage(), exception);
+                HandymanException handymanException = new HandymanException(exception);
+                HandymanException.insertException("Exception occurred in database backup audit insert for the file -  " + dataBaseBackupOutputTable.getDbBackupFileName(), handymanException, this.action);
+            }
+        });
+    }
+
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    public static class DataBaseBackupInputTable {
+        private String backupSchemaList;
+        private String restrictedSchemaList;
+        private String targetDirectory;
+        private Integer groupId;
+        private Long tenantId;
+        private Long processId;
+        private Long rootPipelineId;
+    }
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    public static class DataBaseBackupOutputTable {
+
+        private LocalDateTime createdOn;
+        private String dataBaseBackupStatus;
+        private Long processId;
+        private Long rootPipelineId;
+        private Long tenantId;
+        private Integer groupId;
+        private List<String> backupSchemaList;
+        private List<String> restrictedSchemaList;
+        private String dbBackupFileName;
+        private String dbBackupDirPath;
+        private String dbBackupFileSize;
+    }
+
+
+    @Override
+    public boolean executeIf() throws Exception {
+        return dbBackupEase.getCondition();
+    }
 }

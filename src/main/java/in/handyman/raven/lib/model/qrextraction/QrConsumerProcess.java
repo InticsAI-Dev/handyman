@@ -12,6 +12,7 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -59,7 +60,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         this.outputDir = outputDir;
     }
 
-    //7. overwrite the method process in coproprocessor, write copro api logic inside this method
+    //7. overwrite the method process in copro processor, write copro api logic inside this method
     @Override
     public List<QrOutputEntity> process(URL endpoint, QrInputEntity entity) throws Exception {
         log.info("copro consumer process started");
@@ -70,7 +71,6 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         Long actionId = action.getActionId();
 
         ObjectMapper objectMapper = new ObjectMapper();
-
         //payload
         QrExtractionData qrExtractionData = new QrExtractionData();
         qrExtractionData.setRootPipelineId(rootPipelineId);
@@ -86,13 +86,11 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
 
-
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName("QR EXTRACTION START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
-
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
@@ -106,7 +104,6 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         if (log.isInfoEnabled()) {
             log.info("input object node in the consumer process coproURL {}, inputFilePath {}", endpoint, filePath);
         }
-
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -153,6 +150,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                             .message("qr code absent in the given file")
                             .batchId(entity.getBatchId())
                             .build());
+                    log.error(aMarker, "The Exception occurred in qr extractor API call");
                 }
 
             } else {
@@ -169,7 +167,6 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .message(response.message())
                         .batchId(entity.getBatchId())
                         .build());
-
                 log.error(aMarker, "The Exception occurred in episode of coverage in response {}", response);
             }
 
@@ -250,12 +247,14 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
             JsonNode decodeValueNode = rootNode.get("decode_value");
             qrLineItems = mapper.convertValue(decodeValueNode, new TypeReference<>() {
             });
-
-        } catch (JsonProcessingException e) {
-            throw new HandymanException("Exception in processing the json response using the Json node ", e);
+        } catch (JsonProcessingException exception) {
+            log.error(aMarker, "Exception occurred in the QR extraction action {}", ExceptionUtil.toString(exception));
+            HandymanException handymanException = new HandymanException(exception);
+            HandymanException.insertException("Error in processing QR data", handymanException, this.action);
         }
+
         AtomicInteger atomicInteger = new AtomicInteger();
-        if (!qrLineItems.isEmpty()) {
+        if (qrLineItems != null && !qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
                 JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
                 qrOutputEntities.add(QrOutputEntity.builder()
@@ -274,7 +273,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .b_box(qrBoundingBox.toString())
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .stage(QR_EXTRACTION)
-                        .message("qr extraction completed")
+                        .message("QR extraction completed")
                         .tenantId(qrReader.getTenantId())
                         .modelName(modelName)
                         .modelVersion(modelVersion)
@@ -282,6 +281,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .build());
             });
         } else {
+            log.warn(aMarker, "No QR line items found in the provided data.");
             qrOutputEntities.add(QrOutputEntity.builder()
                     .originId(originId)
                     .paperNo(paperNo)
@@ -292,11 +292,12 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                     .rootPipelineId(rootPipelineId)
                     .status(ConsumerProcessApiStatus.ABSENT.getStatusDescription())
                     .stage(QR_EXTRACTION)
-                    .message("qr code absent in the given file")
+                    .message("QR code absent in the given file")
                     .batchId(entity.getBatchId())
                     .build());
         }
     }
+
 
     private void extractedCoproOutputResponse(List<QrOutputEntity> qrOutputEntities, QrInputEntity entity, Long rootPipelineId, String qrDataItem, String originId, Long paperNo, Integer groupId, String fileId, Long tenantId, String modelName, String modelVersion) {
 
@@ -305,7 +306,9 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
             qrLineItems = mapper.readValue(qrDataItem, new TypeReference<>() {
             });
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error(aMarker, "Exception occurred in the QR copro extraction action {}", ExceptionUtil.toString(e));
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in processing QR data", handymanException, this.action);
         }
         AtomicInteger atomicInteger = new AtomicInteger();
         if (!qrLineItems.isEmpty()) {

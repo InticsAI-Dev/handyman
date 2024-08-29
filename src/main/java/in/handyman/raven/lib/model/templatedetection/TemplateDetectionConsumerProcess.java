@@ -68,9 +68,6 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Long rootPipelineId = entity.getRootPipelineId();
         Long actionId = action.getActionId();
 
-
-
-
         //payload
         TemplateDetectionData templateDetectionDataInput = new TemplateDetectionData();
         templateDetectionDataInput.setAttributes(attributes);
@@ -180,11 +177,12 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     }
 
-    private List<TrinityInputAttribute> attributeList(ObjectMapper objectMapper, String jsonString)throws JsonProcessingException{
+    private List<TrinityInputAttribute> attributeList(ObjectMapper objectMapper, String jsonString) throws JsonProcessingException {
         List<TrinityInputAttribute> customObjects = objectMapper.readValue(jsonString, new TypeReference<>() {
         });
         return customObjects;
     }
+
     private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -196,7 +194,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
             Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                    TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
+                TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
 
                 if (templateDetectionResponse.getOutputs() != null && !templateDetectionResponse.getOutputs().isEmpty()) {
                     templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper)));
