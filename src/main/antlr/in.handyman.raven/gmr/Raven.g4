@@ -1193,14 +1193,7 @@ p2pNameValidation:
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
 
-convertExcelToDatabase:
-    'convert-excel-to-database' 'as' name=STRING
-    'on-resource-conn' resourceConn=STRING
-    'fileType' fileType=STRING
-    'target' targetConn=STRING
-    'using' '{'
-                        querySet=STRING
-    '}' ('on-condition' condition=expression)* ;
+
 urgencyTriageBeta:
     'urgencyTriageBeta' 'as' name=STRING
     'output-dir' outputDir=STRING
@@ -1243,6 +1236,8 @@ documentparser:
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
     ('on-condition' condition=expression)* ;
+
+
 neonKvp:
     'neonKvp' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
@@ -1255,7 +1250,6 @@ neonKvp:
 radonKvp:
     'radonKvp' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
-    'outputDir' outputDir=STRING
     'copro-url' endpoint=STRING
     'output-table' outputTable=STRING
     'using' '{'
@@ -1272,6 +1266,14 @@ llmJsonParser:
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
 
+convertExcelToDatabase:
+    'convert-excel-to-database' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'fileType' fileType=STRING
+    'target' targetConn=STRING
+    'using' '{'
+                        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 
 //rules
 

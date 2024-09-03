@@ -22,10 +22,36 @@ class TableExtractionHeadersActionTest {
                 .processId("999")
                 .resultTable("table_extraction.table_extraction_result")
                 .outputDir("/data/output/")
-                .querySet(" SELECT a.tenant_id, a.root_pipeline_id, a.group_id, a.origin_id, a.paper_no, a.document_type, a.template_name, a.file_path,a.table_headers,a.model_name as model_name,a.truth_entity_id,a.sor_container_id,a.channel_id, a.batch_id\n" +
-                        "from macro.table_extraction_line_items_audit a\n" +
-                        "join table_extraction.table_extraction_payload_queue b on a.origin_id=b.origin_id and a.batch_id = b.batch_id\n" +
-                        "where b.status='IN_PROGRESS' and a.group_id='92' and a.tenant_id =81 and a.model_name='XENON' and b.batch_id ='BATCH-92_0' limit 1;")
+                .querySet("\n" +
+                        "select tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,\n" +
+                        "  jsonb_agg(\n" +
+                        "  jsonb_build_object(\n" +
+                        "      'TruthEntity', truth_entity_name,\n" +
+                        "  'columnHeaders', synonym_array\n" +
+                        "          )\n" +
+                        "      ) AS table_headers,\n" +
+                        "      model_name,\n" +
+                        "      truth_entity_id as truth_entity_id,\n" +
+                        "      sor_container_id as sor_container_id,\n" +
+                        "      channel_id,\n" +
+                        "      batch_id\n" +
+                        "   from   macro.table_extraction_temp_table_audit\n" +
+                        "   where batch_id ='BATCH-96_0'\n" +
+                        "  group by\n" +
+                        "      tenant_id,\n" +
+                        "      root_pipeline_id,\n" +
+                        "      group_id,\n" +
+                        "      origin_id,\n" +
+                        "      paper_no,\n" +
+                        "      document_type,\n" +
+                        "      template_name,\n" +
+                        "      file_path,\n" +
+                        "      model_name,\n" +
+                        "      truth_entity_id,\n" +
+                        "      sor_container_id,\n" +
+                        "      channel_id,\n" +
+                        "      batch_id;\n" +
+                        "\n")
                 .build();
 
 
@@ -34,7 +60,7 @@ class TableExtractionHeadersActionTest {
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.table-extraction.url.v1", "http://192.168.10.245:18889/copro/table-attribution-with-header"),
                 Map.entry("read.batch.size", "1"),
                 Map.entry("table.extraction.consumer.API.count", "1"),
-                Map.entry("multipart.file.upload.activator", "false"),
+                Map.entry("multipart.file.upload.activator", "true"),
                 Map.entry("triton.request.table.headers.activator", "false"),
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
