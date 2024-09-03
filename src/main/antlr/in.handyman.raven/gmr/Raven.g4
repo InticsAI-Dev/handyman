@@ -170,6 +170,7 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
+    |promptEngine
     );
 
 
@@ -1285,6 +1286,17 @@ llmJsonParser:
     'on-resource-conn' resourceConn= STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+
+promptEngine:
+    'promptEngine' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'audit-table' auditTable=STRING
     'using'  '{'
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;

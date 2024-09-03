@@ -51,8 +51,7 @@ public class ProducerAction implements IActionExecution {
                                 log.info(aMarker, "Before execution Context {}", vAction.getContext());
                                 return new ActionCallable(actionContext, vAction, null);
                             }).collect(Collectors.toList());
-                    collect
-                            .forEach(ActionCallable::run);
+                    collect.forEach(ActionCallable::run);
 
                     log.info(aMarker, "After execution Context {}", actionExecutionAudit.getContext());
 

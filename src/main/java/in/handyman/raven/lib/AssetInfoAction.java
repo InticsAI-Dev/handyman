@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.AssetInfo;
+import in.handyman.raven.lib.prompt.generation.SanitarySummary;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
@@ -311,20 +312,6 @@ public class AssetInfoAction implements IActionExecution {
         private Float width;
         private Float height;
         private Integer dpi;
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SanitarySummary {
-        private int rowCount;
-        private int correctRowCount;
-        private int errorRowCount;
-        private String comments;
-        private Long tenantId;
-
     }
 
     @AllArgsConstructor
