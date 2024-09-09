@@ -9,6 +9,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -155,9 +156,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .stage(PROCESS_NAME)
                         .message(response.message())
                         .batchId(entity.getBatchId())
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(entity.getCreatedOn())
                         .createdUserId(tenantId)
-                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
                         .build());
@@ -178,9 +179,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
-                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdOn(entity.getCreatedOn())
                     .createdUserId(tenantId)
-                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)
                     .category(entity.getCategory())
                     .build());
@@ -237,9 +238,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         parentObj.add(RadonQueryOutputTable.builder()
-                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .createdOn(entity.getCreatedOn())
                 .createdUserId(tenantId)
-                .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
@@ -341,9 +342,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
         parentObj.add(RadonQueryOutputTable.builder()
-                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .createdOn(entity.getCreatedOn())
                 .createdUserId(tenantId)
-                .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
