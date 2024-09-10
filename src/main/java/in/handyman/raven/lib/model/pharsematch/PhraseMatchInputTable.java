@@ -6,28 +6,30 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public class PhraseMatchInputTable implements CoproProcessor.Entity {
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class PhraseMatchInputTable implements CoproProcessor.Entity {
 
-        private String originId;
-        private Integer paperNo;
-        private String groupId;
-        private String pageContent;
-        private String truthPlaceholder;
-        private String processId;
-        private Long rootPipelineId;
-        private Long tenantId;
-        private String batchId;
+    private String originId;
+    private Integer paperNo;
+    private String groupId;
+    private String pageContent;
+    private String truthPlaceholder;
+    private String processId;
+    private Long rootPipelineId;
+    private Long tenantId;
+    private String batchId;
+    private Timestamp createdOn;
 
-        @Override
-        public List<Object> getRowData() {
-            return null;
-        }
+    @Override
+    public List<Object> getRowData() {
+        return null;
     }
+}
 
 
