@@ -36,12 +36,14 @@ public class DataExtractionOutputTable implements CoproProcessor.Entity {
     private String modelName;
     private String modelVersion;
     private String batchId;
+    private Timestamp lastUpdatedOn;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId,this.templateId
                 ,this.processId,this.filePath, this.extractedText,this.paperNo,this.fileName
-                ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId).collect(Collectors.toList());
+                ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
+                ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn).collect(Collectors.toList());
     }
 }
