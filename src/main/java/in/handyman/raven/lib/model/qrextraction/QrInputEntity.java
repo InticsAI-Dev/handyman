@@ -5,7 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.checkerframework.checker.units.qual.Time;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Data
@@ -22,6 +24,7 @@ public class QrInputEntity implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private Long tenantId;
     private String batchId;
+    private Timestamp createdOn;
 
     @Override
     public List<Object> getRowData() {
