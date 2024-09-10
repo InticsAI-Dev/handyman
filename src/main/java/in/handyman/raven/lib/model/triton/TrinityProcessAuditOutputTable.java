@@ -19,5 +19,5 @@ public class TrinityProcessAuditOutputTable {
     private String status;
     private String stage;
     private String message;
-    private String filePath;
+    private Integer paperNo;
 }

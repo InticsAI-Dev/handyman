@@ -224,6 +224,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .request(jsonInputRequest)
                             .response("Error In Response")
                             .endpoint(String.valueOf(endpoint))
+
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);

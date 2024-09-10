@@ -88,19 +88,6 @@ public class TrinityModelApiCaller {
                         .build();
             } else {
                 log.error("Error in the trinity model response {}", responseBody);
-//                processAuditOutputTables.add( TrinityProcessAuditOutputTable.builder()
-//                        .originId(trinityModelPayload.getOriginId())
-//                        .stage("VQA_TRANSACTION")
-//                        .status("FAILED")
-//                        .request(jsonInputRequest)
-//                        .response(response.message())
-//                        .endpoint(node)
-//                        .message("Error in the trinity model response")
-//                        .tenantId(tenantId)
-//                        .rootPipelineId(rootpipelineId)
-//                        .filePath(trinityModelPayload.getInputFilePath())
-//                        .build());
-//                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
@@ -159,60 +146,15 @@ public class TrinityModelApiCaller {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-//                processAuditOutputTables.add( TrinityProcessAuditOutputTable.builder()
-//                        .originId(trinityModelPayload.getOriginId())
-//                        .stage("VQA_TRANSACTION")
-//                        .status("COMPLETED")
-//                        .request(jsonInputRequest)
-//                        .response(responseBody)
-//                        .endpoint(node)
-//                        .message("Trinity model completed")
-//                        .tenantId(tenantId)
-//                        .rootPipelineId(rootPipelineId)
-//                        .filePath(trinityModelPayload.getInputFilePath())
-//                        .build());
-//                insertRowsProcessedIntoProcessAudit(jdbi, processAuditOutputTables, action);
                 return responseBody;
 
             } else {
                 log.error("Error in the trinity model response {}", responseBody);
-//                processAuditOutputTables.add( TrinityProcessAuditOutputTable.builder()
-//                        .originId(trinityModelPayload.getOriginId())
-//                        .stage("VQA_TRANSACTION")
-//                        .status("FAILED")
-//                        .request(jsonInputRequest)
-//                        .response(response.message())
-//                        .endpoint(node)
-//                        .message("Error in the trinity model response")
-//                        .tenantId(tenantId)
-//                        .rootPipelineId(rootPipelineId)
-//                        .filePath(trinityModelPayload.getInputFilePath())
-//                        .build());
                 throw new HandymanException(responseBody);
             }
         } catch (Exception e) {
             log.error("Failed to execute the rest api call");
             throw new HandymanException("Failed to execute the rest api call " + node, e);
-        }
-    }
-    private void insertRowsProcessedIntoProcessAudit(Jdbi jdbi, List<TrinityProcessAuditOutputTable> auditResults, ActionExecutionAudit actionExecutionAudit) throws Exception {
-        try {
-            jdbi.useTransaction(handle -> {
-                System.out.println(auditResults.size());
-                for (TrinityProcessAuditOutputTable auditResult : auditResults) {
-                    handle.createUpdate("INSERT INTO audit.trinity_process_audit_output" +
-                                    " (tenant_id, root_pipeline_id, origin_id, created_on, endpoint, request, response, status, stage, message) " +
-                                    "VALUES(:tenantId,:rootPipelineId, :originId, now(), :endpoint, :request, :response, :status, :stage, :message)")
-                            .bindBean(auditResult)
-                            .execute();
-
-
-                }
-            });
-        } catch (Exception exception) {
-            log.error("Error inserting into batch insert audit {}", ExceptionUtil.toString(exception));
-            HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Error inserting into batch insert audit", handymanException, actionExecutionAudit);
         }
     }
 }
