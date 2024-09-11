@@ -7,10 +7,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.utmodel.copro.UrgencyTriageModelDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
@@ -26,6 +23,9 @@ import static in.handyman.raven.lib.UrgencyTriageModelAction.urgencyTriageModel;
 public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.ConsumerProcess<UrgencyTriageInputTable, UrgencyTriageOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String URGENCY_TRIAGE_PROCESS_NAME = PipelineName.URGENCY_TRIAGE.getProcessName();
+    public static final String RADON_START = "RADON START";
+    public static final String TRITON_ACTIVATOR_FALSE = "false";
+    public static final String URGENCY_TRIAGE_MODEL = "URGENCY_TRIAGE_MODEL";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -72,9 +72,9 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("RADON START");
+        requestBody.setName(RADON_START);
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
@@ -87,7 +87,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
 
-        if (Objects.equals("false", tritonRequestActivator)) {
+        if (Objects.equals(TRITON_ACTIVATOR_FALSE, tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
             coproRequestBuider(entity, request, objectMapper, parentObj);
@@ -139,8 +139,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                         .paperNo(paperNo)
                         .templateId(templateId)
                         .modelId(modelId)
-                        .status("FAILED")
-                        .stage("URGENCY_TRIAGE_MODEL")
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .stage(URGENCY_TRIAGE_MODEL)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
@@ -158,8 +158,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .paperNo(paperNo)
                     .templateId(templateId)
                     .modelId(modelId)
-                    .status("FAILED")
-                    .stage("URGENCY_TRIAGE_MODEL")
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                    .stage(URGENCY_TRIAGE_MODEL)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
@@ -179,7 +179,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
 
 //            UrgencyTriageModelDataItem urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItem.class);
             JsonNode qrBoundingBox = objectMapper.valueToTree(modelResponse.getBboxes());
-            Float confScore = Float.valueOf(modelResponse.getConfidenceScore()==null ? 0 :modelResponse.getConfidenceScore());
+            Float confScore = Float.valueOf(modelResponse.getConfidenceScore() == null ? 0 : modelResponse.getConfidenceScore());
             String paperType = modelResponse.getInferResponse();
             parentObj.add(UrgencyTriageOutputTable.builder()
                     .createdUserId(createdUserId)
@@ -234,7 +234,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                         .paperNo(paperNo)
                         .templateId(templateId)
                         .modelId(modelId)
-                        .status("FAILED")
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(URGENCY_TRIAGE_PROCESS_NAME)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
@@ -244,7 +244,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
             }
         } catch (Exception e) {
             String createdUserId = entity.getCreatedUserId();
-            String lastUpdatedUserId = entity.getLastUpdatedUserId();
+
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
             Long groupId = Long.valueOf(entity.getGroupId());
@@ -264,7 +264,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .paperNo(paperNo)
                     .templateId(templateId)
                     .modelId(modelId)
-                    .status("FAILED")
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
@@ -278,7 +278,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
 
     private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
         String createdUserId = entity.getCreatedUserId();
-        String lastUpdatedUserId = entity.getLastUpdatedUserId();
+
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
         Long groupId = Long.valueOf(entity.getGroupId());

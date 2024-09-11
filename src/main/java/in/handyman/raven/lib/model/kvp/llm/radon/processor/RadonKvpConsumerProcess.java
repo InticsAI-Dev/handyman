@@ -10,10 +10,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
 import jakarta.json.Json;
 import okhttp3.*;
@@ -33,6 +30,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
+    public static final String RADON_START = "RADON START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -83,9 +81,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("RADON START");
+        requestBody.setName(RADON_START);
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
