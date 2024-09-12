@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.utmodel.copro.UrgencyTriageModelDataItemCopro;
@@ -144,6 +145,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
@@ -163,6 +166,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -201,6 +206,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .modelName(modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -239,6 +246,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
@@ -269,6 +278,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -311,6 +322,8 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .modelName(modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
