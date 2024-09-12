@@ -36,7 +36,7 @@ public class HwDetectionAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO ";
   public static final String PAPER_CLASSIFICATION_RESULT = "paper_classification_result";
   public static final String INSERT_INTO_COLUMNS = "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no, template_id, model_id, document_type, status, stage, message, group_id, root_pipeline_id, confidence_score,model_name,model_version,batch_id";
-  public static final String INSERT_INTO_VALUES = "now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?";
+  public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?";
   public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
   private final ActionExecutionAudit action;
 

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
    @AllArgsConstructor
@@ -27,6 +28,7 @@ import java.util.List;
         private String outputDir;
         private Long processId;
         private String batchId;
+        private Timestamp createdOn;
 
 
 
