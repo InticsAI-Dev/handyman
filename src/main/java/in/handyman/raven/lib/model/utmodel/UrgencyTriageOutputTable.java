@@ -43,7 +43,7 @@ public class UrgencyTriageOutputTable implements CoproProcessor.Entity {
         return Stream.of(this.createdOn, this.createdUserId,this.lastUpdatedOn, this.lastUpdatedUserId, this.processId, this.groupId, this.tenantId, this.confScore,
                 this.originId, this.paperNo, this.templateId, this.modelId, this.status, this.stage,
                 this.message, this.utResult, this.bbox, this.rootPipelineId, this.modelName, this.modelVersion,
-                this.batchId, this.createdOn, this.lastUpdatedOn).collect(Collectors.toList());
+                this.batchId).collect(Collectors.toList());
     }
 
 }
