@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.common;
 
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -23,6 +24,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProcess<IntellimatchInputTable, IntellimatchOutputTable> {
@@ -99,7 +101,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is completed").
-                    batchId(result.getBatchId()).
+                            batchId(result.getBatchId()).
                     build()
             );
         }
@@ -111,12 +113,12 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         List<String> sentence = Collections.singletonList(result.getExtractedValue());
         final String process = "CONTROL_DATA";
         Long actionId = action.getActionId();
-        Long rootPipelineId = result.getRootPipelineId();
+        Long rootpipelineId = result.getRootPipelineId();
         String inputSentence = result.getActualValue();
 
 
         ComparisonPayload comparisonPayload = new ComparisonPayload();
-        comparisonPayload.setRootPipelineId(rootPipelineId);
+        comparisonPayload.setRootPipelineId(rootpipelineId);
         comparisonPayload.setActionId(actionId);
         comparisonPayload.setProcessId(action.getProcessId());
         comparisonPayload.setOriginId(result.getOriginId());
@@ -130,6 +132,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
 
     private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) throws
             IOException {
+
         try (Response response = httpclient.newCall(request).execute()) {
             log.info("intelliMatch data comparison response body {}", response.body());
             if (response.isSuccessful()) {
@@ -152,6 +155,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         batchId(result.getBatchId()).
                         build()
                 );
+
+
             }
         }
     }
@@ -266,6 +271,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                                                      String comparisonDataItem, String modelName, String modelVersion) {
 
         try {
+
             List<ComparisonDataItemCopro> comparisonDataItemCopros = mapper.readValue(
                     comparisonDataItem, new TypeReference<List<ComparisonDataItemCopro>>() {
                     });
@@ -290,6 +296,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         batchId(result.getBatchId()).
                         build());
             }
+
+
         } catch (Exception exception) {
             parentObj.add(IntellimatchOutputTable.builder().
                     fileName(result.getFileName()).
@@ -311,4 +319,19 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
 
+    private static String formatToJsonArray(String input) {
+        // Remove enclosing square brackets and escape backslashes
+        input = input.substring(1, input.length() - 1).replace("\\", "");
+
+        // Split the input into words
+        String[] words = input.split("\",\"");
+
+        // Enclose each word in double quotes
+        for (int i = 0; i < words.length; i++) {
+            words[i] = "\"" + words[i].trim() + "\"";
+        }
+
+        // Join the words with commas to form a JSON array
+        return "[" + String.join(",", words) + "]";
+    }
 }

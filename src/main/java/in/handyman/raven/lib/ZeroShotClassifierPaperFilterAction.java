@@ -12,7 +12,6 @@ import in.handyman.raven.lib.model.zeroshotclassifier.ZeroShotConsumerProcess;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -36,9 +35,9 @@ import java.util.stream.Collectors;
 public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
     public static final String SCHEMA_NAME = "paper";
     public static final String OUTPUT_TABLE_NAME = "zero_shot_classifier_filtering_result_";
-    public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,synonym,confidence_score,truth_entity,status,stage,message, created_on, root_pipeline_id,model_name,model_version,tenant_id,batch_id";
+    public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,synonym,confidence_score,truth_entity,status,stage,message, created_on, root_pipeline_id,model_name,model_version,tenant_id,batch_id, last_updated_on";
     public static final String INSERT_INTO = "INSERT INTO";
-    public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,now() ,?,?,?,?,?";
+    public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,? ,?,?,?,?,?, ?";
     public final ActionExecutionAudit action;
 
     public final Logger log;
@@ -72,7 +71,13 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor = getZeroShotClassifierOutputTableCoproProcessor(jdbi, urls);
+            final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor =
+                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                            ZeroShotClassifierOutputTable.class,
+                            ZeroShotClassifierInputTable.class,
+                            jdbi, log,
+                            new ZeroShotClassifierInputTable(), urls, action);
+            coproProcessor.startProducer(zeroShotClassifierPaperFilter.getQuerySet(), Integer.parseInt(zeroShotClassifierPaperFilter.getReadBatchSize()));
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.parseInt(zeroShotClassifierPaperFilter.getThreadCount()),
                     Integer.parseInt(zeroShotClassifierPaperFilter.getWriteBatchSize()),
@@ -83,18 +88,6 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
             log.error(aMarker, "Error in zero shot paper filter action", e);
             throw new HandymanException("Error in zero shot paper filter action", e, action);
         }
-    }
-
-    @NotNull
-    private CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> getZeroShotClassifierOutputTableCoproProcessor(Jdbi jdbi, List<URL> urls) {
-        final CoproProcessor<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> coproProcessor =
-                new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                        ZeroShotClassifierOutputTable.class,
-                        ZeroShotClassifierInputTable.class,
-                        jdbi, log,
-                        new ZeroShotClassifierInputTable(), urls, action);
-        coproProcessor.startProducer(zeroShotClassifierPaperFilter.getQuerySet(), Integer.parseInt(zeroShotClassifierPaperFilter.getReadBatchSize()));
-        return coproProcessor;
     }
 
     @Override

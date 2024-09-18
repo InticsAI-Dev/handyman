@@ -2,14 +2,13 @@ package in.handyman.raven.lib.model.zeroshotclassifier;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
@@ -23,8 +22,10 @@ import java.util.concurrent.TimeUnit;
 
 public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String ZSC_START = "ZSC START";
     private final Logger log;
     private final Marker aMarker;
+    private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
 
@@ -37,7 +38,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
 
-    public ZeroShotConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
+    public ZeroShotConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) throws JsonMappingException, JsonProcessingException {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -59,6 +60,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
 
+
+        //payload
+
         ZeroShotClassifierData data = new ZeroShotClassifierData();
         data.setProcess(PROCESS_NAME);
         data.setProcessId(processId);
@@ -72,17 +76,22 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setKeysToFilter(keysToFilterObject);
         String jsonInputRequest = objectMapper.writeValueAsString(data);
 
+
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("ZSC START");
+        requestBody.setName(ZSC_START);
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
+
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
+
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
+
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -93,15 +102,17 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
             tritonRequestBuilder(entity, parentObj, request);
         }
+
         return parentObj;
     }
 
     private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request) {
-        final String originId = entity.getOriginId();
-        final String groupId = entity.getGroupId();
+        String originId = entity.getOriginId();
+        String groupId = entity.getGroupId();
 
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
-        final Long rootPipelineId = entity.getRootPipelineId();
+        Long rootPipelineId = entity.getRootPipelineId();
+
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
@@ -128,6 +139,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
                                 .batchId(entity.getBatchId())
+                                .tenantId(entity.getTenantId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
                 log.error(aMarker, "Exception occurred in paper classifier classifier API call");
             }
@@ -143,6 +157,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
+                            .tenantId(entity.getTenantId())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .build());
             log.error(aMarker, "Exception occurred in the paper classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -151,11 +168,13 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     }
 
     private void coproRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, ObjectMapper objectMapper) {
-        final String originId = entity.getOriginId();
-        final String groupId = entity.getGroupId();
+
+        String originId = entity.getOriginId();
+        String groupId = entity.getGroupId();
 
         final Integer paperNo = entity.getPaperNo();
-        final Long rootPipelineId = entity.getRootPipelineId();
+        Long rootPipelineId = entity.getRootPipelineId();
+
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
@@ -174,6 +193,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
                                 .batchId(entity.getBatchId())
+                                .tenantId(entity.getTenantId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
             }
@@ -189,6 +211,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
+                            .tenantId(entity.getTenantId())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -198,7 +223,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
     private void extractedOutputDataRequest(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
 
-        final Long rootPipelineId = entity.getRootPipelineId();
+        Long rootPipelineId = entity.getRootPipelineId();
 
         try {
             ZeroShotClassifierDataItem zeroShotClassifierOutputData = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItem.class);
@@ -222,6 +247,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .modelName(modelName)
                         .modelVersion(modelVersion)
                         .batchId(entity.getBatchId())
+                        .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
             });
         } catch (JsonProcessingException e) {
@@ -232,7 +260,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     }
 
     private void extractedCoproOutputResponse(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
-        final Long rootPipelineId = entity.getRootPipelineId();
+        Long rootPipelineId = entity.getRootPipelineId();
 
         try {
             ZeroShotClassifierDataItemCopro zeroShotClassifierDataItemCopro = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItemCopro.class);
@@ -256,6 +284,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .modelName(modelName)
                         .modelVersion(modelVersion)
                         .batchId(entity.getBatchId())
+                        .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
             });
         } catch (JsonProcessingException e) {

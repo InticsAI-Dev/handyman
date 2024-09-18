@@ -32,8 +32,8 @@ import java.util.stream.Collectors;
 public class PhraseMatchPaperFilterAction implements IActionExecution {
     public static final String SCHEMA_NAME = "paper";
     public static final String OUTPUT_TABLE_NAME = "phrase_match_filtering_result_";
-    public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,truth_entity, synonym, is_key_present,status,stage,message, created_on,root_pipeline_id,model_name,model_version,tenant_id,batch_id";
-    public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,now(), ?, ?,?,?,?";
+    public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,truth_entity, synonym, is_key_present,status,stage,message, created_on,root_pipeline_id,model_name,model_version,tenant_id,batch_id, last_updated_on";
+    public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,?, ?, ?,?,?,?, ?";
     private final ActionExecutionAudit action;
     private final Logger log;
     private final PhraseMatchPaperFilter phraseMatchPaperFilter;
@@ -68,7 +68,13 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<PhraseMatchInputTable, PhraseMatchOutputTable> coproProcessor = getPhraseMatchOutputTableCoproProcessor(jdbi, urls);
+            final CoproProcessor<PhraseMatchInputTable, PhraseMatchOutputTable> coproProcessor =
+                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                            PhraseMatchOutputTable.class,
+                            PhraseMatchInputTable.class,
+                            jdbi, log,
+                            new PhraseMatchInputTable(), urls, action);
+            coproProcessor.startProducer(phraseMatchPaperFilter.getQuerySet(), Integer.parseInt(phraseMatchPaperFilter.getReadBatchSize()));
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.parseInt(phraseMatchPaperFilter.getThreadCount()),
                     Integer.parseInt(phraseMatchPaperFilter.getWriteBatchSize()),
@@ -98,5 +104,6 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
     public boolean executeIf() throws Exception {
         return phraseMatchPaperFilter.getCondition();
     }
+
 
 }

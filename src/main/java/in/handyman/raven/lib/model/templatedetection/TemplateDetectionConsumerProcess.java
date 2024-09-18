@@ -8,12 +8,14 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ExecutionStatus;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.TemplateDetectionAction;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.templatedetection.copro.TemplateDetectionDataItemCopro;
 import in.handyman.raven.lib.model.trinitymodel.TrinityInputAttribute;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.checkerframework.checker.units.qual.Time;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -68,6 +70,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Long rootPipelineId = entity.getRootPipelineId();
         Long actionId = action.getActionId();
 
+
+
+
         //payload
         TemplateDetectionData templateDetectionDataInput = new TemplateDetectionData();
         templateDetectionDataInput.setAttributes(attributes);
@@ -117,13 +122,14 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     private void coproRequestBuider(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) throws IOException {
         Long processId = entity.getProcessId();
+        Timestamp createdOn = entity.getCreatedOn();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
-            Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
+
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 extractedCoproOutputResponse(entity, responseBody, outputObjectList, "", ",", objectMapper);
@@ -139,6 +145,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .originId(originId)
                                 .paperNo(paperNo)
                                 .createdOn(createdOn)
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .status(ExecutionStatus.COMPLETED.toString())
                                 .stage(TEMPLATE_DETECTION)
                                 .message("Template detection completed and response is empty for group_id " + groupId + " and origin_id " + originId)
@@ -158,7 +165,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .groupId(groupId)
                             .originId(originId)
                             .paperNo(paperNo)
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(createdOn)
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .status(ExecutionStatus.FAILED.toString())
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
@@ -185,16 +193,17 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
         Long processId = entity.getProcessId();
+        Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
-            Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
+
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
+                    TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
 
                 if (templateDetectionResponse.getOutputs() != null && !templateDetectionResponse.getOutputs().isEmpty()) {
                     templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper)));
@@ -209,6 +218,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                     .originId(originId)
                                     .paperNo(paperNo)
                                     .createdOn(createdOn)
+                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                     .status(ExecutionStatus.COMPLETED.toString())
                                     .stage(TEMPLATE_DETECTION)
                                     .message("Template detection completed and response is empty for group_id " + groupId + " and origin_id " + originId)
@@ -229,6 +239,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .originId(originId)
                                 .paperNo(paperNo)
                                 .createdOn(createdOn)
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .status(ExecutionStatus.FAILED.toString())
                                 .stage(TEMPLATE_DETECTION)
                                 .message("Template detection failed for group_id " + groupId + " and origin_id " + originId + " and Exception")
@@ -248,7 +259,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .groupId(groupId)
                             .originId(originId)
                             .paperNo(paperNo)
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(createdOn)
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .status(ExecutionStatus.FAILED.toString())
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
@@ -268,6 +280,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     private void extractOutputDataRequest(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
         Long processId = entity.getProcessId();
+        Timestamp createdOn = entity.getCreatedOn();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
         String originId = entity.getOriginId();
@@ -297,7 +310,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .groupId(templateDetectionDataItem.getGroupId())
                                 .originId(templateDetectionDataItem.getOriginId())
                                 .paperNo(templateDetectionDataItem.getPaperNo())
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(createdOn)
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .status(ExecutionStatus.COMPLETED.toString())
                                 .stage(TEMPLATE_DETECTION)
                                 .modelName(modelName)
@@ -319,7 +333,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .groupId(groupId)
                             .originId(originId)
                             .paperNo(paperNo)
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(createdOn)
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .status(ExecutionStatus.FAILED.toString())
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection response processing failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")
@@ -342,6 +357,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     private void extractedCoproOutputResponse(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
         Long processId = entity.getProcessId();
+        Timestamp createdOn= entity.getCreatedOn();
         String templateId = entity.getTemplateId();
         Long tenantId = entity.getTenantId();
         String originId = entity.getOriginId();
@@ -371,7 +387,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .groupId(groupId)
                                 .originId(originId)
                                 .paperNo(paperNo)
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(createdOn)
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .status(ExecutionStatus.COMPLETED.toString())
                                 .stage(TEMPLATE_DETECTION)
                                 .modelName(modelName)
@@ -393,7 +410,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .groupId(groupId)
                             .originId(originId)
                             .paperNo(paperNo)
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(createdOn)
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .status(ExecutionStatus.FAILED.toString())
                             .stage(TEMPLATE_DETECTION)
                             .message("Template detection response processing failed for group_id " + groupId + " and origin_id " + originId + " and Exception ")

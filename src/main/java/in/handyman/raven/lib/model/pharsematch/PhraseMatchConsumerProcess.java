@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -50,9 +51,11 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
 
+
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
+
         //payload
         PharseMatchData data = new PharseMatchData();
         data.setRootPipelineId(Math.toIntExact(action.getRootPipelineId()));
@@ -79,7 +82,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+
         String tritonRequestActivator = action.getContext().get("triton.request.activator");
+
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -90,6 +95,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
             tritonRequestBuilder(entity, parentObj, request);
         }
+
         return parentObj;
     }
 
@@ -101,6 +107,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
                 extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
+
             } else {
                 parentObj.add(
                         PhraseMatchOutputTable
@@ -114,6 +121,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
                                 .batchId(entity.getBatchId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
                 log.error(aMarker, "The Exception occurred in Phrase matcher API call");
             }
@@ -131,6 +140,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -165,6 +176,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                     .rootPipelineId(rootPipelineId)
                                     .batchId(entity.getBatchId())
+                                    .createdOn(entity.getCreatedOn())
+                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                     .build());
                     log.error(aMarker, "The Exception occurred in Phrase match API call");
                 }
@@ -213,6 +226,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .entity(item.getEntity())
                                 .modelVersion(modelVersion)
                                 .batchId(entity.getBatchId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
             }
 
@@ -250,6 +265,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .entity(item.getEntity())
                                 .modelVersion(modelVersion)
                                 .batchId(entity.getBatchId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
             }
         } catch (JsonProcessingException e) {

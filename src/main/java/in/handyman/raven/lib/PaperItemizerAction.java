@@ -36,7 +36,7 @@ public class PaperItemizerAction implements IActionExecution {
     public static final String READ_BATCH_SIZE = "read.batch.size";
     public static final String PAPER_ITEMIZER_CONSUMER_API_COUNT = "paper.itemizer.consumer.API.count";
     public static final String WRITE_BATCH_SIZE = "write.batch.size";
-    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,model_name,model_version,batch_id";
+    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,model_name,model_version,batch_id, last_updated_on";
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -56,28 +56,28 @@ public class PaperItemizerAction implements IActionExecution {
     @Override
     public void execute() {
         try {
-            log.info(aMarker, "Paper itemize Action has been started {}", paperItemizer);
+            log.info(aMarker, "paper itemizer Action has been started {}", paperItemizer);
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(paperItemizer.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             final String outputDir = Optional.ofNullable(paperItemizer.getOutputDir()).map(String::valueOf).orElse(null);
-            log.info(aMarker, "Paper itemize Action output directory {}", outputDir);
+            log.info(aMarker, "paper itemizer Action output directory {}", outputDir);
             //5. build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + paperItemizer.getResultTable() +
                     "(" + INSERT_COLUMNS + ") " +
-                    " VALUES(?,?, ?,?, ?,?, ?,?,?,? ,?,  ?,?,?,?)";
-            log.info(aMarker, "Paper itemize Insert query {}", insertQuery);
+                    " VALUES(?,?, ?,?, ?,?, ?,?,?,? ,?,  ?,?,?,?, ?)";
+            log.info(aMarker, "paper itemizer Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
             final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.paper-itemizer.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new HandymanException("Error in processing the URL", e, action);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
-            log.info(aMarker, "Paper itemizer copro urls {}", urls);
+                            return new URL(s1);
+                        } catch (MalformedURLException e) {
+                            log.error("Error in processing the URL ", e);
+                            throw new HandymanException("Error in processing the URL", e, action);
+                        }
+                    }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            log.info(aMarker, "paper itemizer copro urls {}", urls);
 
             final CoproProcessor<PaperItemizerInputTable, PaperItemizerOutputTable> coproProcessor =
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
@@ -86,25 +86,24 @@ public class PaperItemizerAction implements IActionExecution {
                             jdbi, log,
                             new PaperItemizerInputTable(), urls, action);
 
-            log.info(aMarker, "Paper itemize copro coproProcessor initialization  {}", coproProcessor);
+            log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);
 
-            //4. call the method start producer from copro processor
+            //4. call the method start producer from coproprocessor
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(PAPER_ITEMIZER_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
 
             coproProcessor.startProducer(paperItemizer.getQuerySet(), readBatchSize);
-            log.info(aMarker, "Paper itemize copro coproProcessor startProducer called read batch size {}", readBatchSize);
+            log.info(aMarker, "paper itemizer copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new PaperItemizerConsumerProcess(log, aMarker, outputDir, action));
-            log.info(aMarker, "Paper itemize copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
+            log.info(aMarker, "paper itemizer copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
 
         } catch (Exception ex) {
-            log.error(aMarker, "Error in execute method for paper itemizer  ", ex);
-            throw new HandymanException("Error in execute method for paper itemizer", ex, action);
+            log.error(aMarker, "error in execute method for paper itemizer  ", ex);
+            throw new HandymanException("error in execute method for paper itemizer", ex, action);
         }
     }
-
     @Override
     public boolean executeIf() throws Exception {
         return paperItemizer.getCondition();

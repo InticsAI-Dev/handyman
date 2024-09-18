@@ -83,13 +83,13 @@ public class EpisodeOfCoverageAction implements IActionExecution {
     }
 
     private void executeEocIdPriority(String eocIdCount, Jdbi jdbi, Boolean eocActivator, Boolean qrActivator, Boolean memberIdActivator, Boolean patientInfoActivator) throws InterruptedException {
-        boolean eocIdEliminated = executeEocIdGrouping(eocIdCount, jdbi, eocActivator);
+        boolean eocIdEliminated = executeEocIdGrouping(eocIdCount, jdbi,eocActivator);
         if (eocIdEliminated) {
-            boolean qrEliminated = executeQrCodeGrouping(jdbi, qrActivator);
+            boolean qrEliminated = executeQrCodeGrouping(jdbi,qrActivator);
             if (qrEliminated) {
-                boolean memberIdEliminated = executeMemberIdGrouping(jdbi, memberIdActivator);
+                boolean memberIdEliminated = executeMemberIdGrouping(jdbi,memberIdActivator);
                 if (memberIdEliminated) {
-                    boolean nameIdEliminated = executePatientNameGrouping(jdbi, patientInfoActivator);
+                    boolean nameIdEliminated = executePatientNameGrouping(jdbi,patientInfoActivator);
                     if (nameIdEliminated) {
                         executeNidGrouping(jdbi);
                     }
@@ -101,14 +101,14 @@ public class EpisodeOfCoverageAction implements IActionExecution {
 
     private void executeNonEocIdPriority(String eocIdCount, Jdbi jdbi, Boolean eocActivator, Boolean qrActivator, Boolean memberIdActivator, Boolean patientInfoActivator) throws InterruptedException {
 
-        boolean qrEliminated = executeQrCodeGrouping(jdbi, qrActivator);
+        boolean qrEliminated = executeQrCodeGrouping(jdbi,qrActivator);
         if (qrEliminated) {
-            boolean eocIdEliminated = executeEocIdGrouping(eocIdCount, jdbi, eocActivator);
+            boolean eocIdEliminated = executeEocIdGrouping(eocIdCount, jdbi,eocActivator);
             if (eocIdEliminated) {
-                boolean memberIdEliminated = executeMemberIdGrouping(jdbi, memberIdActivator);
+                boolean memberIdEliminated = executeMemberIdGrouping(jdbi,memberIdActivator);
 
                 if (memberIdEliminated) {
-                    boolean nameIdEliminated = executePatientNameGrouping(jdbi, patientInfoActivator);
+                    boolean nameIdEliminated = executePatientNameGrouping(jdbi,patientInfoActivator);
                     if (nameIdEliminated) {
                         executeNidGrouping(jdbi);
                     }
@@ -118,56 +118,55 @@ public class EpisodeOfCoverageAction implements IActionExecution {
         }
     }
 
-    private boolean executeEocIdGrouping(String eocIdCount, Jdbi jdbi, Boolean eocActivator) {
+    private boolean executeEocIdGrouping(String eocIdCount, Jdbi jdbi,Boolean eocActivator) {
         log.info("patient instance check for Eoc id in aggregation count {} is activate {}", eocIdCount, eocActivator);
-        if (Boolean.TRUE.equals(eocActivator)) {
+        if(Boolean.TRUE.equals(eocActivator)){
             EocIdCoverage eocIdCoverage = new EocIdCoverage(log, episodeOfCoverage, aMarker, action);
             Map<String, List<Integer>> sorIdPageNumbers = eocIdCoverage.SplitByEocId(jdbi, "patient_eoc");
             OutputQueryExecutor(jdbi, "EID", sorIdPageNumbers);
             log.info("patient instance checked for Eoc id in aggregation and the output result is {}", sorIdPageNumbers);
             return sorIdPageNumbers.isEmpty();
-        } else {
+        }else {
             return true;
         }
     }
 
     private boolean executeQrCodeGrouping(Jdbi jdbi, Boolean qrActivator) throws InterruptedException {
-        log.info("patient instance extract QR code from source of truth table if activated {}", qrActivator);
-        if (Boolean.TRUE.equals(qrActivator)) {
+        log.info("patient instance extract QR code from source of truth table if activated {}",qrActivator);
+        if(Boolean.TRUE.equals(qrActivator)){
             QrCodeCoverage qrCodeCoverage = new QrCodeCoverage(log, episodeOfCoverage, aMarker, action);
             Map<String, List<Integer>> qrPagenumbers = qrCodeCoverage.splitByQrcode(jdbi, "qr_code");
             OutputQueryExecutor(jdbi, "QID", qrPagenumbers);
             log.info("patient instance checked for Qrcode from source of truth and the output result is {}", qrPagenumbers);
             return qrPagenumbers.isEmpty();
-        } else {
+        }else{
             return true;
         }
 
     }
 
-    private boolean executeMemberIdGrouping(Jdbi jdbi, Boolean memberIdActivator) {
+    private boolean executeMemberIdGrouping(Jdbi jdbi,Boolean memberIdActivator) {
         log.info("patient instance check for member_id from aggregation if activated {}", memberIdActivator);
-        if (Boolean.TRUE.equals(memberIdActivator)) {
+        if(Boolean.TRUE.equals(memberIdActivator)){
             SorItemCoverage sorItemMemberIdCoverage = new SorItemCoverage(log, episodeOfCoverage, aMarker, action);
             Map<String, List<Integer>> patientMemberPageNumbers = sorItemMemberIdCoverage.splitBySorItem(jdbi, "patient_member_id");
             OutputQueryExecutor(jdbi, "PID", patientMemberPageNumbers);
             log.info("patient instance check for member_id from aggregation and the output result is {}", patientMemberPageNumbers);
             return patientMemberPageNumbers.isEmpty();
-        } else {
+        }else{
             return true;
         }
 
     }
-
     private boolean executePatientNameGrouping(Jdbi jdbi, Boolean patientInfoActivator) {
-        log.info("patient instance check for patient_name and patient_dob from aggregation if activated {}", patientInfoActivator);
-        if (Boolean.TRUE.equals(patientInfoActivator)) {
+        log.info("patient instance check for patient_name and patient_dob from aggregation if activated {}",patientInfoActivator);
+        if(Boolean.TRUE.equals(patientInfoActivator)){
             SorItemCoverage sorItemPatientNameCoverage = new SorItemCoverage(log, episodeOfCoverage, aMarker, action);
             Map<String, List<Integer>> patientNamePageNumbers = sorItemPatientNameCoverage.splitBySorItem(jdbi, "patient_name");
             OutputQueryExecutor(jdbi, "PND", patientNamePageNumbers);
             log.info("patient instance checked for patient_name and patient_dob from aggregation and the output result is {}", patientNamePageNumbers);
             return patientNamePageNumbers.isEmpty();
-        } else {
+        }else{
             return true;
         }
 

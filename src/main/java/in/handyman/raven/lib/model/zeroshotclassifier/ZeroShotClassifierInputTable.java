@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 
@@ -26,6 +27,7 @@ import java.util.List;
         private String keyToFilter;
         private Long tenantId;
         private String batchId;
+        private Timestamp createdOn;
 
         @Override
         public List<Object> getRowData() {

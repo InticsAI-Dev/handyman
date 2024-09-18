@@ -7,12 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.qrextraction.copro.QrReaderCopro;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
-import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.lib.model.triton.*;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -36,6 +33,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
     public static final String QR_EXTRACTION = PipelineName.QR_EXTRACTION.getProcessName();
+    public static final String QR_EXTRACTION_START = "QR EXTRACTION START";
     private final Logger log;
     private String outputDir;
     private final Marker aMarker;
@@ -60,7 +58,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         this.outputDir = outputDir;
     }
 
-    //7. overwrite the method process in copro processor, write copro api logic inside this method
+    //7. overwrite the method process in coproprocessor, write copro api logic inside this method
     @Override
     public List<QrOutputEntity> process(URL endpoint, QrInputEntity entity) throws Exception {
         log.info("copro consumer process started");
@@ -71,6 +69,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         Long actionId = action.getActionId();
 
         ObjectMapper objectMapper = new ObjectMapper();
+
         //payload
         QrExtractionData qrExtractionData = new QrExtractionData();
         qrExtractionData.setRootPipelineId(rootPipelineId);
@@ -86,11 +85,13 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
 
+
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("QR EXTRACTION START");
+        requestBody.setName(QR_EXTRACTION_START);
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
+
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
@@ -104,6 +105,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         if (log.isInfoEnabled()) {
             log.info("input object node in the consumer process coproURL {}, inputFilePath {}", endpoint, filePath);
         }
+
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -143,7 +145,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                             .groupId(groupId)
                             .fileId(fileId)
                             .tenantId(tenantId)
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(rootPipelineId)
                             .status(ConsumerProcessApiStatus.ABSENT.getStatusDescription())
                             .stage(QR_EXTRACTION)
@@ -160,13 +163,15 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .groupId(groupId)
                         .tenantId(tenantId)
                         .fileId(fileId)
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .rootPipelineId(rootPipelineId)
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(QR_EXTRACTION)
                         .message(response.message())
                         .batchId(entity.getBatchId())
                         .build());
+
                 log.error(aMarker, "The Exception occurred in episode of coverage in response {}", response);
             }
 
@@ -177,7 +182,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                     .groupId(groupId)
                     .fileId(fileId)
                     .tenantId(tenantId)
-                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .rootPipelineId(rootPipelineId)
                     .stage(QR_EXTRACTION)
@@ -209,7 +215,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .groupId(groupId)
                         .fileId(fileId)
                         .tenantId(tenantId)
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .rootPipelineId(rootPipelineId)
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(QR_EXTRACTION)
@@ -227,7 +234,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                     .groupId(groupId)
                     .fileId(fileId)
                     .tenantId(tenantId)
-                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .rootPipelineId(rootPipelineId)
                     .stage(QR_EXTRACTION)
@@ -254,7 +262,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         }
 
         AtomicInteger atomicInteger = new AtomicInteger();
-        if (qrLineItems != null && !qrLineItems.isEmpty()) {
+        if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
                 JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
                 qrOutputEntities.add(QrOutputEntity.builder()
@@ -269,11 +277,12 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .qrFormatId(atomicInteger.incrementAndGet())
                         .extractedValue(qrReader.getValue())
                         .confidenceScore(qrReader.getConfidenceScore())
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .b_box(qrBoundingBox.toString())
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .stage(QR_EXTRACTION)
-                        .message("QR extraction completed")
+                        .message("qr extraction completed")
                         .tenantId(qrReader.getTenantId())
                         .modelName(modelName)
                         .modelVersion(modelVersion)
@@ -288,11 +297,12 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                     .groupId(groupId)
                     .tenantId(tenantId)
                     .fileId(fileId)
-                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .rootPipelineId(rootPipelineId)
                     .status(ConsumerProcessApiStatus.ABSENT.getStatusDescription())
                     .stage(QR_EXTRACTION)
-                    .message("QR code absent in the given file")
+                    .message("qr code absent in the given file")
                     .batchId(entity.getBatchId())
                     .build());
         }
@@ -326,7 +336,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .qrFormatId(atomicInteger.incrementAndGet())
                         .extractedValue(qrReader.getValue())
                         .confidenceScore(qrReader.getConfidenceScore())
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .b_box(qrBoundingBox.toString())
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .stage(QR_EXTRACTION)
@@ -344,7 +355,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                     .groupId(groupId)
                     .tenantId(tenantId)
                     .fileId(fileId)
-                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .rootPipelineId(rootPipelineId)
                     .status(ConsumerProcessApiStatus.ABSENT.getStatusDescription())
                     .stage(QR_EXTRACTION)
