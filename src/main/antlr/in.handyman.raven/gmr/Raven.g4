@@ -168,6 +168,7 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
+    |radonBbox
     );
 
 
@@ -1267,6 +1268,17 @@ llmJsonParser:
     'using'  '{'
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
+
+radonBbox:
+    'radonBbox' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'copro-url' endpoint=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
 //rules
 
 resource : STRING;
