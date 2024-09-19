@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.hwdectection.copro.HwDetectionDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -144,6 +145,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -165,6 +168,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .groupId(entity.getGroupId())
                     .batchId(entity.getBatchId())
                     .rootPipelineId(action.getRootPipelineId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -216,6 +221,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -235,6 +242,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .groupId(entity.getGroupId())
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -270,6 +279,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
+                .createdOn(entity.getCreatedOn())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .batchId(entity.getBatchId())
                 .build());
     }
@@ -305,6 +316,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
+                .createdOn(entity.getCreatedOn())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .batchId(entity.getBatchId())
                 .build());
     }

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,5 +24,5 @@ public class LlmJsonQueryInputTable {
     private Long imageDpi;
     private Long imageWidth;
     private Long imageHeight;
-
+    private Timestamp createdOn;
 }

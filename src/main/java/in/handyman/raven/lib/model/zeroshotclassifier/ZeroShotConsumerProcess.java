@@ -7,10 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
@@ -24,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String ZSC_START = "ZSC START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -79,9 +78,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("ZSC START");
+        requestBody.setName(ZSC_START);
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
@@ -140,6 +139,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
                                 .batchId(entity.getBatchId())
+                                .tenantId(entity.getTenantId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
             }
@@ -155,6 +157,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
+                            .tenantId(entity.getTenantId())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -188,6 +193,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
                                 .batchId(entity.getBatchId())
+                                .tenantId(entity.getTenantId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
             }
@@ -203,6 +211,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
+                            .tenantId(entity.getTenantId())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -236,6 +247,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .modelName(modelName)
                         .modelVersion(modelVersion)
                         .batchId(entity.getBatchId())
+                        .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
             });
         } catch (JsonProcessingException e) {
@@ -269,6 +283,9 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .modelName(modelName)
                         .modelVersion(modelVersion)
                         .batchId(entity.getBatchId())
+                        .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .build());
             });
         } catch (JsonProcessingException e) {

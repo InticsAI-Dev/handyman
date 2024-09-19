@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Builder
@@ -23,6 +24,17 @@ public class TemplateDetectionInputTable implements CoproProcessor.Entity {
     private String questions;
     private Long modelRegistryId;
     private String batchId;
+
+    public Timestamp getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(Timestamp createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    private Timestamp createdOn;
+
 
     public String getQuestions() {
         return questions;

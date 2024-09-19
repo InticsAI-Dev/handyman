@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Data
@@ -22,6 +23,7 @@ public class PaperItemizerInputTable implements CoproProcessor.Entity {
     private String outputDir;
     private Long rootPipelineId;
     private String batchId;
+    private Timestamp createdOn;
 
     @Override
     public List<Object> getRowData() {

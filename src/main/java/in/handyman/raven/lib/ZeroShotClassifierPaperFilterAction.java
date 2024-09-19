@@ -35,9 +35,9 @@ import java.util.stream.Collectors;
 public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
     public static final String SCHEMA_NAME = "paper";
     public static final String OUTPUT_TABLE_NAME = "zero_shot_classifier_filtering_result_";
-    public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,synonym,confidence_score,truth_entity,status,stage,message, created_on, root_pipeline_id,model_name,model_version,tenant_id,batch_id";
+    public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,synonym,confidence_score,truth_entity,status,stage,message, created_on, root_pipeline_id,model_name,model_version,tenant_id,batch_id, last_updated_on";
     public static final String INSERT_INTO = "INSERT INTO";
-    public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,now() ,?,?,?,?,?";
+    public static final String INSERT_INTO_VALUES = "?,?,?,?,?,?,?,?,?,? ,?,?,?,?,?, ?";
     public final ActionExecutionAudit action;
 
     public final Logger log;
