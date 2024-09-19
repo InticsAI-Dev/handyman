@@ -10,6 +10,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.LlmJsonParser;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParsedResponse;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryInputTable;
 import jakarta.json.Json;
@@ -85,9 +86,9 @@ public class LlmJsonParserAction implements IActionExecution {
           parseJsonNode(rootNode, "", "", innerParsedResponses);
           for (LlmJsonParsedResponse parsedResponse : innerParsedResponses) {
             handle.createUpdate(insertQuery)
-                    .bind(0, Timestamp.valueOf(LocalDateTime.now()))
+                    .bind(0, inputTable.getCreatedOn())
                     .bind(1, inputTable.getTenantId())
-                    .bind(2, Timestamp.valueOf(LocalDateTime.now()))
+                    .bind(2, CreateTimeStamp.currentTimestamp())
                     .bind(3, inputTable.getTenantId())
                     .bind(4, parsedResponse.getSorContainerName())
                     .bind(5, parsedResponse.getSorItemName())

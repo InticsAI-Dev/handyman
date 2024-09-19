@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,9 +41,10 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
     private String modelVersion;
     private Long modelRegistryId;
     private String batchId;
+    private Timestamp lastUpdatedOn;
 
 
-    public TemplateDetectionOutputTable(String originId, Integer groupId, Long tenantId, String templateId, Long processId, String processedFilePath,  Integer paperNo, String status, String stage, String message, Timestamp createdOn, Long rootPipelineId, Long modelRegistryId, String batchId) {
+    public TemplateDetectionOutputTable(String originId, Integer groupId, Long tenantId, String templateId, Long processId, String processedFilePath,  Integer paperNo, String status, String stage, String message, Timestamp createdOn, Long rootPipelineId, Long modelRegistryId, String batchId, Timestamp lastUpdatedOn) {
         this.originId = originId;
         this.groupId = groupId;
         this.tenantId = tenantId;
@@ -59,6 +61,7 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
         this.modelVersion = modelVersion;
         this.modelRegistryId = modelRegistryId;
         this.batchId = batchId;
+        this.lastUpdatedOn=lastUpdatedOn;
     }
 
     public String getOriginId() {
@@ -165,12 +168,21 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
 
     public void setBatchId(String batchId){this.batchId = batchId;}
 
+    public Timestamp getLastUpdatedOn() {
+        return lastUpdatedOn;
+    }
+
+    public void setLastUpdatedOn(Timestamp lastUpdatedOn) {
+        this.lastUpdatedOn = lastUpdatedOn;
+    }
+
+
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.processId, this.originId, this.paperNo,this.groupId
                 ,this.processedFilePath,this.question, this.predictedAttributionValue,this.scores,this.bboxes
                 ,this.imageWidth,this.imageHeight,this.imageDPI,this.extractedImageUnit,this.tenantId,
                 this.templateId,this.status,this.stage,this.message,this.createdOn,this.rootPipelineId,this.modelName,
-                this.modelVersion, this.modelRegistryId, this.batchId).collect(Collectors.toList());
+                this.modelVersion, this.modelRegistryId, this.batchId, this.lastUpdatedOn).collect(Collectors.toList());
     }
 }

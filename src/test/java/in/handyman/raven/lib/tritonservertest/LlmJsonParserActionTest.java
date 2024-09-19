@@ -17,11 +17,11 @@ public class LlmJsonParserActionTest {
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
                 .condition(true)
-                .resourceConn("intics_zio_db_conn_bl")
-                .outputTable("sor_transaction.llm_json_parser_output_30229")
-                .querySet("SELECT  total_response_json as response, paper_no, origin_id,group_id, tenant_id, root_pipeline_id, batch_id, model_registry\n" +
-                        "FROM sor_transaction.radon_kvp_output_30197\n" +
-                        "WHERE id =3;" )
+                .resourceConn("intics_zio_db_conn")
+                .outputTable("sor_transaction.llm_json_parser_output_audit")
+                .querySet("SELECT  total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
+                        "FROM sor_transaction.radon_kvp_output_audit\n" +
+                        "WHERE id =1;" )
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

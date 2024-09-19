@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 @Data
 @AllArgsConstructor
@@ -26,6 +27,7 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private String modelRegistry;
     private String batchId;
     private String category;
+    private Timestamp createdOn;
 
 
     @Override
