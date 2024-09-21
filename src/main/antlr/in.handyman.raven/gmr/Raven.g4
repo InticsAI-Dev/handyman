@@ -168,7 +168,7 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
-    |radonBbox
+    |radonKvpBbox
     );
 
 
@@ -1269,10 +1269,13 @@ llmJsonParser:
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
 
-radonBbox:
-    'radonBbox' 'as' name=STRING
-    'on-resource-conn' resourceConn= STRING
-    'copro-url' endpoint=STRING
+radonKvpBbox:
+    'radonKvpBbox' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' coproUrl=STRING
+    'consumer-api-count' consumerApiCount=STRING
+    'triton-request-activator' tritonActivator=STRING
+    'output-dir' outputDir=STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING
     'using'  '{'
