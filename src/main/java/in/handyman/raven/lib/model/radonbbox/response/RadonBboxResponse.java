@@ -1,7 +1,7 @@
-package in.handyman.raven.lib.model.radonbbox;
+package in.handyman.raven.lib.model.radonbbox.response;
+
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import in.handyman.raven.lib.model.paperitemizer.PaperItemizerOutput;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,15 +13,11 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-
 public class RadonBboxResponse {
-
     @JsonProperty("model_name")
     private String modelName;
-
     @JsonProperty("model_version")
     private String modelVersion;
 
-    private List<PaperItemizerOutput> outputs;
-
+    private List<RadonBboxResponseOutputs> outputs;
 }

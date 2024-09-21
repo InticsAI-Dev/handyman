@@ -28,7 +28,7 @@ public enum PipelineName {
     NEON_KVP_ACTION("NEON_KVP_ACTION"),
     RADON_KVP_ACTION("RADON_KVP_ACTION"),
     VALIDATION_LLM("VALIDATION_LLM"),
-    RADON_BBOX("RADON_BBOX");
+    RADON_KVP_BBOX("RADON_KVP_BBOX");
 
     private final String processName;
 }

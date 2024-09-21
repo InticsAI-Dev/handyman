@@ -19,14 +19,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "RadonBbox"
+    actionName = "RadonKvpBbox"
 )
-public class RadonBbox implements IActionContext {
+public class RadonKvpBbox implements IActionContext {
   private String name;
 
   private String resourceConn;
 
-  private String endpoint;
+  private String coproUrl;
+
+  private String consumerApiCount;
+
+  private String tritonActivator;
+
+  private String outputDir;
 
   private String inputTable;
 

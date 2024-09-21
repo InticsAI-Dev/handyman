@@ -1,13 +1,12 @@
-package in.handyman.raven.lib.model.radonbbox;
+package in.handyman.raven.lib.model.radonbbox.query.input;
 
+import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-
-import in.handyman.raven.lib.CoproProcessor;
 
 
 @Data
@@ -17,16 +16,17 @@ import in.handyman.raven.lib.CoproProcessor;
 
 public class RadonBboxInputEntity implements CoproProcessor.Entity {
 
-    private Long rootPipelineId;
-    private Long actionId;
-    private String inputFilePath;
-    private Integer groupId;
+    private String sorContainerName;
+    private Long paperNo;
     private String originId;
-    private Integer paperNo;
-    private String fileId;
+    private Long groupId;
     private Long tenantId;
-    private String outputDir;
+    private Long rootPipelineId;
     private String batchId;
+    private String modelRegistry;
+    private String inputFilePath;
+    private String radonOutput;
+
     @Override
     public List<Object> getRowData() {
         return null;

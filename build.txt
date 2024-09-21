@@ -4,4 +4,4 @@ Dependency:
 mvn clean antlr4:antlr4 test -Dtest=ActionGenerationTest#generate compile install
 
 
-handyman.config.location=~/data/handyman/config/config.props;logback.configurationFile=~/data/handyman/config/logback.xml;handyman.log.path=~/data/handyman/logs/
+handyman.config.location=~/data/handyman/config/config.prop`s;logback.configurationFile=~/data/handyman/config/logback.xml;handyman.log.path=~/data/handyman/logs/
