@@ -25,6 +25,7 @@ public class BulletinQueryInputTable implements CoproProcessor.Entity {
     private String prompt;
     private String sectionHeader;
     private Integer synonymId;
+    private String batchId;
 
 
     @Override

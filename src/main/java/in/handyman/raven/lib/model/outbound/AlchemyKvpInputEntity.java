@@ -21,6 +21,7 @@ public class AlchemyKvpInputEntity implements CoproProcessor.Entity {
     private String alchemyOriginId;
     private String pipelineOriginId;
     private String fileName;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

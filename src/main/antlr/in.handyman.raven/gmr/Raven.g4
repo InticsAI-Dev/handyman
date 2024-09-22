@@ -149,6 +149,7 @@ action:
     |qrExtraction
     |multipartUpload
     |multipartDownload
+    |multipartDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -1098,6 +1099,14 @@ multipartDownload:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+multipartDelete:
+    'multipartDelete' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'delete-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
 systemkeyTable:
     'systemkeyTable' 'as' name=STRING
     'resoruce-conn' resourceConn=STRING
@@ -1187,19 +1196,27 @@ p2pNameValidation:
     'using'  '{' querySet=STRING '}'
      ('on-condition' condition=expression)*  ;
 
-convertExcelToDatabase:
-    'convert-excel-to-database' 'as' name=STRING
-    'on-resource-conn' resourceConn=STRING
-    'fileType' fileType=STRING
-    'target' targetConn=STRING
-    'using' '{'
-                        querySet=STRING
-    '}' ('on-condition' condition=expression)* ;
+
+urgencyTriageBeta:
+    'urgencyTriageBeta' 'as' name=STRING
+    'output-dir' outputDir=STRING
+    'copro-url' endPoint=STRING
+    'output-table' outputTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
 
 faceDetection:
     'faceDetection' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'outputDir' outputDir=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+validationLlm:
+    'validationLlm' 'as' name = STRING
+    'on-resource-conn' resourceConn=STRING
     'copro-url' endpoint=STRING
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
@@ -1218,43 +1235,6 @@ documentparser:
     'Document-parser' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'outputDir' outputDir=STRING
-    'copro-url' endpoint=STRING
-    'output-table' outputTable=STRING
-    'using' '{'querySet=STRING'}'
-    ('on-condition' condition=expression)* ;
-
-urgencyTriageBeta:
-    'urgencyTriageBeta' 'as' name=STRING
-    'output-dir' outputDir=STRING
-    'copro-url' endPoint=STRING
-    'output-table' outputTable=STRING
-    'resource-conn' resourceConn=STRING
-    'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
-
-dbBackupEase:
-    'dbBackupEase' 'as' name=STRING
-    'db-name' dataBaseName=STRING
-    'audit-table' auditTable=STRING
-    'resource-conn' resourceConn=STRING
-    'using'  '{' querySet=STRING '}'
-     ('on-condition' condition=expression)*  ;
-
-dbDataDart:
-    'dbDataDart' 'as' name=STRING
-    'db-name' dataBaseName=STRING
-    'audit-table' auditTable=STRING
-    'resource-conn' resourceConn=STRING
-    'using'  '{' querySet=STRING '}'
-     ('on-condition' condition=expression)*  ;
-
-createExactZip:
-       'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
-        '{' '}' ('on-condition' condition=expression)*;
-
-
-validationLlm:
-    'validationLlm' 'as' name = STRING
-    'on-resource-conn' resourceConn=STRING
     'copro-url' endpoint=STRING
     'output-table' outputTable=STRING
     'using' '{'querySet=STRING'}'
@@ -1288,6 +1268,36 @@ llmJsonParser:
     'using'  '{'
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
+
+convertExcelToDatabase:
+    'convert-excel-to-database' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'fileType' fileType=STRING
+    'target' targetConn=STRING
+    'using' '{'
+                        querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+dbBackupEase:
+    'dbBackupEase' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+dbDataDart:
+    'dbDataDart' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+createExactZip:
+       'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
+        '{' '}' ('on-condition' condition=expression)*;
+
 //rules
 
 resource : STRING;

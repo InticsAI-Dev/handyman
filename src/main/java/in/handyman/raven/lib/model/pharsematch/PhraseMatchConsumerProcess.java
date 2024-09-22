@@ -119,6 +119,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .stage(PROCESS_NAME)
                                 .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                 .rootPipelineId(rootPipelineId)
+                                .batchId(entity.getBatchId())
                                 .build());
                 log.info(aMarker, "The Exception occurred in Phrase match API call");
             }
@@ -135,6 +136,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
+                            .batchId(entity.getBatchId())
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -168,6 +170,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .stage(PROCESS_NAME)
                                     .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
                                     .rootPipelineId(rootPipelineId)
+                                    .batchId(entity.getBatchId())
                                     .build());
                     log.info(aMarker, "The Exception occurred in Phrase match API call");
                 }
@@ -184,6 +187,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
+                            .batchId(entity.getBatchId())
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -218,6 +222,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .isKeyPresent(String.valueOf(item.getIsKeyPresent()))
                                 .entity(item.getEntity())
                                 .modelVersion(modelVersion)
+                                .batchId(entity.getBatchId())
                                 .build());
             }
 
@@ -252,6 +257,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .isKeyPresent(String.valueOf(item.getIsKeyPresent()))
                                 .entity(item.getEntity())
                                 .modelVersion(modelVersion)
+                                .batchId(entity.getBatchId())
                                 .build());
             }
 

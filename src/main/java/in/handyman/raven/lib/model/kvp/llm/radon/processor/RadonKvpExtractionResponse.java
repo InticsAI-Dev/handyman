@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import in.handyman.raven.lib.model.kvp.llm.neon.processor.NeonKvpOutput;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

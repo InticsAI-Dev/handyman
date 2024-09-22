@@ -19,20 +19,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "FaceDetection"
+        actionName = "FaceDetection"
 )
 public class FaceDetection implements IActionContext {
-  private String name;
+    private String name;
 
-  private String resourceConn;
+    private String resourceConn;
 
-  private String outputDir;
+    private String outputDir;
 
-  private String endpoint;
+    private String endpoint;
 
-  private String outputTable;
+    private String outputTable;
 
-  private String querySet;
+    private String querySet;
 
-  private Boolean condition = true;
+    private Boolean condition = true;
 }

@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 @ActionExecution(
         actionName = "AlchemyResponse"
 )
-    public class AlchemyResponseAction implements IActionExecution {
+public class AlchemyResponseAction implements IActionExecution {
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -140,6 +140,7 @@ import java.util.stream.Collectors;
             Long questionId = entity.getQuestionId();
             String bbox = entity.getBbox();
             String feature = entity.getFeature();
+            String batchId = entity.getBatchId();
 
             AlchemyRequestTable alchemyRequestTable = AlchemyRequestTable
                     .builder()
@@ -154,12 +155,14 @@ import java.util.stream.Collectors;
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setSynonymId(synonymId);
                 alchemyRequestTable.setQuestionId(questionId);
+                alchemyRequestTable.setBatchId(batchId);
             }
             if(feature.equals(Feature.CHECKBOX_EXTRACTION.name())){
                 alchemyRequestTable.setBbox(mapper.readTree(bbox));
                 alchemyRequestTable.setConfidenceScore(confidenceScore);
                 alchemyRequestTable.setExtractedValue(extractedValue);
                 alchemyRequestTable.setState(entity.getState());
+                alchemyRequestTable.setBatchId(entity.getBatchId());
             }
             if(feature.equals(Feature.TABLE_EXTRACT.name())){
                 JsonNode tableNode = mapper.readTree(entity.getTableData());
@@ -212,11 +215,6 @@ import java.util.stream.Collectors;
 
             }
 
-
-
-
-
-
             Request request = new Request.Builder().url(endpoint + "/" + originId + "/?tenantId=" + this.tenantId)
                     .addHeader("accept", "*/*")
                     .addHeader("Authorization", "Bearer " + authToken)
@@ -265,6 +263,7 @@ import java.util.stream.Collectors;
         private String detectedAsciiValue;
         private String csvFilePath;
         private Long truthEntityId;
+        private String batchId;
         private String tableAggregateNode;
         private Long sorItemId;
         private String bulletinSection;
@@ -311,6 +310,7 @@ import java.util.stream.Collectors;
         private JsonNode tableData;
         private String detectedValue;
         private String detectedAsciiValue;
+        private String batchId;
         private JsonNode aggregateJson;
         private Long sorItemId;
         private String bulletinSection;

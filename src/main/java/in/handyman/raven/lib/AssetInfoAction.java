@@ -94,6 +94,7 @@ public class AssetInfoAction implements IActionExecution {
                 try {
                     log.info(aMarker, "executing  for the file {}", tableInfo);
                     final String filePathString = Optional.ofNullable(tableInfo.getFilePath()).map(String::valueOf).orElse("[]");
+                    final String batchId = Optional.ofNullable(tableInfo.getBatchId()).map(String::valueOf).orElse("");
                     log.info(aMarker, "file path string {}", filePathString);
                     File file = new File(filePathString);
                     log.info(aMarker, "created file {}", file);
@@ -110,11 +111,11 @@ public class AssetInfoAction implements IActionExecution {
                         }
                         pathList.forEach(path -> {
                             log.info(aMarker, "insert query for each file from dir {}", path);
-                            fileInfos.add(insertQuery(path.toFile(), tenantId));
+                            fileInfos.add(insertQuery(path.toFile(), tenantId, batchId));
                         });
                     } else if (file.isFile()) {
                         log.info(aMarker, "insert query for file {}", file);
-                        fileInfos.add(insertQuery(file, tenantId));
+                        fileInfos.add(insertQuery(file, tenantId, batchId));
                     }
 
                     if (fileInfos.size() == this.writeBatchSize) {
@@ -148,7 +149,7 @@ public class AssetInfoAction implements IActionExecution {
         log.info(aMarker, "Asset Info Action for {} has been completed", assetInfo.getName());
     }
 
-    public FileInfo insertQuery(File file, Long tenantId) {
+    public FileInfo insertQuery(File file, Long tenantId, String batchId) {
         FileInfo fileInfoBuilder = new FileInfo();
         try {
             log.info(aMarker, "insert query main caller for the file {}", file);
@@ -205,6 +206,7 @@ public class AssetInfoAction implements IActionExecution {
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
+                    .batchId(batchId)
                     .build();
             log.info(aMarker, "File Info Builder {}", fileInfoBuilder.getFileName());
         } catch (Exception ex) {
@@ -220,15 +222,14 @@ public class AssetInfoAction implements IActionExecution {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
-                                handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi)" +
-                                                "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi);")
+                                handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi, batch_id)" +
+                                                "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi, :batchId);")
                                         .bindBean(insert).execute();
-                                log.info(aMarker, "inserted {} into source of origin", insert.getFilePath());
+                                log.info(aMarker, "inserted {} into source of origin ",insert.filePath);
                             } catch (Throwable t) {
                                 insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(), tenantId);
                                 log.error(aMarker, "error inserting result {}", resultQueue, t);
                             }
-
                         });
                     }
             );
@@ -242,17 +243,19 @@ public class AssetInfoAction implements IActionExecution {
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments, Long tenantId) {
         try {
+            String batchId=action.getContext().get("batch_id");
             SanitarySummary summary = new SanitarySummary().builder()
                     .rowCount(rowCount)
                     .correctRowCount(executeCount)
                     .errorRowCount(errorCount)
                     .comments(comments)
                     .tenantId(tenantId)
+                    .batchId(batchId)
                     .build();
             jdbi.useTransaction(handle -> {
                 Update update = handle.createUpdate("  INSERT INTO " + assetInfo.getAuditTable() +
-                        " ( row_count, correct_row_count, error_row_count,comments, created_at,tenant_id) " +
-                        " VALUES(:rowCount, :correctRowCount, :errorRowCount, :comments, NOW(),:tenantId);");
+                        " ( row_count, correct_row_count, error_row_count,comments, created_at,tenant_id,batch_id) " +
+                        " VALUES(:rowCount, :correctRowCount, :errorRowCount, :comments, NOW(),:tenantId,:batchId);");
                 Update bindBean = update.bindBean(summary);
                 bindBean.execute();
             });
@@ -311,6 +314,7 @@ public class AssetInfoAction implements IActionExecution {
         private Float width;
         private Float height;
         private Integer dpi;
+        private String batchId;
     }
 
     @AllArgsConstructor
@@ -324,6 +328,7 @@ public class AssetInfoAction implements IActionExecution {
         private int errorRowCount;
         private String comments;
         private Long tenantId;
+        private String batchId;
 
     }
 
@@ -341,5 +346,6 @@ public class AssetInfoAction implements IActionExecution {
         private Long tenantId;
         private String filePath;
         private String documentId;
+        private String batchId;
     }
 }

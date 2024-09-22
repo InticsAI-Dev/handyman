@@ -109,7 +109,10 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .intelliMatch(0)
                             .status("COMPLETED")
                             .stage("MASTER-DATA-COMPARISON")
+                            .rootPipelineId(action.getRootPipelineId())
+                            .tenantId(result.getTenantId())
                             .message("Master data comparison macro completed")
+                            .batchId(result.getBatchId())
                             .build()
             );
             log.info(aMarker, "coproProcessor consumer process with empty actual value entity {}", result);
@@ -144,6 +147,8 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .stage("MASTER-DATA-COMPARISON")
                                 .message("Master data comparison macro failed")
                                 .rootPipelineId(action.getRootPipelineId())
+                                .tenantId(result.getTenantId())
+                                .batchId(result.getBatchId())
                                 .build()
                 );
 
@@ -184,6 +189,8 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .stage("MASTER-DATA-COMPARISON")
                                 .message("Master data comparison macro failed")
                                 .rootPipelineId(action.getRootPipelineId())
+                                .tenantId(result.getTenantId())
+                                .batchId(result.getBatchId())
                                 .build()
                 );
                 log.error(aMarker, "The Exception occurred in master data comparison by {} ", response);
@@ -203,6 +210,8 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .stage("MASTER-DATA-COMPARISON")
                             .message("Master data comparison macro failed")
                             .rootPipelineId(action.getRootPipelineId())
+                            .tenantId(result.getTenantId())
+                            .batchId(result.getBatchId())
                             .build()
             );
 
@@ -240,6 +249,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .modelName(modelName)
                         .tenantId(tenantId)
                         .modelVersion(modelVersion)
+                        .batchId(result.getBatchId())
                         .build());
             }
 
@@ -258,6 +268,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .message("Master data comparison macro failed")
                             .tenantId(tenantId)
                             .rootPipelineId(result.getRootPipelineId())
+                            .batchId(result.getBatchId())
                             .build()
             );
         }
@@ -292,6 +303,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .modelName(modelName)
                         .tenantId(tenantId)
                         .modelVersion(modelVersion)
+                        .batchId(result.getBatchId())
                         .build());
             }
 
@@ -310,6 +322,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .message("Master data comparison macro failed")
                             .tenantId(tenantId)
                             .rootPipelineId(result.getRootPipelineId())
+                            .batchId(result.getBatchId())
                             .build()
             );
         }

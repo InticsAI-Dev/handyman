@@ -38,6 +38,7 @@ public class ParagraphQueryOutputTable  implements CoproProcessor.Entity{
     private Integer synonymId;
     private String paragraphSection;
     private String paragraphPoints;
+    private String batchId;
 
 
     @Override
@@ -45,7 +46,7 @@ public class ParagraphQueryOutputTable  implements CoproProcessor.Entity{
         return Stream.of(this.originId, this.paperNo, this.groupId, this.filePath, this.tenantId,
                 this.processId, this.outputDir, this.rootPipelineId, this.process, this.status,
                 this.stage, this.message,this.modelName, this.modelVersion,this.synonymId,
-                this.paragraphSection,this.paragraphPoints).collect(Collectors.toList());
+                this.paragraphSection,this.paragraphPoints,this.batchId).collect(Collectors.toList());
 
 
     }

@@ -54,8 +54,11 @@ public class CreateZipAction implements IActionExecution {
 //            zipOut.close();
 //            fos.close();
             try {
-                zipFolderLegacy(source, destFileDir + File.separator + zipFileName + ".zip");
-                System.out.println("Folder successfully zipped.");
+                log.info(aMarker, "Folder zip started {}.",destFileDir);
+                String zipFilePath = destFileDir + File.separator + zipFileName + ".zip";
+                log.info(aMarker, "Folder zip started {}.",destFileDir);
+                zipFolderLegacy(source, zipFilePath);
+                log.info(aMarker, "Folder successfully zipped {}.",destFileDir);
             } catch (IOException e) {
                 e.printStackTrace();
             }

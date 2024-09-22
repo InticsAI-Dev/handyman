@@ -16,10 +16,18 @@ import java.util.List;
 public class TrinityModelLineItem {
 
     private String filePath;
-    private List<String> questions;
+    private List<TrinityInputAttribute> attributes;
     private String paperType;
     private String modelRegistry;
     private Long tenantId;
+    private String originId;
+    private Long groupId;
+    private Long paperNo;
+    private String qnCategory;
+    private Long rootPipelineId;
+    private Long processId;
+    private Long modelRegistryId;
+    private String batchId;
 
 
 }

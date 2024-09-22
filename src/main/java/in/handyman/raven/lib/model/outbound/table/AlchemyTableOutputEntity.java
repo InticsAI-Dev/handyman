@@ -26,11 +26,12 @@ public class AlchemyTableOutputEntity implements CoproProcessor.Entity{
     private String status;
     private String stage;
     private String message;
+    private String batchId;
 
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.processId, this.groupId, this.alchemyOriginId, this.pipelineOriginId,this.tableResponse, this.tenantId, this.rootPipelineId,this.stage,this.stage,this.message,this.paperNo).collect(Collectors.toList());
+        return Stream.of(this.processId, this.groupId, this.alchemyOriginId, this.pipelineOriginId,this.tableResponse, this.tenantId, this.rootPipelineId,this.stage,this.stage,this.message,this.paperNo,this.batchId).collect(Collectors.toList());
 
     }
 }

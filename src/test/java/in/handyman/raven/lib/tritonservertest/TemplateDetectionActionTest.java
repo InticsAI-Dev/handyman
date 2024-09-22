@@ -17,15 +17,28 @@ class TemplateDetectionActionTest {
         TemplateDetection templateDetection=TemplateDetection.builder()
                 .condition(true)
                 .name("template detection")
-                .coproUrl("http://localhost:10193/copro/attribution/kvp-printed-old")
+                .coproUrl("http://192.168.10.248:8900/v2/models/argon-vqa-service/versions/1/infer")
                 .inputTable("info.auto_rotation")
                 .ouputTable("macro.template_detection_response_12345")
                 .resourceConn("intics_agadia_db_conn")
                 .processId("12345")
-                .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/pdf_to_image/SYNT_166838894_c1/SYNT_166838894_c1_0.jpg' as file_path,'TNT-1' as tenant_id\n" +
-                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , '{\"what is patient name\"}'  as questions\n"
-                )
-                                                                                        .build();
+                .querySet("\n" +
+                        "\n" +
+                        "\n" +
+                        "select  ar.origin_id ,ar.paper_no ,ar.group_id , ar.tenant_id\n" +
+                        ",ar.template_id ,ar.process_id ,ar.root_pipeline_id ,array_agg(sq.question)  as questions,\n" +
+                        "(case when 'true'='true' and ar.status='COMPLETED' then ar.processed_file_path\n" +
+                        "when '${auto.rotation.processor.activator}'='true' and an.status='COMPLETED' then an.processed_file_path\n" +
+                        "else a.processed_file_path end ) as file_path, b.batch_id\n" +
+                        "from  preprocess.preprocess_payload_queue_archive b\n" +
+                        "left join info.paper_itemizer a on a.origin_id=b.origin_id and b.tenant_id=a.tenant_id\n" +
+                        "left join info.auto_rotation an on an.origin_id=b.origin_id and b.tenant_id=an.tenant_id and a.paper_no=an.paper_no\n" +
+                        "left join info.grey_scale_conversion ar on ar.origin_id=b.origin_id and b.tenant_id=ar.tenant_id and an.paper_no=ar.paper_no\n" +
+                        "left join sor_meta.sor_tsynonym st on 1=1\n" +
+                        "left join sor_meta.sor_question sq on st.synonym_id  =sq.synonym_id\n" +
+                        "where st.synonym ='Template Name' and ar.group_id='64' and sq.tenant_id=1\n" +
+                        "group by ar.origin_id ,ar.paper_no ,ar.group_id ,ar.processed_file_path,an.processed_file_path,a.processed_file_path , ar.tenant_id ,ar.template_id ,ar.process_id ,ar.root_pipeline_id, b.batch_id, a.status ,ar.status ,an.status\n")
+                .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.template.detection.url","http://localhost:10182/copro/preprocess/text_extraction");
@@ -49,8 +62,19 @@ class TemplateDetectionActionTest {
                 .ouputTable("macro.template_detection_response_12345")
                 .resourceConn("intics_zio_db_conn")
                 .processId("12345")
-                .querySet("select  'INT-1' as origin_id , 1 as paper_no ,1 as group_id , '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path,1 as tenant_id\n" +
-                        ",'TMP-1' as template_id ,134 as process_id ,12435 as root_pipeline_id , ARRAY['what is logo']  as questions" )
+                .querySet("select  ar.origin_id ,ar.paper_no ,ar.group_id , ar.tenant_id\n" +
+                        ",ar.template_id ,ar.process_id ,ar.root_pipeline_id ,array_agg(sq.question)  as questions,\n" +
+                        "(case when '${grey.scale.conversion.activator}'='true' and ar.status='COMPLETED' then ar.processed_file_path\n" +
+                        "when '${auto.rotation.processor.activator}'='true' and an.status='COMPLETED' then an.processed_file_path\n" +
+                        "else a.processed_file_path end ) as file_path, b.batch_id\n" +
+                        "from  preprocess.preprocess_payload_queue_archive b\n" +
+                        "left join info.paper_itemizer a on a.origin_id=b.origin_id and b.tenant_id=a.tenant_id\n" +
+                        "left join info.auto_rotation an on an.origin_id=b.origin_id and b.tenant_id=an.tenant_id and a.paper_no=an.paper_no\n" +
+                        "left join info.grey_scale_conversion ar on ar.origin_id=b.origin_id and b.tenant_id=ar.tenant_id and an.paper_no=ar.paper_no\n" +
+                        "left join sor_meta.sor_tsynonym st on 1=1\n" +
+                        "left join sor_meta.sor_question sq on st.synonym_id  =sq.synonym_id\n" +
+                        "where st.synonym ='Template Name' and ar.group_id='${group_id}' and sq.tenant_id=${tenant_id}\n" +
+                        "group by ar.origin_id ,ar.paper_no ,ar.group_id ,ar.processed_file_path,an.processed_file_path,a.processed_file_path , ar.tenant_id ,ar.template_id ,ar.process_id ,ar.root_pipeline_id, b.batch_id, a.status ,ar.status ,an.status;\n" )
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();

@@ -21,6 +21,7 @@ public class QrInputEntity implements CoproProcessor.Entity {
     private String fileId;
     private Long rootPipelineId;
     private Long tenantId;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {

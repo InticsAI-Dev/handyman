@@ -1240,6 +1240,16 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitMultipartDownload(RavenParser.MultipartDownloadContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartDelete}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartDelete(RavenParser.MultipartDeleteContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartDelete}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartDelete(RavenParser.MultipartDeleteContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#systemkeyTable}.
 	 * @param ctx the parse tree
 	 */
@@ -1269,6 +1279,156 @@ public interface RavenListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitTableExtractionHeaders(RavenParser.TableExtractionHeadersContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#currencyDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterCurrencyDetection(RavenParser.CurrencyDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#currencyDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitCurrencyDetection(RavenParser.CurrencyDetectionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#greyScaleConversion}.
+	 * @param ctx the parse tree
+	 */
+	void enterGreyScaleConversion(RavenParser.GreyScaleConversionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#greyScaleConversion}.
+	 * @param ctx the parse tree
+	 */
+	void exitGreyScaleConversion(RavenParser.GreyScaleConversionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#tableExtractionOutbound}.
+	 * @param ctx the parse tree
+	 */
+	void enterTableExtractionOutbound(RavenParser.TableExtractionOutboundContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#tableExtractionOutbound}.
+	 * @param ctx the parse tree
+	 */
+	void exitTableExtractionOutbound(RavenParser.TableExtractionOutboundContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#paragraphExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterParagraphExtraction(RavenParser.ParagraphExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#paragraphExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitParagraphExtraction(RavenParser.ParagraphExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#bulletInExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterBulletInExtraction(RavenParser.BulletInExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#bulletInExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitBulletInExtraction(RavenParser.BulletInExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#p2pNameValidation}.
+	 * @param ctx the parse tree
+	 */
+	void enterP2pNameValidation(RavenParser.P2pNameValidationContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#p2pNameValidation}.
+	 * @param ctx the parse tree
+	 */
+	void exitP2pNameValidation(RavenParser.P2pNameValidationContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#urgencyTriageBeta}.
+	 * @param ctx the parse tree
+	 */
+	void enterUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#urgencyTriageBeta}.
+	 * @param ctx the parse tree
+	 */
+	void exitUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#faceDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterFaceDetection(RavenParser.FaceDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#faceDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitFaceDetection(RavenParser.FaceDetectionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#validationLlm}.
+	 * @param ctx the parse tree
+	 */
+	void enterValidationLlm(RavenParser.ValidationLlmContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#validationLlm}.
+	 * @param ctx the parse tree
+	 */
+	void exitValidationLlm(RavenParser.ValidationLlmContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#figureDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterFigureDetection(RavenParser.FigureDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#figureDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitFigureDetection(RavenParser.FigureDetectionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#documentparser}.
+	 * @param ctx the parse tree
+	 */
+	void enterDocumentparser(RavenParser.DocumentparserContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#documentparser}.
+	 * @param ctx the parse tree
+	 */
+	void exitDocumentparser(RavenParser.DocumentparserContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#neonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void enterNeonKvp(RavenParser.NeonKvpContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#neonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void exitNeonKvp(RavenParser.NeonKvpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#radonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void enterRadonKvp(RavenParser.RadonKvpContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#radonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void exitRadonKvp(RavenParser.RadonKvpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#llmJsonParser}.
+	 * @param ctx the parse tree
+	 */
+	void enterLlmJsonParser(RavenParser.LlmJsonParserContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#llmJsonParser}.
+	 * @param ctx the parse tree
+	 */
+	void exitLlmJsonParser(RavenParser.LlmJsonParserContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#convertExcelToDatabase}.
+	 * @param ctx the parse tree
+	 */
+	void enterConvertExcelToDatabase(RavenParser.ConvertExcelToDatabaseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#convertExcelToDatabase}.
+	 * @param ctx the parse tree
+	 */
+	void exitConvertExcelToDatabase(RavenParser.ConvertExcelToDatabaseContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree

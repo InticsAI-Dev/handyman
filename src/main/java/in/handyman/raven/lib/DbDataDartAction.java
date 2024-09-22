@@ -12,8 +12,7 @@ import java.lang.Object;
 import java.lang.Override;
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -106,14 +105,17 @@ public class DbDataDartAction implements IActionExecution {
     handleResponse(jdbi, dataBaseTruncateInputTableList, truncatedRowCount, schemaName, schemaTableName);
   }
 
+  public List<String> convertListFromString(String inputString) {
 
+    return Optional.ofNullable(inputString).map(s -> Arrays.stream(s.split(",")).map(String::new).collect(Collectors.toList())).orElse(Collections.emptyList());
+  }
   private @NotNull List<String> getSchemaTableNamesList(List<DataBaseTruncateInputTable> dataBaseTruncateInputTableList, Jdbi jdbi) {
     final List<String> schemaTableNamesList = new ArrayList<>(); // List to store schema.table_name strings
 
     // Iterate over DataBaseTruncateInputTable objects
     for (DataBaseTruncateInputTable inputTable : dataBaseTruncateInputTableList) {
-      final List<String> truncateSchemaList = inputTable.getTruncateSchemaList();
-      final List<String> excludeTableWithSchemaList = inputTable.getExcludeTableWithSchemaList();
+      final List<String> truncateSchemaList = convertListFromString(inputTable.getTruncateSchemaList());
+      final List<String> excludeTableWithSchemaList = convertListFromString(inputTable.getExcludeTableWithSchemaList());
       for (String schema : truncateSchemaList) {
         String query = "SELECT table_name FROM information_schema.tables " +
                 "WHERE table_schema = :schema AND table_type = 'BASE TABLE'";
@@ -198,8 +200,8 @@ public class DbDataDartAction implements IActionExecution {
   @NoArgsConstructor
   @Data
   public static class DataBaseTruncateInputTable {
-    private List<String> truncateSchemaList;
-    private List<String> excludeTableWithSchemaList;
+    private String truncateSchemaList;
+    private String excludeTableWithSchemaList;
     private Integer groupId;
     private Long tenantId;
     private Long processId;

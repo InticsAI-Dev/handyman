@@ -31,12 +31,13 @@ import java.util.stream.Stream;
         private String modelName;
         private String modelVersion;
         private Long tenantId;
+        private String batchId;
 
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.originId, this.paperNo, this.eocIdentifier, this.createdOn, this.actualValue, this.extractedValue,
-                    this.intelliMatch, this.status, this.stage, this.message, this.rootPipelineId,  this.modelName, this.modelVersion, this.tenantId
+                    this.intelliMatch, this.status, this.stage, this.message, this.rootPipelineId,  this.modelName, this.modelVersion, this.tenantId,this.batchId
             ).collect(Collectors.toList());
         }
     }

@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.validationLlm;
 
+import in.handyman.raven.lib.model.paragraph.detection.ParagraphExtractionLineItems;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
         actionName = "NerAdapter"
 )
 public class NerAdapterAction implements IActionExecution {
-    public static final String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question,question_id,synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box,status,stage,message,root_pipeline_id, model_name,model_version, model_registry, category";
+    public static final String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question,question_id,synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box,status,stage,message,root_pipeline_id, model_name,model_version, model_registry,batch_id, category";
     private final ActionExecutionAudit action;
     private final Logger log;
     private final NerAdapter nerAdapter;
@@ -61,7 +61,7 @@ public class NerAdapterAction implements IActionExecution {
             // build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + nerAdapter.getResultTable() +
                     "(" + COLUMN_LIST + ")" +
-                    " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?, ?,?,?,?,?,?,?,?,?,?,?,?);";
+                    " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?, ?,?,?,?,?,?,?,?,?,?,?,?, ?);";
             log.info(aMarker, "ner adapter Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls

@@ -67,8 +67,8 @@ public class DrugMatchAction implements IActionExecution {
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       // build insert prepare statement with output table columns
       final String insertQuery = "INSERT INTO " + drugMatch.getDrugCompare() +
-              " (origin_id ,eoc_identifier,paper_no,created_on,document_id,drug_name,drug_jcode,actual_value,status,stage,message, root_pipeline_id)" +
-              " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+              " (origin_id ,eoc_identifier,paper_no,created_on,document_id,drug_name,drug_jcode,actual_value,status,stage,message, root_pipeline_id, batch_id)" +
+              " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?);";
       log.info(aMarker, "Drug Match Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
@@ -178,6 +178,7 @@ public class DrugMatchAction implements IActionExecution {
                               .status("COMPLETED")
                               .stage("PAHUB-DRUGNAME")
                               .rootPipelineId(result.rootPipelineId)
+                              .batchId(result.getBatchId())
                               .message("Drug name master data extracted").build());
             });
 
@@ -197,6 +198,7 @@ public class DrugMatchAction implements IActionExecution {
                             .stage("PAHUB-DRUGNAME")
                             .message("Drug name with pahub instance has been failed")
                             .rootPipelineId(result.rootPipelineId)
+                            .batchId(result.getBatchId())
                             .build());
             log.error(aMarker, "failed for request {} and response {}", request, response);
             throw new HandymanException(responseBody);
@@ -217,6 +219,7 @@ public class DrugMatchAction implements IActionExecution {
                           .stage("PAHUB-DRUGNAME")
                           .message("Drug name with pahub instance has been failed")
                           .rootPipelineId(result.rootPipelineId)
+                          .batchId(result.getBatchId())
                           .build());
           log.error(aMarker, "error in hitting the file for mentioned request {} with exception {}", request, ExceptionUtil.toString(exception));
           HandymanException handymanException = new HandymanException(exception);
@@ -249,6 +252,7 @@ public class DrugMatchAction implements IActionExecution {
     private String drugName;
     private String jCode;
     private Long rootPipelineId;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {
@@ -275,12 +279,13 @@ public class DrugMatchAction implements IActionExecution {
     private String stage;
     private String message;
     private Long rootPipelineId;
+    private String batchId;
 
     @Override
     public List<Object> getRowData() {
       return Stream.of(this.originId, this.eocIdentifier, this.paperNo, this.createdOn, this.documentId,
               this.drugName, this.drugJCode,
-              this.actualValue, this.status, this.stage, this.message, this.rootPipelineId
+              this.actualValue, this.status, this.stage, this.message, this.rootPipelineId,this.batchId
       ).collect(Collectors.toList());
     }
   }

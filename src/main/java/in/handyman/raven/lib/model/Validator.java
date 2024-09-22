@@ -12,4 +12,9 @@ public class Validator {
     private int threshold;
     private String allowedSpecialChar;
     private String comparableChar;
+    private String originId;
+    private Integer groupId;
+    private Long tenantId;
+    private Integer paperNo;
+    private String batchId;
 }

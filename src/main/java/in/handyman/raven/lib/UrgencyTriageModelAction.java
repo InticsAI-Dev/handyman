@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.UrgencyTriageModel;
 import in.handyman.raven.lib.model.utmodel.UrgencyTriageConsumerProcess;
+import in.handyman.raven.lib.model.utmodel.UrgencyTriageConsumerProcessRadon;
 import in.handyman.raven.lib.model.utmodel.UrgencyTriageInputTable;
 import in.handyman.raven.lib.model.utmodel.UrgencyTriageOutputTable;
 import in.handyman.raven.util.ExceptionUtil;
@@ -22,6 +23,7 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
+import java.util.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -62,12 +64,12 @@ public class UrgencyTriageModelAction implements IActionExecution {
             Integer consumerCount = Integer.valueOf(action.getContext().get("ut.consumer.API.count"));
             Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
             String outputDir = urgencyTriageModel.getOutputDir();
-            UrgencyTriageConsumerProcess urgencyTriageConsumerProcess = new UrgencyTriageConsumerProcess(log, aMarker, action);
+
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(urgencyTriageModel.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Urgency Triage Action for {} has been started", urgencyTriageModel.getName());
-            final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+" (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version)" +
-                    "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?)";
+            final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+" (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version,batch_id)" +
+                    "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?)";
             final List<URL> urls = Optional.ofNullable(urgencyTriageModel.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
@@ -86,7 +88,16 @@ public class UrgencyTriageModelAction implements IActionExecution {
 
             coproProcessor.startProducer(urgencyTriageModel.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+            if (Objects.equals(action.getContext().get("ut.legacy.api.call.configs"), "true")){
+                UrgencyTriageConsumerProcess urgencyTriageConsumerProcess = new UrgencyTriageConsumerProcess(log, aMarker, action);
+                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+
+            }else{
+                UrgencyTriageConsumerProcessRadon urgencyTriageConsumerProcessRadon = new UrgencyTriageConsumerProcessRadon(log, aMarker, action);
+                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcessRadon);
+
+
+            }
             log.info(aMarker, "Urgency Triage has been completed {}  ", urgencyTriageModel.getName());
         } catch (Exception t) {
             action.getContext().put(urgencyTriageModel.getName() + ".isSuccessful", "false");

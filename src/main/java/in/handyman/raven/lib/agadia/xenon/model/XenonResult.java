@@ -21,6 +21,9 @@ public class XenonResult {
     private  Long processId;
     private Integer groupId;
     private Long tenantId;
+    private  Long questionId;
+    private Long synonymId;
+    private String sorItemName;
 
     public String getQuestion() {
         return question;
@@ -52,5 +55,26 @@ public class XenonResult {
 
     public void setBboxes(JsonNode bboxes) {
         this.bboxes = bboxes;
+    }
+
+    public Long getQuestionId() {
+        return questionId;
+    }
+    public void setQuestionId(Long questionId) {
+        this.questionId = questionId;
+    }
+
+    public Long getSynonymId() {
+        return synonymId;
+    }
+    public void setSynonymId(Long synonymId) {
+        this.synonymId = synonymId;
+    }
+
+    public String getSorItemName() {
+        return sorItemName;
+    }
+    public void setSorItemName(String sorItemName) {
+        this.sorItemName = sorItemName;
     }
 }

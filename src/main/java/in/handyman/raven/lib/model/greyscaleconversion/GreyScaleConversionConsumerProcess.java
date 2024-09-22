@@ -193,6 +193,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                     .rootPipelineId(greyScaleConversionDataItem.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
 
@@ -229,6 +230,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                     .rootPipelineId(rootPipelineId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
                     .build());
         } catch (JsonProcessingException e) {
             parentObj.add(GreyScaleConversionOutputQuerySet.builder()
@@ -243,6 +245,7 @@ public class GreyScaleConversionConsumerProcess implements CoproProcessor.Consum
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .batchId(entity.getBatchId())
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
