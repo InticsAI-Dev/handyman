@@ -8,6 +8,7 @@ import in.handyman.raven.lib.agadia.adapters.PatientNameAdapter;
 import in.handyman.raven.lib.interfaces.ScalarEvaluationInterface;
 import in.handyman.raven.lib.model.AgadiaAdapter;
 import in.handyman.raven.lib.model.EvalPatientName;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -46,12 +47,12 @@ public class EvalPatientNameAction implements IActionExecution {
                     .charCountThreshold(evalPatientName.getCharCountThreshold())
                     .validatorDetail(evalPatientName.getNerCoproApi())
                     .validatorThreshold(evalPatientName.getNerApiThreshold()).build();
-            int score = patientAdapter.getConfidenceScore(evalPatientName.getPatientName(), adapter);
+            int score = patientAdapter.getConfidenceScore(evalPatientName.getPatientName(), adapter,action);
             action.getContext().put(evalPatientName.getName().concat(".score"), String.valueOf(score));
         } catch (Exception ex) {
             action.getContext().put(evalPatientName.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 

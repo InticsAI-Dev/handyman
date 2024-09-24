@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -43,7 +44,11 @@ public class CopyFileAction implements IActionExecution {
 
         var srcFile = new File(srcLocation.concat(fileName + extension));
         var destFile = new File(destLocation.concat(fileName + extension));
-        FileUtils.copyFile(srcFile, destFile);
+        try {
+            FileUtils.copyFile(srcFile, destFile);
+        } catch (Exception e) {
+            throw new HandymanException("Error in copy file action", e, action);
+        }
     }
 
     @Override

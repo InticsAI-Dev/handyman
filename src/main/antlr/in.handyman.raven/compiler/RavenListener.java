@@ -800,6 +800,476 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitScalarAdapter(RavenParser.ScalarAdapterContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#phraseMatchPaperFilter}.
+	 * @param ctx the parse tree
+	 */
+	void enterPhraseMatchPaperFilter(RavenParser.PhraseMatchPaperFilterContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#phraseMatchPaperFilter}.
+	 * @param ctx the parse tree
+	 */
+	void exitPhraseMatchPaperFilter(RavenParser.PhraseMatchPaperFilterContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#zeroShotClassifierPaperFilter}.
+	 * @param ctx the parse tree
+	 */
+	void enterZeroShotClassifierPaperFilter(RavenParser.ZeroShotClassifierPaperFilterContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#zeroShotClassifierPaperFilter}.
+	 * @param ctx the parse tree
+	 */
+	void exitZeroShotClassifierPaperFilter(RavenParser.ZeroShotClassifierPaperFilterContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#assetInfo}.
+	 * @param ctx the parse tree
+	 */
+	void enterAssetInfo(RavenParser.AssetInfoContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#assetInfo}.
+	 * @param ctx the parse tree
+	 */
+	void exitAssetInfo(RavenParser.AssetInfoContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#dataExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterDataExtraction(RavenParser.DataExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#dataExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitDataExtraction(RavenParser.DataExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#episodeOfCoverage}.
+	 * @param ctx the parse tree
+	 */
+	void enterEpisodeOfCoverage(RavenParser.EpisodeOfCoverageContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#episodeOfCoverage}.
+	 * @param ctx the parse tree
+	 */
+	void exitEpisodeOfCoverage(RavenParser.EpisodeOfCoverageContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#userRegistration}.
+	 * @param ctx the parse tree
+	 */
+	void enterUserRegistration(RavenParser.UserRegistrationContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#userRegistration}.
+	 * @param ctx the parse tree
+	 */
+	void exitUserRegistration(RavenParser.UserRegistrationContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#authToken}.
+	 * @param ctx the parse tree
+	 */
+	void enterAuthToken(RavenParser.AuthTokenContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#authToken}.
+	 * @param ctx the parse tree
+	 */
+	void exitAuthToken(RavenParser.AuthTokenContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#eocJsonGenerator}.
+	 * @param ctx the parse tree
+	 */
+	void enterEocJsonGenerator(RavenParser.EocJsonGeneratorContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#eocJsonGenerator}.
+	 * @param ctx the parse tree
+	 */
+	void exitEocJsonGenerator(RavenParser.EocJsonGeneratorContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#zipContentList}.
+	 * @param ctx the parse tree
+	 */
+	void enterZipContentList(RavenParser.ZipContentListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#zipContentList}.
+	 * @param ctx the parse tree
+	 */
+	void exitZipContentList(RavenParser.ZipContentListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#hwDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterHwDetection(RavenParser.HwDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#hwDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitHwDetection(RavenParser.HwDetectionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#intellimatch}.
+	 * @param ctx the parse tree
+	 */
+	void enterIntellimatch(RavenParser.IntellimatchContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#intellimatch}.
+	 * @param ctx the parse tree
+	 */
+	void exitIntellimatch(RavenParser.IntellimatchContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#checkboxVqa}.
+	 * @param ctx the parse tree
+	 */
+	void enterCheckboxVqa(RavenParser.CheckboxVqaContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#checkboxVqa}.
+	 * @param ctx the parse tree
+	 */
+	void exitCheckboxVqa(RavenParser.CheckboxVqaContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#pixelClassifierUrgencyTriage}.
+	 * @param ctx the parse tree
+	 */
+	void enterPixelClassifierUrgencyTriage(RavenParser.PixelClassifierUrgencyTriageContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#pixelClassifierUrgencyTriage}.
+	 * @param ctx the parse tree
+	 */
+	void exitPixelClassifierUrgencyTriage(RavenParser.PixelClassifierUrgencyTriageContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#paperItemizer}.
+	 * @param ctx the parse tree
+	 */
+	void enterPaperItemizer(RavenParser.PaperItemizerContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#paperItemizer}.
+	 * @param ctx the parse tree
+	 */
+	void exitPaperItemizer(RavenParser.PaperItemizerContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#nerAdapter}.
+	 * @param ctx the parse tree
+	 */
+	void enterNerAdapter(RavenParser.NerAdapterContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#nerAdapter}.
+	 * @param ctx the parse tree
+	 */
+	void exitNerAdapter(RavenParser.NerAdapterContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#coproStart}.
+	 * @param ctx the parse tree
+	 */
+	void enterCoproStart(RavenParser.CoproStartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#coproStart}.
+	 * @param ctx the parse tree
+	 */
+	void exitCoproStart(RavenParser.CoproStartContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#coproStop}.
+	 * @param ctx the parse tree
+	 */
+	void enterCoproStop(RavenParser.CoproStopContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#coproStop}.
+	 * @param ctx the parse tree
+	 */
+	void exitCoproStop(RavenParser.CoproStopContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#outboundDeliveryNotify}.
+	 * @param ctx the parse tree
+	 */
+	void enterOutboundDeliveryNotify(RavenParser.OutboundDeliveryNotifyContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#outboundDeliveryNotify}.
+	 * @param ctx the parse tree
+	 */
+	void exitOutboundDeliveryNotify(RavenParser.OutboundDeliveryNotifyContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#masterdataComparison}.
+	 * @param ctx the parse tree
+	 */
+	void enterMasterdataComparison(RavenParser.MasterdataComparisonContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#masterdataComparison}.
+	 * @param ctx the parse tree
+	 */
+	void exitMasterdataComparison(RavenParser.MasterdataComparisonContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#zipBatch}.
+	 * @param ctx the parse tree
+	 */
+	void enterZipBatch(RavenParser.ZipBatchContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#zipBatch}.
+	 * @param ctx the parse tree
+	 */
+	void exitZipBatch(RavenParser.ZipBatchContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#drugMatch}.
+	 * @param ctx the parse tree
+	 */
+	void enterDrugMatch(RavenParser.DrugMatchContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#drugMatch}.
+	 * @param ctx the parse tree
+	 */
+	void exitDrugMatch(RavenParser.DrugMatchContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#urgencyTriageModel}.
+	 * @param ctx the parse tree
+	 */
+	void enterUrgencyTriageModel(RavenParser.UrgencyTriageModelContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#urgencyTriageModel}.
+	 * @param ctx the parse tree
+	 */
+	void exitUrgencyTriageModel(RavenParser.UrgencyTriageModelContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#donutImpiraQa}.
+	 * @param ctx the parse tree
+	 */
+	void enterDonutImpiraQa(RavenParser.DonutImpiraQaContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#donutImpiraQa}.
+	 * @param ctx the parse tree
+	 */
+	void exitDonutImpiraQa(RavenParser.DonutImpiraQaContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#templateDetection}.
+	 * @param ctx the parse tree
+	 */
+	void enterTemplateDetection(RavenParser.TemplateDetectionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#templateDetection}.
+	 * @param ctx the parse tree
+	 */
+	void exitTemplateDetection(RavenParser.TemplateDetectionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#trinityModel}.
+	 * @param ctx the parse tree
+	 */
+	void enterTrinityModel(RavenParser.TrinityModelContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#trinityModel}.
+	 * @param ctx the parse tree
+	 */
+	void exitTrinityModel(RavenParser.TrinityModelContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#fileBucketing}.
+	 * @param ctx the parse tree
+	 */
+	void enterFileBucketing(RavenParser.FileBucketingContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#fileBucketing}.
+	 * @param ctx the parse tree
+	 */
+	void exitFileBucketing(RavenParser.FileBucketingContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#alchemyInfo}.
+	 * @param ctx the parse tree
+	 */
+	void enterAlchemyInfo(RavenParser.AlchemyInfoContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#alchemyInfo}.
+	 * @param ctx the parse tree
+	 */
+	void exitAlchemyInfo(RavenParser.AlchemyInfoContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#alchemyAuthToken}.
+	 * @param ctx the parse tree
+	 */
+	void enterAlchemyAuthToken(RavenParser.AlchemyAuthTokenContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#alchemyAuthToken}.
+	 * @param ctx the parse tree
+	 */
+	void exitAlchemyAuthToken(RavenParser.AlchemyAuthTokenContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#alchemyResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterAlchemyResponse(RavenParser.AlchemyResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#alchemyResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitAlchemyResponse(RavenParser.AlchemyResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#productResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterProductResponse(RavenParser.ProductResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#productResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitProductResponse(RavenParser.ProductResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#tableExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterTableExtraction(RavenParser.TableExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#tableExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitTableExtraction(RavenParser.TableExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#mailServer}.
+	 * @param ctx the parse tree
+	 */
+	void enterMailServer(RavenParser.MailServerContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#mailServer}.
+	 * @param ctx the parse tree
+	 */
+	void exitMailServer(RavenParser.MailServerContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#alchemyKvpResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterAlchemyKvpResponse(RavenParser.AlchemyKvpResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#alchemyKvpResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitAlchemyKvpResponse(RavenParser.AlchemyKvpResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#alchemyTableResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterAlchemyTableResponse(RavenParser.AlchemyTableResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#alchemyTableResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitAlchemyTableResponse(RavenParser.AlchemyTableResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#productOutboundZipfile}.
+	 * @param ctx the parse tree
+	 */
+	void enterProductOutboundZipfile(RavenParser.ProductOutboundZipfileContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#productOutboundZipfile}.
+	 * @param ctx the parse tree
+	 */
+	void exitProductOutboundZipfile(RavenParser.ProductOutboundZipfileContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#fileMergerPdf}.
+	 * @param ctx the parse tree
+	 */
+	void enterFileMergerPdf(RavenParser.FileMergerPdfContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#fileMergerPdf}.
+	 * @param ctx the parse tree
+	 */
+	void exitFileMergerPdf(RavenParser.FileMergerPdfContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#zipFileCreationOutbound}.
+	 * @param ctx the parse tree
+	 */
+	void enterZipFileCreationOutbound(RavenParser.ZipFileCreationOutboundContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#zipFileCreationOutbound}.
+	 * @param ctx the parse tree
+	 */
+	void exitZipFileCreationOutbound(RavenParser.ZipFileCreationOutboundContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#outboundKvpResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterOutboundKvpResponse(RavenParser.OutboundKvpResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#outboundKvpResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitOutboundKvpResponse(RavenParser.OutboundKvpResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#outboundTableResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterOutboundTableResponse(RavenParser.OutboundTableResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#outboundTableResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitOutboundTableResponse(RavenParser.OutboundTableResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#integratedNoiseModelApi}.
+	 * @param ctx the parse tree
+	 */
+	void enterIntegratedNoiseModelApi(RavenParser.IntegratedNoiseModelApiContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#integratedNoiseModelApi}.
+	 * @param ctx the parse tree
+	 */
+	void exitIntegratedNoiseModelApi(RavenParser.IntegratedNoiseModelApiContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#loadBalancerQueueUpdate}.
+	 * @param ctx the parse tree
+	 */
+	void enterLoadBalancerQueueUpdate(RavenParser.LoadBalancerQueueUpdateContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#loadBalancerQueueUpdate}.
+	 * @param ctx the parse tree
+	 */
+	void exitLoadBalancerQueueUpdate(RavenParser.LoadBalancerQueueUpdateContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#qrExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void enterQrExtraction(RavenParser.QrExtractionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#qrExtraction}.
+	 * @param ctx the parse tree
+	 */
+	void exitQrExtraction(RavenParser.QrExtractionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartUpload}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartUpload(RavenParser.MultipartUploadContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartUpload}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartUpload(RavenParser.MultipartUploadContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartDownload}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartDownload(RavenParser.MultipartDownloadContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartDownload}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartDownload(RavenParser.MultipartDownloadContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#systemkeyTable}.
+	 * @param ctx the parse tree
+	 */
+	void enterSystemkeyTable(RavenParser.SystemkeyTableContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#systemkeyTable}.
+	 * @param ctx the parse tree
+	 */
+	void exitSystemkeyTable(RavenParser.SystemkeyTableContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#tritonModelLoadUnload}.
+	 * @param ctx the parse tree
+	 */
+	void enterTritonModelLoadUnload(RavenParser.TritonModelLoadUnloadContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#tritonModelLoadUnload}.
+	 * @param ctx the parse tree
+	 */
+	void exitTritonModelLoadUnload(RavenParser.TritonModelLoadUnloadContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#tableExtractionHeaders}.
+	 * @param ctx the parse tree
+	 */
+	void enterTableExtractionHeaders(RavenParser.TableExtractionHeadersContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#tableExtractionHeaders}.
+	 * @param ctx the parse tree
+	 */
+	void exitTableExtractionHeaders(RavenParser.TableExtractionHeadersContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree
 	 */

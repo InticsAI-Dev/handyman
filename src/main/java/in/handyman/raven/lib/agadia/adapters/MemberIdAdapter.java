@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.agadia.adapters;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.AlphaAdapter;
 import in.handyman.raven.lib.adapters.CharacterCountAdapter;
 import in.handyman.raven.lib.adapters.WordCountAdapter;
@@ -13,7 +14,7 @@ public class MemberIdAdapter implements ScalarEvaluationInterface {
     AdapterInterface idValidatorAdapter = new AlphaAdapter();
 
     @Override
-    public int getConfidenceScore(String memberId, AgadiaAdapter adapter) throws Exception {
+    public int getConfidenceScore(String memberId, AgadiaAdapter adapter, ActionExecutionAudit audit) throws Exception {
         int confidenceScore = 0;
         //Config parameter
         int wcLimit = adapter.getWordCountLimit();
@@ -29,7 +30,7 @@ public class MemberIdAdapter implements ScalarEvaluationInterface {
         int charCount = charCountAdapter.getThresholdScore(memberId);
         confidenceScore = charCount <= charLimit ? confidenceScore + charThreshold : confidenceScore;
 
-        boolean idValidator = idValidatorAdapter.getValidationModel(memberId, validatorFeature);
+        boolean idValidator = idValidatorAdapter.getValidationModel(memberId, validatorFeature, audit);
         confidenceScore = idValidator ? confidenceScore + validatorThresold : confidenceScore;
 
         return confidenceScore;

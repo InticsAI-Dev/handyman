@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.process.LambdaEngine;
 import in.handyman.raven.lib.model.Consumer;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -92,7 +93,8 @@ public class ConsumerAction implements IActionExecution {
                 try {
                     downLatch.await();
                 } catch (InterruptedException e) {
-                    throw new HandymanException("Failed to execute the consumer", e);
+                    log.error(aMarker, "Failed to execute the consumer {}", ExceptionUtil.toString(e));
+                    throw new HandymanException("Failed to execute the consumer", e, actionExecutionAudit);
                 }
                 log.info("completed all task to executors");
             }

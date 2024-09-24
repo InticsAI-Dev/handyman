@@ -67,15 +67,18 @@ public class LambdaEngine {
                 .modeOfExecution(RAVEN_VM)
                 .threadName(Thread.currentThread().getName())
                 .build();
-        if (lContext.getRootPipelineId() == null) {
-            lContext.setRootPipelineId(UniqueID.getId());
-            log.info("LContext rootID => {} ", lContext.getRootPipelineId());
-            pipelineExecutionAudit.setPipelineId(lContext.getRootPipelineId());
-        }
-        pipelineExecutionAudit.setRootPipelineId(lContext.getRootPipelineId());
         pipelineExecutionAudit.setProcessId(ProcessHandle.current().pid());
-
-        HandymanActorSystemAccess.insert(pipelineExecutionAudit);
+        if (lContext.getRootPipelineId() == null) {
+            final Long id = UniqueID.getId();
+            pipelineExecutionAudit.setRootPipelineId(id);
+            pipelineExecutionAudit.setPipelineId(id);
+            HandymanActorSystemAccess.insert(pipelineExecutionAudit);
+            lContext.setRootPipelineId(pipelineExecutionAudit.getRootPipelineId());
+        } else {
+            pipelineExecutionAudit.setRootPipelineId(lContext.getRootPipelineId());
+            HandymanActorSystemAccess.insert(pipelineExecutionAudit);
+        }
+        log.info("LContext rootID => {} ", lContext.getRootPipelineId());
         pipelineExecutionAudit.updateExecutionStatusId(ExecutionStatus.STAGED.getId());
         log.info("Started building the pipeline context");
         try {
@@ -198,11 +201,11 @@ public class LambdaEngine {
             action.setContext(context);
             action.setPipelineId(pipelineExecutionAudit.getPipelineId());
             toAction(action, pipelineExecutionAudit);
-            log.info("");
-            log.info("Action context has been set successfully for action {}", action.getActionId());
+
+
             doAction(action, actionContext);
-            log.info("Action context has been executed successfully for action {}", action.getActionId());
-            log.info("");
+
+
         });
     }
 
@@ -237,44 +240,48 @@ public class LambdaEngine {
         actionExecutionAudit.updateExecutionStatusId(ExecutionStatus.STAGED.getId());
         HandymanActorSystemAccess.update(actionExecutionAudit);
         logger.info("\n");
+        String actionName = actionExecutionAudit.getActionName();
+        Long actionId = actionExecutionAudit.getActionId();
         try {
-            logger.info("Action execution has been started");
-            logger.info("Given context {}", actionExecutionAudit.getContext());
+            logger.info("Given name {} with id {}, context {}", actionName, actionId, actionExecutionAudit.getContext());
             final IActionExecution execution = load(actionContext, actionExecutionAudit);
+            logger.info("Action execution has been started for action name {} with id {}", actionName, actionId);
             execute(execution, actionExecutionAudit);
-            logger.info("Execution has been completed successfully");
+            logger.info("Execution has been completed successfully action name {} with id {}", actionName, actionId);
         } catch (Exception e) {
-            logger.error("Exception " + actionExecutionAudit.getActionName(), e);
+            logger.error("Error executing action " + actionName, e);
             actionExecutionAudit.updateExecutionStatusId(ExecutionStatus.FAILED.getId());
-            throw new HandymanException("Failed to convert", e);
+            throw new HandymanException("Error executing action "+ actionName, e);
         } finally {
             HandymanActorSystemAccess.update(actionExecutionAudit);
             final StringBuilder stringBuilder = new StringBuilder();
-            logger.info("Started collecting Lambda engine logs {}", actionExecutionAudit.getActionName());
+            logger.info("Started collecting Lambda engine logs {}", actionName);
             stringBuilder.append("\n");
             actionExecutionAudit.getEventQueue().forEach(event -> {
-                append(stringBuilder, Instant.ofEpochMilli(event.getTimeStamp()));
-                stringBuilder.append(" ");
-                append(stringBuilder, event.getThreadName());
-                stringBuilder.append(" ");
-                append(stringBuilder, event.getLevel());
-                stringBuilder.append(" ");
+                if(event!=null) {
+                    append(stringBuilder, Instant.ofEpochMilli(event.getTimeStamp()));
+                    stringBuilder.append(" ");
+                    append(stringBuilder, event.getThreadName());
+                    stringBuilder.append(" ");
+                    append(stringBuilder, event.getLevel());
+                    stringBuilder.append(" ");
 //                final String markersName = Optional.ofNullable(event.getMarker()).map(markers -> markers.stream().map(Marker::getName).collect(Collectors.joining(","))).orElse("");
 //                append(stringBuilder, markersName);
 //                stringBuilder.append(" ");
-                append(stringBuilder, MessageFormatter.arrayFormat(event.getMessage(), event.getArgumentArray()).getMessage());
-                if (event.getThrowable() != null) {
-                    var sw = new StringWriter();
-                    var pw = new PrintWriter(sw);
-                    event.getThrowable().printStackTrace(pw);
-                    var sStackTrace = sw.toString();
+                    append(stringBuilder, MessageFormatter.arrayFormat(event.getMessage(), event.getArgumentArray()).getMessage());
+                    if (event.getThrowable() != null) {
+                        var sw = new StringWriter();
+                        var pw = new PrintWriter(sw);
+                        event.getThrowable().printStackTrace(pw);
+                        var sStackTrace = sw.toString();
+                        stringBuilder.append("\n");
+                        stringBuilder.append(sStackTrace);
+                    }
                     stringBuilder.append("\n");
-                    stringBuilder.append(sStackTrace);
                 }
-                stringBuilder.append("\n");
             });
             logger.info("\n");
-            log.info("Completed collecting LambdaEngine logs");
+            log.info("Completed collecting LambdaEngine logs for action "+actionName);
             actionExecutionAudit.setLog(stringBuilder.toString());
             log.info(stringBuilder.toString());
             HandymanActorSystemAccess.update(actionExecutionAudit);

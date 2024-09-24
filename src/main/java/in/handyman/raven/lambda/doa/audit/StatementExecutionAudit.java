@@ -22,8 +22,7 @@ import lombok.ToString;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class StatementExecutionAudit extends Auditable implements DoaConstant {
 
-    @Builder.Default
-    private Long statementId = UniqueID.getId();
+    private Long statementId ;
 
     private Long actionId;
 

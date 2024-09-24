@@ -1,13 +1,16 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.CreateDirectory;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -35,19 +38,24 @@ public class CreateDirectoryAction implements IActionExecution {
     }
 
     @Override
-    public void execute() throws Exception {
-        log.info(aMarker, "<-------Create Directory Action for {} has been started------->" + createDirectory.getName());
+    public void execute(){
+        log.info(aMarker, "Create Directory Action for {} has been started" , createDirectory.getName());
         log.debug(aMarker, "Directory creation operation has been started for listed files {}", createDirectory.getDirectoryPath());
         for (var fileName : createDirectory.getDirectoryPath()) {
             var path = Paths.get(fileName);
             if (!path.toFile().exists()) {
-                Files.createDirectories(Paths.get(path.toUri()));
+                try {
+                    Files.createDirectories(Paths.get(path.toUri()));
+                } catch (IOException e) {
+                    log.error("Error in creating directory {}", ExceptionUtil.toString(e));
+                    throw new HandymanException("Error in creating directory", e, actionExecutionAudit);
+                }
                 log.info(aMarker, "{} Directory Created", path);
             } else {
                 log.info(aMarker, "{} Directory already exists", path);
             }
         }
-        log.info(aMarker, "<-------Create Directory Action for {} has been completed------->" + createDirectory.getName());
+        log.info(aMarker, "Create Directory Action for {} has been completed" , createDirectory.getName());
     }
 
     @Override

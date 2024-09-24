@@ -1,14 +1,12 @@
 package in.handyman.raven.lib.adapters;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
 public class AlphaAdapter implements AdapterInterface {
     @Override
-    public boolean getValidationModel(String input, String allowedCharacters) throws Exception {
+    public boolean getValidationModel(String input, String allowedCharacters, ActionExecutionAudit audit) throws Exception {
         input = validateSpecialCharacters(allowedCharacters, input);
         return StringUtils.isAlpha(input);
     }
@@ -27,12 +25,14 @@ public class AlphaAdapter implements AdapterInterface {
                 input = input.replace(chars, targetChar);
             }
         }*/
-        for (int i = 0; i < specialCharacters.length(); i++) {
-            if (input.contains(Character.toString(specialCharacters.charAt(i)))) {
-                input = input.replace(Character.toString(specialCharacters.charAt(i)), "");
+        if (specialCharacters != null) {
+            for (int i = 0; i < specialCharacters.length(); i++) {
+                if (input.contains(Character.toString(specialCharacters.charAt(i)))) {
+                    input = input.replace(Character.toString(specialCharacters.charAt(i)), "");
+                }
             }
         }
-            return input;
+        return input;
     }
 
     @Override

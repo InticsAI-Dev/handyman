@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ExecutionGroup;
 import in.handyman.raven.lambda.process.LambdaEngine;
 import in.handyman.raven.lib.model.Multitude;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -68,7 +69,7 @@ public class MultitudeAction implements IActionExecution {
                                     try {
                                         actionCallable.run();
                                     } catch (Exception e) {
-                                        throw new HandymanException("Failed to execute", e);
+                                        throw new HandymanException("Failed to execute", e, actionExecutionAudit);
                                     } finally {
                                         countDown.countDown();
                                     }
@@ -81,7 +82,8 @@ public class MultitudeAction implements IActionExecution {
                             log.info(aMarker, "Completed execution of multitude");
                         }
                     } catch (Exception e) {
-                        throw new HandymanException("Failed to execute", e);
+                        log.error(aMarker, "Error in execution in parallel thread {}", ExceptionUtil.toString(e));
+                        throw new HandymanException("Failed to execute", e, actionExecutionAudit);
                     } finally {
                         try {
                             countDown.await();

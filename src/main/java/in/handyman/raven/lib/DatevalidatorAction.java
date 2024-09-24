@@ -8,6 +8,7 @@ import in.handyman.raven.lib.adapters.DateAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Datevalidator;
 import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -27,7 +28,7 @@ public class DatevalidatorAction implements IActionExecution {
     private final Logger log;
     private final Datevalidator datevalidator;
     private final Marker aMarker;
-    AdapterInterface dobValidatorAdapter ;
+    AdapterInterface dobValidatorAdapter;
 
 
     public DatevalidatorAction(final ActionExecutionAudit action, final Logger log,
@@ -39,22 +40,26 @@ public class DatevalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Datevalidator:" + this.datevalidator.getName());
     }
 
-    int getDateScore(Validator adapter) {
+    public int getDateScore(Validator adapter) {
         try {
             int currentYear = Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date()));
-            int comparableYear = adapter.getComparableChar().isEmpty() ? currentYear : Integer.parseInt(adapter.getComparableChar());
+            int comparableYear;
+            if (Optional.ofNullable(adapter.getComparableChar()).isPresent() && !adapter.getComparableChar().isEmpty()) {
+                comparableYear = Integer.parseInt(adapter.getComparableChar());
+            } else comparableYear = currentYear;
             String[] dateFormats = adapter.getAllowedSpecialChar().split(",");
             boolean dobValidator = dobValidatorAdapter.getDateValidationModel(adapter.getInputValue(), comparableYear, dateFormats);
             return dobValidator ? adapter.getThreshold() : 0;
         } catch (Exception ex) {
-            throw new HandymanException("Failed to execute", ex);
+            log.error("Error in getting date score {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 
     @Override
     public void execute() throws Exception {
         try {
-            log.info(aMarker, "<-------Date Validator Action for {} has been started------->" + datevalidator.getName());
+            log.info(aMarker, "Date Validator Action for {} has been started", datevalidator.getName());
 
             AdapterInterface dobValidatorAdapter = new DateAdapter();
             int comparableYear = Integer.parseInt(datevalidator.getComparableDate());
@@ -63,12 +68,12 @@ public class DatevalidatorAction implements IActionExecution {
             boolean dobValidator = dobValidatorAdapter.getDateValidationModel(datevalidator.getInputValue(), comparableYear, dateFormats);
             int confidenceScore = dobValidator ? Integer.parseInt(datevalidator.getThresholdValue()) : 0;
             action.getContext().put("validator.score", String.valueOf(confidenceScore));
-            log.info(aMarker, "<-------Date Validator Action for {} has been completed------->" + datevalidator.getName());
+            log.info(aMarker, "Date Validator Action for {} has been completed", datevalidator.getName());
 
         } catch (Exception ex) {
             action.getContext().put(datevalidator.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute date validator action", ex, action);
         }
     }
 

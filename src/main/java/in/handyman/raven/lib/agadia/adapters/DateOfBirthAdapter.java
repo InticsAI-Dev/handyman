@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.agadia.adapters;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.CharacterCountAdapter;
 import in.handyman.raven.lib.adapters.DateAdapter;
 import in.handyman.raven.lib.adapters.WordCountAdapter;
@@ -13,7 +14,7 @@ public class DateOfBirthAdapter implements ScalarEvaluationInterface {
     AdapterInterface dobValidatorAdapter = new DateAdapter();
 
     @Override
-    public int getConfidenceScore(String dob, AgadiaAdapter adapter) throws Exception {
+    public int getConfidenceScore(String dob, AgadiaAdapter adapter, ActionExecutionAudit action) throws Exception {
         int confidenceScore = 0;
         //Config parameter
         int wcLimit = adapter.getWordCountLimit();

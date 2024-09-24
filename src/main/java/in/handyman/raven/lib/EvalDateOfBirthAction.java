@@ -8,6 +8,7 @@ import in.handyman.raven.lib.agadia.adapters.DateOfBirthAdapter;
 import in.handyman.raven.lib.interfaces.ScalarEvaluationInterface;
 import in.handyman.raven.lib.model.AgadiaAdapter;
 import in.handyman.raven.lib.model.EvalDateOfBirth;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -47,12 +48,12 @@ public class EvalDateOfBirthAction implements IActionExecution {
                     .dateFormats(evalDateOfBirth.getDateFormats().split(","))
                     .comparableYear(evalDateOfBirth.getComparableYear())
                     .validatorThreshold(evalDateOfBirth.getValidatorThreshold()).build();
-            int score = dobAdapter.getConfidenceScore(evalDateOfBirth.getDob(), adapter);
+            int score = dobAdapter.getConfidenceScore(evalDateOfBirth.getDob(), adapter,action);
             action.getContext().put(evalDateOfBirth.getName().concat(".score"), String.valueOf(score));
         } catch (Exception ex) {
             action.getContext().put(evalDateOfBirth.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "The Exception occurred {} ", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 

@@ -12,6 +12,13 @@ public class ExceptionUtil {
         return sw.toString();
     }
 
+    public static String toString(final Throwable ex) {
+        final StringWriter sw = new StringWriter();
+        ex.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
+    }
+
+
     public static String completeSQLWarning(final SQLWarning sqlWarnings) {
         var errors = new StringWriter();
         var print = new PrintWriter(errors);

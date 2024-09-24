@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.ZeroShotClassifier;
+import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -17,8 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.net.URL;
-import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +50,7 @@ public class ZeroShotClassifierAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "<-------Zero Short Classifier Action for {} has been started------->" + zeroShotClassifier.getName());
+        log.info(aMarker, "Zero Short Classifier Action for {} has been started" , zeroShotClassifier.getName());
         final OkHttpClient httpclient = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.MINUTES)
                 .writeTimeout(10, TimeUnit.MINUTES)
@@ -70,7 +70,7 @@ public class ZeroShotClassifierAction implements IActionExecution {
         String name = zeroShotClassifier.getName() + "_response";
         log.debug(aMarker, "The Request Details: {} ", request);
         try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = response.body().string();
+            String responseBody = Objects.requireNonNull(response.body()).string();
             String labelName = zeroShotClassifier.getName() + "_label";
             if (response.isSuccessful()) {
                 action.getContext().put(name, responseBody);
@@ -80,45 +80,21 @@ public class ZeroShotClassifierAction implements IActionExecution {
             } else {
                 action.getContext().put(name.concat(".error"), "true");
                 action.getContext().put(name.concat(".errorMessage"), responseBody);
-                log.info(aMarker, "The Failure Response {} --> {}", name, responseBody);
+                log.error(aMarker, "The Failure Response {} --> {}", name, responseBody);
+                throw new HandymanException(responseBody);
             }
-            log.info(aMarker, "<-------Zero Short Classifier Action for {} has been completed------->" + zeroShotClassifier.getName());
+            log.info(aMarker, "Zero Short Classifier Action for {} has been completed" , zeroShotClassifier.getName());
         } catch (Exception e) {
             action.getContext().put(name.concat(".error"), "true");
             action.getContext().put(name.concat(".errorMessage"), e.getMessage());
-            log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Failed to execute", e, action);
         }
     }
 
     @Override
     public boolean executeIf() throws Exception {
         return zeroShotClassifier.getCondition();
-    }
-
-    public static class ZeroShotEntity implements CoproProcessor.Entity {
-
-        //SELECT Col
-
-        //INSERT Col
-
-        @Override
-        public List<String> getRowData() {
-            return null;
-        }
-    }
-
-
-    public static class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotEntity> {
-
-        @Override
-        public ZeroShotEntity process(final URL endpoint, final ZeroShotEntity entity) {
-
-            //TODO actual process
-            return null;
-
-        }
-
     }
 
 }
