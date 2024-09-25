@@ -73,6 +73,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setPaperNo(paperNo);
         data.setGroupId(groupId);
         data.setPageContent(pageContent);
+        data.setBatchId(entity.getBatchId());
         data.setKeysToFilter(keysToFilterObject);
         String jsonInputRequest = objectMapper.writeValueAsString(data);
 
@@ -246,7 +247,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
+                        .batchId(zeroShotClassifierOutputData.getBatchId())
                         .tenantId(entity.getTenantId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
