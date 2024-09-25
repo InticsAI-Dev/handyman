@@ -175,8 +175,10 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                             final List<Object> rowData = output.getRowData();
                                             for (int i = 0; i < rowData.size(); i++) {
                                                 preparedBatch.bind(i, rowData.get(i));
+
                                             }
                                             preparedBatch.add();
+                                            logger.info("prepared batch insert query input entity \n {}  and \n {} ",take, processedEntity.toString());
                                         }
 
                                         try {
