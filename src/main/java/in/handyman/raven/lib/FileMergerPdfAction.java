@@ -67,8 +67,8 @@ public class FileMergerPdfAction implements IActionExecution {
             final String outputDir = fileMergerPdf.getOutputDir();
             log.info(aMarker, "file mergerAction output directory {}", outputDir);
             //5. build insert prepare statement with output table columns
-            final String insertQuery = "INSERT INTO " + fileMergerPdf.getOutputTable() + "(origin_id,tenant_id,group_id,processed_file_path,created_on,last_updated_on,root_pipeline_id,status,stage,message,model_name,model_version,file_name,process_id, width, height, dpi) " +
-                    " VALUES(?,?,?,?,?::timestamp,?::timestamp,?,?,?,?,?,?,?,?,?,?,?)";
+            final String insertQuery = "INSERT INTO " + fileMergerPdf.getOutputTable() + "(origin_id,tenant_id,group_id,processed_file_path,created_on,last_updated_on,root_pipeline_id,status,stage,message,model_name,model_version,file_name,process_id, width, height, dpi, request, response, endpoint) " +
+                    " VALUES(?,?,?,?,?::timestamp,?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
             log.info(aMarker, "file mergerInsert query {}", insertQuery);
 

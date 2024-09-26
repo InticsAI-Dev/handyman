@@ -47,26 +47,29 @@ class AutoRotationActionTest {
                 .processId("138980184199100180")
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/output/")
+                .endPoint("http://192.168.10.245:8200/v2/models/auto-rotator-service/versions/1/infer")
                 .condition(true)
-                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
-                        "\t\t            FROM info.paper_itemizer a\n" +
-                        "\t\t             where origin_id ='INT-1'")
+                .querySet(" SELECT  distinct a.origin_id, 300 as group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
+                        "                                    FROM info.paper_itemizer a\n" +
+                        "                                     where origin_id in ('ORIGIN-514', 'ORIGIN-515', \n" +
+                        "                                     'ORIGIN-516')")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.autorotation.url", "http://192.168.10.239:10181/copro/preprocess/auto-rotation");
         actionExecutionAudit.setProcessId(138980079308730208L);
-        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "1"),
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "10"),
                 Map.entry("gen_group_id.group_id", "1"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
-                Map.entry("auto.rotation.consumer.API.count", "1"),
-                Map.entry("write.batch.size", "1")));
+                Map.entry("auto.rotation.consumer.API.count", "5"),
+                Map.entry("write.batch.size", "10")));
 
         AutoRotationAction action1 = new AutoRotationAction(actionExecutionAudit, log, action);
         action1.execute();
 
 
     }
+
 
 }

@@ -33,6 +33,9 @@ public class HwClassificationOutputTable implements CoproProcessor.Entity{
     private Long rootPipelineId;
     private String modelName;
     private String modelVersion;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
 
@@ -41,7 +44,7 @@ public class HwClassificationOutputTable implements CoproProcessor.Entity{
         return Stream.of(this.createdUserId,this.lastUpdatedUserId, this.tenantId,
                 this.originId, this.paperNo, this.templateId, this.modelId,
                 this.documentType, this.status, this.stage, this.message, this.groupId,this.rootPipelineId, this.confidenceScore, this.modelName,
-                this.modelVersion).collect(Collectors.toList());
+                this.modelVersion, this.request, this.response, this.endpoint).collect(Collectors.toList());
 
     }
 }

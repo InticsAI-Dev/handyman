@@ -83,11 +83,11 @@ class ZeroShotClassifierActionTest {
         final ZeroShotClassifierPaperFilter build = ZeroShotClassifierPaperFilter.builder()
                 .condition(true)
                 .name("Test ZSC")
-                .processID("12345")
+                .processID("1234")
                 .readBatchSize("1")
                 .threadCount("1")
                 .writeBatchSize("1")
-                .endPoint("http://192.168.10.239:10183/copro/filtering/zero-shot-classifier")
+                .endPoint("http://192.168.10.248:8400/v2/models/zsc-service/versions/1/infer")
                 .querySet("SELECT " +
                         "1 AS paper_no, " +
                         "'drug name, patient name, prescriber name' AS page_content, " +
@@ -106,10 +106,10 @@ class ZeroShotClassifierActionTest {
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
-        action.getContext().put("copro.paper-filtering-zero-shot-classifier.url", "http://192.168.10.239:10183/copro/filtering/zero-shot-classifier");
+        action.getContext().put("copro.paper-filtering-zero-shot-classifier.url", "http://192.168.10.248:8400/v2/models/zsc-service/versions/1/infer");
         action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5")));
 

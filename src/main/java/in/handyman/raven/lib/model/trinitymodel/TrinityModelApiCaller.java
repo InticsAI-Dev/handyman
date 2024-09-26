@@ -5,28 +5,36 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TrinityModelAction;
+import in.handyman.raven.lib.model.triton.TrinityProcessAuditOutputTable;
+import in.handyman.raven.lib.model.triton.TrinityTritonResponse;
 import in.handyman.raven.lib.model.triton.TritonRequest;
-import lombok.extern.slf4j.Slf4j;
+import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jdbi.v3.core.Jdbi;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TrinityModelApiCaller {
 
     private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final TrinityModelAction aAction;
     private final OkHttpClient httpclient;
+    List<TrinityProcessAuditOutputTable> processAuditOutputTables = new ArrayList<>();
+
+    private final Jdbi jdbi;
+
+    private final Logger log;
 
     private final String node;
 
-    public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log) {
+    public TrinityModelApiCaller(TrinityModelAction aAction, final String node, final Logger log, Jdbi jdbi) {
         this.aAction = aAction;
         this.node = node;
         this.httpclient = new OkHttpClient.Builder()
@@ -34,9 +42,11 @@ public class TrinityModelApiCaller {
                 .writeTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .readTimeout(Long.parseLong(aAction.getHttpClientTimeout()), TimeUnit.MINUTES)
                 .build();
+        this.jdbi = jdbi;
+        this.log = log;
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public TrinityTritonResponse computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
@@ -70,9 +80,12 @@ public class TrinityModelApiCaller {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-
-
-                return responseBody;
+                return TrinityTritonResponse.builder()
+                        .filePath(inputPath)
+                        .request(jsonRequest)
+                        .endpoint(node)
+                        .responseBody(responseBody)
+                        .build();
             } else {
                 log.error("Error in the trinity model response {}", responseBody);
                 throw new HandymanException(responseBody);
@@ -133,9 +146,8 @@ public class TrinityModelApiCaller {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-
-
                 return responseBody;
+
             } else {
                 log.error("Error in the trinity model response {}", responseBody);
                 throw new HandymanException(responseBody);
@@ -145,6 +157,4 @@ public class TrinityModelApiCaller {
             throw new HandymanException("Failed to execute the rest api call " + node, e);
         }
     }
-
-
 }

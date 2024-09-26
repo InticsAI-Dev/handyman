@@ -107,11 +107,11 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and request {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator,jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode and request {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator,jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -119,7 +119,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
     }
 
 
-    private void coproResponseBuider(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj) {
+    private void coproResponseBuider(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -128,7 +128,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 parentObj.add(BulletinQueryOutputTable.builder()
                         .synonymId(entity.getSynonymId())
@@ -142,9 +142,12 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
-                                .process(entity.getProcess())
-                                .processId(entity.getProcessId())
-                                .outputDir(entity.getOutputDir())
+                        .process(entity.getProcess())
+                        .processId(entity.getProcessId())
+                        .outputDir(entity.getOutputDir())
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -161,6 +164,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .request(jsonInputRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -169,7 +175,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         }
     }
 
-    private void tritonRequestBuilder(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(BulletinQueryInputTable entity, Request request, List<BulletinQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -182,7 +188,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(bulletinDataItem -> {
-                        extractTritonOutputDataResponse(entity, bulletinDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractTritonOutputDataResponse(entity, bulletinDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                     }));
 
                 }
@@ -200,6 +206,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -216,6 +225,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .request(jsonRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -224,7 +236,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
         }
     }
 
-    private void extractTritonOutputDataResponse(BulletinQueryInputTable entity, String bulletinResponseDataItem, List<BulletinQueryOutputTable> parentObj, String modelName, String modelVersion) {
+    private void extractTritonOutputDataResponse(BulletinQueryInputTable entity, String bulletinResponseDataItem, List<BulletinQueryOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -256,6 +268,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                             .bulletinPoints(bulletInLineItemsNode)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
@@ -279,6 +294,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -287,7 +305,7 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
     }
 
 
-    private void extractedCoproOutputResponse(BulletinQueryInputTable entity, String bulletinResponseDataItem, List<BulletinQueryOutputTable> parentObj, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(BulletinQueryInputTable entity, String bulletinResponseDataItem, List<BulletinQueryOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -319,6 +337,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                             .bulletinPoints(bulletInLineItemsNode)
                             .modelName(modelName)
                             .modelVersion(modelVersion)
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
@@ -341,6 +362,9 @@ public class BulletinExtractionConsumerProcess implements CoproProcessor.Consume
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);

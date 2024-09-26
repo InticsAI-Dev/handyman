@@ -89,13 +89,13 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
             Request urlRequest = new Request.Builder().url(endpoint + "?inputFilePath=" + filePath + "&threshold=" + threshold)
                     .post(emptyBody)
                     .build();
-            tritonRequestBuilder(entity, urlRequest, parentObj);
+            tritonRequestBuilder(entity, urlRequest, parentObj, jsonRequest, endpoint);
         }
 
         return parentObj;
     }
 
-    private void tritonRequestBuilder(FigureDetectionQueryInputTable entity, Request request, List<FigureDetectionQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(FigureDetectionQueryInputTable entity, Request request, List<FigureDetectionQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint ) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -108,7 +108,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                 List<FigureDetectionExtractionEncode> modelResponse = mapper.readValue(responseBody, new TypeReference<>() {
                 });
                 if (modelResponse != null && !modelResponse.isEmpty()) {
-                    extractTritonOutputDataResponse(entity, modelResponse, parentObj);
+                    extractTritonOutputDataResponse(entity, modelResponse, parentObj,jsonInputRequest, responseBody, endpoint.toString());
                 }
             } else {
                 parentObj.add(FigureDetectionQueryOutputTable.builder()
@@ -128,7 +128,10 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                         .createdUserId(tenantId)
                         .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
                         .lastUpdatedUserId(tenantId)
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -159,7 +162,7 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
         }
     }
 
-    private void extractTritonOutputDataResponse(FigureDetectionQueryInputTable entity, List<FigureDetectionExtractionEncode> modelResponse, List<FigureDetectionQueryOutputTable> parentObj) {
+    private void extractTritonOutputDataResponse(FigureDetectionQueryInputTable entity, List<FigureDetectionExtractionEncode> modelResponse, List<FigureDetectionQueryOutputTable> parentObj, String request , String response, String endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -188,6 +191,9 @@ public class FigureDetectionConsumerProcess implements CoproProcessor.ConsumerPr
                     .stage(PROCESS_NAME)
                     .message("face detection macro completed")
                     .batchId(entity.getBatchId())
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build()
             );
 

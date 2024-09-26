@@ -104,11 +104,11 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -116,7 +116,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
     }
 
 
-    private void coproResponseBuider(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj) {
+    private void coproResponseBuider(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -126,7 +126,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 parentObj.add(CurrencyDetectionOutputQuerySet.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
@@ -139,6 +139,9 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -154,6 +157,9 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .request(jsonInputRequest)
+                    .response("Error in getting response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -162,7 +168,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void tritonRequestBuilder(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj) {
+    private void tritonRequestBuilder(CurrencyDetectionInputQuerySet entity, Request request, List<CurrencyDetectionOutputQuerySet> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -176,7 +182,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(currencyDetectionDataItem -> {
-                        extractTritonOutputDataResponse(entity, currencyDetectionDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractTritonOutputDataResponse(entity, currencyDetectionDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                     }));
 
                 }
@@ -194,6 +200,9 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .message(response.message())
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -209,7 +218,11 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .stage(PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
-                    .rootPipelineId(rootPipelineId).build());
+                    .rootPipelineId(rootPipelineId)
+                    .request(jsonRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
+                    .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Currency detection consumer failed for batch/group " + groupId, handymanException, this.action);
@@ -217,7 +230,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void extractTritonOutputDataResponse(CurrencyDetectionInputQuerySet entity, String currencyDetectionDataItem, List<CurrencyDetectionOutputQuerySet> parentObj, String modelName, String modelVersion) {
+    private void extractTritonOutputDataResponse(CurrencyDetectionInputQuerySet entity, String currencyDetectionDataItem, List<CurrencyDetectionOutputQuerySet> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -247,6 +260,9 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .rootPipelineId(rootPipelineId)
                     .modelName(modelName)
                     .modelVersion(modelVersion)
+                    .request(request)
+                    .response(response)
+                    .endpoint(String.valueOf(endpoint))
                     .build()));
         } catch (JsonProcessingException e) {
 
@@ -261,6 +277,9 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                     .stage(PROCESS_NAME).message(ExceptionUtil.toString(e))
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
+                    .request(request)
+                    .response(response)
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -268,7 +287,7 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void extractedCoproOutputResponse(CurrencyDetectionInputQuerySet entity, String currencyDetectionDataItem, List<CurrencyDetectionOutputQuerySet> parentObj, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(CurrencyDetectionInputQuerySet entity, String currencyDetectionDataItem, List<CurrencyDetectionOutputQuerySet> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         String templateId = entity.getTemplateId();
@@ -299,11 +318,14 @@ public class CurrencyDetectionConsumerProcess implements CoproProcessor.Consumer
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
+                        .request(request)
+                        .response(response)
+                        .endpoint(endpoint)
                         .build());
             });
 
         } catch (JsonProcessingException e) {
-            parentObj.add(CurrencyDetectionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).build());
+            parentObj.add(CurrencyDetectionOutputQuerySet.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(ExceptionUtil.toString(e)).createdOn(Timestamp.valueOf(LocalDateTime.now())).rootPipelineId(rootPipelineId).response(response).request(request).endpoint(endpoint).build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Currency detection consumer failed for batch/group " + groupId, handymanException, this.action);

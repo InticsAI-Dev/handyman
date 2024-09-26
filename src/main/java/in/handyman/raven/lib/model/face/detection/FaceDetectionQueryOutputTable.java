@@ -41,14 +41,16 @@ public class FaceDetectionQueryOutputTable implements CoproProcessor.Entity {
     private String message;
     private String modelName;
     private String modelVersion;
-
     private String batchId;
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.createdOn, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId, this.originId, this.paperNo, this.predictedValue, this.precision,
                 this.leftPos, this.upperPos, this.rightPos, this.lowerPos, this.encode, this.groupId,
                 this.filePath, this.tenantId, this.processId, this.rootPipelineId, this.process,
-                this.status, this.stage, this.message, this.modelName, this.modelVersion, this.batchId).collect(Collectors.toList());
+                this.status, this.stage, this.message, this.modelName, this.modelVersion, this.batchId,this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

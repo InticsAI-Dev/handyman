@@ -20,31 +20,31 @@ class GreyScaleConvertionTest {
                 .name("grey scale conversion after copro optimization")
                 .processId("138980")
                 .resourceConn("intics_zio_db_conn")
-                .endPoint("http://localhost:18888/copro/preprocess/grey-scale-conversion")
+                .endPoint("http://192.168.10.245:10197/copro/preprocess/grey-scale-conversion")
                 .outputTable("info.grey_Scale_conversion")
                 .outputDir("/data/")
                 .condition(true)
-                .querySet("select 'INT-1' as origin_id,1 as group_id,'/data/output/1/grey_scale_converted_output/2022-10-26T9_58_10 Dooliquor LLC_0.jpg' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,'138980744174170252' as process_id,12345 as root_pipeline_id\n")
+                .querySet(" SELECT  distinct a.origin_id, 300 as group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
+                        "                                    FROM info.paper_itemizer a\n" +
+                        "                                     where origin_id in ('ORIGIN-514', 'ORIGIN-515', \n" +
+                        "                                     'ORIGIN-516')")
                 .build();
-
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.setProcessId(13898007L);
         actionExecutionAudit.setRootPipelineId(12345L);
         actionExecutionAudit.setActionId(2345L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
-                Map.entry("greyscale.conversion.consumer.API.count", "1"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("greyscale.conversion.consumer.API.count", "10"),
+                Map.entry("triton.grey.scale.conversion.request.activator", "false"),
                 Map.entry("write.batch.size", "5"))
         );
 
         GreyScaleConversionAction action1 = new GreyScaleConversionAction(actionExecutionAudit, log, greyScaleConversion);
         action1.execute();
-
-
     }
 
-    @Test
+        @Test
     void tritonServer() throws Exception {
         AutoRotation action = AutoRotation.builder()
                 .name("auto rotation testing after copro optimization")

@@ -60,8 +60,8 @@ public class CheckboxVqaAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(checkboxVqa.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       log.info(aMarker, "Urgency Triage Action for {} has been started", checkboxVqa.getName());
-      final String insertQuery = "INSERT INTO urgency_triage.chk_triage_transaction_"+checkboxVqa.getProcessID()+"(created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, model_score, origin_id, paper_no, template_id, model_id, triage_label, triage_state, paper_type, status, stage, message, checkbox_bbox)" +
-              "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+      final String insertQuery = "INSERT INTO urgency_triage.chk_triage_transaction_"+checkboxVqa.getProcessID()+"(created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, model_score, origin_id, paper_no, template_id, model_id, triage_label, triage_state, paper_type, status, stage, message, checkbox_bbox, request, response, endpoint)" +
+              "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
       final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.checkbox-vqa.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
           return new URL(s1);
@@ -168,6 +168,9 @@ public class CheckboxVqaAction implements IActionExecution {
                   .status("COMPLETED")
                   .stage("TRIAGE_CHECKBOX")
                   .message("Urgency Triage Finished")
+                  .request(String.valueOf(request))
+                  .response(responseBody)
+                  .endpoint(String.valueOf(endpoint))
                   .build());
           log.info(aMarker, "Execute for urgency triage {}",response);
         } else {
@@ -185,6 +188,9 @@ public class CheckboxVqaAction implements IActionExecution {
                   .status("FAILED")
                   .stage("TRIAGE_CHECKBOX")
                   .message(response.message())
+                  .request(String.valueOf(request))
+                  .response(response.message())
+                  .endpoint(String.valueOf(endpoint))
                   .build());
           log.error(aMarker, "The Exception occurred in urgency triage {}",response);
         }
@@ -203,6 +209,9 @@ public class CheckboxVqaAction implements IActionExecution {
                 .status("FAILED")
                 .stage("TRIAGE_CHECKBOX")
                 .message(ExceptionUtil.toString(e))
+                .request(String.valueOf(request))
+                .response("Error in response")
+                .endpoint(String.valueOf(endpoint))
                 .build());
         log.error(aMarker, "The Exception occurred in urgency triage {}", ExceptionUtil.toString(e));
         HandymanException handymanException = new HandymanException(e);
@@ -260,12 +269,15 @@ public class CheckboxVqaAction implements IActionExecution {
     private String stage;
     private String message;
     private String bBox;
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
       return Stream.of(this.createdUserId, this.lastUpdatedUserId, this.processId, this.groupId, this.tenantId, this.modelScore,
               this.originId, this.paperNo, this.templateId, this.modelId, this.triageLabel, this.triageState,
-              this.paperType, this.status, this.stage, this.message, this.bBox
+              this.paperType, this.status, this.stage, this.message, this.bBox, this.request, this.response, this.endpoint
       ).collect(Collectors.toList());
     }
   }

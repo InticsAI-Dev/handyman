@@ -25,19 +25,20 @@ import java.util.stream.Stream;
         private String entity;
 
         private String status;
-
         private String stage;
-
         private String message;
         private Long rootPipelineId;
         private String modelName;
         private String modelVersion;
         private Long tenantId;
+        private String request;
+        private String response;
+        private String endpoint;
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.originId, this.groupId, this.paperNo, this.entity, this.confidenceScore,
-                    this.truthEntity, this.status, this.stage, this.message, this.rootPipelineId,this.modelName, this.modelVersion,this.tenantId).collect(Collectors.toList());
+                    this.truthEntity, this.status, this.stage, this.message, this.rootPipelineId,this.modelName, this.modelVersion,this.tenantId, this.request, this.response, this.endpoint).collect(Collectors.toList());
         }
     }
 

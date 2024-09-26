@@ -16,6 +16,7 @@ import in.handyman.raven.lib.model.utmodel.UrgencyTriageModelResponse;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.openxmlformats.schemas.drawingml.x2006.chart.STErrBarType;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -76,7 +77,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
         } else {
             final Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-            tritonRequestBuilder(entity, request, objectMapper, parentObj);
+            tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
         }
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n copro Url  {} ,inputFilePath : {} ,outputDir {} ", endpoint, inputFilePath, outputDir);
@@ -99,7 +100,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
         return urgencyTriageModelPayload;
     }
 
-    private void tritonRequestBuilder(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj) {
+    private void tritonRequestBuilder(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String jsonRequest, URL endpoint) {
         final String createdUserId = entity.getCreatedUserId();
         final Long tenantId = entity.getTenantId();
         final Long processId = entity.getProcessId();
@@ -118,20 +119,20 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
 
                     if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                         modelResponse.getOutputs().forEach(o -> o.getData().forEach(urgencyTriageModelDataItem -> {
-                            extractedTritonOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelVersion(), modelResponse.getModelName());
+                            extractedTritonOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelVersion(), modelResponse.getModelName(), jsonRequest, responseBody, endpoint.toString());
                             log.info(aMarker, "Execute for urgency triage {}", response.isSuccessful());
                         }));
                     }
                 } else {
                     log.error("Invalid JSON response: {}", responseBody);
-                    handleErrorResponse(entity, parentObj, responseBody, createdUserId, tenantId, processId, groupId, originId, paperNo, templateId, modelId);
+                    handleErrorResponse(entity, parentObj, responseBody, createdUserId, tenantId, processId, groupId, originId, paperNo, templateId, modelId, jsonRequest, response.message(), endpoint.toString());
                 }
             } else {
-                handleErrorResponse(entity, parentObj, responseBody, createdUserId, tenantId, processId, groupId, originId, paperNo, templateId, modelId);
+                handleErrorResponse(entity, parentObj, responseBody, createdUserId, tenantId, processId, groupId, originId, paperNo, templateId, modelId, jsonRequest, response.message(), endpoint.toString());
                 log.error("The Exception occurred in urgency triage {}", response);
             }
         } catch (Exception e) {
-            handleErrorResponse(entity, parentObj, ExceptionUtil.toString(e), createdUserId, tenantId, processId, groupId, originId, paperNo, templateId, modelId);
+            handleErrorResponse(entity, parentObj, ExceptionUtil.toString(e), createdUserId, tenantId, processId, groupId, originId, paperNo, templateId, modelId, jsonRequest, "null", endpoint.toString());
             log.error("The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Exception occurred in urgency triage model action for group id - " + groupId + " and originId - " + originId, handymanException, this.action);
@@ -147,7 +148,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void handleErrorResponse(UrgencyTriageInputTable entity, List<UrgencyTriageBetaOutputTable> parentObj, String message, String createdUserId, Long tenantId, Long processId, Integer groupId, String originId, Integer paperNo, String templateId, Long modelId) {
+    private void handleErrorResponse(UrgencyTriageInputTable entity, List<UrgencyTriageBetaOutputTable> parentObj, String message, String createdUserId, Long tenantId, Long processId, Integer groupId, String originId, Integer paperNo, String templateId, Long modelId, String request, String response, String endpoint) {
         parentObj.add(UrgencyTriageBetaOutputTable.builder()
                 .createdUserId(createdUserId)
                 .lastUpdatedUserId(createdUserId)
@@ -163,11 +164,14 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
                 .message(message)
                 .rootPipelineId(entity.getRootPipelineId())
                 .batchId(entity.getBatchId())
+                        .request(request)
+                        .response(response)
+                        .endpoint(endpoint)
                 .build());
     }
 
 
-    private static void extractedTritonOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String modelVersion, String modelName) {
+    private static void extractedTritonOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageBetaOutputTable> parentObj, String modelVersion, String modelName, String request, String response,String endpoint) {
         final String createdUserId = entity.getCreatedUserId();
         final String templateId = entity.getTemplateId();
         final Long modelId = entity.getModelId();
@@ -223,6 +227,9 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .modelName(modelName)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

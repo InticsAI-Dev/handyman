@@ -34,6 +34,9 @@ public class IntellimatchOutputTable implements CoproProcessor.Entity {
     private String message;
     private String modelName;
     private String modelVersion;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
     @Override
@@ -53,7 +56,10 @@ public class IntellimatchOutputTable implements CoproProcessor.Entity {
                 this.message,
                 this.modelName,
                 this.modelVersion,
-                this.tenantId
+                this.tenantId,
+                this.request,
+                this.response,
+                this.endpoint
 
         ).collect(Collectors.toList());
     }

@@ -38,6 +38,9 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String modelName;
     private String modelVersion;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
     public TemplateDetectionOutputTable(String originId, Integer groupId, Long tenantId, String templateId, Long processId, String processedFilePath,  Integer paperNo, String status, String stage, String message, Timestamp createdOn, Long rootPipelineId) {
@@ -157,6 +160,6 @@ public class TemplateDetectionOutputTable implements CoproProcessor.Entity {
     public List<Object> getRowData() {
         return Stream.of(this.processId, this.originId, this.paperNo,this.groupId
                 ,this.processedFilePath,this.question, this.predictedAttributionValue,this.scores,this.bboxes
-                ,this.imageWidth,this.imageHeight,this.imageDPI,this.extractedImageUnit,this.tenantId,this.templateId,this.status,this.stage,this.message,this.createdOn,this.rootPipelineId,this.modelName, this.modelVersion).collect(Collectors.toList());
+                ,this.imageWidth,this.imageHeight,this.imageDPI,this.extractedImageUnit,this.tenantId,this.templateId,this.status,this.stage,this.message,this.createdOn,this.rootPipelineId,this.modelName, this.modelVersion, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }
