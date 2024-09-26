@@ -68,6 +68,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         String filePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
         Long actionId = action.getActionId();
+        String batchId = entity.getBatchId();
 
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -83,6 +84,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         qrExtractionData.setTenantId(entity.getTenantId());
         qrExtractionData.setPaperNo(entity.getPaperNo());
         qrExtractionData.setOutputDir(this.outputDir);
+        qrExtractionData.setBatchId(batchId);
 
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
 
@@ -278,7 +280,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .tenantId(qrReader.getTenantId())
                         .modelName(modelName)
                         .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
+                        .batchId(qrReader.getBatchId())
                         .build());
             });
         } else {

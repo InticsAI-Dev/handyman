@@ -16,4 +16,5 @@ public class FileMergerDataItem {
     private Long processId;
     private Long groupId;
     private Long tenantId;
+    private String batchId;
 }

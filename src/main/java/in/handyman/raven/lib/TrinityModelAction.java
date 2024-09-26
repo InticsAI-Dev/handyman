@@ -219,7 +219,7 @@ public class TrinityModelAction implements IActionExecution {
     }
 
     private void tritonRequestBuilder(String node, String filePath, String paperType, List<String> questions, String modelRegistry, Jdbi jdbi, ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node, log).computeTriton(filePath, paperType, questions, modelRegistry, tenantId, action);
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node, log).computeTriton(filePath, paperType, questions, modelRegistry, tenantId, action, batchId);
         TrinityModelResponse trinityModelResponse = objectMapper.readValue(trinityModelResultLineItems, new TypeReference<>() {
         });
         trinityModelResponse.getOutputs().forEach(trinityModelOutput -> trinityModelOutput.getData().forEach(trinityModelResultLineItem -> {
@@ -265,7 +265,7 @@ public class TrinityModelAction implements IActionExecution {
                                     .bind("modelVersion", modelVersion)
                                     .bind("tenantId", resultLineItem.getTenantId())
                                     .bind("modelRegistry", modelRegistry)
-                                    .bind("batchId", batchId)
+                                    .bind("batchId", trinityModelDataItem.getBatchId())
                                     .add()
 
                     );

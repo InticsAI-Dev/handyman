@@ -21,6 +21,8 @@ public class XenonResult {
     private  Long processId;
     private Integer groupId;
     private Long tenantId;
+    private String batchId;
+
 
     public String getQuestion() {
         return question;

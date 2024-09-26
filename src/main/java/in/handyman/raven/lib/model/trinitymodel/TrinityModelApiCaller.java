@@ -44,7 +44,7 @@ public class TrinityModelApiCaller {
                 .build();
     }
 
-    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeTriton(final String inputPath, final String paperType, final List<String> questions, final String modelRegistry, final Long tenantId, ActionExecutionAudit action, String batchId) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootPipelineId = action.getRootPipelineId();
@@ -61,6 +61,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setInputFilePath(inputPath);
         trinityModelPayload.setModelRegistry(modelRegistry);
         trinityModelPayload.setTemplateVersion("vqa");
+        trinityModelPayload.setBatchId(batchId);
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);

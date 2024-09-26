@@ -62,6 +62,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         String inputFilePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
         Long actionId = action.getActionId();
+        String batchId = entity.getBatchId();
 
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -79,6 +80,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         templateDetectionDataInput.setProcessId(entity.getProcessId());
         templateDetectionDataInput.setGroupId(entity.getGroupId());
         templateDetectionDataInput.setTenantId(entity.getTenantId());
+        templateDetectionDataInput.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(templateDetectionDataInput);
 
 
@@ -288,7 +290,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .modelVersion(modelVersion)
                                 .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
-                                .batchId(entity.getBatchId())
+                                .batchId(attribute.getBatchId())
                                 .build()
                 );
             });

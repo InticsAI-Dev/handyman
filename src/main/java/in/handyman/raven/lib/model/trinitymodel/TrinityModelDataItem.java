@@ -21,5 +21,6 @@ public class TrinityModelDataItem {
     private String extractedImageUnit;
     private String inputFilePath;
     private Long tenantId;
+    private String batchId;
 
 }

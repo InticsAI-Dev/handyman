@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.security.SecureRandom;
 import java.util.List;
 
 @AllArgsConstructor
@@ -27,4 +28,5 @@ public class TrinityModelPayload {
     private String modelRegistry;
     @JsonProperty("template_version")
     private String templateVersion;
+    private String batchId;
 }

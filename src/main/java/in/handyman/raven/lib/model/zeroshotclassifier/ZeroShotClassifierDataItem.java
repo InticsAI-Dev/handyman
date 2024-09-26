@@ -20,5 +20,6 @@ public class ZeroShotClassifierDataItem {
     private String originId;
     private String groupId;
     private Integer paperNo;
+    private String batchId;
 
 }

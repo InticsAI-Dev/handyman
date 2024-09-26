@@ -73,6 +73,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         paperitemizerData.setInputFilePath(inputFilePath);
         paperitemizerData.setOutputDir(this.outputDir);
         paperitemizerData.setActionId(actionId);
+        paperitemizerData.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
 
         TritonRequest requestBody = new TritonRequest();
@@ -261,7 +262,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
-                                .batchId(entity.getBatchId())
+                                .batchId(paperItemizeOutputData.getBatchId())
                                 .build());
             }
 

@@ -49,6 +49,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
+        String batchId = entity.getBatchId();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -66,6 +67,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setPageContent(pageContent);
         data.setKeysToFilter(keysToFilterObject);
         data.setProcess(PROCESS_NAME);
+        data.setBatchId(batchId);
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(data);
@@ -222,7 +224,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .isKeyPresent(String.valueOf(item.getIsKeyPresent()))
                                 .entity(item.getEntity())
                                 .modelVersion(modelVersion)
-                                .batchId(entity.getBatchId())
+                                .batchId(item.getBatchId())
                                 .build());
             }
 

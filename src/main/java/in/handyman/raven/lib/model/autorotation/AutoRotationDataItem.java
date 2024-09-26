@@ -18,5 +18,6 @@ public class AutoRotationDataItem {
     private Long tenantId;
     private Long actionId;
     private Long rootPipelineId;
+    private String batchId;
 }
 
