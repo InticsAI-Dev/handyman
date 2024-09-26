@@ -16,7 +16,7 @@ class BulletInExtractionActionTest {
         BulletInExtraction bulletInExtraction= BulletInExtraction.builder()
                 .name("bulletin extraction")
                 .condition(true)
-                .endpoint("http://192.168.10.240:10196/copro/mistral_llm_based_on_image")
+                .endpoint("http://192.168.10.240:10195/copro/mistral_llm_based_on_image")
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/")
                 .outputTable("bulletin_extraction.bulletin_extraction_result")

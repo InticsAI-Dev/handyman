@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 import in.handyman.raven.lib.CoproProcessor;
@@ -26,6 +27,7 @@ public class NoiseModelInputEntity implements CoproProcessor.Entity {
     private Long tenantId;
     private String outputDir;
     private String batchId;
+    private Timestamp createdOn;
     @Override
     public List<Object> getRowData() {
         return null;

@@ -150,6 +150,7 @@ action:
     |multipartUpload
     |multipartDownload
     |multipartDelete
+    |multipartFolderDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -1101,6 +1102,14 @@ multipartDownload:
 
 multipartDelete:
     'multipartDelete' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'delete-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+multipartFolderDelete:
+    'multipartFolderDelete' 'as' name=STRING
     'resource-conn' resourceConn=STRING
     'delete-url' endPoint=STRING
     'using' '{'

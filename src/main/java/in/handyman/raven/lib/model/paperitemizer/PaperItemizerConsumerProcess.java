@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -135,7 +136,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message(response.message())
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .batchId(batchId)
                                 .build());
@@ -154,7 +156,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(batchId)
                             .build());
@@ -200,7 +203,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message(response.message())
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .batchId(entity.getBatchId())
                                 .build());
@@ -219,7 +223,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
                             .build());
@@ -257,7 +262,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message("Paper Itemizer macro completed")
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
@@ -277,7 +283,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(e.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
                             .build());
@@ -314,7 +321,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message("Paper Itemizer macro completed")
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
@@ -334,7 +342,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(e.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
                             .build());

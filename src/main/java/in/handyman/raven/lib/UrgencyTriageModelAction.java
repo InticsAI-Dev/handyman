@@ -24,10 +24,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
 import java.util.*;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
@@ -40,6 +36,13 @@ import java.util.stream.Collectors;
 )
 public class UrgencyTriageModelAction implements IActionExecution {
     public static final String COPRO_URGENCY_TRIAGE_MODEL_URL = "copro.urgency-triage-model.url";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
+    public static final String UT_CONSUMER_API_COUNT = "ut.consumer.API.count";
+    public static final String READ_BATCH_SIZE = "read.batch.size";
+    public static final String INSERT_COLUMN_HEADERS = "created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version,batch_id";
+    public static final String INSERT_PLACEHOLDERS = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?";
+    public static final String UT_LEGACY_API_CALL_CONFIGS = "ut.legacy.api.call.configs";
+    public static final String LEGACY_TRUE = "true";
     private final ActionExecutionAudit action;
     private final Logger log;
     public static UrgencyTriageModel urgencyTriageModel = new UrgencyTriageModel();
@@ -60,16 +63,16 @@ public class UrgencyTriageModelAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
-            Integer consumerCount = Integer.valueOf(action.getContext().get("ut.consumer.API.count"));
-            Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
+            Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+            Integer consumerCount = Integer.valueOf(action.getContext().get(UT_CONSUMER_API_COUNT));
+            Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
             String outputDir = urgencyTriageModel.getOutputDir();
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(urgencyTriageModel.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Urgency Triage Action for {} has been started", urgencyTriageModel.getName());
-            final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+" (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version,batch_id)" +
-                    "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?)";
+            final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+ " (" + INSERT_COLUMN_HEADERS + ")" +
+                    "values(" + INSERT_PLACEHOLDERS + ")";
             final List<URL> urls = Optional.ofNullable(urgencyTriageModel.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
@@ -88,7 +91,7 @@ public class UrgencyTriageModelAction implements IActionExecution {
 
             coproProcessor.startProducer(urgencyTriageModel.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            if (Objects.equals(action.getContext().get("ut.legacy.api.call.configs"), "true")){
+            if (Objects.equals(action.getContext().get(UT_LEGACY_API_CALL_CONFIGS), LEGACY_TRUE)){
                 UrgencyTriageConsumerProcess urgencyTriageConsumerProcess = new UrgencyTriageConsumerProcess(log, aMarker, action);
                 coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
 

@@ -20,18 +20,8 @@ class CurrencyDetectionActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/output/")
                 .condition(true)
-                .endPoint("http://192.168.10.245:10187/copro/currency-attribution")
-                .querySet("select origin_id,\n" +
-                        "paper_no,\n" +
-                        "input_file_path as file_path,\n" +
-                        "tenant_id,\n" +
-                        "template_id,\n" +
-                        "process_id,\n" +
-                        "group_id,\n" +
-                        "root_pipeline_id,\n" +
-                        "batch_id\n" +
-                        "from macro.currency_detection_payload_input_table_audit\n" +
-                        "where group_id=1414 and batch_id ='BATCH-292_0';                           \n")
+                .endPoint("http://0.0.0.0:10187/copro/currency-attribution")
+                .querySet("select 'INT-1' as origin_id,1 as group_id,'/data/output/grey_scale_converted_output/2022-10-26T9_58_10 Dooliquor LLC_0.jpg' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,'138980744174170252' as process_id, 1 as root_pipeline_id\n")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

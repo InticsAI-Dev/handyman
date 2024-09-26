@@ -34,6 +34,14 @@ import java.util.stream.Collectors;
         actionName = "IntegratedNoiseModelApi"
 )
 public class IntegratedNoiseModelApiAction implements IActionExecution {
+    public static final String INSERT_COLUMN_NAMES = "origin_id, paper_no, process_id, group_id, tenant_id, input_file_path, " +
+            "consolidated_confidence_score, consolidated_class, noise_models_result, hw_noise_detection_output, " +
+            "check_noise_detection_output, checkbox_mark_detection_output, speckle_noise_detection_output," +
+            " created_on, root_pipeline_id,status,stage,message,model_name,model_version,batch_id, last_updated_on";
+    public static final String PREPARED_STATEMENT_PLACEHOLDERS = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?";
+    public static final String READ_BATCH_SIZE = "read.batch.size";
+    public static final String NOISE_CONSUMER_API_COUNT = "noise.consumer.API.count";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -55,6 +63,10 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
         try {
             log.info(aMarker, "Integrated noise model Action for {} with group by eoc-id has started", integratedNoiseModelApi.getName());
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(integratedNoiseModelApi.getResourceConn());
+            Integer consumerCount = Integer.valueOf(action.getContext().get(NOISE_CONSUMER_API_COUNT));
+            Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+            Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
+
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL)); //for handling null values
             //3. initiate Copro processor and Copro urls change the url to integrated noise model
             final List<URL> urls = Optional.ofNullable(integratedNoiseModelApi.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
@@ -69,11 +81,8 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
             //5. build insert prepare statement with output table columns
 //
             final String insertQuery = "INSERT INTO " + integratedNoiseModelApi.getOutputTable() +
-                    " ( origin_id, paper_no, process_id, group_id, tenant_id, input_file_path, " +
-                    "consolidated_confidence_score, consolidated_class, noise_models_result, hw_noise_detection_output, " +
-                    "check_noise_detection_output, checkbox_mark_detection_output, speckle_noise_detection_output," +
-                    " created_on, root_pipeline_id,status,stage,message,model_name,model_version,batch_id)" +
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    " ( " + INSERT_COLUMN_NAMES + ")" +
+                    "VALUES(" + PREPARED_STATEMENT_PLACEHOLDERS + ")";
 
 
             final CoproProcessor<NoiseModelInputEntity, NoiseModelOutputEntity> coproProcessor =
@@ -83,12 +92,13 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
                             jdbi, log,
                             new NoiseModelInputEntity(), urls, action);
 
-            coproProcessor.startProducer(integratedNoiseModelApi.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
+            coproProcessor.startProducer(integratedNoiseModelApi.getQuerySet(), readBatchSize);
             log.info("start producer method from copro processor ");
             Thread.sleep(1000);
 
             //8. call the method start consumer from coproprocessor
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("noise.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new NoiseModelConsumerProcess(log, aMarker, action));
+
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, new NoiseModelConsumerProcess(log, aMarker, action));
             log.info("start consumer method from copro processor ");
 
 
