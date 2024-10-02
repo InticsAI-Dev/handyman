@@ -252,7 +252,7 @@ public class TrinityModelAction implements IActionExecution {
     }
 
     private void tritonRequestBuilder(String node, TrinityModelLineItem asset, Jdbi jdbi,ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) throws JsonProcessingException {
-        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node,log, action).computeTriton(asset, action);
+        final String trinityModelResultLineItems = new TrinityModelApiCaller(this, node,log, action).computeTriton(asset, action, batchId);
         TrinityModelResponse trinityModelResponse = objectMapper.readValue(trinityModelResultLineItems, new TypeReference<>() {
         });
         trinityModelResponse.getOutputs().forEach(trinityModelOutput -> trinityModelOutput.getData().forEach(trinityModelResultLineItem -> {
