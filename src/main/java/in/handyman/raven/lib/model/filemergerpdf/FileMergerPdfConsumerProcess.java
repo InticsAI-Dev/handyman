@@ -266,7 +266,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
-                    .batchId(fileMergerDataItem.getBatchId())
+                    .batchId(fileMergerDataItem1.getBatchId())
                     .build());
         } catch (JsonMappingException e) {
 
