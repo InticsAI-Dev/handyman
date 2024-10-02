@@ -1,14 +1,15 @@
 package in.handyman.raven.lib.alchemy.common;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class BoundingBoxAlchemy {
+@NoArgsConstructor
+@Builder
+@ToString
+public class BoundingBox {
     private int topLeftX;
     private int topLeftY;
     private int bottomRightX;

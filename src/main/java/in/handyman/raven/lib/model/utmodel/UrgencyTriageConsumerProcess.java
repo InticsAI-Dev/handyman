@@ -224,7 +224,6 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             String templateId = entity.getTemplateId();
             Long modelId = entity.getModelId();
             if (response.isSuccessful()) {
-                log.info("Response Details: {}", response);
                 extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj, "", "");
 
             } else {

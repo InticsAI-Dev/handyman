@@ -38,116 +38,116 @@ import java.util.regex.Pattern;
         actionName = "LlmJsonParser"
 )
 public class LlmJsonParserAction implements IActionExecution {
-  private final ActionExecutionAudit action;
+    private final ActionExecutionAudit action;
 
-  private final Logger log;
+    private final Logger log;
 
-  private final LlmJsonParser llmJsonParser;
-  public static final String READ_BATCH_SIZE = "read.batch.size";
-  public static final String WRITE_BATCH_SIZE = "write.batch.size";
-  private final Marker aMarker;
+    private final LlmJsonParser llmJsonParser;
+    public static final String READ_BATCH_SIZE = "read.batch.size";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
+    private final Marker aMarker;
 
 
-  public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,
-                             final Object llmJsonParser) {
-    this.llmJsonParser = (LlmJsonParser) llmJsonParser;
-    this.action = action;
-    this.log = log;
-    this.aMarker = MarkerFactory.getMarker(" LlmJsonParser:" + this.llmJsonParser.getName());
+    public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,
+                               final Object llmJsonParser) {
+        this.llmJsonParser = (LlmJsonParser) llmJsonParser;
+        this.action = action;
+        this.log = log;
+        this.aMarker = MarkerFactory.getMarker(" LlmJsonParser:" + this.llmJsonParser.getName());
 
-  }
+    }
 
-  @Override
-  public void execute() throws Exception {
-    try {
-      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
-      jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-      log.info(aMarker, "Llm json parser action {} has been started ", llmJsonParser.getName());
+    @Override
+    public void execute() throws Exception {
+        try {
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
+            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+            log.info(aMarker, "Llm json parser action {} has been started ", llmJsonParser.getName());
 
-      final String insertQuery = "INSERT INTO " + llmJsonParser.getOutputTable() +
-              "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
-              "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-              "extracted_image_unit, image_dpi, image_height, image_width) "
-              + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?)";
-      log.info(aMarker, "Llm json parser insert query {}", insertQuery);
+            final String insertQuery = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                    "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
+                    "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
+                    "extracted_image_unit, image_dpi, image_height, image_width) "
+                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?)";
+            log.info(aMarker, "Llm json parser insert query {}", insertQuery);
 
-      final String selectQuery = llmJsonParser.getQuerySet();
-      List<LlmJsonQueryInputTable> inputTableList = jdbi.withHandle(handle -> handle.createQuery(selectQuery)
-              .mapToBean(LlmJsonQueryInputTable.class)
-              .list());
+            final String selectQuery = llmJsonParser.getQuerySet();
+            List<LlmJsonQueryInputTable> inputTableList = jdbi.withHandle(handle -> handle.createQuery(selectQuery)
+                    .mapToBean(LlmJsonQueryInputTable.class)
+                    .list());
 
-      ObjectMapper objectMapper = new ObjectMapper();
+            ObjectMapper objectMapper = new ObjectMapper();
 
-      jdbi.useTransaction(handle -> {
-        for (LlmJsonQueryInputTable inputTable : inputTableList) {
-          String jsonResponse = inputTable.getResponse();
-          JsonNode rootNode = objectMapper.readTree(jsonResponse);
-          List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
-          parseJsonNode(rootNode, "", "", innerParsedResponses);
-          for (LlmJsonParsedResponse parsedResponse : innerParsedResponses) {
-            handle.createUpdate(insertQuery)
-                    .bind(0, inputTable.getCreatedOn())
-                    .bind(1, inputTable.getTenantId())
-                    .bind(2, CreateTimeStamp.currentTimestamp())
-                    .bind(3, inputTable.getTenantId())
-                    .bind(4, parsedResponse.getSorContainerName())
-                    .bind(5, parsedResponse.getSorItemName())
-                    .bind(6, parsedResponse.getAnswer())
-                    .bind(7, inputTable.getPaperNo())
-                    .bind(8, inputTable.getOriginId())
-                    .bind(9, inputTable.getGroupId())
-                    .bind(10, inputTable.getTenantId())
-                    .bind(11, inputTable.getRootPipelineId())
-                    .bind(12, inputTable.getBatchId())
-                    .bind(13, inputTable.getModelRegistry())
-                    .bind(14, inputTable.getExtractedImageUnit())
-                    .bind(15, inputTable.getImageDpi())
-                    .bind(16, inputTable.getImageHeight())
-                    .bind(17, inputTable.getImageWidth())
-                    .execute();
+            jdbi.useTransaction(handle -> {
+                for (LlmJsonQueryInputTable inputTable : inputTableList) {
+                    String jsonResponse = inputTable.getResponse();
+                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
+                    List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
+                    parseJsonNode(rootNode, "", "", innerParsedResponses);
+                    for (LlmJsonParsedResponse parsedResponse : innerParsedResponses) {
+                        handle.createUpdate(insertQuery)
+                                .bind(0, inputTable.getCreatedOn())
+                                .bind(1, inputTable.getTenantId())
+                                .bind(2, CreateTimeStamp.currentTimestamp())
+                                .bind(3, inputTable.getTenantId())
+                                .bind(4, parsedResponse.getSorContainerName())
+                                .bind(5, parsedResponse.getSorItemName())
+                                .bind(6, parsedResponse.getAnswer())
+                                .bind(7, inputTable.getPaperNo())
+                                .bind(8, inputTable.getOriginId())
+                                .bind(9, inputTable.getGroupId())
+                                .bind(10, inputTable.getTenantId())
+                                .bind(11, inputTable.getRootPipelineId())
+                                .bind(12, inputTable.getBatchId())
+                                .bind(13, inputTable.getModelRegistry())
+                                .bind(14, inputTable.getExtractedImageUnit())
+                                .bind(15, inputTable.getImageDpi())
+                                .bind(16, inputTable.getImageHeight())
+                                .bind(17, inputTable.getImageWidth())
+                                .execute();
 
-          }
+                    }
+                }
+
+            });
+
+
+            log.info(aMarker, " Llm json parser actionhas been completed {}  ", llmJsonParser.getName());
+        } catch (Exception e) {
+            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
+
         }
-
-      });
-
-
-      log.info(aMarker, " Llm json parser actionhas been completed {}  ", llmJsonParser.getName());
-    } catch (Exception e) {
-      action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
-      HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
-
     }
-  }
 
 
-      private void parseJsonNode(JsonNode rootNode, String currentKey, String parentPath, List<LlmJsonParsedResponse> parsedResponses) {
-    if (rootNode.isObject()) {
-      Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
-      while (fields.hasNext()) {
-        Map.Entry<String, JsonNode> field = fields.next();
-        String key = field.getKey();
-        String newCurrentKey = key;
-        String newParentPath = parentPath.isEmpty() ? currentKey : parentPath + ", " + currentKey;
-        parseJsonNode(field.getValue(), newCurrentKey, newParentPath, parsedResponses);
-      }
-    } else if (rootNode.isArray()) {
-      for (JsonNode arrayElement : rootNode) {
-        parseJsonNode(arrayElement, currentKey, parentPath, parsedResponses);
-      }
-    } else {
-      LlmJsonParsedResponse parsedResponse = LlmJsonParsedResponse.builder()
-              .sorContainerName(parentPath)
-              .sorItemName(currentKey)
-              .answer(rootNode.asText())
-              .build();
-      parsedResponses.add(parsedResponse);
+    private void parseJsonNode(JsonNode rootNode, String currentKey, String parentPath, List<LlmJsonParsedResponse> parsedResponses) {
+        if (rootNode.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                String key = field.getKey();
+                String newCurrentKey = key;
+                String newParentPath = parentPath.isEmpty() ? currentKey : parentPath + ", " + currentKey;
+                parseJsonNode(field.getValue(), newCurrentKey, newParentPath, parsedResponses);
+            }
+        } else if (rootNode.isArray()) {
+            for (JsonNode arrayElement : rootNode) {
+                parseJsonNode(arrayElement, currentKey, parentPath, parsedResponses);
+            }
+        } else {
+            LlmJsonParsedResponse parsedResponse = LlmJsonParsedResponse.builder()
+                    .sorContainerName(parentPath)
+                    .sorItemName(currentKey)
+                    .answer(rootNode.asText())
+                    .build();
+            parsedResponses.add(parsedResponse);
+        }
     }
-  }
 
-  @Override
-  public boolean executeIf() throws Exception {
-    return llmJsonParser.getCondition();
-  }
+    @Override
+    public boolean executeIf() throws Exception {
+        return llmJsonParser.getCondition();
+    }
 }

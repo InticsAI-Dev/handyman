@@ -1,14 +1,10 @@
 package in.handyman.raven.lib.tritonservertest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.LlmJsonParserAction;
 import in.handyman.raven.lib.model.LlmJsonParser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
 
 @Slf4j
 public class LlmJsonParserActionTest {
@@ -21,7 +17,7 @@ public class LlmJsonParserActionTest {
                 .outputTable("sor_transaction.llm_json_parser_output_audit")
                 .querySet("SELECT  total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
                         "FROM sor_transaction.radon_kvp_output_audit\n" +
-                        "WHERE id =1;" )
+                        "WHERE id=78;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -36,7 +32,6 @@ public class LlmJsonParserActionTest {
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 
         llmJsonParserAction.execute();
-
 
 
     }

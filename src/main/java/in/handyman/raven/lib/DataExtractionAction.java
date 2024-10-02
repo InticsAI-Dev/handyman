@@ -45,7 +45,7 @@ public class DataExtractionAction implements IActionExecution {
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
-public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length";
+public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
   private final ActionExecutionAudit action;
 
     private final Logger log;
