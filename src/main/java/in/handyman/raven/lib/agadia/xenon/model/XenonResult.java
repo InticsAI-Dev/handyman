@@ -23,6 +23,9 @@ public class XenonResult {
     private Long tenantId;
     private String batchId;
 
+    private Long questionId;
+    private Long synonymId;
+    private String sorItemName;
 
     public String getQuestion() {
         return question;

@@ -39,12 +39,13 @@ import java.util.stream.Collectors;
 @ActionExecution(actionName = "DataExtraction")
 public class DataExtractionAction implements IActionExecution {
     public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
-    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id";
+    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on";
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?)";
+    public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
+public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
   private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -83,7 +84,8 @@ public class DataExtractionAction implements IActionExecution {
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-            DataExtractionConsumerProcess dataExtractionConsumerProcess = new DataExtractionConsumerProcess(log, aMarker, action);
+            Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
+            DataExtractionConsumerProcess dataExtractionConsumerProcess = new DataExtractionConsumerProcess(log, aMarker, action, pageContentMinLength);
 
             coproProcessor.startProducer(dataExtraction.getQuerySet(), readBatchSize);
             Thread.sleep(1000);

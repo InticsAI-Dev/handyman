@@ -150,6 +150,7 @@ action:
     |multipartUpload
     |multipartDownload
     |multipartDelete
+    |multipartFolderDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -160,6 +161,14 @@ action:
     |bulletInExtraction
     |p2pNameValidation
     |urgencyTriageBeta
+    |dbBackupEase
+    |dbDataDart
+    |createExactZip
+    |validationLlm
+    |neonKvp
+    |radonKvp
+    |llmJsonParser
+    |radonKvpBbox
     );
 
 
@@ -1096,6 +1105,14 @@ multipartDelete:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+multipartFolderDelete:
+    'multipartFolderDelete' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'delete-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
 systemkeyTable:
     'systemkeyTable' 'as' name=STRING
     'resoruce-conn' resourceConn=STRING
@@ -1193,6 +1210,77 @@ urgencyTriageBeta:
     'output-table' outputTable=STRING
     'resource-conn' resourceConn=STRING
     'using'  '{'  querySet=STRING  '}' ('on-condition' condition=expression)*;
+
+dbBackupEase:
+    'dbBackupEase' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+dbDataDart:
+    'dbDataDart' 'as' name=STRING
+    'db-name' dataBaseName=STRING
+    'audit-table' auditTable=STRING
+    'resource-conn' resourceConn=STRING
+    'using'  '{' querySet=STRING '}'
+     ('on-condition' condition=expression)*  ;
+
+createExactZip:
+       'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
+        '{' '}' ('on-condition' condition=expression)*;
+
+
+validationLlm:
+    'validationLlm' 'as' name = STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'querySet=STRING'}'
+    ('on-condition' condition=expression)* ;
+
+
+neonKvp:
+    'neonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+radonKvp:
+    'radonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+
+llmJsonParser:
+    'llmJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+radonKvpBbox:
+    'radonKvpBbox' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' coproUrl=STRING
+    'consumer-api-count' consumerApiCount=STRING
+    'triton-request-activator' tritonActivator=STRING
+    'output-dir' outputDir=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 //rules
 

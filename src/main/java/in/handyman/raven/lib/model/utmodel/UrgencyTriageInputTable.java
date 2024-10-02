@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @AllArgsConstructor
@@ -25,6 +26,8 @@ public class UrgencyTriageInputTable implements CoproProcessor.Entity {
     private String inputFilePath;
     private Long rootPipelineId;
     private String batchId;
+    private String prompt;
+    private Timestamp createdOn;
 
     @Override
     public List<Object> getRowData() {
