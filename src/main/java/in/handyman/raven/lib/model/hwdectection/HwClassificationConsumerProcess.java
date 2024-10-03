@@ -278,7 +278,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .stage(STAGE)
                 .message("Paper Classification Finished")
                 .processId(hwDetectionDataItem.getProcessId())
-                .rootPipelineId(entity.getRootPipelineId())
+                .rootPipelineId(Long.valueOf(hwDetectionDataItem.getRootPipelineId()))
                 .modelName(modelName)
                 .modelVersion(modelVersion)
                 .createdOn(entity.getCreatedOn())

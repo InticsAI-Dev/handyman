@@ -24,4 +24,5 @@ public class HwDetectionDataItem {
  private Integer paperNo;
  private Long tenantId;
  private String batchId;
+ private Integer rootPipelineId;
 }
