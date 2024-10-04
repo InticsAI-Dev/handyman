@@ -247,7 +247,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .rootPipelineId(rootPipelineId)
                         .modelName(modelName)
                         .modelVersion(modelVersion)
-                        .batchId(zeroShotClassifierOutputData.getBatchId())
+                        .batchId(entity.getBatchId())
                         .tenantId(entity.getTenantId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())

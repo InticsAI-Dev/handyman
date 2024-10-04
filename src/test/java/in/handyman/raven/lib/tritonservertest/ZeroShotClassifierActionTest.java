@@ -20,8 +20,15 @@ class ZeroShotClassifierActionTest {
                 .condition(true)
                 .name("Test ZeroShotClassifier")
                 .processID("1234")
-                .querySet("select origin_id, paper_no, page_content, group_id, root_pipeline_id, process_id, truth_placeholder, tenant_id, batch_id, created_on " +
-                        "from zsc_input_test")
+                .querySet("select 1 as paper_no, 'drug name, patient name,prescriber name' as page_content, 1 as group_id, 'INT-1' as origin_id, \n" +
+                        "'1234' as process_id,1 as sor_container_id, 'Patient' as truth_entity, \n"
+                        + "jsonb_object_agg(t.truth_entity,t.keys_to_filter) as truth_placeholder\n" +
+                        "                        from (select te.sor_container_id  as sor_container_id,\n" +
+                        "                        te.truth_entity as truth_entity,te.sor_truth_entity_id,\n" +
+                        "                        jsonb_agg(st.truth_entity) as keys_to_filter\n" +
+                        "                        from sor_meta.sor_truth_entity_placeholder st\n" +
+                        "                        join sor_meta.sor_truth_entity te on te.truth_entity= st.truth_entity\n" +
+                        "                        group by te.sor_container_id,te.sor_truth_entity_id,te.truth_entity )t")
                 .resourceConn("intics_agadia_db_conn")
                 .build();
 
@@ -81,8 +88,18 @@ class ZeroShotClassifierActionTest {
                 .threadCount("1")
                 .writeBatchSize("1")
                 .endPoint("http://192.168.10.248:8400/v2/models/zsc-service/versions/1/infer")
-                .querySet("select origin_id, paper_no, page_content, group_id, root_pipeline_id, process_id, truth_placeholder, tenant_id, batch_id, created_on " +
-                        "from zsc_input_test")
+                .querySet("SELECT " +
+                        "1 AS paper_no, " +
+                        "'drug name, patient name, prescriber name' AS page_content, " +
+                        "1 AS group_id, " +
+                        "'INT-1' AS origin_id, " +
+                        "'BATCH-1' AS batch_id, " +
+                        "1 AS process_id, " +
+                        "1 AS rootPipelineId, " +
+                        "JSONB_BUILD_OBJECT(" +
+                        "'Drug', ARRAY_TO_JSON(ARRAY['Strength', 'Quantity', 'Drug Requested', 'Drug', 'Medication', 'Drug name and Strength', 'Drug name', 'Dose', 'Directions', 'Diagnosis']), " +
+                        "'Member', ARRAY_TO_JSON(ARRAY['Members Name', 'Member Name', 'Member Id', 'Member Optima', 'Member DOB', 'Members DOB'])" +
+                        ") AS truthPlaceholder")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 
