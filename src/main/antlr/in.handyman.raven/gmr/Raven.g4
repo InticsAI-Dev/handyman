@@ -1254,6 +1254,8 @@ radonKvp:
     'radonKvp' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'copro-url' endpoint=STRING
+    'api-service-name' apiServiceName=STRING
+    'model_registry' model_registry = STRING
     'output-table' outputTable=STRING
     'using' '{'
             querySet=STRING
