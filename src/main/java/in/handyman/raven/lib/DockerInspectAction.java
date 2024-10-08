@@ -185,7 +185,7 @@ public class DockerInspectAction implements IActionExecution {
                 .bind("state", objectMapper.writeValueAsString(containerInspectResponse.getState()))
                 .bind("config", objectMapper.writeValueAsString(containerInspectResponse.getConfig()))
                 .bind("hostConfig", objectMapper.writeValueAsString(containerInspectResponse.getHostConfig()))
-                .bind("networkSettings", objectMapper.writeValueAsString(containerInspectResponse.getNetworkSettings()))
+                .bind("networkSettings", objectMapper.writeValueAsString(containerInspectResponse.getDockerIp()))
                 .bind("mounts", objectMapper.writeValueAsString(containerInspectResponse.getMounts()))
                 .bind("volumes", objectMapper.writeValueAsString(containerInspectResponse.getVolumes()))
                 .bind("ports", objectMapper.writeValueAsString(containerInspectResponse.getPorts()))

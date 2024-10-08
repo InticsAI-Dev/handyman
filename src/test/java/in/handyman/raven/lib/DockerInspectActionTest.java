@@ -185,8 +185,8 @@ class DockerInspectActionTest {
                 .inputTable("instance_audit.machine")
                 .outputTable("instance_audit.container_inspect")
                 .querySet("select m.machine_name ,m.machine_ip , m.machine_hostname ,m.etc_host_name ,m.utils_url ,m.cluster_id,1 as tenant_id,1 as root_pipeline_id,1 as group_id,m.machine_id as machine_id \n" +
-                        "from instance_audit.cluster c \n" +
-                        "join instance_audit.machine m on c.cluster_id =m.cluster_id \n" +
+                        "from instance_config.cluster c \n" +
+                        "join instance_config.machine m on c.cluster_id =m.cluster_id \n" +
                         "where m.created_user_id =1;")
                 .build();
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();

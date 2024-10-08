@@ -15,6 +15,8 @@ public class ContainerInfoDTO {
     private String name;
     private String[] image;
     private String status;
+    private String gateWay;
+    private String dockerIp;
     private String created;
     private ContainerStateDTO state;
     private ContainerConfigDTO config;
