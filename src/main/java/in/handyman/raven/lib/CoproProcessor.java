@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -152,15 +153,26 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                 final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
                                 final List<O> results = new ArrayList<>();
                                 try {
-                                    Optional<String> optionalUrl = getUrlByModuleWithMinQueueCount(moduleVariable);
-                                    if (optionalUrl.isPresent()) {
-                                        URL url = new URL(optionalUrl.get());
+                                    Optional<UrlProcessingInfo> optionalUrlProcessingInfo = getUrlByModuleWithMinQueueCount(moduleVariable);
+                                    if (optionalUrlProcessingInfo.isPresent()) {
+                                        UrlProcessingInfo urlProcessingInfo = optionalUrlProcessingInfo.get();
+                                        String processingInfoUrl = urlProcessingInfo.getUrl();
+                                        Integer queueCount = urlProcessingInfo.getQueueCount();
+                                        String variable = urlProcessingInfo.getVariable();
+                                        String module = urlProcessingInfo.getModule();
+                                        logger.info("Found url for variable {}, in module {}, in url processing info with min queue count {}", variable, module, queueCount);
+                                        URL url = new URL(processingInfoUrl);
+
+                                        logger.info("Process started, incrementing queue count");
                                         updateQueueCount(String.valueOf(url), moduleVariable, 1);
                                         final List<O> list = callable.process(url, take);
+
+                                        logger.info("Process completed, decrementing queue count");
                                         updateQueueCount(String.valueOf(url), moduleVariable, -1);
                                         results.addAll(list);
                                     }
                                     else {
+                                        logger.info("No url found for variable {}, executing default index method", moduleVariable);
                                         int nodesSize = nodes.size();
                                         logger.info("Nodes size {} and index value {}", nodesSize, index);
                                         if (nodesSize != index) {
@@ -261,12 +273,20 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         }
     }
 
-    public Optional<String> getUrlByModuleWithMinQueueCount(String moduleVariable) {
+    @Data
+    public static class UrlProcessingInfo{
+        private String url;
+        private int queueCount;
+        private String module;
+        private String variable;
+    }
+
+    public Optional<UrlProcessingInfo> getUrlByModuleWithMinQueueCount(String moduleVariable) {
         try {
             return jdbi.withHandle(handle ->
-                    handle.createQuery("SELECT url FROM config.url_processing_info WHERE variable = :moduleVariable ORDER BY queue_count ASC LIMIT 1")
+                    handle.createQuery("SELECT url, queue_count, module, variable FROM config.url_processing_info WHERE variable = :moduleVariable ORDER BY queue_count ASC LIMIT 1")
                             .bind("moduleVariable", moduleVariable)
-                            .mapTo(String.class)
+                            .mapToBean(UrlProcessingInfo.class)
                             .findOne()
             );
         } catch (RuntimeException e) {
@@ -278,7 +298,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     public void updateQueueCount(String url, String moduleVariable, int adjustment) {
         try {
             jdbi.useHandle(handle ->
-                    handle.createUpdate("UPDATE config.url_processing_info SET queue_count = queue_count + :adjustment WHERE url = :url AND variable = :moduleVariable")
+                    handle.createUpdate("UPDATE config.url_processing_info SET queue_count = queue_count + :adjustment, updated_on = now() WHERE url = :url AND variable = :moduleVariable")
                             .bind("url", url)
                             .bind("moduleVariable", moduleVariable)
                             .bind("adjustment", adjustment)
