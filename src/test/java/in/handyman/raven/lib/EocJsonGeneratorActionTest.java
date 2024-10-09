@@ -11,19 +11,18 @@ public class EocJsonGeneratorActionTest {
     void execute() throws Exception {
         EocJsonGenerator eocJsonGenerator = EocJsonGenerator.builder()
                 .name("eoc generation")
-                .originId("ORIGIN-51")
+                .originId("ORIGIN-59")
                 .eocId("H00928567")
-                .authtoken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJHYXRlS2VlcGVyIiwiZXhwIjoxNzI4NTM1MTY5LCJpYXQiOjE3Mjg0NDg3NjksImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.f24Fk7ZLT3Z6nEkqHKl5xTMN1OmAnClAii_gdnuU54E")
+                .authtoken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJHYXRlS2VlcGVyIiwiZXhwIjoxNzI4NTgxODg1LCJpYXQiOjE3Mjg0OTU0ODUsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.MU91RjToexaxxDpcGKYNDqsYxIgjNOKVWp45JulQDns")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .groupId("51")
+                .groupId("59")
                 .documentId("SYNT_166564144_c1").build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
-        actionExecutionAudit.getContext().put("group_id","51");
         actionExecutionAudit.getContext().put("tenant_id","1");
-        actionExecutionAudit.getContext().put("batch_id", "BATCH-1");
+        actionExecutionAudit.getContext().put("batch_id", "BATCH-59_0");
         actionExecutionAudit.getContext().put("write.batch.size","1");
         actionExecutionAudit.getContext().put("read.batch.size","1");
         actionExecutionAudit.getContext().put("gatekeeper.url", "http://localhost:40002/");
