@@ -94,6 +94,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
+        urgencyTriageModelPayload.setBatchId(entity.getBatchId());
         return urgencyTriageModelPayload;
     }
 
@@ -219,7 +220,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
                     .message("Urgency Triage Finished")
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelVersion(modelVersion)
-                    .batchId(entity.getBatchId())
+                    .batchId(modelOuterItem.getBatchId())
                     .modelName(modelName)
                     .build());
         } catch (JsonProcessingException e) {

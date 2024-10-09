@@ -66,6 +66,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
+        urgencyTriageModelPayload.setBatchId(entity.getBatchId());
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
@@ -202,7 +203,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
-                    .batchId(entity.getBatchId())
+                    .batchId(urgencyTriageModelDataItem1.getBatchId())
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());

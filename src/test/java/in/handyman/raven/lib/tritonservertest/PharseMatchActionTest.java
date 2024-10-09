@@ -18,7 +18,7 @@ public class PharseMatchActionTest {
                 .condition(true)
                 .name("Test PhraseMatch")
                 .processID("12345")
-                .endPoint("http://192.168.10.239:10184/copro/filtering/phrase-match")
+                .endPoint("http://192.168.10.248:8500/v2/models/pm-service/versions/1/infer")
                 .readBatchSize("1")
                 .threadCount("1")
                 .writeBatchSize("1")
@@ -29,6 +29,7 @@ public class PharseMatchActionTest {
                         "'INT-1' AS origin_id, " +
                         "1 AS process_id, " +
                         "1 AS rootPipelineId, " +
+                        "'batch-1' AS batchId, " +
                         "JSONB_BUILD_OBJECT(" +
                         "'Drug', ARRAY_TO_JSON(ARRAY['Strength', 'Quantity', 'Drug Requested', 'Drug', 'Medication', 'Drug name and Strength', 'Drug name', 'Dose', 'Directions', 'Diagnosis']), " +
                         "'Member', ARRAY_TO_JSON(ARRAY['Members Name', 'Member Name', 'Member Id', 'Member Optima', 'Member DOB', 'Members DOB'])" +
@@ -41,10 +42,10 @@ public class PharseMatchActionTest {
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
-        action.getContext().put("copro.paper-filtering-phrase-match.url", "http://192.168.10.239:10184/copro/filtering/phrase-match");
+        action.getContext().put("copro.paper-filtering-phrase-match.url", "http://192.168.10.248:8500/v2/models/pm-service/versions/1/infer");
         action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),
                 Map.entry("okhttp.client.timeout","20"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size","5")));
 
