@@ -73,6 +73,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setPaperNo(paperNo);
         data.setGroupId(groupId);
         data.setPageContent(pageContent);
+        data.setBatchId(entity.getBatchId());
         data.setKeysToFilter(keysToFilterObject);
         String jsonInputRequest = objectMapper.writeValueAsString(data);
 

@@ -19,20 +19,26 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-        actionName = "Documentparser"
+    actionName = "RadonKvpBbox"
 )
-public class Documentparser implements IActionContext {
-    private String name;
+public class RadonKvpBbox implements IActionContext {
+  private String name;
 
-    private String resourceConn;
+  private String resourceConn;
 
-    private String outputDir;
+  private String coproUrl;
 
-    private String endpoint;
+  private String consumerApiCount;
 
-    private String outputTable;
+  private String tritonActivator;
 
-    private String querySet;
+  private String outputDir;
 
-    private Boolean condition = true;
+  private String inputTable;
+
+  private String outputTable;
+
+  private String querySet;
+
+  private Boolean condition = true;
 }

@@ -1,23 +1,28 @@
-package in.handyman.raven.lib.model.paperitemizer;
+package in.handyman.raven.lib.model.radonbbox.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Data
-public class PaperItemizerData {
+public class RadonBboxRequest {
     private String originId;
+    private Long paperNumber;
+    private String inputFilePath;
     private Long processId;
-    private Integer groupId;
+    private Long groupId;
     private Long tenantId;
     private Long rootPipelineId;
-    private String process;
-    private String inputFilePath;
     private String outputDir;
     private Long actionId;
-    private String batchId;
+    private String process;
+
+    private List<RadonBboxRequestLineItem> radonBboxLineItems;
+
 }

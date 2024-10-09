@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.face.detection.triton;
+package in.handyman.raven.lib.model.radonbbox.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,10 +11,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+public class RadonBboxResponseOutputs {
 
-public class FaceDetectionOutput {
     private String name;
     private String datatype;
-    private List<Integer> shape;
+    private List<String> shape;
     private List<String> data;
 }

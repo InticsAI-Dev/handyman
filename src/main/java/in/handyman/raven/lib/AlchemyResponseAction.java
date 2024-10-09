@@ -8,7 +8,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.alchemy.common.BoundingBoxAlchemy;
+import in.handyman.raven.lib.alchemy.common.BoundingBox;
 import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.lib.model.AlchemyResponse;
 import in.handyman.raven.util.ExceptionUtil;
@@ -195,7 +195,7 @@ public class AlchemyResponseAction implements IActionExecution {
                 alchemyRequestTable.setSynonymId(entity.getSynonymId());
             }
             if(feature.equals(Feature.FACE_DETECTION.name())){
-                 BoundingBoxAlchemy bboxJsonObject =new BoundingBoxAlchemy();
+                 BoundingBox bboxJsonObject =new BoundingBox();
                 bboxJsonObject.setTopLeftX(Integer.parseInt(entity.getLeftPos()));
                 bboxJsonObject.setTopLeftY(Integer.parseInt(entity.getUpperPos()));
                 bboxJsonObject.setBottomRightX(Integer.parseInt(entity.getRightPos()));

@@ -26,7 +26,7 @@ class AuthTokenActionTest {
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
-                Map.entry("gatekeeper.url", "http://192.168.10.248:40002/"),
+                Map.entry("gatekeeper.url", "http://localhost:40002/"),
                 Map.entry("gatekeeper.appid", "dj@intics.ai"),
                 Map.entry("tenant_id", "8"),
                 Map.entry("write.batch.size", "5")));
