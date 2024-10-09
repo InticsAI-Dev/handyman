@@ -71,7 +71,8 @@ public class TableExtractionHeadersAction implements IActionExecution {
             log.info(aMarker, "table extraction Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
-            final List<URL> urls = Optional.ofNullable(tableExtractionHeaders.getEndpoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String tableExtractionHeadersEndpoint = tableExtractionHeaders.getEndpoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(tableExtractionHeadersEndpoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -95,7 +96,7 @@ public class TableExtractionHeadersAction implements IActionExecution {
             log.info(aMarker, "table extraction copro coproProcessor startProducer called read batch size {}", readBatchSizeStr);
             Thread.sleep(1000);
             TableExtractionConsumerProcess tableExtractionConsumerProcess = new TableExtractionConsumerProcess(log, aMarker, outputDir, action);
-            coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, tableExtractionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, tableExtractionConsumerProcess, tableExtractionHeadersEndpoint);
             log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCountInt, writeBatchSizeInt);
 
 

@@ -4,8 +4,6 @@ import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionInputQuerySet;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionOutputQuerySet;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -18,11 +16,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -143,7 +137,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
-                              final ConsumerProcess<I, O> callable) {
+                              final ConsumerProcess<I, O> callable, String moduleVariable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
@@ -158,11 +152,21 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                 final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
                                 final List<O> results = new ArrayList<>();
                                 try {
-                                    int nodesSize = nodes.size();
-                                    logger.info("Nodes size {} and index value {}", nodesSize, index);
-                                    if (nodesSize != index) {
-                                        final List<O> list = callable.process(nodes.get(index), take);
+                                    Optional<String> optionalUrl = getUrlByModuleWithMinQueueCount(moduleVariable);
+                                    if (optionalUrl.isPresent()) {
+                                        URL url = new URL(optionalUrl.get());
+                                        updateQueueCount(String.valueOf(url), moduleVariable, 1);
+                                        final List<O> list = callable.process(url, take);
+                                        updateQueueCount(String.valueOf(url), moduleVariable, -1);
                                         results.addAll(list);
+                                    }
+                                    else {
+                                        int nodesSize = nodes.size();
+                                        logger.info("Nodes size {} and index value {}", nodesSize, index);
+                                        if (nodesSize != index) {
+                                            final List<O> list = callable.process(nodes.get(index), take);
+                                            results.addAll(list);
+                                        }
                                     }
                                 } catch (Exception e) {
                                     logger.error("Error in callable process in consumer", e);
@@ -254,6 +258,34 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                 logger.info("Consumer persisted {}", rowCount);
             });
 
+        }
+    }
+
+    public Optional<String> getUrlByModuleWithMinQueueCount(String moduleVariable) {
+        try {
+            return jdbi.withHandle(handle ->
+                    handle.createQuery("SELECT url FROM config.url_processing_info WHERE variable = :moduleVariable ORDER BY queue_count ASC LIMIT 1")
+                            .bind("moduleVariable", moduleVariable)
+                            .mapTo(String.class)
+                            .findOne()
+            );
+        } catch (RuntimeException e) {
+            logger.error("Error getting URL by queue count: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public void updateQueueCount(String url, String moduleVariable, int adjustment) {
+        try {
+            jdbi.useHandle(handle ->
+                    handle.createUpdate("UPDATE config.url_processing_info SET queue_count = queue_count + :adjustment WHERE url = :url AND variable = :moduleVariable")
+                            .bind("url", url)
+                            .bind("moduleVariable", moduleVariable)
+                            .bind("adjustment", adjustment)
+                            .execute()
+            );
+        } catch (RuntimeException e) {
+            logger.error("Error updating queue count: {}", e.getMessage());
         }
     }
 

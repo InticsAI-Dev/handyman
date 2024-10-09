@@ -65,7 +65,8 @@ public class NerAdapterAction implements IActionExecution {
             log.info(aMarker, "ner adapter Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.text-validation.url")).map(s -> Arrays.stream(s.split(",")).map(url -> {
+            String moduleVariable = "copro.text-validation.url";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(url -> {
                 try {
                     return new URL(url);
                 } catch (MalformedURLException e) {
@@ -89,7 +90,7 @@ public class NerAdapterAction implements IActionExecution {
             log.info(aMarker, "ner adapter copro coproProcessor startProducer called read batch size {}", action.getContext().get("read.batch.size"));
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("ner.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
-                    new NerAdapterConsumerProcess(log, aMarker, action));
+                    new NerAdapterConsumerProcess(log, aMarker, action), moduleVariable);
             log.info(aMarker, "ner adapter copro coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("ner.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
 
 

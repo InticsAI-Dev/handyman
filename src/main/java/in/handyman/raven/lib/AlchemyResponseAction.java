@@ -66,7 +66,8 @@ public class AlchemyResponseAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Alchemy Response Action for {} has been started", alchemyResponse.getName());
             final String insertQuery = "";
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.origin.valuation.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String moduleVariable = "alchemy.origin.valuation.url";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -78,7 +79,7 @@ public class AlchemyResponseAction implements IActionExecution {
             final CoproProcessor<AlchemyResponseAction.AlchemyResponseInputTable, AlchemyResponseAction.AlchemyResponseOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), AlchemyResponseAction.AlchemyResponseOutputTable.class, AlchemyResponseAction.AlchemyResponseInputTable.class, jdbi, log, new AlchemyResponseAction.AlchemyResponseInputTable(), urls, action);
             coproProcessor.startProducer(alchemyResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action), moduleVariable);
             log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyResponse.getName());
         } catch (Exception t) {
             action.getContext().put(alchemyResponse.getName() + ".isSuccessful", "false");

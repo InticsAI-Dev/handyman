@@ -116,7 +116,7 @@ public class ValidationLlmAction implements IActionExecution {
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       log.info(aMarker, "Validation Llm Action for {} has been started", validationLlm.getName());
 
-      final List<URL> urls = Optional.ofNullable(validationLlmUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(validationLlmUrl)).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
         try {
           return new URL(urlItem);
         } catch (MalformedURLException e) {
@@ -136,7 +136,7 @@ public class ValidationLlmAction implements IActionExecution {
       coproProcessor.startProducer( validationLlm.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
       final ValidationLlmConsumerProcess validationLlmConsumerProcess = new ValidationLlmConsumerProcess(log, aMarker, action, this);
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize,validationLlmConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize,validationLlmConsumerProcess, validationLlmUrl);
       log.info(aMarker, " paragraph extraction Action has been completed {}  ", validationLlm.getName());
     } catch (Exception e) {
       action.getContext().put(validationLlm.getName() + ".isSuccessful", "false");

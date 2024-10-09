@@ -62,7 +62,8 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
             final String processId = Optional.ofNullable(zeroShotClassifierPaperFilter.getProcessID()).map(String::valueOf).orElse(null);
             final String insertQuery = INSERT_INTO + " " + SCHEMA_NAME + "." + OUTPUT_TABLE_NAME + processId + "(" + INSERT_INTO_COLUMNS + ") " +
                     " VALUES(" + INSERT_INTO_VALUES + ")";
-            final List<URL> urls = Optional.ofNullable(zeroShotClassifierPaperFilter.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String zeroShotClassifierPaperFilterEndPoint = zeroShotClassifierPaperFilter.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(zeroShotClassifierPaperFilterEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -81,7 +82,7 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.parseInt(zeroShotClassifierPaperFilter.getThreadCount()),
                     Integer.parseInt(zeroShotClassifierPaperFilter.getWriteBatchSize()),
-                    new ZeroShotConsumerProcess(log, aMarker, action));
+                    new ZeroShotConsumerProcess(log, aMarker, action), zeroShotClassifierPaperFilterEndPoint);
             log.info(aMarker, " Zero shot classifier has been completed {}  ", zeroShotClassifierPaperFilter.getName());
 
         } catch (Exception e) {

@@ -129,12 +129,12 @@ public class RadonKvpBboxAction implements IActionExecution {
     }
 
     private void callStartConsumer(CoproProcessor<RadonBboxInputEntity, RadonBboxOutputEntity> coproProcessor, String insertQuery, Integer consumerCountInt, Integer writeBatchSizeInt, ObjectMapper objectMapper) {
-        coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, new RadonBboxConsumerProcess(log, aMarker, action, radonKvpBbox, objectMapper));
+        coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, new RadonBboxConsumerProcess(log, aMarker, action, radonKvpBbox, objectMapper), "");
     }
 
     @NotNull
-    private List<URL> getCoproUrls(String coproUrl) {
-        final List<URL> urls = Optional.ofNullable(coproUrl).map(s -> Arrays.stream(s.split(REGEX_URL_SPLITTER)).map(s1 -> {
+    private List<URL> getCoproUrls(String radonKvpBBoxUrlVariable) {
+        final List<URL> urls = Optional.ofNullable(action.getContext().get(radonKvpBBoxUrlVariable)).map(s -> Arrays.stream(s.split(REGEX_URL_SPLITTER)).map(s1 -> {
             try {
                 return new URL(s1);
             } catch (MalformedURLException e) {

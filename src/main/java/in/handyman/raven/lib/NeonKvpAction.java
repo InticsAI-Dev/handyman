@@ -108,7 +108,7 @@ public class NeonKvpAction implements IActionExecution {
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       log.info(aMarker, "kvp extraction with llm Action for {} has been started", neonKvp.getName());
 
-      final List<URL> urls = Optional.ofNullable(neonKvpUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(neonKvpUrl)).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
         try {
           return new URL(urlItem);
         } catch (MalformedURLException e) {
@@ -120,7 +120,7 @@ public class NeonKvpAction implements IActionExecution {
       final CoproProcessor<NeonQueryInputTable, NeonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
       Thread.sleep(threadSleepTime);
       final NeonKvpConsumerProcess neonKvpConsumerProcess = new NeonKvpConsumerProcess(log, aMarker, action, this);
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, neonKvpConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, neonKvpConsumerProcess, neonKvpUrl);
       log.info(aMarker, " llm kvp Action has been completed {}  ", neonKvp.getName());
     } catch (Exception e) {
       action.getContext().put(neonKvp.getName() + ".isSuccessful", "false");

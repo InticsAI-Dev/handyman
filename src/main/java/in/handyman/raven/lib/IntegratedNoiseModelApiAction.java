@@ -69,7 +69,8 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
 
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL)); //for handling null values
             //3. initiate Copro processor and Copro urls change the url to integrated noise model
-            final List<URL> urls = Optional.ofNullable(integratedNoiseModelApi.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String integratedNoiseModelApiEndPoint = integratedNoiseModelApi.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(integratedNoiseModelApiEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -98,7 +99,7 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
 
             //8. call the method start consumer from coproprocessor
 
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, new NoiseModelConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, new NoiseModelConsumerProcess(log, aMarker, action), integratedNoiseModelApiEndPoint);
             log.info("start consumer method from copro processor ");
 
 

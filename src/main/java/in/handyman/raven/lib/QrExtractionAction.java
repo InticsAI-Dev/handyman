@@ -68,7 +68,8 @@ public class QrExtractionAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(qrExtraction.getResourceConn());
 
       //3. initiate copro processor and copro urls
-      final List<URL> urls = Optional.ofNullable(qrExtraction.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+      String qrExtractionEndPoint = qrExtraction.getEndPoint();
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(qrExtractionEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
           return new URL(s1);
         } catch (MalformedURLException e) {
@@ -95,7 +96,7 @@ public class QrExtractionAction implements IActionExecution {
       log.info("start producer method from copro processor ");
       Thread.sleep(1000);
       //8. call the method start consumer from coproprocessor
-      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, qrConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, qrConsumerProcess, qrExtractionEndPoint);
       log.info("start consumer method from copro processor ");
 
 

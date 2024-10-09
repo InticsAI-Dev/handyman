@@ -73,7 +73,8 @@ public class FileMergerPdfAction implements IActionExecution {
             log.info(aMarker, "file mergerInsert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
-            final List<URL> urls = Optional.ofNullable(fileMergerPdf.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String fileMergerPdfEndPoint = fileMergerPdf.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(fileMergerPdfEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -97,7 +98,7 @@ public class FileMergerPdfAction implements IActionExecution {
             coproProcessor.startProducer(fileMergerPdf.getQuerySet(), readBatchSize);
             log.info(aMarker, "file mergercopro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize1, fileMergerPdfConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize1, fileMergerPdfConsumerProcess, fileMergerPdfEndPoint);
             log.info(aMarker, "file mergercopro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize1);
 
         } catch (Exception ex) {

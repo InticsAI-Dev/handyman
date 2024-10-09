@@ -103,7 +103,7 @@ public class AutoRotationAction implements IActionExecution {
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       log.info(aMarker, "Auto Rotation Action for {} has been started", autoRotation.getName());
 
-      final List<URL> urls = Optional.ofNullable(autoRotateUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(autoRotateUrl)).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
         try {
           return new URL(urlItem);
         } catch (MalformedURLException e) {
@@ -123,7 +123,7 @@ public class AutoRotationAction implements IActionExecution {
       coproProcessor.startProducer(autoRotation.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
       final AutoRotationConsumerProcess autoRotationConsumerProcess = new AutoRotationConsumerProcess(log, aMarker, action, outputDir, this);
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, autoRotationConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, autoRotationConsumerProcess, autoRotateUrl);
       log.info(aMarker, " Auto Rotation Action has been completed {}  ", autoRotation.getName());
     } catch (Exception e) {
       action.getContext().put(autoRotation.getName() + ".isSuccessful", "false");

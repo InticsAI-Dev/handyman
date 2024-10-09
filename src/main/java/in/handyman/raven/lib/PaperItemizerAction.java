@@ -69,7 +69,8 @@ public class PaperItemizerAction implements IActionExecution {
             log.info(aMarker, "paper itemizer Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.paper-itemizer.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String moduleVariable = "copro.paper-itemizer.url";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                             return new URL(s1);
                         } catch (MalformedURLException e) {
@@ -96,7 +97,7 @@ public class PaperItemizerAction implements IActionExecution {
             coproProcessor.startProducer(paperItemizer.getQuerySet(), readBatchSize);
             log.info(aMarker, "paper itemizer copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new PaperItemizerConsumerProcess(log, aMarker, outputDir, action));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new PaperItemizerConsumerProcess(log, aMarker, outputDir, action), moduleVariable);
             log.info(aMarker, "paper itemizer copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
 
         } catch (Exception ex) {

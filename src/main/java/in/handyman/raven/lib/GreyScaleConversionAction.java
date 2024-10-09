@@ -104,7 +104,7 @@ public class GreyScaleConversionAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Grey scale conversion on for {} has been started", greyScaleConversion.getName());
 
-            final List<URL> urls = Optional.ofNullable(greyScaleUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(greyScaleUrl)).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
                 try {
                     return new URL(urlItem);
                 } catch (MalformedURLException e) {
@@ -116,7 +116,7 @@ public class GreyScaleConversionAction implements IActionExecution {
             final CoproProcessor<GreyScaleConversionInputQuerySet, GreyScaleConversionOutputQuerySet> coproProcessor = getGreyScaleConsumerProcess(jdbi, urls);
             Thread.sleep(threadSleepTime);
             final GreyScaleConversionConsumerProcess greyScaleConversionConsumerProcess = new GreyScaleConversionConsumerProcess(log, aMarker, action, outputDir, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, greyScaleConversionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, greyScaleConversionConsumerProcess, greyScaleUrl);
             log.info(aMarker, "Grey Scale Conversion Action has been completed {}  ", greyScaleConversion.getName());
         } catch (Exception e) {
             action.getContext().put(greyScaleConversion.getName() + ".isSuccessful", "false");

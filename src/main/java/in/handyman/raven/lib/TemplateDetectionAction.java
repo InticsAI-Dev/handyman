@@ -97,13 +97,13 @@ public class TemplateDetectionAction implements IActionExecution {
             final String jdbiStr = templateDetection.getResourceConn();
             final String nameStr = templateDetection.getName();
             final String querysetStr = templateDetection.getQuerySet();
-            final String coproUrlStr = templateDetection.getCoproUrl();
+            final String templateDetectionURL = templateDetection.getCoproUrl();
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiStr);
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Template detection macro started {}", templateDetection);
 
-            final List<URL> urls = Optional.ofNullable(coproUrlStr).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(templateDetectionURL)).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
                 try {
                     return new URL(urlItem);
                 } catch (MalformedURLException e) {
@@ -116,7 +116,7 @@ public class TemplateDetectionAction implements IActionExecution {
             log.info(aMarker, "Copro processor start compose completed {}", nameStr);
             Thread.sleep(threadSleepTime);
             final TemplateDetectionConsumerProcess templateDetectionConsumerProcess = new TemplateDetectionConsumerProcess(log, aMarker, action, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, templateDetectionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, templateDetectionConsumerProcess, templateDetectionURL);
 
         } catch (Exception e) {
             log.error(aMarker, "Error in execute method for template detection {}", ExceptionUtil.toString(e));

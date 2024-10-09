@@ -70,7 +70,8 @@ public class HwDetectionAction implements IActionExecution {
       log.info(aMarker, "Handwritten Classification Action for {} has been started", hwDetection.getName());
       final String insertQuery = INSERT_INTO +  hwDetection.getOutputTable()+ "(" + INSERT_INTO_COLUMNS + ")" +
               "values(" + INSERT_INTO_VALUES + ")";
-      final List<URL> urls = Optional.ofNullable(hwDetection.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(url -> {
+      String hwDetectionEndPoint = hwDetection.getEndPoint();
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(hwDetectionEndPoint)).map(s -> Arrays.stream(s.split(",")).map(url -> {
         try {
           return new URL(url);
         } catch (MalformedURLException e) {
@@ -90,7 +91,7 @@ public class HwDetectionAction implements IActionExecution {
       log.info("hwdetection read batch size {} and queryset from macro {} ", readBatchSize, hwDetection.getQuerySet());
       Thread.sleep(1000);
 
-      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, hwClassificationConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, hwClassificationConsumerProcess, hwDetectionEndPoint);
       log.info(aMarker, " Handwritten Classification has been completed {}  ", hwDetection.getName());
     } catch (Exception e) {
       action.getContext().put(hwDetection.getName() + ".isSuccessful", "false");

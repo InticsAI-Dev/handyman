@@ -81,7 +81,8 @@ public class IntellimatchAction implements IActionExecution {
       log.info(aMarker, "intelli match Insert query {}", insertQuery);
 
       //3. initiate copro processor and copro urls
-      final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.intelli-match.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+      String moduleVariable = "copro.intelli-match.url";
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
           return new URL(s1);
         } catch (MalformedURLException e) {
@@ -107,7 +108,7 @@ public class IntellimatchAction implements IActionExecution {
       Integer consumerCount = Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count"));
       Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
       coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize,
-              new IntellimatchConsumerProcess(log, aMarker, action));
+              new IntellimatchConsumerProcess(log, aMarker, action), moduleVariable);
       log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCount, writeBatchSize);
 
     } catch (Exception ex) {

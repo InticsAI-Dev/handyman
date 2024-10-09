@@ -49,7 +49,7 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            String endPoint = phraseMatchPaperFilter.getEndPoint();
+            String phraseMatchEndPoint = phraseMatchPaperFilter.getEndPoint();
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(phraseMatchPaperFilter.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
@@ -58,7 +58,7 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
             final String insertQuery = "INSERT INTO " + SCHEMA_NAME + "." + OUTPUT_TABLE_NAME + processId + "(" + INSERT_INTO_COLUMNS + ") " +
                     " VALUES(" + INSERT_INTO_VALUES + ")";
 
-            final List<URL> urls = Optional.ofNullable(endPoint).map(s -> Arrays.stream(s.split(",")).map(url -> {
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(phraseMatchEndPoint)).map(s -> Arrays.stream(s.split(",")).map(url -> {
                 try {
                     return new URL(url);
                 } catch (MalformedURLException e) {
@@ -77,7 +77,7 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.parseInt(phraseMatchPaperFilter.getThreadCount()),
                     Integer.parseInt(phraseMatchPaperFilter.getWriteBatchSize()),
-                    new PhraseMatchConsumerProcess(log, aMarker, action));
+                    new PhraseMatchConsumerProcess(log, aMarker, action), phraseMatchEndPoint);
             log.info(aMarker, " Zero shot classifier has been completed {}  ", phraseMatchPaperFilter.getName());
 
         } catch (Exception e) {

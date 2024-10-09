@@ -70,7 +70,8 @@ public class OutboundKvpResponseAction implements IActionExecution {
       log.info(aMarker, "alchemy kvp Insert query {}", insertQuery);
 
       //3. initiate copro processor and copro urls
-      final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.outbound.kvp.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+      String moduleVariable = "alchemy.outbound.kvp.url";
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
           return new URL(s1);
         } catch (MalformedURLException e) {
@@ -93,7 +94,7 @@ public class OutboundKvpResponseAction implements IActionExecution {
       coproProcessor.startProducer(outboundKvpResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       log.info(aMarker, "product outbound copro coproProcessor startProducer called read batch size {}",action.getContext().get("read.batch.size"));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("alchemy.kvp.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new OutboundKvpConsumerProcess(log,aMarker,action,this));
+      coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("alchemy.kvp.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new OutboundKvpConsumerProcess(log,aMarker,action,this), moduleVariable);
       log.info(aMarker, "product outbound coproProcessor startConsumer called consumer count {} write batch count {} ",Integer.valueOf(action.getContext().get("alchemy.kvp.consumer.API.count")),Integer.valueOf(action.getContext().get("write.batch.size")));
 
 

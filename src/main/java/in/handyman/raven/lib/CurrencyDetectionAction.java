@@ -108,7 +108,7 @@ public class CurrencyDetectionAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Currency detection Action for {} has been started", currencyDetection.getName());
 
-            final List<URL> urls = Optional.ofNullable(currencyDetectionUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(currencyDetectionUrl)).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
                 try {
                     return new URL(urlItem);
                 } catch (MalformedURLException e) {
@@ -128,7 +128,7 @@ public class CurrencyDetectionAction implements IActionExecution {
             coproProcessor.startProducer(currencyDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);
             final CurrencyDetectionConsumerProcess currencyDetectionConsumerProcess = new CurrencyDetectionConsumerProcess(log, aMarker, action, outputDir, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, currencyDetectionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, currencyDetectionConsumerProcess, currencyDetectionUrl);
             log.info(aMarker, " Currency detection Action has been completed {}  ", currencyDetection.getName());
         } catch (Exception e) {
             action.getContext().put(currencyDetection.getName() + ".isSuccessful", "false");

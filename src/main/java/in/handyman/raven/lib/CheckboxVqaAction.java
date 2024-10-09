@@ -62,7 +62,8 @@ public class CheckboxVqaAction implements IActionExecution {
       log.info(aMarker, "Urgency Triage Action for {} has been started", checkboxVqa.getName());
       final String insertQuery = "INSERT INTO urgency_triage.chk_triage_transaction_"+checkboxVqa.getProcessID()+"(created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, model_score, origin_id, paper_no, template_id, model_id, triage_label, triage_state, paper_type, status, stage, message, checkbox_bbox)" +
               "values(now(),?,now(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-      final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.checkbox-vqa.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+      String moduleVariable = "copro.checkbox-vqa.url";
+      final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
           return new URL(s1);
         } catch (MalformedURLException e) {
@@ -79,7 +80,7 @@ public class CheckboxVqaAction implements IActionExecution {
                       new CheckboxVqaInputTable(), urls, action);
       coproProcessor.startProducer(checkboxVqa.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery,  Integer.valueOf(action.getContext().get("ut.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new CheckboxVqaConsumerProcess(log, aMarker, action));
+      coproProcessor.startConsumer(insertQuery,  Integer.valueOf(action.getContext().get("ut.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new CheckboxVqaConsumerProcess(log, aMarker, action), moduleVariable);
       log.info(aMarker, " Urgency Triage has been completed {}  ", checkboxVqa.getName());
     } catch (Exception t) {
       action.getContext().put(checkboxVqa.getName() + ".isSuccessful", "false");

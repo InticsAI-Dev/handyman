@@ -3,7 +3,6 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
@@ -73,7 +72,8 @@ public class BlankPageRemoverAction implements IActionExecution {
             log.info(aMarker, "Blank Page Removal Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.blank-page-remover.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String moduleVariable = "copro.blank-page-remover.url";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -93,7 +93,7 @@ public class BlankPageRemoverAction implements IActionExecution {
             coproProcessor.startProducer(blankPageRemover.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
             //8. call the method start consumer from coproprocessor
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("blank.page.removal.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new BlankPageRemoverAction.BlankPageRemoverConsumerProcess(log, aMarker, action, outputDir));
+            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("blank.page.removal.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new BlankPageRemoverAction.BlankPageRemoverConsumerProcess(log, aMarker, action, outputDir), moduleVariable);
             log.info(aMarker, " Blank Page Removal Action has been completed {}  ", blankPageRemover.getName());
         } catch (Throwable t) {
             action.getContext().put(blankPageRemover.getName() + ".isSuccessful", "false");

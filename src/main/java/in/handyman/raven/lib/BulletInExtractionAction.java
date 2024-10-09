@@ -73,7 +73,7 @@ public class BulletInExtractionAction implements IActionExecution {
   private final String schemaName;
   private final String targetTableName;
   private final String columnList;
-  private final String BulletinExtractionUrl;
+  private final String bulletinExtractionUrl;
   private final String outputDir;
   private final String insertQuery;
 
@@ -104,7 +104,7 @@ public class BulletInExtractionAction implements IActionExecution {
     this.schemaName = DEFAULT_INFO_SCHEMA_NAME;
     this.targetTableName = BULLETIN_RESULT_TABLR;
     this.columnList = COLUMN_LIST;
-    this.BulletinExtractionUrl = this.bulletInExtraction.getEndpoint();
+    this.bulletinExtractionUrl = this.bulletInExtraction.getEndpoint();
     this.outputDir = Optional.ofNullable(this.bulletInExtraction.getOutputDir()).map(String::valueOf).orElse(null);
     insertQuery = INSERT_INTO + " " + schemaName + "." + targetTableName + "(" + columnList + ") " + " " + VAL_STRING_LIST;
   }
@@ -119,7 +119,7 @@ public class BulletInExtractionAction implements IActionExecution {
       log.info(aMarker, "Bulletin extraction Action for {} has been started", bulletInExtraction.getName());
       final BulletinExtractionConsumerProcess bulletinExtractionConsumerProcess = new BulletinExtractionConsumerProcess(log, aMarker, action, outputDir, this);
 
-      final List<URL> urls = Optional.ofNullable(BulletinExtractionUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
+      final List<URL> urls = Optional.ofNullable(bulletinExtractionUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
         try {
           return new URL(urlItem);
         } catch (MalformedURLException e) {
@@ -138,7 +138,7 @@ public class BulletInExtractionAction implements IActionExecution {
 
       coproProcessor.startProducer(bulletInExtraction.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, bulletinExtractionConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, bulletinExtractionConsumerProcess, bulletinExtractionUrl);
       log.info(aMarker, " Bulletin extraction Action has been completed {}  ", bulletInExtraction.getName());
     } catch (Exception e) {
       action.getContext().put(bulletInExtraction.getName() + ".isSuccessful", "false");

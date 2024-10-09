@@ -64,7 +64,8 @@ public class AlchemyInfoAction implements IActionExecution {
             log.info(aMarker, "Alchemy Info Action for {} has been started", alchemyInfo.getName());
             final String insertQuery = "INSERT INTO alchemy_migration.alchemy_papers (tenant_id, group_id, paper_no, pipeline_origin_id, alchemy_origin_id, origin_file_path, width, height, created_on, root_pipeline_id, batch_id)" +
                     "VALUES(?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?)";
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.origin.upload.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String moduleVariable = "alchemy.origin.upload.url";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -81,7 +82,7 @@ public class AlchemyInfoAction implements IActionExecution {
                             new AlchemyInfoAction.AlchemyInfoInputTable(), urls, action);
             coproProcessor.startProducer(alchemyInfo.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1,  Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyInfoAction.AlchemyInfoConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, 1,  Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyInfoAction.AlchemyInfoConsumerProcess(log, aMarker, action), moduleVariable);
             log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyInfo.getName());
         } catch (Exception t) {
             action.getContext().put(alchemyInfo.getName() + ".isSuccessful", "false");

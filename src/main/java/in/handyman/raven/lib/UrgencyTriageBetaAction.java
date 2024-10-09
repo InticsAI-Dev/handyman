@@ -70,7 +70,8 @@ public class UrgencyTriageBetaAction implements IActionExecution {
                     "root_pipeline_id, model_version, batch_id, checkbox_result, hw_result, binary_result, checkbox_bbox, hw_bbox, binary_bbox, " +
                     "checkbox_score, hw_score, binary_score, model_name)" +
                     "VALUES (now(), ?, now(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            final List<URL> urls = Optional.ofNullable(urgencyTriageBeta.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String urgencyTriageBetaEndPoint = urgencyTriageBeta.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(urgencyTriageBetaEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -88,7 +89,7 @@ public class UrgencyTriageBetaAction implements IActionExecution {
 
             coproProcessor.startProducer(urgencyTriageBeta.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess, urgencyTriageBetaEndPoint);
             log.info(aMarker, "Urgency Triage has been completed {}  ", urgencyTriageBeta.getName());
         } catch (Exception t) {
             action.getContext().put(urgencyTriageBeta.getName() + ".isSuccessful", "false");

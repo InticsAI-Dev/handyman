@@ -73,7 +73,8 @@ public class UrgencyTriageModelAction implements IActionExecution {
             log.info(aMarker, "Urgency Triage Action for {} has been started", urgencyTriageModel.getName());
             final String insertQuery = "INSERT INTO "+urgencyTriageModel.getOutputTable()+ " (" + INSERT_COLUMN_HEADERS + ")" +
                     "values(" + INSERT_PLACEHOLDERS + ")";
-            final List<URL> urls = Optional.ofNullable(urgencyTriageModel.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String urgencyTriageModelEndPoint = urgencyTriageModel.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(urgencyTriageModelEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -93,11 +94,11 @@ public class UrgencyTriageModelAction implements IActionExecution {
             Thread.sleep(1000);
             if (Objects.equals(action.getContext().get(UT_LEGACY_API_CALL_CONFIGS), LEGACY_TRUE)){
                 UrgencyTriageConsumerProcess urgencyTriageConsumerProcess = new UrgencyTriageConsumerProcess(log, aMarker, action);
-                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess, urgencyTriageModelEndPoint);
 
             }else{
                 UrgencyTriageConsumerProcessRadon urgencyTriageConsumerProcessRadon = new UrgencyTriageConsumerProcessRadon(log, aMarker, action);
-                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcessRadon);
+                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcessRadon, urgencyTriageModelEndPoint);
 
 
             }

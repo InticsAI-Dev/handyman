@@ -66,7 +66,8 @@ public class ProductResponseAction implements IActionExecution {
             final String insertQuery = "INSERT INTO " + productResponse.getResultTable() +
                     "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,feature,triggered_url, batch_id) " +
                     " VALUES(?,?,?,?,?,?,?,?,?,?,?, ?)";
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.product.response.url"))
+            String moduleVariable = "alchemy.product.response.url";
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(moduleVariable))
                     .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                         try {
                             return new URL(s1);
@@ -85,7 +86,7 @@ public class ProductResponseAction implements IActionExecution {
                             new ProductResponseAction.ProductResponseInputTable(), urls, action);
             coproProcessor.startProducer(productResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action), moduleVariable);
             log.info(aMarker, "Product Response has been completed {}  ", productResponse.getName());
         } catch (Exception t) {
             log.error(aMarker, "Error at Product Response execute method {}", ExceptionUtil.toString(t));

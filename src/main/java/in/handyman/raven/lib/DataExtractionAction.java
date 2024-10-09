@@ -70,7 +70,8 @@ public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.th
 
             String outputTableName = dataExtraction.getResultTable();
             final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) " + INSERT_INTO_VALUES;
-            final List<URL> urls = Optional.ofNullable(dataExtraction.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            String dataExtractionEndPoint = dataExtraction.getEndPoint();
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(dataExtractionEndPoint)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -89,7 +90,7 @@ public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.th
 
             coproProcessor.startProducer(dataExtraction.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, dataExtractionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, dataExtractionConsumerProcess, dataExtractionEndPoint);
             log.info(aMarker, " Data Extraction Action has been completed {}  ", dataExtraction.getName());
         } catch (Exception e) {
             action.getContext().put(dataExtraction.getName() + ".isSuccessful", "false");
