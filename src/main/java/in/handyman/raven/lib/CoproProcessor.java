@@ -150,28 +150,46 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                         try {
                             final I take = queue.take();
                             if (tPredicate.test(take)) {
-                                final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
                                 final List<O> results = new ArrayList<>();
                                 try {
-                                    Optional<UrlProcessingInfo> optionalUrlProcessingInfo = getUrlByModuleWithMinQueueCount(moduleVariable);
-                                    if (optionalUrlProcessingInfo.isPresent()) {
-                                        UrlProcessingInfo urlProcessingInfo = optionalUrlProcessingInfo.get();
-                                        String processingInfoUrl = urlProcessingInfo.getUrl();
-                                        Integer queueCount = urlProcessingInfo.getQueueCount();
-                                        String variable = urlProcessingInfo.getVariable();
-                                        String module = urlProcessingInfo.getModule();
-                                        logger.info("Found url for variable {}, in module {}, in url processing info with min queue count {}", variable, module, queueCount);
-                                        URL url = new URL(processingInfoUrl);
-
-                                        logger.info("Process started, incrementing queue count");
-                                        updateQueueCount(String.valueOf(url), moduleVariable, 1);
-                                        final List<O> list = callable.process(url, take);
-
-                                        logger.info("Process completed, decrementing queue count");
-                                        updateQueueCount(String.valueOf(url), moduleVariable, -1);
-                                        results.addAll(list);
+                                    boolean urlAllocationActivator = Boolean.parseBoolean(actionExecutionAudit.getContext().get("url.allocation.activator"));
+                                    if (urlAllocationActivator){
+                                        Optional<UrlProcessingInfo> optionalUrlProcessingInfo = getUrlByModuleWithMinQueueCountAndIncrement(moduleVariable);
+                                        if (optionalUrlProcessingInfo.isPresent()) {
+                                            logger.info("URL found and incremented queue count");
+                                            UrlProcessingInfo urlProcessingInfo = optionalUrlProcessingInfo.get();
+                                            String processingInfoUrl = urlProcessingInfo.getUrl();
+                                            Integer queueCount = urlProcessingInfo.getQueueCount();
+                                            String variable = urlProcessingInfo.getVariable();
+                                            String module = urlProcessingInfo.getModule();
+                                            Integer id = urlProcessingInfo.getId();
+                                            try {
+                                                logger.info("Found url for variable {}, in module {}, in url processing info with min queue count {}", variable, module, queueCount);
+                                                URL url = new URL(processingInfoUrl);
+                                                final List<O> list = callable.process(url, take);
+                                                results.addAll(list);
+                                            }
+                                            catch (Exception e) {
+                                                logger.error("Error processing URL with ID {}, variable {}, module {}: {}", id, variable, module, e.getMessage(), e);
+                                            }
+                                            finally {
+                                                logger.info("Decrementing queue count for ID: {}", id);
+                                                decrementQueueCountById(id);
+                                            }
+                                        }
+                                        else {
+                                            final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
+                                            logger.info("No url found for variable {}, executing default index method", moduleVariable);
+                                            int nodesSize = nodes.size();
+                                            logger.info("Nodes size {} and index value {}", nodesSize, index);
+                                            if (nodesSize != index) {
+                                                final List<O> list = callable.process(nodes.get(index), take);
+                                                results.addAll(list);
+                                            }
+                                        }
                                     }
                                     else {
+                                        final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
                                         logger.info("No url found for variable {}, executing default index method", moduleVariable);
                                         int nodesSize = nodes.size();
                                         logger.info("Nodes size {} and index value {}", nodesSize, index);
@@ -275,37 +293,53 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     @Data
     public static class UrlProcessingInfo{
+        private Integer id;
         private String url;
-        private int queueCount;
+        private Integer queueCount;
         private String module;
         private String variable;
     }
 
-    public Optional<UrlProcessingInfo> getUrlByModuleWithMinQueueCount(String moduleVariable) {
+    public Optional<UrlProcessingInfo> getUrlByModuleWithMinQueueCountAndIncrement(String moduleVariable) {
         try {
-            return jdbi.withHandle(handle ->
-                    handle.createQuery("SELECT url, queue_count, module, variable FROM config.url_processing_info WHERE variable = :moduleVariable ORDER BY queue_count ASC LIMIT 1")
-                            .bind("moduleVariable", moduleVariable)
-                            .mapToBean(UrlProcessingInfo.class)
-                            .findOne()
-            );
+            return jdbi.inTransaction(handle -> {
+                Optional<UrlProcessingInfo> result = handle.createQuery(
+                                "SELECT id, url, queue_count, module, variable " +
+                                        "FROM config.url_processing_info " +
+                                        "WHERE variable = :moduleVariable " +
+                                        "ORDER BY queue_count ASC, random() " +
+                                        "LIMIT 1 FOR UPDATE")
+                        .bind("moduleVariable", moduleVariable)
+                        .mapToBean(UrlProcessingInfo.class)
+                        .findOne();
+
+                result.ifPresent(urlInfo -> handle.createUpdate(
+                                "UPDATE config.url_processing_info " +
+                                        "SET queue_count = queue_count + 1, updated_on = now() " +
+                                        "WHERE id = :id")
+                        .bind("id", urlInfo.getId())
+                        .execute());
+
+                return result;
+            });
         } catch (RuntimeException e) {
-            logger.error("Error getting URL by queue count: {}", e.getMessage());
+            logger.error("Error in transactional operation: {}", e.getMessage());
             return Optional.empty();
         }
     }
 
-    public void updateQueueCount(String url, String moduleVariable, int adjustment) {
+    public void decrementQueueCountById(int id) {
         try {
             jdbi.useHandle(handle ->
-                    handle.createUpdate("UPDATE config.url_processing_info SET queue_count = queue_count + :adjustment, updated_on = now() WHERE url = :url AND variable = :moduleVariable")
-                            .bind("url", url)
-                            .bind("moduleVariable", moduleVariable)
-                            .bind("adjustment", adjustment)
+                    handle.createUpdate(
+                                    "UPDATE config.url_processing_info " +
+                                            "SET queue_count = queue_count - 1, updated_on = now() " +
+                                            "WHERE id = :id")
+                            .bind("id", id)
                             .execute()
             );
         } catch (RuntimeException e) {
-            logger.error("Error updating queue count: {}", e.getMessage());
+            logger.error("Error decrementing queue count: {}", e.getMessage());
         }
     }
 
