@@ -20,4 +20,5 @@ public class QrExtractionData {
     private String process;
     private String inputFilePath;
     private String outputDir;
+    private String batchId;
 }

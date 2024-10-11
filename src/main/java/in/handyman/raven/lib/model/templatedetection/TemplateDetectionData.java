@@ -27,4 +27,5 @@ public class TemplateDetectionData {
     private String modelRegistry;
     private String qnCategory;
     private Long modelRegistryId;
+    private String batchId;
 }

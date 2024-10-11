@@ -75,12 +75,14 @@ public class EocJsonGeneratorAction implements IActionExecution {
                 log.info(aMarker, "The Successful Response for {} --> {}", name, responseBody);
                 if (!responseBody.contains("errorCode")) {
                     EocResponse eocResponse = EocResponse.builder()
-                            .documentId(documentId)
-                            .eocId(eocId)
-                            .originId(originId)
-                            .groupId(Integer.valueOf(groupId))
-                            .batchId(batchId)
-                            .eocResponse(responseBody).rootPipelineId(action.getRootPipelineId()).build();
+                                .documentId(documentId)
+                                .eocId(eocId)
+                                .originId(originId)
+                                .groupId(Integer.valueOf(groupId))
+                                .batchId(batchId)
+                                .eocResponse(responseBody)
+                                .rootPipelineId(action.getRootPipelineId())
+                            .build();
 
                     jdbi.useTransaction(handle -> {
                         handle.createUpdate("INSERT INTO outbound.eoc_response_details (document_id, eoc_id, origin_id, group_id, eoc_response, root_pipeline_id, batch_id) " +

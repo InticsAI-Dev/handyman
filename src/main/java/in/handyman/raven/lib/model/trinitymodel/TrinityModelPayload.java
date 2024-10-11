@@ -1,10 +1,12 @@
 package in.handyman.raven.lib.model.trinitymodel;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.security.SecureRandom;
 import java.util.List;
 
 @AllArgsConstructor
@@ -25,5 +27,8 @@ public class TrinityModelPayload {
     private Long tenantId;
     private String modelRegistry;
     private String qnCategory;
+    @JsonProperty("template_version")
+    private String templateVersion;
+    private String batchId;
     private Long modelRegistryId;
 }

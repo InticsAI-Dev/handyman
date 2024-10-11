@@ -20,4 +20,5 @@ public class ComparisonDataItem {
     private Long actionId;
     private String process;
     private Long rootPipelineId;
+    private String batchId;
 }

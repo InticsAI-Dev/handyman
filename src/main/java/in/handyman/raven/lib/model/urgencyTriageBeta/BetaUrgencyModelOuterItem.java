@@ -20,4 +20,5 @@ public class BetaUrgencyModelOuterItem {
     private Integer groupId;
     private Integer tenantId;
     private Integer rootPipelineId;
+    private String batchId;
 }

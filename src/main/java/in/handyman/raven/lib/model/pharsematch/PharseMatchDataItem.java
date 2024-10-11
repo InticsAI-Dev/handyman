@@ -16,4 +16,5 @@ public class PharseMatchDataItem {
         private String groupId;
         private Integer paperNo;
         private String truthEntity;
+        private String batchId;
 }

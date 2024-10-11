@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.lang.ref.PhantomReference;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -19,6 +22,7 @@ public class DataExtractionData {
     private Integer groupId;
     private Long tenantId;
     private String templateName;
+    private String batchId;
 
     }
 
