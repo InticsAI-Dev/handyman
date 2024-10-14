@@ -22,5 +22,6 @@ public class UrgencyTriageModelDataItem {
     private Long processId;
     private Integer groupId;
     private Long tenantId;
+    private String batchId;
 }
 

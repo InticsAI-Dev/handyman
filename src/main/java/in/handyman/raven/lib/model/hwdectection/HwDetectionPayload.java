@@ -20,4 +20,5 @@ public class HwDetectionPayload {
     private String inputFilePath;
     private String outputDir;
     private Long actionId;
+    private String batchId;
 }

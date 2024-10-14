@@ -60,20 +60,22 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
         final String filePath = entity.getInputFilePath();
         final Long rootPipelineId = entity.getRootPipelineId();
         final Long actionId = action.getActionId();
+        final String batchId = entity.getBatchId();
         final ObjectMapper objectMapper = new ObjectMapper();
         //payload
-        final NoiseModelData NoiseModelData = new NoiseModelData();
-        NoiseModelData.setRootPipelineId(rootPipelineId);
-        NoiseModelData.setProcess(NOISE_DETECTION);
-        NoiseModelData.setInputFilePath(filePath);
-        NoiseModelData.setActionId(actionId);
-        NoiseModelData.setProcessId(action.getProcessId());
-        NoiseModelData.setOriginId(entity.getOriginId());
-        NoiseModelData.setPaperNo(entity.getPaperNo());
-        NoiseModelData.setGroupId(entity.getGroupId());
-        NoiseModelData.setOutputDir(entity.getOutputDir());
-        NoiseModelData.setTenantId(entity.getTenantId());
-        final String jsonInputRequest = objectMapper.writeValueAsString(NoiseModelData);
+        final NoiseModelData noiseModelData = new NoiseModelData();
+        noiseModelData.setRootPipelineId(rootPipelineId);
+        noiseModelData.setProcess(NOISE_DETECTION);
+        noiseModelData.setInputFilePath(filePath);
+        noiseModelData.setActionId(actionId);
+        noiseModelData.setProcessId(action.getProcessId());
+        noiseModelData.setOriginId(entity.getOriginId());
+        noiseModelData.setPaperNo(entity.getPaperNo());
+        noiseModelData.setGroupId(entity.getGroupId());
+        noiseModelData.setOutputDir(entity.getOutputDir());
+        noiseModelData.setTenantId(entity.getTenantId());
+        noiseModelData.setBatchId(batchId);
+        final String jsonInputRequest = objectMapper.writeValueAsString(noiseModelData);
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName(NOISE_MODEL_START);
@@ -185,6 +187,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                 String originId1 = rootNode.path("originId").asText();
                 String paperNo1 = rootNode.path("paperNo").asText();
                 int groupId1 = rootNode.path("groupId").asInt();
+                String batchId = rootNode.path("batchId").asText();
 
 
                 String hwClass = rootNode
@@ -224,7 +227,7 @@ public class NoiseModelConsumerProcess implements CoproProcessor.ConsumerProcess
                         .message("noise detection completed")
                         .modelName(modelName)
                         .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
+                        .batchId(batchId)
                         .build());
             }
 

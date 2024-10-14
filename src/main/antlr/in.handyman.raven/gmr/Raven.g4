@@ -169,6 +169,7 @@ action:
     |radonKvp
     |llmJsonParser
     |radonKvpBbox
+    |dockerInspect
     );
 
 
@@ -1283,6 +1284,20 @@ radonKvpBbox:
     'using'  '{'
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
+
+
+dockerInspect:
+    'dockerInspect' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'api-url' apiUrl=STRING
+    'consumer-api-count' consumerApiCount=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
+
 
 //rules
 

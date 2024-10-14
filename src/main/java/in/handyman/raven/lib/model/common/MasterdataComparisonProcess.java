@@ -61,11 +61,12 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
         String inputSentence = result.getActualValue();
+        String batchId = result.getBatchId();
         List<String> sentences = Collections.singletonList(result.getExtractedValue());
         ObjectMapper objectMapper = new ObjectMapper();
 
 //payload
-            ComparisonPayload comparisonPayload = new ComparisonPayload();
+        ComparisonPayload comparisonPayload = new ComparisonPayload();
         comparisonPayload.setRootPipelineId(rootpipelineId);
         comparisonPayload.setActionId(actionId);
         comparisonPayload.setProcessId(action.getProcessId());
@@ -75,6 +76,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         comparisonPayload.setSentences(sentences);
         comparisonPayload.setTenantId(result.getTenantId());
         comparisonPayload.setGroupId(result.getGroupId());
+        comparisonPayload.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
         TritonRequest requestBody = new TritonRequest();
@@ -249,7 +251,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .modelName(modelName)
                         .tenantId(tenantId)
                         .modelVersion(modelVersion)
-                        .batchId(result.getBatchId())
+                        .batchId(item.getBatchId())
                         .build());
             }
 

@@ -118,6 +118,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         Long actionId = action.getActionId();
         Long rootpipelineId = result.getRootPipelineId();
         String inputSentence = result.getActualValue();
+        String batchId = result.getBatchId();
 
 
         ComparisonPayload comparisonPayload = new ComparisonPayload();
@@ -130,6 +131,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         comparisonPayload.setSentences(sentence);
         comparisonPayload.setGroupId(result.getGroupId());
         comparisonPayload.setTenantId(result.getTenantId());
+        comparisonPayload.setBatchId(batchId);
         return comparisonPayload;
     }
 
@@ -245,7 +247,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                                 message("data insertion is completed").
                                 modelName(modelName).
                                 modelVersion(modelVersion).
-                                batchId(result.getBatchId()).
+                                batchId(item.getBatchId()).
                                 build());
             }
         } catch (Exception exception) {

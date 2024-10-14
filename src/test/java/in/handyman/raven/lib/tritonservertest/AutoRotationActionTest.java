@@ -48,7 +48,8 @@ class AutoRotationActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/output/")
                 .condition(true)
-                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
+                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no," +
+                        "a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
                         "\t\t            FROM info.paper_itemizer a\n" +
                         "\t\t             where origin_id ='INT-1'")
                 .build();

@@ -88,6 +88,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 final Long group_id = entity.getGroupId();
                 final String fileId = entity.getFileId();
                 final Long actionId = action.getActionId();
+                final String batchId = entity.getBatchId();
                 final String outputFileName = entity.getOutputFileName();
                 log.info(aMarker, "file path string {}", filePathString);
                 File file = new File(String.valueOf(filePathString));
@@ -106,6 +107,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 fileMergerPayload.setProcessId(entity.getProcessId());
                 fileMergerPayload.setGroupId(group_id);
                 fileMergerPayload.setOriginId(entity.getOriginId());
+                fileMergerPayload.setBatchId(batchId);
                 fileMergerPayload.setTenantId(tenantId);
 
                 ObjectMapper objectMapper = new ObjectMapper();
@@ -264,7 +266,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
-                    .batchId(entity.getBatchId())
+                    .batchId(fileMergerDataItem1.getBatchId())
                     .build());
         } catch (JsonMappingException e) {
 
