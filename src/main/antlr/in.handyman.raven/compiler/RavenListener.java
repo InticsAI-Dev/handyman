@@ -1240,6 +1240,26 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitMultipartDownload(RavenParser.MultipartDownloadContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartDelete}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartDelete(RavenParser.MultipartDeleteContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartDelete}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartDelete(RavenParser.MultipartDeleteContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartFolderDelete}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartFolderDelete(RavenParser.MultipartFolderDeleteContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartFolderDelete}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartFolderDelete(RavenParser.MultipartFolderDeleteContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#systemkeyTable}.
 	 * @param ctx the parse tree
 	 */
@@ -1329,6 +1349,96 @@ public interface RavenListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitP2pNameValidation(RavenParser.P2pNameValidationContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#urgencyTriageBeta}.
+	 * @param ctx the parse tree
+	 */
+	void enterUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#urgencyTriageBeta}.
+	 * @param ctx the parse tree
+	 */
+	void exitUrgencyTriageBeta(RavenParser.UrgencyTriageBetaContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#dbBackupEase}.
+	 * @param ctx the parse tree
+	 */
+	void enterDbBackupEase(RavenParser.DbBackupEaseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#dbBackupEase}.
+	 * @param ctx the parse tree
+	 */
+	void exitDbBackupEase(RavenParser.DbBackupEaseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#dbDataDart}.
+	 * @param ctx the parse tree
+	 */
+	void enterDbDataDart(RavenParser.DbDataDartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#dbDataDart}.
+	 * @param ctx the parse tree
+	 */
+	void exitDbDataDart(RavenParser.DbDataDartContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#createExactZip}.
+	 * @param ctx the parse tree
+	 */
+	void enterCreateExactZip(RavenParser.CreateExactZipContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#createExactZip}.
+	 * @param ctx the parse tree
+	 */
+	void exitCreateExactZip(RavenParser.CreateExactZipContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#validationLlm}.
+	 * @param ctx the parse tree
+	 */
+	void enterValidationLlm(RavenParser.ValidationLlmContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#validationLlm}.
+	 * @param ctx the parse tree
+	 */
+	void exitValidationLlm(RavenParser.ValidationLlmContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#neonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void enterNeonKvp(RavenParser.NeonKvpContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#neonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void exitNeonKvp(RavenParser.NeonKvpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#radonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void enterRadonKvp(RavenParser.RadonKvpContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#radonKvp}.
+	 * @param ctx the parse tree
+	 */
+	void exitRadonKvp(RavenParser.RadonKvpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#llmJsonParser}.
+	 * @param ctx the parse tree
+	 */
+	void enterLlmJsonParser(RavenParser.LlmJsonParserContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#llmJsonParser}.
+	 * @param ctx the parse tree
+	 */
+	void exitLlmJsonParser(RavenParser.LlmJsonParserContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#radonKvpBbox}.
+	 * @param ctx the parse tree
+	 */
+	void enterRadonKvpBbox(RavenParser.RadonKvpBboxContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#radonKvpBbox}.
+	 * @param ctx the parse tree
+	 */
+	void exitRadonKvpBbox(RavenParser.RadonKvpBboxContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree

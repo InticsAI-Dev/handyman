@@ -1,5 +1,8 @@
 package in.handyman.raven.lib;
 
+import jakarta.json.JsonObject;
+import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 
 import java.nio.charset.StandardCharsets;
@@ -14,6 +17,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.*;
 import java.security.spec.MGF1ParameterSpec;
+import java.net.URLEncoder;
+
 
 public class CipherStreamUtil {
     private final Logger log;
@@ -85,4 +90,37 @@ public class CipherStreamUtil {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePrivate(keySpec);
     }
+
+
+    public static String encryptionApi(String jsonInput, String publicKey, String apiUrl) throws Exception {
+        // Step 1: Create OkHttpClient
+         MediaType JSON = MediaType.get("application/json; charset=utf-8");
+
+        OkHttpClient client = new OkHttpClient();
+        String encodedPublicKey = URLEncoder.encode(publicKey, "UTF-8").replace("+", "%20");
+        String encodedPlaintext = URLEncoder.encode(jsonInput.toString(), "UTF-8").replace("+", "%20");
+
+        // Construct the URL
+        String url = String.format("%s?public_key=%s&plaintext=%s", apiUrl, encodedPublicKey, encodedPlaintext);
+
+        // Step 2: Create the RequestBody from the JSON input
+        RequestBody body = RequestBody.create("", JSON);
+        // Step 3: Build the Request
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body) // Specify this as a POST request
+                .build();
+
+        // Step 4: Send the request and get the response
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful() && response.body() != null) {
+                // Return the response body in base64 format
+                return response.body().string();
+            } else {
+                throw new RuntimeException("Failed to call encryption API: " + response.code());
+            }
+        }
+    }
+
+
 }
