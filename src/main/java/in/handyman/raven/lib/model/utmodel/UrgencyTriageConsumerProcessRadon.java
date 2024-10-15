@@ -73,7 +73,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName(RADON_START);
+        requestBody.setName(entity.getInputsName());
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
