@@ -6,20 +6,41 @@ import org.json.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+
 
 @Slf4j
 public class CipherStreamUtilTest {
 
+
+
+
     @Test
-    public void tritonTest() throws Exception {
+    public void encryptionTest() throws Exception {
         ActionExecutionAudit audit = new ActionExecutionAudit();
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("name", "John Doe");
-        String publicKey = "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxXA5Y0WmQL4hA+8oCl308ASFZGBh6moDv0b6q8RIzoqvyMGRWGPE4A5XgfRznwfMGnfGJCAdil0NFAR8bLd2mVQr6xhp1HXX4/a8t+hrMF2qCpjAe2RqeIcCwpe9tzk+ZTsIN9NaInXx9wyt46YsgC4fD0Z9+Bu7DIQONL5+zmqfaUeoBfZPn5avosqWIOwGx9uEYvuufd9r8KhyH0O/d++SzO/2XeO3MDW8pcbjiGHMRE7xna7gLHZyj8eooRpVsXZbP/anhafZYPCvfzpU8vbui01zdusmKolfEDF5ATX7cdH2naS+1E6DOcsrjxW/Ld8vDEsJuJWLaP7KlBcFiQIDAQAB-----END PUBLIC KEY-----";
-        String apiUrl = "http://0.0.0.0:10001/copro-utils/aegis-cryptor/encrypt";
-        String cipherStreamUtil = CipherStreamUtil.encryptionApi("jsonObject", publicKey,apiUrl);
+
+        String publicKey = "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqoRdEwW3O51eTaupz8fks4PGhp1fmRHmsjijUarx0hlzRjSZm77IBbh93vlWhWnXV/CobpO/dIq0rrrDJ/CAncDCB7aQivMlplHy5+2hlZuENyNjevOXOrTxDlpnfXmumWCA6veqmcyQsASZmNMM+NVt91SirgEQt3EeTycegFN+nWl/2yQGEoqIg+2/WJ7dK+xr7rif7zRbbcBYnl+XdUrqR/4z46Q/prjiREbJCqYkrqsr/T530aS7ROEvQeK1gLbLqiIyxLLCcGMyA9nnk3RA8ADmkKm6Trx23t+6MgMct5Kde8IpoAgX8A4Iu9vQS+oB33BADEaKKtH9YVILTwIDAQAB-----END PUBLIC KEY-----";
+        String apiUrl = "http://0.0.0.0:10001/copro-utils/data-security/encrypt";
+
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("publicKey", "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqoRdEwW3O51eTaupz8fks4PGhp1fmRHmsjijUarx0hlzRjSZm77IBbh93vlWhWnXV/CobpO/dIq0rrrDJ/CAncDCB7aQivMlplHy5+2hlZuENyNjevOXOrTxDlpnfXmumWCA6veqmcyQsASZmNMM+NVt91SirgEQt3EeTycegFN+nWl/2yQGEoqIg+2/WJ7dK+xr7rif7zRbbcBYnl+XdUrqR/4z46Q/prjiREbJCqYkrqsr/T530aS7ROEvQeK1gLbLqiIyxLLCcGMyA9nnk3RA8ADmkKm6Trx23t+6MgMct5Kde8IpoAgX8A4Iu9vQS+oB33BADEaKKtH9YVILTwIDAQAB-----END PUBLIC KEY-----"),
+                Map.entry("apiUrl", "http://0.0.0.0:10001/copro-utils/data-security/encrypt"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("actionId", "1"),
+                Map.entry("write.batch.size", "1"),
+                Map.entry("encryption.activator","True")));
+
+
+        String cipherStreamUtil = CipherStreamUtil.encryptionApi(jsonObject, apiUrl, actionExecutionAudit);
         System.out.println(cipherStreamUtil);
     }
 
 }
+
