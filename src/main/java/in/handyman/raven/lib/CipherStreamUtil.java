@@ -99,11 +99,12 @@ public class CipherStreamUtil {
 
 
 
-    public static String encryptionApi(Object jsonInput, String apiUrl, ActionExecutionAudit action) throws Exception {
+    public static String encryptionApi(Object jsonInput, ActionExecutionAudit action) throws Exception {
         // Step 1: Create OkHttpClient
 
         String encryption_activator = action.getContext().get( "encryption.activator");
         MediaType JSON = MediaType.get("application/json; charset=utf-8");
+        String apiUrl = action.getContext().get("apiUrl");
 
         OkHttpClient client = new OkHttpClient();
 
