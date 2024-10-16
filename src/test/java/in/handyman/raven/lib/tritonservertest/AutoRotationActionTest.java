@@ -16,7 +16,6 @@ class AutoRotationActionTest {
 
         AutoRotation action = AutoRotation.builder()
                 .name("auto rotation testing after copro optimization")
-                .processId("138980")
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/home/christopher.paulraj@zucisystems.com/Pictures/output")
                 .condition(true)

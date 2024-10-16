@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
@@ -17,6 +18,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -57,7 +59,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     @Override
-    public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity) throws JsonProcessingException {
+    public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity) throws Exception {
         List<DataExtractionOutputTable> parentObj = new ArrayList<>();
 
         String inputFilePath = entity.getFilePath();
@@ -89,11 +91,15 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
 
+        String dataEncryption = CipherStreamUtil.encryptionApi(jsonInputRequest, action);
+
+
+
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName(TEXT_EXTRACTOR_START);
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
+        requestBody.setData(Collections.singletonList(dataEncryption));
 
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
