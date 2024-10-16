@@ -68,6 +68,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
         urgencyTriageModelPayload.setPrompt(entity.getPrompt());
+        urgencyTriageModelPayload.setBatchId(entity.getBatchId());
 
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
 
@@ -205,7 +206,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
-                    .batchId(entity.getBatchId())
+                    .batchId(modelResponse.getBatchId())
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .build());

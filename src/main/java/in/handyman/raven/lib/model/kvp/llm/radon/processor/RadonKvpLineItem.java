@@ -27,5 +27,6 @@ public class RadonKvpLineItem {
     private Long groupId;
     private Long actionId;
     private Long tenantId;
+    private String batchId;
     private String inputFilePath;
 }
