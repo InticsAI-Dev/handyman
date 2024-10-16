@@ -48,20 +48,23 @@ class AutoRotationActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .outputDir("/data/output/")
                 .condition(true)
-                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id, 1 as root_pipeline_id\n" +
-                        "\t\t            FROM info.paper_itemizer a\n" +
-                        "\t\t             where origin_id ='INT-1'")
+                .endPoint("http://192.168.10.248:8200/v2/models/auto-rotator-service/versions/1/infer")
+                .querySet("SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,\n" +
+                        "a.template_id,a.process_id, 1 as root_pipeline_id, batch_id \n" +
+                        "FROM info.paper_itemizer a where origin_id ='ORIGIN-599'")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://192.168.10.239:10181/copro/preprocess/auto-rotation");
+        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://192.168.10.248:8200/copro/preprocess/auto-rotation");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "1"),
                 Map.entry("gen_group_id.group_id", "1"),
-                Map.entry("triton.request.activator", "false"),
+                Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("auto.rotation.consumer.API.count", "1"),
-                Map.entry("write.batch.size", "1")));
+                Map.entry("write.batch.size", "1"),
+                Map.entry("apiUrl", "http://192.168.10.248:10011/copro-utils/data-security/encrypt"),
+                Map.entry("encryption.activator","true")));
 
         AutoRotationAction action1 = new AutoRotationAction(actionExecutionAudit, log, action);
         action1.execute();

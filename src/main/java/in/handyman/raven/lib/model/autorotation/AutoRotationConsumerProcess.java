@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AutoRotationAction;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.autorotation.copro.AutoRotationDataItemCopro;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
@@ -14,6 +15,7 @@ import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -54,7 +56,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
 
     @Override
-    public List<AutoRotationOutputTable> process(URL endpoint, AutoRotationInputTable entity) throws IOException {
+    public List<AutoRotationOutputTable> process(URL endpoint, AutoRotationInputTable entity) throws Exception {
 
         List<AutoRotationOutputTable> parentObj = new ArrayList<>();
         String entityFilePath = entity.getFilePath();
@@ -67,6 +69,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         String filePath = String.valueOf(entity.getFilePath());
         Long actionId = action.getActionId();
 
+        String publicKey = "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxXA5Y0WmQL4hA+8oCl308ASFZGBh6moDv0b6q8RIzoqvyMGRWGPE4A5XgfRznwfMGnfGJCAdil0NFAR8bLd2mVQr6xhp1HXX4/a8t+hrMF2qCpjAe2RqeIcCwpe9tzk+ZTsIN9NaInXx9wyt46YsgC4fD0Z9+Bu7DIQONL5+zmqfaUeoBfZPn5avosqWIOwGx9uEYvuufd9r8KhyH0O/d++SzO/2XeO3MDW8pcbjiGHMRE7xna7gLHZyj8eooRpVsXZbP/anhafZYPCvfzpU8vbui01zdusmKolfEDF5ATX7cdH2naS+1E6DOcsrjxW/Ld8vDEsJuJWLaP7KlBcFiQIDAQAB-----END PUBLIC KEY-----";
+        String apiUrl = "http://0.0.0.0:10001/copro-utils/data-security/encrypt";
 
 
         //payload
@@ -88,13 +92,20 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         requestBody.setName("AUTO ROTATOR START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
+
+        // encrypting data
+        String dataEncryption = CipherStreamUtil.encryptionApi(jsonInputRequest, action);
+        JSONObject jsonObject = new JSONObject(dataEncryption);
+//        String finalDataEncrypted = jsonObject.getString("cipherText");
+
+        requestBody.setData(Collections.singletonList(dataEncryption));
 
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
         String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
+
 
 
         log.info(aMarker, " Input variables id : {}", action.getActionId());
@@ -105,9 +116,9 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-
         if (Objects.equals("false", tritonRequestActivator)) {
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
+            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
+
             coproRequestBuilder(entity, request, parentObj);
         } else {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
