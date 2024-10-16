@@ -1,8 +1,13 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import okhttp3.*;
 import org.slf4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -14,12 +19,18 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.*;
 import java.security.spec.MGF1ParameterSpec;
+import java.net.URLEncoder;
+import java.util.Objects;
+
+
 
 public class CipherStreamUtil {
     private final Logger log;
+    public static ActionExecutionAudit action;
 
-    public CipherStreamUtil(Logger log) {
+    public CipherStreamUtil(Logger log, ActionExecutionAudit action) {
         this.log = log;
+        CipherStreamUtil.action = action;
     }
 
     public static PublicKey getPublicKey(String base64PublicKey) throws Exception {
@@ -85,4 +96,67 @@ public class CipherStreamUtil {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePrivate(keySpec);
     }
+
+
+
+    public static String encryptionApi(Object jsonInput, ActionExecutionAudit action) throws Exception {
+        // Step 1: Create OkHttpClient
+
+        String encryption_activator = action.getContext().get( "encryption.activator");
+        MediaType JSON = MediaType.get("application/json; charset=utf-8");
+        String apiUrl = action.getContext().get("apiUrl");
+
+        OkHttpClient client = new OkHttpClient();
+
+        String jsonString;
+        if (jsonInput instanceof String) {
+            jsonString = (String) jsonInput; // Directly use the string
+        } else if (jsonInput instanceof File) {
+            jsonString = convertFileToJson((File) jsonInput);
+        }else {
+            jsonString = convertObjectToJson(jsonInput); // Convert other objects to JSON
+        }
+
+        String encodedPlaintext = URLEncoder.encode(jsonString, "UTF-8");
+
+        // Construct the URL
+        String url = String.format("%s?plaintext=%s", apiUrl, encodedPlaintext);
+
+        // when encryption is True
+        if (Objects.equals("true", encryption_activator)) {
+            // Step 2: Create the RequestBody from the JSON input
+            RequestBody body = RequestBody.create("", JSON);
+            // Step 3: Build the Request
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(body) // Specify this as a POST request
+                    .build();
+
+            // Step 4: Send the request and get the response
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // Return the response body in base64 format
+                    return response.body().string();
+                } else {
+                    throw new RuntimeException("Failed to call encryption API: " + response.code());
+                }
+            }
+        }else {
+            return jsonInput.toString();
+        }
+
+
+    }
+
+    // Method to convert file content to JSON string
+    private static String convertFileToJson(File file) throws IOException {
+            // Read the content of the file
+            return new String(Files.readAllBytes(file.toPath()));
+    }
+
+    public static String convertObjectToJson(Object obj) throws Exception{
+        return obj.toString();
+    }
+
+
 }
