@@ -63,7 +63,7 @@ class AutoRotationActionTest {
                 Map.entry("actionId", "1"),
                 Map.entry("auto.rotation.consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1"),
-                Map.entry("apiUrl", "http://0.0.0.0:10001/copro-utils/data-security/encrypt"),
+                Map.entry("apiUrl", "http://192.168.10.248:10011/copro-utils/data-security/encrypt"),
                 Map.entry("encryption.activator","true")));
 
         AutoRotationAction action1 = new AutoRotationAction(actionExecutionAudit, log, action);
