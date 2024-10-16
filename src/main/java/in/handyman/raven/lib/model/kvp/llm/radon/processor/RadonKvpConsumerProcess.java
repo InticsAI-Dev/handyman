@@ -12,15 +12,12 @@ import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
-import jakarta.json.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -67,7 +64,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         radonKvpExtractionRequest.setActionId(actionId);
-        radonKvpExtractionRequest.setProcess(PROCESS_NAME);
+        radonKvpExtractionRequest.setProcess(entity.getApiServiceName());
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setPrompt(prompt);
@@ -75,13 +72,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
+        radonKvpExtractionRequest.setBatchId(entity.getBatchId());
 
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName(RADON_START);
+        requestBody.setName(entity.getApiServiceName());
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -250,7 +248,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .batchId(entity.getBatchId())
+                .batchId(modelResponse.getBatchId())
                 .modelRegistry(entity.getModelRegistry())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)

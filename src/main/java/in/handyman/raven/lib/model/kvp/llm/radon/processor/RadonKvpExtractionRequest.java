@@ -20,5 +20,6 @@ public class RadonKvpExtractionRequest {
     private String process;
     private String inputFilePath;
     private String prompt;
+    private String batchId;
 
 }
