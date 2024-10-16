@@ -102,5 +102,43 @@ class ZeroShotClassifierActionTest {
         zeroShotClassifierPaperFilterAction.execute();
     }
 
+    @Test
+    void encryptedTritonServer() throws Exception {
+        final ZeroShotClassifierPaperFilter build = ZeroShotClassifierPaperFilter.builder()
+                .condition(true)
+                .name("Test ZSC")
+                .processID("12345")
+                .readBatchSize("1")
+                .threadCount("1")
+                .writeBatchSize("1")
+                .endPoint("http://192.168.10.240:8400/v2/models/zsc-service/versions/1/infer")
+                .querySet("SELECT 'origin123' AS origin_id, " +
+                        "101 AS paper_no, " +
+                        "'Sample page content' AS page_content, " +
+                        "'group789' AS group_id, " +
+                        "11011 AS root_pipeline_id, " +
+                        "'process567' AS process_id, " +
+                        "'{\"key\": [\"value1\", \"value2\"]}'::jsonb AS truth_placeholder, " +
+                        "1 AS tenant_id, " +
+                        "'batch123' AS batch_id, " +
+                        "NOW() AS created_on;")
+                .resourceConn("intics_zio_db_conn")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder()
+                .build();
+        action.setRootPipelineId(11011L);
+        action.getContext().put("copro.paper-filtering-zero-shot-classifier.url", "http://192.168.10.240:8400/v2/models/zsc-service/versions/1/infer");
+        action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
+                Map.entry("okhttp.client.timeout", "20"),
+                Map.entry("triton.request.activator", "true"),
+                Map.entry("actionId", "1"),
+                Map.entry("encryption.pipeline.activator", "true"),
+                Map.entry("write.batch.size", "5")));
+
+        final ZeroShotClassifierPaperFilterAction zeroShotClassifierPaperFilterAction = new ZeroShotClassifierPaperFilterAction(action, log, build);
+        zeroShotClassifierPaperFilterAction.execute();
+    }
+
 }
 

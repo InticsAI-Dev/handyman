@@ -2,11 +2,11 @@ package in.handyman.raven.lib.model.zeroshotclassifier;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.TritonRequestProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
@@ -15,6 +15,7 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -25,27 +26,29 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     public static final String ZSC_START = "ZSC START";
     private final Logger log;
     private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
 
     private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
 
     public final ActionExecutionAudit action;
+
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(10, TimeUnit.MINUTES)
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
 
-    public ZeroShotConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) throws JsonMappingException, JsonProcessingException {
+
+    public ZeroShotConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
     }
 
     @Override
-    public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity) throws JsonProcessingException {
+    public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity) throws IOException {
         List<ZeroShotClassifierOutputTable> parentObj = new ArrayList<>();
 
         String originId = entity.getOriginId();
@@ -55,14 +58,11 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
-        ObjectMapper objectMapper = new ObjectMapper();
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
 
-
-        //payload
-
+        // payload
         ZeroShotClassifierData data = new ZeroShotClassifierData();
         data.setProcess(PROCESS_NAME);
         data.setProcessId(processId);
@@ -75,26 +75,27 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setPageContent(pageContent);
         data.setBatchId(entity.getBatchId());
         data.setKeysToFilter(keysToFilterObject);
-        String jsonInputRequest = objectMapper.writeValueAsString(data);
-
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName(ZSC_START);
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
-
+        requestBody.setData(Collections.singletonList(objectMapper.writeValueAsString(data)));
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
-
-        String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+        String jsonRequest;
+        try {
+            jsonRequest = TritonRequestProcessor.processTritonRequest(tritonInputRequest, action);
+        } catch (Exception e) {
+            throw new IOException("Error processing TritonRequest", e);
+        }
 
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-
         if (Objects.equals("false", tritonRequestActivator)) {
+            String jsonInputRequest = objectMapper.writeValueAsString(data);
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
             coproRequestBuilder(entity, parentObj, request, objectMapper);
@@ -114,7 +115,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
 
-
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
@@ -123,7 +123,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(zeroShotClassifierDataItem -> {
-
                             extractedOutputDataRequest(entity, parentObj, zeroShotClassifierDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion());
                         });
                     });
