@@ -13,6 +13,8 @@ import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.lib.CipherStreamUtil;
+import in.handyman.raven.util.HLogger;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -112,13 +114,47 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
     @NotNull
-    private ComparisonPayload getComparisonPayload(IntellimatchInputTable result) {
+    private ComparisonPayload getComparisonPayload(IntellimatchInputTable result) throws Exception {
+
+
+
         List<String> sentence = Collections.singletonList(result.getExtractedValue());
         final String process = "CONTROL_DATA";
         Long actionId = action.getActionId();
         Long rootpipelineId = result.getRootPipelineId();
         String inputSentence = result.getActualValue();
 
+        String encryptionActivator = action.getContext().get("encryption.activator");
+//        String decryptionActivator = action.getContext().get("decryptApiUrl");
+
+        String finalEncryptedInputSentence = "";
+        String finalEncryptedSentence = "";
+        if(Objects.equals("true",encryptionActivator) && (inputSentence!=null | sentence!=null )){
+            String encryptInputSentence = CipherStreamUtil.encryptionApi(inputSentence, action);
+            String encryptSentence = CipherStreamUtil.encryptionApi(sentence, action);
+            ObjectMapper obj = new ObjectMapper();
+            JsonNode jsonInputValue = obj.readTree(encryptInputSentence);
+
+            if(jsonInputValue.has("cipherText")){
+
+                finalEncryptedInputSentence = jsonInputValue.get("cipherText").asText();
+                inputSentence = finalEncryptedInputSentence;
+            }else
+            {
+                inputSentence = "";
+            }
+
+            if (jsonInputValue.has("cipherText")){
+                JsonNode jsonSentence = obj.readTree(encryptSentence);
+                finalEncryptedSentence = jsonSentence.get("cipherText").asText();
+
+            }else {
+                finalEncryptedSentence = "";
+            }
+
+        }else {
+            log.info("encryption is turned off");
+        }
 
         ComparisonPayload comparisonPayload = new ComparisonPayload();
         comparisonPayload.setRootPipelineId(rootpipelineId);

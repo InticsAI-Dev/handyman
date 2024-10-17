@@ -10,6 +10,7 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.qrextraction.copro.QrReaderCopro;
 import in.handyman.raven.lib.model.triton.*;
+import in.handyman.raven.lib.CipherStreamUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -70,6 +71,10 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
 
         ObjectMapper objectMapper = new ObjectMapper();
 
+
+
+
+
         //payload
         QrExtractionData qrExtractionData = new QrExtractionData();
         qrExtractionData.setRootPipelineId(rootPipelineId);
@@ -84,6 +89,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         qrExtractionData.setOutputDir(this.outputDir);
 
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
+
+
 
 
         TritonRequest requestBody = new TritonRequest();
@@ -251,40 +258,58 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         List<QrReader> qrLineItems = null;
         try {
             JsonNode rootNode = mapper.readTree(qrDataItem);
-            JsonNode decodeValueNode = rootNode.get("decode_value");
-            qrLineItems = mapper.convertValue(decodeValueNode, new TypeReference<>() {
+            String decodeValueNode = rootNode.get("decode_value").asText();
+//            JsonNode decryptDecodedValue = CipherStreamUtil.()
+            System.out.println("decodeValueNode" +decodeValueNode);
+
+            String decryptedDecodedValue = CipherStreamUtil.decryptionApi(decodeValueNode, action);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            qrLineItems = objectMapper.readValue(decryptedDecodedValue.replaceAll("\'","\""), new TypeReference<List<QrReader>>() {
             });
 
         } catch (JsonProcessingException e) {
             throw new HandymanException("Exception in processing the json response using the Json node ", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         AtomicInteger atomicInteger = new AtomicInteger();
         if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
-                JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
-                qrOutputEntities.add(QrOutputEntity.builder()
-                        .angle(qrReader.getAngle())
-                        .originId(qrReader.getOriginId())
-                        .paperNo(qrReader.getPaperNo())
-                        .groupId(qrReader.getGroupId())
-                        .fileId(fileId)
-                        .decodeType(qrReader.getDecodeType())
-                        .qrFormat(qrReader.getType())
-                        .rootPipelineId(qrReader.getRootPipelineId())
-                        .qrFormatId(atomicInteger.incrementAndGet())
-                        .extractedValue(qrReader.getValue())
-                        .confidenceScore(qrReader.getConfidenceScore())
-                        .createdOn(entity.getCreatedOn())
-                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                        .b_box(qrBoundingBox.toString())
-                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                        .stage(QR_EXTRACTION)
-                        .message("qr extraction completed")
-                        .tenantId(qrReader.getTenantId())
-                        .modelName(modelName)
-                        .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
-                        .build());
+                try {
+                    String encryptValue = CipherStreamUtil.encryptionApi(qrReader.getValue(), action);
+                    JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
+                    String encrypBoundingBox = CipherStreamUtil.encryptionApi(qrBoundingBox, action);
+
+                    qrOutputEntities.add(QrOutputEntity.builder()
+                            .angle(qrReader.getAngle())
+                            .originId(qrReader.getOriginId())
+                            .paperNo(qrReader.getPaperNo())
+                            .groupId(qrReader.getGroupId())
+                            .fileId(fileId)
+                            .decodeType(qrReader.getDecodeType())
+                            .qrFormat(qrReader.getType())
+                            .rootPipelineId(qrReader.getRootPipelineId())
+                            .qrFormatId(atomicInteger.incrementAndGet())
+                            .extractedValue(encryptValue)
+                            .confidenceScore(qrReader.getConfidenceScore())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                            .b_box(encrypBoundingBox)
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .stage(QR_EXTRACTION)
+                            .message("qr extraction completed")
+                            .tenantId(qrReader.getTenantId())
+                            .modelName(modelName)
+                            .modelVersion(modelVersion)
+                            .batchId(entity.getBatchId())
+                            .build());
+
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
             });
         } else {
             qrOutputEntities.add(QrOutputEntity.builder()
@@ -316,30 +341,43 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         AtomicInteger atomicInteger = new AtomicInteger();
         if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
-                JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
-                qrOutputEntities.add(QrOutputEntity.builder()
-                        .angle(qrReader.getAngle())
-                        .originId(originId)
-                        .paperNo(paperNo)
-                        .groupId(groupId)
-                        .fileId(fileId)
-                        .decodeType(qrReader.getDecodeType())
-                        .qrFormat(qrReader.getType())
-                        .rootPipelineId(rootPipelineId)
-                        .qrFormatId(atomicInteger.incrementAndGet())
-                        .extractedValue(qrReader.getValue())
-                        .confidenceScore(qrReader.getConfidenceScore())
-                        .createdOn(entity.getCreatedOn())
-                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                        .b_box(qrBoundingBox.toString())
-                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                        .stage(QR_EXTRACTION)
-                        .message("qr extraction completed")
-                        .tenantId(tenantId)
-                        .modelName(modelName)
-                        .modelVersion(modelVersion)
-                        .batchId(entity.getBatchId())
-                        .build());
+
+                try {
+
+                    String encryptValue = CipherStreamUtil.encryptionApi(qrReader.getValue(), action);
+                    JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
+                    String encrypBoundingBox = CipherStreamUtil.encryptionApi(qrBoundingBox, action);
+
+                    qrOutputEntities.add(QrOutputEntity.builder()
+                            .angle(qrReader.getAngle())
+                            .originId(originId)
+                            .paperNo(paperNo)
+                            .groupId(groupId)
+                            .fileId(fileId)
+                            .decodeType(qrReader.getDecodeType())
+                            .qrFormat(qrReader.getType())
+                            .rootPipelineId(rootPipelineId)
+                            .qrFormatId(atomicInteger.incrementAndGet())
+                            .extractedValue(encryptValue)
+                            .confidenceScore(qrReader.getConfidenceScore())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                            .b_box(encrypBoundingBox)
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .stage(QR_EXTRACTION)
+                            .message("qr extraction completed")
+                            .tenantId(tenantId)
+                            .modelName(modelName)
+                            .modelVersion(modelVersion)
+                            .batchId(entity.getBatchId())
+                            .build());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+
+
+
             });
         } else {
             qrOutputEntities.add(QrOutputEntity.builder()

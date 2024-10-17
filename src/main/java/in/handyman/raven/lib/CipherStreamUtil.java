@@ -1,7 +1,10 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -155,8 +158,64 @@ public class CipherStreamUtil {
     }
 
     public static String convertObjectToJson(Object obj) throws Exception{
-        return obj.toString();
+
+        JSONObject jsonObject = new JSONObject(obj);
+            String cipherText = jsonObject.toString();
+            return cipherText;
+
     }
 
 
-}
+
+    public static String decryptionApi(Object jsonInput, ActionExecutionAudit action) throws Exception {
+        // Step 1: Create OkHttpClient
+
+        String decryption_activator = action.getContext().get("decryption.activator");
+        MediaType JSON = MediaType.get("application/json; charset=utf-8");
+        String decryptApiUrl = action.getContext().get("decryptApiUrl");
+
+        String jsonString;
+        OkHttpClient client = new OkHttpClient();
+        if (jsonInput instanceof String) {
+            jsonString = (String) jsonInput; // Directly use the string
+        } else {
+            jsonString = convertObjectToJson(jsonInput); // Convert other objects to JSON
+        }
+
+
+
+        String encodedPlaintext = URLEncoder.encode(jsonString, "UTF-8").replace("/", "%2F");
+
+        // Construct the URL
+        String url = String.format("%s?cipher_text=%s", decryptApiUrl, encodedPlaintext);
+
+        // when encryption is True
+        if (Objects.equals("true", decryption_activator)) {
+            // Step 2: Create the RequestBody from the JSON input
+            RequestBody body = RequestBody.create("", JSON);
+            // Step 3: Build the Request
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(body) // Specify this as a POST request
+                    .build();
+
+            // Step 4: Send the request and get the response
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // Return the response body in base64 format
+                    // Parse the response and extract 'cipherText'
+                    String responseBody = response.body().string();
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode jsonResponse = mapper.readTree(responseBody);
+
+                    return jsonResponse.get("plainText").asText();
+                } else {
+                    throw new RuntimeException("Failed to call encryption API: " + response.code());
+                }
+            }
+        } else {
+            return jsonInput.toString();
+        }
+
+    }
+    }
