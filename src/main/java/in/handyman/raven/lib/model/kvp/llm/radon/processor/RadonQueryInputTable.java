@@ -26,6 +26,7 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private String modelRegistry;
     private String batchId;
     private String category;
+    private String inputsName;
 
 
     @Override

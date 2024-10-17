@@ -76,12 +76,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
 
-
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("RADON START");
+        requestBody.setName(entity.getInputsName()+" START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
         requestBody.setData(Collections.singletonList(jsonInputRequest));
