@@ -25,7 +25,14 @@ public class CipherStreamUtilTest {
         ActionExecutionAudit audit = new ActionExecutionAudit();
 
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("name", "John Doe");
+            jsonObject.put("name", "John Doe");
+
+        String rootPipelineId = "1";
+        Integer groupId = 1;
+        Integer tenantId = 1;
+        String pipelineName = "encryption";
+        String originId = "origin_1";
+
 
 
 
@@ -39,7 +46,8 @@ public class CipherStreamUtilTest {
                 Map.entry("encryption.activator","true")));
 
 
-        String cipherStreamUtil = CipherStreamUtil.encryptionApi(jsonObject, actionExecutionAudit);
+        String cipherStreamUtil = CipherStreamUtil.encryptionApi( jsonObject,  actionExecutionAudit,
+                 rootPipelineId,  groupId,  tenantId,  pipelineName,  originId);
         System.out.println(cipherStreamUtil);
     }
 
