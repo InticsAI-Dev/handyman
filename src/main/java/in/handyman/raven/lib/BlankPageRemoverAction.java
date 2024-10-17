@@ -68,8 +68,8 @@ public class BlankPageRemoverAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             final String outputDir = Optional.ofNullable(blankPageRemover.getOutputDir()).map(String::valueOf).orElse(null);
             //5. build insert prepare statement with output table columns
-            final String insertQuery = "INSERT INTO info.blank_page_removal_" + blankPageRemover.getProcessId() + "(origin_id,group_id,processed_file_path, status,stage,message,created_on) " +
-                    " VALUES(?,?,?, ?,?,?,now())";
+            final String insertQuery = "INSERT INTO info.blank_page_removal_" + blankPageRemover.getProcessId() + "(origin_id,group_id,processed_file_path, status,stage,message,created_on,request,response,endpoint) " +
+                    " VALUES(?,?,?, ?,?,?,now(),?,?,?)";
             log.info(aMarker, "Blank Page Removal Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
@@ -149,6 +149,9 @@ public class BlankPageRemoverAction implements IActionExecution {
                                     .status("COMPLETED")
                                     .stage("BLANK_PAGE_REMOVAL")
                                     .message("Blankpage removal finished")
+                                    .response(responseBody)
+                                    .request(String.valueOf(request))
+                                    .endpoint(String.valueOf(endpoint))
                                     .build());
                 }else{
                     parentObj.add(
@@ -159,6 +162,9 @@ public class BlankPageRemoverAction implements IActionExecution {
                                     .status("FAILED")
                                     .stage("BLANK_PAGE_REMOVAL")
                                     .message(response.message())
+                                    .response(response.message())
+                                    .request(String.valueOf(request))
+                                    .endpoint(String.valueOf(endpoint))
                                     .build());
                     log.info(aMarker, "The Exception occurred in blank page remover ");
                 }
@@ -171,6 +177,9 @@ public class BlankPageRemoverAction implements IActionExecution {
                                 .status("FAILED")
                                 .stage("BLANK_PAGE_REMOVAL")
                                 .message(ExceptionUtil.toString(e))
+                                .response("Error in getting response")
+                                .request(String.valueOf(request))
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "The Exception occurred in blank page remover ", e);
                 //TODO  insert query for error queue
@@ -219,10 +228,13 @@ public class BlankPageRemoverAction implements IActionExecution {
         private String status;
         private String stage;
         private String message;
+        private String request;
+        private String response;
+        private String endpoint;
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.originId, this.groupId, this.processedFilePath,this.status,this.stage,this.message).collect(Collectors.toList());
+            return Stream.of(this.originId, this.groupId, this.processedFilePath,this.status,this.stage,this.message, this.request, this.response, this.endpoint).collect(Collectors.toList());
         }
     }
 

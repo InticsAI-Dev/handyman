@@ -37,8 +37,8 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
     public static final String INSERT_COLUMN_NAMES = "origin_id, paper_no, process_id, group_id, tenant_id, input_file_path, " +
             "consolidated_confidence_score, consolidated_class, noise_models_result, hw_noise_detection_output, " +
             "check_noise_detection_output, checkbox_mark_detection_output, speckle_noise_detection_output," +
-            " created_on, root_pipeline_id,status,stage,message,model_name,model_version,batch_id, last_updated_on";
-    public static final String PREPARED_STATEMENT_PLACEHOLDERS = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?";
+            " created_on, root_pipeline_id,status,stage,message,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
+    public static final String PREPARED_STATEMENT_PLACEHOLDERS = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?";
     public static final String READ_BATCH_SIZE = "read.batch.size";
     public static final String NOISE_CONSUMER_API_COUNT = "noise.consumer.API.count";
     public static final String WRITE_BATCH_SIZE = "write.batch.size";

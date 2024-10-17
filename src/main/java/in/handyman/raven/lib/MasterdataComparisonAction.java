@@ -77,8 +77,8 @@ public class MasterdataComparisonAction implements IActionExecution {
       // build insert prepare statement with output table columns
 
       final String insertQuery = "INSERT INTO " + masterdataComparison.getMatchResult() +
-              "(origin_id, paper_no, eoc_identifier, created_on, actual_value, extracted_value, intelli_match, status, stage, message, root_pipeline_id, model_name, model_version, tenant_id, batch_id) " +
-              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
+              "(origin_id, paper_no, eoc_identifier, created_on, actual_value, extracted_value, intelli_match, status, stage, message, root_pipeline_id, model_name, model_version, tenant_id, batch_id,request,response,endpoint) " +
+              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?)";
       log.info(aMarker, "master data comparison Insert query {}", insertQuery);
 
       //3. initiate copro processor and copro urls

@@ -67,6 +67,9 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
                                 .status("COMPLETED")
                                 .stage("BLANK_PAGE_REMOVAL")
                                 .message("Blankpage removal finished")
+                                .response(responseBody)
+                                .request(String.valueOf(request))
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
             } else {
                 parentObj.add(
@@ -77,6 +80,9 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
                                 .status("FAILED")
                                 .stage("BLANK_PAGE_REMOVAL")
                                 .message(response.message())
+                                .response(response.message())
+                                .request(String.valueOf(request))
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.info(aMarker, "The Exception occurred in blank page remover ");
             }
@@ -89,6 +95,9 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
                             .status("FAILED")
                             .stage("BLANK_PAGE_REMOVAL")
                             .message(ExceptionUtil.toString(e))
+                            .response("Error in getting response")
+                            .request(String.valueOf(request))
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             log.info(aMarker, "The Exception occurred in blank page remover ", e);
             //TODO  insert query for error queue

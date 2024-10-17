@@ -37,6 +37,9 @@ public class DataExtractionOutputTable implements CoproProcessor.Entity {
     private String modelVersion;
     private String batchId;
     private Timestamp lastUpdatedOn;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
     @Override
@@ -44,6 +47,6 @@ public class DataExtractionOutputTable implements CoproProcessor.Entity {
         return Stream.of(this.originId, this.groupId, this.tenantId,this.templateId
                 ,this.processId,this.filePath, this.extractedText,this.paperNo,this.fileName
                 ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
-                ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn).collect(Collectors.toList());
+                ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

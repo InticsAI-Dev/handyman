@@ -172,6 +172,7 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
+    |radonKvpBbox
     );
 
 
@@ -1306,6 +1307,19 @@ dbDataDart:
 createExactZip:
        'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
         '{' '}' ('on-condition' condition=expression)*;
+
+radonKvpBbox:
+    'radonKvpBbox' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' coproUrl=STRING
+    'consumer-api-count' consumerApiCount=STRING
+    'triton-request-activator' tritonActivator=STRING
+    'output-dir' outputDir=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 //rules
 

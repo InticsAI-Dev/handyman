@@ -34,11 +34,13 @@ public class FileMergerpdfOutputEntity implements CoproProcessor.Entity {
     private Float height;
     private Integer dpi;
     private String batchId;
-
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.tenantId,this.groupId,this.processedFilePath,this.createdOn,this.lastUpdatedOn,this.rootPipelineId,this.status, this.stage, this.message,this.modelName,this.modelVersion,this.fileName,this.processId, this.width, this.height, this.dpi,this.batchId).collect(Collectors.toList());
+        return Stream.of(this.originId, this.tenantId,this.groupId,this.processedFilePath,this.createdOn,this.lastUpdatedOn,this.rootPipelineId,this.status, this.stage, this.message,this.modelName,this.modelVersion,this.fileName,this.processId, this.width, this.height, this.dpi,this.batchId, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 
 }

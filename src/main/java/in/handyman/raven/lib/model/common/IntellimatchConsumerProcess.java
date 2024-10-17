@@ -79,13 +79,12 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                 log.info(aMarker, "coproProcessor consumer process running with copro legacy request builder with url {}", endpoint );
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-                coproRequestBuider(result, request, parentObj);
+                coproRequestBuider(result, request, parentObj, jsonInputRequest, endpoint);
             } else {
                 log.info(aMarker, "coproProcessor consumer process running with copro triton request builder with url  {}", endpoint);
-
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-                tritonRequestBuilder(result, request, parentObj);
+                tritonRequestBuilder(result, request, parentObj, jsonRequest, endpoint);
             }
 
             log.info(aMarker, "coproProcessor consumer process with empty actual value entity {}", result);
@@ -133,14 +132,14 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         return comparisonPayload;
     }
 
-    private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) throws
+    private void coproRequestBuider(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj, String jsonInputRequest, URL endpoint) throws
             IOException {
 
         try (Response response = httpclient.newCall(request).execute()) {
             log.info("intelliMatch data comparison response body {}", response.body());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedCoproOutputResponse(result, parentObj, responseBody, "", "");
+                extractedCoproOutputResponse(result, parentObj, responseBody, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 parentObj.add(IntellimatchOutputTable.builder().
                         fileName(result.getFileName()).
@@ -156,6 +155,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         stage(CONTROL_DATA_PROCESS_NAME).
                         message(response.message()).
                         batchId(result.getBatchId()).
+                        request(jsonInputRequest).
+                        response(response.message()).
+                        endpoint(endpoint.toString()).
                         build()
                 );
 
@@ -165,7 +167,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
 
-    private void tritonRequestBuilder(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj) {
+    private void tritonRequestBuilder(IntellimatchInputTable result, Request request, List<IntellimatchOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String originId = result.getOriginId();
         try (Response response = httpclient.newCall(request).execute()) {
             log.info("intelliMatch data comparison response body {}", response.body());
@@ -175,7 +177,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                 ComparisonResponse comparisonResponse = objectMappers.readValue(responseBody, ComparisonResponse.class);
                 if (comparisonResponse.getOutputs() != null && !comparisonResponse.getOutputs().isEmpty()) {
                     comparisonResponse.getOutputs().forEach(o -> o.getData().forEach(comparisonDataItem -> {
-                        extractOuputDataRequest(result, parentObj, comparisonDataItem, comparisonResponse.getModelName(), comparisonResponse.getModelVersion());
+                        extractOuputDataRequest(result, parentObj, comparisonDataItem, comparisonResponse.getModelName(), comparisonResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                     }));
                 }
             } else {
@@ -193,6 +195,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         stage(CONTROL_DATA_PROCESS_NAME).
                         message(response.message()).
                         batchId(result.getBatchId()).
+                        request(jsonRequest).
+                        response(response.message()).
+                        endpoint(endpoint.toString()).
                         build()
                 );
                 log.error(aMarker, "The Exception occurred in intelliMatch data comparison by {} ", response);
@@ -213,6 +218,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
                     batchId(result.getBatchId()).
+                    request(jsonRequest).
+                    response("Error in response").
+                    endpoint(endpoint.toString()).
                     build()
             );
 
@@ -222,7 +230,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
 
-    private static void extractOuputDataRequest(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion) {
+    private static void extractOuputDataRequest(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion, String request, String response, String endpoint) {
 
         try {
             List<ComparisonDataItem> comparisonDataItem1 = mapper.readValue(comparisonDataItem, new TypeReference<>() {
@@ -246,6 +254,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                                 modelName(modelName).
                                 modelVersion(modelVersion).
                                 batchId(result.getBatchId()).
+                                request(request).
+                                response(response).
+                                endpoint(endpoint).
                                 build());
             }
         } catch (Exception exception) {
@@ -263,13 +274,16 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
                     batchId(result.getBatchId()).
+                    request(request).
+                    response(response).
+                    endpoint(endpoint).
                     build()
             );
         }
     }
 
     private static void extractedCoproOutputResponse(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String
-            modelVersion) {
+            modelVersion, String request, String response, String endpoint) {
 
         try {
 
@@ -295,6 +309,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                         modelName(modelName).
                         modelVersion(modelVersion).
                         batchId(result.getBatchId()).
+                        request(request).
+                        response(response).
+                        endpoint(endpoint).
                         build());
             }
 
@@ -314,6 +331,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                     stage(CONTROL_DATA_PROCESS_NAME).
                     message("data insertion is failed").
                     batchId(result.getBatchId()).
+                    request(request).
+                    response(response).
+                    endpoint(endpoint).
                     build()
             );
         }

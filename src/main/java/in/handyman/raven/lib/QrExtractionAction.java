@@ -30,8 +30,8 @@ public class QrExtractionAction implements IActionExecution {
   public static final String QR_CONSUMER_API_COUNT = "qr.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_COLUMNS = "origin_id, group_id, paper_no, created_on,   qr_format, qr_format_id, extracted_value,   file_id, b_box, angle, confidence_score, status, stage, message,decode_type, model_name, model_version,root_pipeline_id,tenant_id, batch_id, last_updated_on";
-  public static final String INSERT_INTO_VALUES = "?,?,?,?,  ?,?,? ,?,?,  ?,?,?, ?,?  ,?, ?,? , ?,?,? , ?";
+  public static final String INSERT_INTO_COLUMNS = "origin_id, group_id, paper_no, created_on,   qr_format, qr_format_id, extracted_value,   file_id, b_box, angle, confidence_score, status, stage, message,decode_type, model_name, model_version,root_pipeline_id,tenant_id, batch_id, last_updated_on,request,response,endpoint";
+  public static final String INSERT_INTO_VALUES = "?,?,?,?,  ?,?,? ,?,?,  ?,?,?, ?,?  ,?, ?,? , ?,?,? , ?,?,?,?";
   public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
   public static final String TARGET_DIRECTORY_PATH = "target_directory_path";
   public static final String QR_EXTRACTION = "qr-extraction";

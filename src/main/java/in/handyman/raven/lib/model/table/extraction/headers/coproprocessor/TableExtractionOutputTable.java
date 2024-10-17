@@ -41,11 +41,14 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private Long sorContainerId;
     private Long channelId;
     private String batchId;
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId,  this.processedFilePath,
                 this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId, this.tableResponse, this.bboxes, this.croppedImage,this.columnHeaders,this.truthEntityName,this.modelName, this.truthEntityId,
-                this.sorContainerId, this.channelId,this.batchId).collect(Collectors.toList());
+                this.sorContainerId, this.channelId,this.batchId, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

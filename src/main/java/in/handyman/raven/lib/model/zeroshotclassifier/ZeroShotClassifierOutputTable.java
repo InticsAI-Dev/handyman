@@ -37,12 +37,15 @@ import java.util.stream.Stream;
         private String batchId;
         private Timestamp createdOn;
         private Timestamp lastUpdatedOn;
+        private String request;
+        private String response;
+        private String endpoint;
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.originId, this.groupId, this.paperNo, this.entity, this.confidenceScore,
                     this.truthEntity, this.status, this.stage, this.message,this.createdOn, this.rootPipelineId,
-                    this.modelName, this.modelVersion,this.tenantId,this.batchId, this.lastUpdatedOn).collect(Collectors.toList());
+                    this.modelName, this.modelVersion,this.tenantId,this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint).collect(Collectors.toList());
         }
     }
 

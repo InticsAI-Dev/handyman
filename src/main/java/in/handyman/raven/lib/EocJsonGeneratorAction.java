@@ -71,6 +71,7 @@ public class EocJsonGeneratorAction implements IActionExecution {
         }
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            log.info(aMarker, "The response body", responseBody);
             if (response.isSuccessful()) {
                 log.info(aMarker, "The Successful Response for {} --> {}", name, responseBody);
                 if (!responseBody.contains("errorCode")) {

@@ -32,12 +32,16 @@ import java.util.stream.Stream;
         private String modelVersion;
         private Long tenantId;
         private String batchId;
+        private String request;
+        private String response;
+        private String endpoint;
 
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.originId, this.paperNo, this.eocIdentifier, this.createdOn, this.actualValue, this.extractedValue,
-                    this.intelliMatch, this.status, this.stage, this.message, this.rootPipelineId,  this.modelName, this.modelVersion, this.tenantId,this.batchId
+                    this.intelliMatch, this.status, this.stage, this.message, this.rootPipelineId,  this.modelName, this.modelVersion, this.tenantId,this.batchId,
+                    this.request,this.response, this.endpoint
             ).collect(Collectors.toList());
         }
     }

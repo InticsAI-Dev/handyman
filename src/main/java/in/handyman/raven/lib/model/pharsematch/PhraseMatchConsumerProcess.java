@@ -89,24 +89,24 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request);
+            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
         }
 
         return parentObj;
     }
 
-    private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper) {
+    private void coproRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, ObjectMapper objectMapper, String jsonInputRequest, URL endpoint) {
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long tenantId = entity.getTenantId();
         Long rootPipelineId = entity.getRootPipelineId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
-                extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "");
+                extractedCoproOutputResponse(entity, parentObj, responseBody, objectMapper, "", "", jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
                 parentObj.add(
@@ -123,6 +123,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.info(aMarker, "The Exception occurred in Phrase match API call");
             }
@@ -142,6 +145,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .batchId(entity.getBatchId())
                             .createdOn(entity.getCreatedOn())
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                            .request(jsonInputRequest)
+                            .response("Error in response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -151,7 +157,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
 
-    private void tritonRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request) {
+    private void tritonRequestBuilder(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, Request request, String jsonRequest, URL endpoint) {
         Long tenantId = entity.getTenantId();
         final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
         Long rootPipelineId = entity.getRootPipelineId();
@@ -162,7 +168,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 ObjectMapper objectMapper = new ObjectMapper();
                 PharseMatchResponse modelResponse = objectMapper.readValue(responseBody, PharseMatchResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(phraseMatchDataItem -> extractedOutputDataRequest(entity, parentObj, phraseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion())));
+                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(phraseMatchDataItem -> extractedOutputDataRequest(entity, parentObj, phraseMatchDataItem, objectMapper, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString())));
                 } else {
                     parentObj.add(
                             PhraseMatchOutputTable
@@ -178,6 +184,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .batchId(entity.getBatchId())
                                     .createdOn(entity.getCreatedOn())
                                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                    .request(jsonRequest)
+                                    .response(response.message())
+                                    .endpoint(String.valueOf(endpoint))
                                     .build());
                     log.info(aMarker, "The Exception occurred in Phrase match API call");
                 }
@@ -195,6 +204,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
+                            .request(jsonRequest)
+                            .response("Error In Response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
@@ -203,7 +215,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private static void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+    private static void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
@@ -232,6 +244,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build());
             }
 
@@ -240,7 +255,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion) {
+    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
@@ -269,6 +284,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                .response(response)
+                                .request(request)
+                                .endpoint(endpoint)
                                 .build());
             }
 

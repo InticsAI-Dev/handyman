@@ -44,8 +44,8 @@ public class AutoRotationAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO";
   public static final String DEFAULT_INFO_SCHEMA_NAME = "info";
   public static final String AUTO_ROTATION = "auto_rotation";
-  public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,batch_id, last_updated_on";
-  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?)";
+  public static final String COLUMN_LIST = "origin_id,group_id,tenant_id,template_id,process_id, processed_file_path,paper_no, status,stage,message,created_on,root_pipeline_id,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
+  public static final String VAL_STRING_LIST = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String COPRO_AUTOROTATION_URL1 = "copro.autorotation.url";
   private final int threadSleepTime;

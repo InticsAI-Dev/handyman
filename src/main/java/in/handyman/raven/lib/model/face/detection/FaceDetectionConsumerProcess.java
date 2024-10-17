@@ -88,18 +88,18 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuilder(entity, request, parentObj);
+            coproResponseBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
         return parentObj;
     }
 
 
-    private void coproResponseBuilder(FaceDetectionQueryInputTable entity, Request request, List<FaceDetectionQueryOutputTable> parentObj) {
+    private void coproResponseBuilder(FaceDetectionQueryInputTable entity, Request request, List<FaceDetectionQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -112,7 +112,7 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                 FaceDetectionExtractionResponse modelResponse = mapper.readValue(responseBody, FaceDetectionExtractionResponse.class);
                 if (modelResponse.getPayload() != null && !modelResponse.getPayload().isEmpty()) {
                     modelResponse.getPayload().forEach(o -> o.getPredictions().forEach(faceDataItem -> {
-                        extractedCoproOutputResponse(entity, faceDataItem, parentObj);
+                        extractedCoproOutputResponse(entity, faceDataItem, parentObj, jsonInputRequest, responseBody, String.valueOf(endpoint));
                     }));
 
                 }
@@ -134,6 +134,9 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .createdUserId(tenantId)
                         .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
                         .lastUpdatedUserId(tenantId)
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(endpoint.toString())
                         .build());
                 log.info(aMarker, "Error in getting response from copro server {}", response.message());
             }
@@ -164,7 +167,7 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
 
     }
 
-    private void extractedCoproOutputResponse(FaceDetectionQueryInputTable entity, FaceDetectionExtractionPrediction predictions, List<FaceDetectionQueryOutputTable> parentObj) {
+    private void extractedCoproOutputResponse(FaceDetectionQueryInputTable entity, FaceDetectionExtractionPrediction predictions, List<FaceDetectionQueryOutputTable> parentObj, String request, String response, String endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -198,13 +201,15 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                 .stage(PROCESS_NAME)
                 .message("face detection macro completed")
                 .batchId(entity.getBatchId())
-
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
                 .build()
         );
     }
 
 
-    private void tritonRequestBuilder(FaceDetectionQueryInputTable entity, Request request, List<FaceDetectionQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(FaceDetectionQueryInputTable entity, Request request, List<FaceDetectionQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -220,7 +225,7 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(faceDetectionDataItem -> {
                         try {
-                            extractTritonOutputDataResponse(entity, faceDetectionDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                            extractTritonOutputDataResponse(entity, faceDetectionDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -246,6 +251,9 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .createdUserId(tenantId)
                         .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
                         .lastUpdatedUserId(tenantId)
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(endpoint.toString())
                         .build());
                 log.info(aMarker, "Error in getting response from triton response {}", response.message());
             }
@@ -277,7 +285,7 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
 
     }
 
-    private void extractTritonOutputDataResponse(FaceDetectionQueryInputTable entity, String faceDetectionDataItem, List<FaceDetectionQueryOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
+    private void extractTritonOutputDataResponse(FaceDetectionQueryInputTable entity, String faceDetectionDataItem, List<FaceDetectionQueryOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -314,6 +322,9 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                         .modelName(modelName)
                         .modelVersion(modelVersion)
                         .batchId(entity.getBatchId())
+                        .request(request)
+                        .response(response)
+                        .endpoint(endpoint)
                         .build());
             });
         } catch (JsonProcessingException e) {
@@ -336,6 +347,9 @@ public class FaceDetectionConsumerProcess implements CoproProcessor.ConsumerProc
                     .createdUserId(tenantId)
                     .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
                     .lastUpdatedUserId(tenantId)
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response from triton server  {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);

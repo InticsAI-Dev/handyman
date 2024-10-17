@@ -108,11 +108,11 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-            coproRequestBuider(entity, request, objectMapper, outputObjectList);
+            coproRequestBuider(entity, request, objectMapper, outputObjectList, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-            tritonRequestBuilder(entity, request, objectMapper, outputObjectList);
+            tritonRequestBuilder(entity, request, objectMapper, outputObjectList, jsonRequest, endpoint);
         }
 
 
@@ -120,7 +120,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         return outputObjectList;
     }
 
-    private void coproRequestBuider(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) throws IOException {
+    private void coproRequestBuider(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList, String jsonRequest, URL endpoint) throws IOException {
         Long processId = entity.getProcessId();
         Timestamp createdOn = entity.getCreatedOn();
         String templateId = entity.getTemplateId();
@@ -132,7 +132,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
             if (response.isSuccessful()) {
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                extractedCoproOutputResponse(entity, responseBody, outputObjectList, "", ",", objectMapper);
+                extractedCoproOutputResponse(entity, responseBody, outputObjectList, "", ",", objectMapper, jsonRequest, responseBody, endpoint.toString());
 
             } else {
                 outputObjectList.add(
@@ -152,6 +152,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .processedFilePath(entity.getFilePath())
                                 .modelRegistryId(entity.getModelRegistryId())
                                 .batchId(entity.getBatchId())
+                                .request(jsonRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build()
                 );
             }
@@ -173,6 +176,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .processedFilePath(entity.getFilePath())
                             .modelRegistryId(entity.getModelRegistryId())
                             .batchId(entity.getBatchId())
+                            .request(jsonRequest)
+                            .response("Error in Response")
+                            .endpoint(String.valueOf(endpoint))
                             .build()
             );
             HandymanException handymanException = new HandymanException(e);
@@ -190,7 +196,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         });
         return customObjects;
     }
-    private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList) {
+    private void tritonRequestBuilder(TemplateDetectionInputTable entity, Request request, ObjectMapper objectMapper, List<TemplateDetectionOutputTable> outputObjectList, String jsonRequest, URL endpoint) {
         Long processId = entity.getProcessId();
         Timestamp createdOn = Timestamp.valueOf(LocalDateTime.now());
         String templateId = entity.getTemplateId();
@@ -205,7 +211,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                     TemplateDetectionResponse templateDetectionResponse = objectMapper.readValue(responseBody, TemplateDetectionResponse.class);
 
                 if (templateDetectionResponse.getOutputs() != null && !templateDetectionResponse.getOutputs().isEmpty()) {
-                    templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper)));
+                    templateDetectionResponse.getOutputs().forEach(output -> output.getData().forEach(templateDetectionData -> extractOutputDataRequest(entity, templateDetectionData, outputObjectList, templateDetectionResponse.getModelName(), templateDetectionResponse.getModelVersion(), objectMapper, jsonRequest, responseBody, String.valueOf(endpoint))));
                 } else {
                     outputObjectList.add(
                             TemplateDetectionOutputTable.builder()
@@ -224,6 +230,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                     .processedFilePath(entity.getFilePath())
                                     .modelRegistryId(entity.getModelRegistryId())
                                     .batchId(entity.getBatchId())
+                                    .request(jsonRequest)
+                                    .response(response.message())
+                                    .endpoint(String.valueOf(endpoint))
                                     .build()
                     );
                 }
@@ -245,6 +254,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .processedFilePath(entity.getFilePath())
                                 .modelRegistryId(entity.getModelRegistryId())
                                 .batchId(entity.getBatchId())
+                                .request(jsonRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build()
                 );
             }
@@ -266,6 +278,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .processedFilePath(entity.getFilePath())
                             .modelRegistryId(entity.getModelRegistryId())
                             .batchId(entity.getBatchId())
+                            .request(jsonRequest)
+                            .response("Error in Response")
+                            .endpoint(String.valueOf(endpoint))
                             .build()
             );
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
@@ -277,7 +292,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
-    private void extractOutputDataRequest(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
+    private void extractOutputDataRequest(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper, String request, String response, String endpoint) {
         Long processId = entity.getProcessId();
         Timestamp createdOn = entity.getCreatedOn();
         String templateId = entity.getTemplateId();
@@ -319,6 +334,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
                                 .batchId(entity.getBatchId())
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build()
                 );
             });
@@ -340,6 +358,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .processedFilePath(entity.getFilePath())
                             .modelRegistryId(entity.getModelRegistryId())
                             .batchId(entity.getBatchId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(String.valueOf(endpoint))
                             .build()
             );
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
@@ -354,7 +375,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
     }
 
-    private void extractedCoproOutputResponse(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper) {
+    private void extractedCoproOutputResponse(TemplateDetectionInputTable entity, String templateDetectionData, List<TemplateDetectionOutputTable> outputObjectList, String modelName, String modelVersion, ObjectMapper objectMapper, String request, String response, String endpoint) {
         Long processId = entity.getProcessId();
         Timestamp createdOn= entity.getCreatedOn();
         String templateId = entity.getTemplateId();
@@ -396,6 +417,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .processedFilePath(entity.getFilePath())
                                 .modelRegistryId(entity.getModelRegistryId())
                                 .batchId(entity.getBatchId())
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build()
                 );
             });
@@ -417,6 +441,9 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                             .processedFilePath(entity.getFilePath())
                             .modelRegistryId(entity.getModelRegistryId())
                             .batchId(entity.getBatchId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build()
             );
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));

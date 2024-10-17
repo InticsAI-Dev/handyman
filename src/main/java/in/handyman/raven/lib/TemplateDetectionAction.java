@@ -49,8 +49,8 @@ public class TemplateDetectionAction implements IActionExecution {
     public static final String CONSUMER_API_COUNT = "template.detection.consumer.API.count";
     public static final String INSERT_INTO = "INSERT INTO ";
     public static final String SCHEMA_NAME = "macro";
-    public static final String COLUMN_LIST = "process_id, origin_id, paper_no, group_id, processed_file_path, question, predictedattribution_value, score, bboxes, image_width, image_height, image_dpi, extracted_image_unit, tenant_id, template_id, status, stage, message, created_on, root_pipeline_id,model_name,model_version, model_registry_id,batch_id, last_updated_on";
-    public static final String VAL_STRING_LIST = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?)";
+    public static final String COLUMN_LIST = "process_id, origin_id, paper_no, group_id, processed_file_path, question, predictedattribution_value, score, bboxes, image_width, image_height, image_dpi, extracted_image_unit, tenant_id, template_id, status, stage, message, created_on, root_pipeline_id,model_name,model_version, model_registry_id,batch_id, last_updated_on,request,response,endpoint";
+    public static final String VAL_STRING_LIST = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?,?,?,?)";
     public static final String THREAD_SLEEP_TIME = "1000";
     public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     private final String DEFAULT_THREAD_SLEEP = "1000";

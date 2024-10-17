@@ -37,13 +37,17 @@ public class UrgencyTriageOutputTable implements CoproProcessor.Entity {
     private String batchId;
     private Timestamp createdOn;
     private Timestamp lastUpdatedOn;
+    private String request;
+    private String response;
+    private String endpoint;
+
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.createdOn, this.createdUserId,this.lastUpdatedOn, this.lastUpdatedUserId, this.processId, this.groupId, this.tenantId, this.confScore,
                 this.originId, this.paperNo, this.templateId, this.modelId, this.status, this.stage,
                 this.message, this.utResult, this.bbox, this.rootPipelineId, this.modelName, this.modelVersion,
-                this.batchId).collect(Collectors.toList());
+                this.batchId, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 
 }

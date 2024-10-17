@@ -42,6 +42,9 @@ public class UrgencyTriageBetaOutputTable implements CoproProcessor.Entity {
     private String handwrittenBBox;
     private String binaryBBox;
     private String modelName;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
     @Override
@@ -50,6 +53,6 @@ public class UrgencyTriageBetaOutputTable implements CoproProcessor.Entity {
                 this.originId, this.paperNo, this.templateId, this.modelId, this.status, this.stage, this.message,
                 this.rootPipelineId, this.modelVersion, this.batchId, this.checkboxPaperType, this.handwrittenPaperType,
                 this.binaryPaperType, this.checkboxBBox, this.handwrittenBBox, this.binaryBBox, this.checkboxScore,
-                this.handwrittenScore, this.binaryScore, this.modelName).collect(Collectors.toList());
+                this.handwrittenScore, this.binaryScore, this.modelName, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
 }

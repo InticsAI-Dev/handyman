@@ -39,8 +39,8 @@ public class UrgencyTriageModelAction implements IActionExecution {
     public static final String WRITE_BATCH_SIZE = "write.batch.size";
     public static final String UT_CONSUMER_API_COUNT = "ut.consumer.API.count";
     public static final String READ_BATCH_SIZE = "read.batch.size";
-    public static final String INSERT_COLUMN_HEADERS = "created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version,batch_id";
-    public static final String INSERT_PLACEHOLDERS = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?";
+    public static final String INSERT_COLUMN_HEADERS = "created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, paper_type, bboxes, root_pipeline_id, model_name,model_version,batch_id,request, response, endpoint";
+    public static final String INSERT_PLACEHOLDERS = "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?";
     public static final String UT_LEGACY_API_CALL_CONFIGS = "ut.legacy.api.call.configs";
     public static final String LEGACY_TRUE = "true";
     private final ActionExecutionAudit action;
