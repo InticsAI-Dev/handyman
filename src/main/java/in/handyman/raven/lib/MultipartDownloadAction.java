@@ -98,10 +98,11 @@ public class MultipartDownloadAction implements IActionExecution {
 
                 if (!urls.isEmpty()) {
                     int endpointSize = urls.size();
-
-                    log.info("Endpoints are not empty for multipart download with nodes count {}", endpointSize);
-                    final ExecutorService executorService = Executors.newFixedThreadPool(endpointSize);
-                    final CountDownLatch countDownLatch = new CountDownLatch(endpointSize);
+                    int batchSize = Integer.parseInt(action.getContext().get("batch.processing.split.count"));
+                    log.info("Endpoints are not empty for multipart download with nodes count {}", batchSize);
+                    final ExecutorService executorService = Executors.newFixedThreadPool(batchSize);
+                    int inputSize = downloadOctetStreamFileInputTables.size();
+                    final CountDownLatch countDownLatch = new CountDownLatch(inputSize * endpointSize);
                     log.info("Total consumers {}", countDownLatch.getCount());
 
                     urls.forEach(url -> executorService.submit(() -> downloadOctetStreamFileInputTables.forEach(multipartUploadInputTable -> {
