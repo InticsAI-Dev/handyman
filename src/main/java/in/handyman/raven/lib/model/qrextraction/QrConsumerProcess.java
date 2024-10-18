@@ -16,10 +16,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.io.IOException;
 import java.net.URL;
 import java.security.SecureRandom;
 import java.sql.Timestamp;
@@ -255,42 +257,6 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         try {
             JsonNode rootNode = mapper.readTree(qrDataItem);
             JsonNode decodeValueNode = rootNode.get("decode_value");
-            String databaseEncryption = action.getContext().get("database.decryption.activator");
-
-            //----------------------
-//            if (Objects.equals("true", databaseEncryption))
-//            {
-//
-//                JSONObject decryptData = new JSONObject();
-//                decryptData.put("pageContent",stringDataItem);
-//
-//
-//
-//                String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId().toString(), groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName);
-//                System.out.println(decryptionCall);
-//                ObjectMapper decryptionParsing = new ObjectMapper();
-//                JsonNode data = decryptionParsing.readTree(decryptionCall);
-//                JsonNode decryptedData = data.get("decryptedData");
-//                if(decryptedData.has("templateName")){
-//                    templateName = decryptedData.get("templateName").asText();
-//                }else {
-//                    log.info("No Key named template name");
-//                }
-//                if(decryptedData.has("pageContent")){
-//                    pageContent = decryptedData.get("pageContent").asText();
-//                }else {
-//                    log.info("No Key named pageContent");
-//                }
-//
-//            }else {
-//
-//                templateName = entity.getTemplateName();
-//                pageContent = contentString;
-//            }
-
-            // ------------------------
-
-
 
             qrLineItems = mapper.convertValue(decodeValueNode, new TypeReference<>() {
             });
@@ -299,8 +265,62 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
             throw new HandymanException("Exception in processing the json response using the Json node ", e);
         }
         AtomicInteger atomicInteger = new AtomicInteger();
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String pipelineName = "QR EXTRACTION";
+        String applicationName = "APP";
+
         if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
+                String finalDecodedValue = "";
+
+                if (Objects.equals("true", databaseEncryption)) {
+                    try {
+                        // Prepare the JSON object with value
+                        JSONObject value = new JSONObject();
+                        value.put("decode", qrReader.getValue());
+
+                        // Call the decryption API
+                        String decryptionCall = CipherStreamUtil.decryptionApi( value, action, entity.getRootPipelineId().toString(), groupId, Math.toIntExact(entity.getTenantId()),
+                                pipelineName, originId, applicationName
+                        );
+
+                        // Parse the response with ObjectMapper
+                        ObjectMapper decryptionMapping = new ObjectMapper();
+                        JsonNode decodeValue = decryptionMapping.readTree(decryptionCall);
+
+                        // Extract the final decoded value
+                        if (decodeValue != null && decodeValue.has("decryptedData")) {
+
+                            JsonNode decode = decodeValue.get("decryptedData");
+                            finalDecodedValue = decode.get("decode").asText();
+                            // Process the final decoded value as needed
+                        } else {
+                            // Handle the case where "decode" is missing
+                            throw new IllegalStateException("Decryption response is missing 'decode' field.");
+                        }
+
+                    } catch (JSONException e) {
+                        // Handle JSON object creation errors
+                        System.err.println("Error while creating the JSON object: " + e.getMessage());
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        // Handle JSON parsing or network errors
+                        System.err.println("Error while reading decryption response: " + e.getMessage());
+                        e.printStackTrace();
+                    } catch (IllegalStateException e) {
+                        // Handle missing 'decode' field or any other illegal state
+                        System.err.println("Error in decryption process: " + e.getMessage());
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        // General error handling for any other unexpected exceptions
+                        System.err.println("An unexpected error occurred: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }else {
+                    finalDecodedValue = qrReader.getValue();
+                }
+
+
                 JsonNode qrBoundingBox = mapper.valueToTree(qrReader.getBoundingBox());
                 qrOutputEntities.add(QrOutputEntity.builder()
                         .angle(qrReader.getAngle())
@@ -312,7 +332,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
                         .qrFormat(qrReader.getType())
                         .rootPipelineId(qrReader.getRootPipelineId())
                         .qrFormatId(atomicInteger.incrementAndGet())
-                        .extractedValue(qrReader.getValue())
+                        .extractedValue(finalDecodedValue)
                         .confidenceScore(qrReader.getConfidenceScore())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())

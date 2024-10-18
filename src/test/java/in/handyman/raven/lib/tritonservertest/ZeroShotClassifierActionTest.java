@@ -81,8 +81,16 @@ class ZeroShotClassifierActionTest {
                 .threadCount("1")
                 .writeBatchSize("1")
                 .endPoint("http://192.168.10.248:8400/v2/models/zsc-service/versions/1/infer")
-                .querySet("select origin_id, paper_no, page_content, group_id, root_pipeline_id, process_id, truth_placeholder, tenant_id, batch_id, created_on " +
-                        "from zsc_input_test")
+                .querySet("SELECT 'origin123' AS origin_id, \" +\n" +
+                        "                        \"101 AS paper_no, \" +\n" +
+                        "                        \"'Sample page content' AS page_content, \" +\n" +
+                        "                        \"'group789' AS group_id, \" +\n" +
+                        "                        \"11011 AS root_pipeline_id, \" +\n" +
+                        "                        \"'process567' AS process_id, \" +\n" +
+                        "                        \"'{\\\"key\\\": [\\\"value1\\\", \\\"value2\\\"]}'::jsonb AS truth_placeholder, \" +\n" +
+                        "                        \"1 AS tenant_id, \" +\n" +
+                        "                        \"'batch123' AS batch_id, \" +\n" +
+                        "                        \"NOW() AS created_on;")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 
@@ -112,16 +120,17 @@ class ZeroShotClassifierActionTest {
                 .threadCount("1")
                 .writeBatchSize("1")
                 .endPoint("http://192.168.10.240:8400/v2/models/zsc-service/versions/1/infer")
-                .querySet("SELECT 'origin123' AS origin_id, " +
-                        "101 AS paper_no, " +
-                        "'Sample page content' AS page_content, " +
-                        "'group789' AS group_id, " +
-                        "11011 AS root_pipeline_id, " +
-                        "'process567' AS process_id, " +
-                        "'{\"key\": [\"value1\", \"value2\"]}'::jsonb AS truth_placeholder, " +
-                        "1 AS tenant_id, " +
-                        "'batch123' AS batch_id, " +
-                        "NOW() AS created_on;")
+                .querySet("SELECT 'origin123' AS origin_id, \n" +
+                        "       101 AS paper_no, \n" +
+                        "       'Sample page content' AS page_content, \n" +
+                        "       'group789' AS group_id, \n" +
+                        "       11011 AS root_pipeline_id, \n" +
+                        "       'process567' AS process_id, \n" +
+                        "       '{\"key\": [\"value1\", \"value2\"]}'::jsonb AS truth_placeholder, \n" +
+                        "       1 AS tenant_id, \n" +
+                        "       'batch123' AS batch_id, \n" +
+                        "       'what is the patient name' as keyToFilter,\n" +
+                        "       NOW() AS created_on;")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 

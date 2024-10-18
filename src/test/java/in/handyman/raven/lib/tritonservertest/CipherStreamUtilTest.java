@@ -31,7 +31,7 @@ public class CipherStreamUtilTest {
         String rootPipelineId = "1";
         Integer groupId = 1;
         Integer tenantId = 1;
-        String pipelineName = "encryption";
+        String pipelineName = "Text extraction";
         String originId = "origin_1";
         String applicationName = "APP";
 

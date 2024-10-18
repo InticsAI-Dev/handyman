@@ -89,6 +89,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         dataExtractionData.setTemplateName(entity.getTemplateName());
         dataExtractionData.setProcess(PROCESS_NAME);
         dataExtractionData.setInputFilePath(filePath);
+        dataExtractionData.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
 
