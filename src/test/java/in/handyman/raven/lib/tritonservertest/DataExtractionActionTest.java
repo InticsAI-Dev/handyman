@@ -50,6 +50,8 @@ class DataExtractionActionTest {
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("page.content.min.length.threshold", "1"),
                 Map.entry("write.batch.size", "5")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);
         dataExtractionAction.execute();
@@ -77,8 +79,10 @@ class DataExtractionActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5"),
+                Map.entry("database.decryption.activator", "true"),
                 Map.entry("page.content.min.length.threshold", "5"),
                 Map.entry("apiUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
+                Map.entry("decryptApiUrl","http://192.168.10.239:10001/copro-utils/data-security/decrypt"),
                 Map.entry("encryption.activator","false")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);
         dataExtractionAction.execute();

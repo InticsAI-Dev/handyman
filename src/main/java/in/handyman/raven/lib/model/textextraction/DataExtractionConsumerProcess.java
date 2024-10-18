@@ -13,6 +13,7 @@ import in.handyman.raven.lib.model.triton.TritonDataTypes;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
+import jakarta.json.Json;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -91,15 +92,12 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
 
-        String dataEncryption = CipherStreamUtil.encryptionApi(jsonInputRequest, action);
-
-
 
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName(TEXT_EXTRACTOR_START);
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
-        requestBody.setData(Collections.singletonList(dataEncryption));
+        requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
@@ -164,11 +162,12 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 ObjectMapper objectMappers = new ObjectMapper();
                 DataExtractionResponse modelResponse = objectMappers.readValue(responseBody, DataExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
+
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(s -> {
                             try {
                                 extractedOutputDataRequest(entity, s, parentObj, originId, groupId, modelResponse.getModelName(), modelResponse.getModelVersion());
-                            } catch (JsonProcessingException e) {
+                            } catch (Exception e) {
                                 throw new HandymanException("Exception in extracted output Data request {}", e);
                             }
                         });
@@ -189,7 +188,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         }
     }
 
-    private void extractedOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws JsonProcessingException {
+    private void extractedOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws Exception {
         JsonNode jsonNode = mapper.readTree(stringDataItem);
         String pageContent = jsonNode.get("pageContent").asText();
         final String contentString = Optional.of(pageContent).map(String::valueOf).orElse(null);
@@ -197,10 +196,44 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
         String templateId = entity.getTemplateId();
         String batchId = entity.getBatchId();
-        parentObj.add(DataExtractionOutputTable.builder().filePath(dataExtractionDataItem.getInputFilePath()).extractedText(dataExtractionDataItem.getPageContent()).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(batchId).build());
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String templateName = "";
+
+        if (Objects.equals("true", databaseEncryption))
+        {
+            JSONObject decryptData = new JSONObject();
+            decryptData.put("pageContent",dataExtractionDataItem.getPageContent());
+            decryptData.put("templateName",dataExtractionDataItem.getTemplateName());
+
+
+            String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId().toString(), groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName);
+            System.out.println(decryptionCall);
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptedData");
+            if(decryptedData.has("templateName")){
+                templateName = decryptedData.get("templateName").asText();
+            }else {
+               log.info("No Key named template name");
+            }
+            if(decryptedData.has("pageContent")){
+                pageContent = decryptedData.get("pageContent").asText();
+            }else {
+                log.info("No Key named pageContent");
+            }
+
+        }else {
+
+            templateName = dataExtractionDataItem.getTemplateName();
+            pageContent = dataExtractionDataItem.getPageContent();
+        }
+
+        parentObj.add(DataExtractionOutputTable.builder().filePath(dataExtractionDataItem.getInputFilePath()).extractedText(pageContent).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(templateName).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(batchId).build());
     }
 
-    private void extractedCoproOutputResponse(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String modelName, String modelVersion) throws Exception {
 
         String parentResponseObject = extractPageContent(stringDataItem);
         final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
@@ -213,7 +246,40 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = entity.getTemplateName();
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
-        parentObj.add(DataExtractionOutputTable.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(modelName).modelVersion(modelVersion).batchId(batchId).build());
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String pageContent ="";
+
+        if (Objects.equals("true", databaseEncryption))
+        {
+            JSONObject decryptData = new JSONObject();
+            decryptData.put("pageContent",stringDataItem);
+            decryptData.put("templateName",entity.getTemplateName());
+
+            String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId().toString(), groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName);
+            System.out.println(decryptionCall);
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptedData");
+            if(decryptedData.has("templateName")){
+                templateName = decryptedData.get("templateName").asText();
+            }else {
+                log.info("No Key named template name");
+            }
+            if(decryptedData.has("pageContent")){
+                pageContent = decryptedData.get("pageContent").asText();
+            }else {
+                log.info("No Key named pageContent");
+            }
+
+        }else {
+
+            templateName = entity.getTemplateName();
+            pageContent = contentString;
+        }
+
+        parentObj.add(DataExtractionOutputTable.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(pageContent).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(modelName).modelVersion(modelVersion).batchId(batchId).build());
 
 
     }

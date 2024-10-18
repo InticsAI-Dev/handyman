@@ -94,11 +94,11 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         requestBody.setDatatype("BYTES");
 
         // encrypting data
-        String dataEncryption = CipherStreamUtil.encryptionApi(jsonInputRequest, action);
-        JSONObject jsonObject = new JSONObject(dataEncryption);
-//        String finalDataEncrypted = jsonObject.getString("cipherText");
-
-        requestBody.setData(Collections.singletonList(dataEncryption));
+//        String dataEncryption = CipherStreamUtil.encryptionApi(jsonInputRequest, action);
+//        JSONObject jsonObject = new JSONObject(dataEncryption);
+////        String finalDataEncrypted = jsonObject.getString("cipherText");
+//
+//        requestBody.setData(Collections.singletonList(dataEncryption));
 
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();

@@ -170,12 +170,12 @@ public class MultipartUploadAction implements IActionExecution {
         String publicKey = "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxXA5Y0WmQL4hA+8oCl308ASFZGBh6moDv0b6q8RIzoqvyMGRWGPE4A5XgfRznwfMGnfGJCAdil0NFAR8bLd2mVQr6xhp1HXX4/a8t+hrMF2qCpjAe2RqeIcCwpe9tzk+ZTsIN9NaInXx9wyt46YsgC4fD0Z9+Bu7DIQONL5+zmqfaUeoBfZPn5avosqWIOwGx9uEYvuufd9r8KhyH0O/d++SzO/2XeO3MDW8pcbjiGHMRE7xna7gLHZyj8eooRpVsXZbP/anhafZYPCvfzpU8vbui01zdusmKolfEDF5ATX7cdH2naS+1E6DOcsrjxW/Ld8vDEsJuJWLaP7KlBcFiQIDAQAB-----END PUBLIC KEY-----";
         String apiUrl = "http://0.0.0.0:10001/copro-utils/aegis-cryptor/encrypt";
 
-        String filePathEncrypt = CipherStreamUtil.encryptionApi(file.getPath(), action);
-        System.out.println(filePathEncrypt);
-        JSONObject jsonObject = new JSONObject(filePathEncrypt);
-
-        // Access the value associated with the "cipherText" key
-        String cipherText = jsonObject.getString("cipherText");
+//        String filePathEncrypt = CipherStreamUtil.encryptionApi(file.getPath(), action);
+//        System.out.println(filePathEncrypt);
+//        JSONObject jsonObject = new JSONObject(filePathEncrypt);
+//
+//        // Access the value associated with the "cipherText" key
+//        String cipherText = jsonObject.getString("cipherText");
 
         // Defining media type
         final MediaType MEDIA_TYPE = MediaType.parse("application/*");
@@ -205,13 +205,13 @@ public class MultipartUploadAction implements IActionExecution {
                 if (response.body() != null) {
                     final String responseBody = response.body().string();
                     final MultipartUploadOutputTable multipartUploadOutputTable = objectMapper.readValue(responseBody, MultipartUploadOutputTable.class);
-                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable, batchId, cipherText);
+//                    handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable, batchId, cipherText);
                 }
             } else {
                 // Handle unsuccessful response
                 log.error("Request was not successful. HTTP Status: {}", response.code());
                 final MultipartUploadOutputTable multipartUploadOutputTable = new MultipartUploadOutputTable();
-                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable, batchId, cipherText);
+//                handleResponse(jdbi, groupId, processId, templateId, tenantId, paperNo, originId, rootPipelineId, multipartUploadOutputTable, batchId, cipherText);
             }
         } catch (final Exception e) {
             log.error(aMarker, "Exception occurred in multipart file upload for file {} with exception {}", inputFilePath, e.getMessage());
