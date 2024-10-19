@@ -2,10 +2,12 @@ package in.handyman.raven.lib.model.templatedetection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ExecutionStatus;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.TemplateDetectionAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
@@ -16,6 +18,8 @@ import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.checkerframework.checker.units.qual.Time;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -285,13 +289,48 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         String originId = entity.getOriginId();
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
+
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+
+
         try {
             TemplateDetectionDataItem templateDetectionDataItem = objectMapper.readValue(templateDetectionData, TemplateDetectionDataItem.class);
+            String decryptionCall = "";
+                if (Objects.equals("false", databaseEncryption)) {
+                    JSONObject value = new JSONObject();
+
+                    // Iterate over templateDetectionDataItem attributes and populate JSON object
+                    templateDetectionDataItem.getAttributes().forEach(values -> {
+                        value.put(values.getQuestion(), values.getPredictedAttributionValue());
+                    });
+
+                    // Call the decryption API with the necessary parameters
+                    decryptionCall = CipherStreamUtil.decryptionApi(
+                            value, action, entity.getRootPipelineId().toString(),
+                            groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName, paperNo
+                    );
+                }
+
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptRequestData");
+
+
+
             templateDetectionDataItem.getAttributes().forEach(attribute -> {
+
                 String bboxStr = String.valueOf(attribute.getBboxes());
                 String question = attribute.getQuestion();
                 Float scores = attribute.getScores();
-                String predictedAttributionValue = attribute.getPredictedAttributionValue();
+                String predictedAttributionValue;
+
+                if (Objects.equals("false",databaseEncryption)){
+                    predictedAttributionValue = String.valueOf(decryptedData.get(attribute.getQuestion()));
+                }else {
+                    predictedAttributionValue = attribute.getPredictedAttributionValue();
+                }
 
                 outputObjectList.add(
                         TemplateDetectionOutputTable.builder()
@@ -322,7 +361,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .build()
                 );
             });
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             outputObjectList.add(
                     TemplateDetectionOutputTable.builder()
                             .processId(processId)

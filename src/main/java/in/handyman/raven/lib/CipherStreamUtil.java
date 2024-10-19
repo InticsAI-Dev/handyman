@@ -105,7 +105,7 @@ public class CipherStreamUtil {
 
 
     public static String encryptionApi(Object jsonInput, ActionExecutionAudit action,
-                                       String rootPipelineId, Integer groupId, Integer tenantId, String pipelineName, String originId, String applicationName) throws Exception {
+                                       String rootPipelineId, Integer groupId, String batchId, Integer tenantId, String pipelineName, String originId, String applicationName, Integer paperNo) throws Exception {
         OkHttpClient client = new OkHttpClient();
         String apiUrl = action.getContext().get("apiUrl");
 
@@ -117,11 +117,12 @@ public class CipherStreamUtil {
         payload.put("encryptRequestData", jsonInput);
         payload.put("rootPipelineId", rootPipelineId);
         payload.put("groupId", groupId);
-        payload.put("batchId", "");
+        payload.put("batchId", batchId);
         payload.put("tenantId", tenantId);
         payload.put("pipelineName", pipelineName);
         payload.put("originId",originId);
         payload.put("applicationName",applicationName);
+        payload.put("paperNo",paperNo);
 
         //  Create RequestBody
         MediaType JSON = MediaType.get("application/json; charset=utf-8");
@@ -147,7 +148,7 @@ public class CipherStreamUtil {
 
 
     public static String decryptionApi(Object jsonInput, ActionExecutionAudit action,
-                                       String rootPipelineId, Integer groupId, Integer tenantId, String pipelineName, String originId, String applicationName) throws Exception {
+                                       String rootPipelineId, Integer groupId, Integer tenantId, String pipelineName, String originId, String applicationName, Integer paperNo) throws Exception {
         OkHttpClient client = new OkHttpClient();
         String apiUrl = action.getContext().get("decryptApiUrl");
 
@@ -156,7 +157,7 @@ public class CipherStreamUtil {
         JSONObject decryptData = new JSONObject();
 
         // Add all required fields to the payload
-        payload.put("decryptRequestData", jsonInput);
+        payload.put("encryptRequestData", jsonInput);
         payload.put("rootPipelineId", rootPipelineId);
         payload.put("groupId", groupId);
         payload.put("batchId", "");
@@ -164,6 +165,7 @@ public class CipherStreamUtil {
         payload.put("pipelineName", pipelineName);
         payload.put("originId",originId);
         payload.put("applicationName",applicationName);
+        payload.put("paperNo",paperNo);
 
         //  Create RequestBody
         MediaType JSON = MediaType.get("application/json; charset=utf-8");

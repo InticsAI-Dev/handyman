@@ -81,7 +81,7 @@ class DataExtractionActionTest {
                 Map.entry("write.batch.size", "5"),
                 Map.entry("database.decryption.activator", "true"),
                 Map.entry("page.content.min.length.threshold", "5"),
-                Map.entry("apiUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
+                Map.entry("apiUrl", "http://0.0.0.0:10001/copro-utils/data-security/encrypt"),
                 Map.entry("decryptApiUrl","http://192.168.10.239:10001/copro-utils/data-security/decrypt"),
                 Map.entry("encryption.activator","false")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);

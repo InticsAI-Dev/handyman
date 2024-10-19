@@ -34,6 +34,7 @@ public class CipherStreamUtilTest {
         String pipelineName = "Text extraction";
         String originId = "origin_1";
         String applicationName = "APP";
+        String batchId = "batch123";
 
 
 
@@ -49,7 +50,7 @@ public class CipherStreamUtilTest {
 
 
         String cipherStreamUtil = CipherStreamUtil.encryptionApi( jsonObject,  actionExecutionAudit,
-                 rootPipelineId,  groupId,  tenantId,  pipelineName,  originId, applicationName);
+                 rootPipelineId,  groupId, batchId,  tenantId,  pipelineName,  originId, applicationName, 0);
         System.out.println(cipherStreamUtil);
     }
 
@@ -81,7 +82,7 @@ public class CipherStreamUtilTest {
                 Map.entry("database.decryption.activator","true")));
 
 
-        String cipherStreamUtil = CipherStreamUtil.decryptionApi(jsonObject, actionExecutionAudit, rootPipelineId, groupId, tenantId, pipelineName, originId, applicationName);
+        String cipherStreamUtil = CipherStreamUtil.decryptionApi(jsonObject, actionExecutionAudit, rootPipelineId, groupId, tenantId, pipelineName, originId, applicationName, 0);
         System.out.println(cipherStreamUtil);
         System.out.println(cipherStreamUtil instanceof String);
 
