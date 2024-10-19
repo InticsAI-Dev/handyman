@@ -17,6 +17,7 @@ import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -256,7 +257,11 @@ public class TrinityModelAction implements IActionExecution {
         TrinityModelResponse trinityModelResponse = objectMapper.readValue(trinityModelResultLineItems, new TypeReference<>() {
         });
         trinityModelResponse.getOutputs().forEach(trinityModelOutput -> trinityModelOutput.getData().forEach(trinityModelResultLineItem -> {
-            extractedTritonOuputDataResponse(trinityModelResultLineItem, jdbi, asset, "", "",objectMapper, assetBatchItem, batchId);
+            try {
+                extractedTritonOuputDataResponse(trinityModelResultLineItem, jdbi, asset, "", "",objectMapper, assetBatchItem, batchId);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
         }));
     }
 
@@ -266,12 +271,34 @@ public class TrinityModelAction implements IActionExecution {
 
     }
 
-    private void extractedTritonOuputDataResponse(String trinityModelDataItems, Jdbi jdbi,TrinityModelLineItem asset,String modelName, String modelVersion, ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) {
+    private void extractedTritonOuputDataResponse(String trinityModelDataItems, Jdbi jdbi,TrinityModelLineItem asset,String modelName, String modelVersion, ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) throws JsonProcessingException {
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
 
         try {
 
             TrinityModelDataItem trinityModelDataItem = objectMapper.readValue(trinityModelDataItems, new TypeReference<>() {
             });
+
+            String decryptionCall = "";
+            if (Objects.equals("false", databaseEncryption)) {
+                JSONObject value = new JSONObject();
+                // Iterate over templateDetectionDataItem attributes and populate JSON object
+                trinityModelDataItem.getAttributes().forEach(values -> {
+                    value.put(values.getQuestion(), values.getPredictedAttributionValue());
+                });
+                // Call the decryption API with the necessary parameters
+                decryptionCall = CipherStreamUtil.decryptionApi(
+                        value, action, trinityModelDataItem.getRootPipelineId().toString(),
+                        Math.toIntExact(trinityModelDataItem.getGroupId()), Math.toIntExact(trinityModelDataItem.getTenantId()), pipelineName, trinityModelDataItem.getOriginId(), applicationName, Math.toIntExact(trinityModelDataItem.getPaperNo())
+                );
+            }
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptRequestData");
+
+
 
             log.info("TrinityModelLineItem size {}", trinityModelDataItem.getAttributes().size());
 
@@ -284,8 +311,20 @@ public class TrinityModelAction implements IActionExecution {
                 Lists.partition(trinityModelDataItem.getAttributes(), 100).forEach(resultLineItems -> {
                     log.info(aMarker, "inserting into trinity model_action {}", resultLineItems.size());
                     resultLineItems.forEach(resultLineItem -> {
-                        batch
-                                .bind("sorQuestion", resultLineItem.getQuestion())
+                        String bboxStr = String.valueOf(resultLineItem.getBboxes());
+                        String question = resultLineItem.getQuestion();
+                        Float scores = resultLineItem.getScores();
+                        String predictedAttributionValue;
+
+                        if (Objects.equals("false",databaseEncryption)){
+                            predictedAttributionValue = String.valueOf(decryptedData.get(resultLineItem.getQuestion()));
+                        }else {
+                            predictedAttributionValue = resultLineItem.getPredictedAttributionValue();
+                        }
+
+
+
+                        batch.bind("sorQuestion", resultLineItem.getQuestion())
                                 .bind("answer", resultLineItem.getPredictedAttributionValue())
                                 .bind("scores", resultLineItem.getScores())
                                 .bind("paperType", asset.getPaperType())
@@ -321,6 +360,8 @@ public class TrinityModelAction implements IActionExecution {
                 });
             });
         } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

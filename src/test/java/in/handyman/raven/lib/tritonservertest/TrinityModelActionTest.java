@@ -22,44 +22,49 @@ class TrinityModelActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .forkBatchSize("1")
                 .questionSql("SELECT \n" +
-                        "    (jsonb_agg(\n" +
+                        "    jsonb_agg(\n" +
                         "        json_build_object(\n" +
-                        "            'question', (a.questions), \n" +
-                        "            'questionId', a.question_id, \n" +
-                        "            'synonymId', a.synonym_id, \n" +
-                        "            'sorItemName', a.sor_item_name)\n" +
+                        "            'question', a.questions,\n" +
+                        "            'questionId', a.question_id,\n" +
+                        "            'synonymId', a.synonym_id,\n" +
+                        "            'sorItemName', a.sor_item_name\n" +
                         "        )\n" +
-                        "    )::varchar as attributes,\n" +
+                        "    )::varchar AS attributes,\n" +
                         "    a.file_path,\n" +
-                        "    a.paper_type, \n" +
-                        "    a.model_registry,  \n" +
+                        "    a.paper_type,\n" +
+                        "    a.model_registry,\n" +
                         "    a.origin_id,\n" +
                         "    a.paper_no,\n" +
-                        "    a.tenant_id, \n" +
-                        "    st.group_id, \n" +
-                        "    a.root_pipeline_id, \n" +
-                        "    a.model_registry_id, \n" +
-                        "    '${process-id}' as process_id, \n" +
-                        "    a.batch_id\n" +
-                        "FROM macro.sor_transaction_final_tqa_audit a\n" +
-                        "JOIN sor_transaction.sor_transaction_payload_queue_archive st \n" +
-                        "ON st.origin_id = a.origin_id\n" +
-                        "WHERE a.model_registry = 'ARGON'\n" +
-                        "AND a.tenant_id = 1 \n" +
-                        "AND st.group_id = '72' \n" +
-                        "AND a.batch_id = 'BATCH-72_3'\n" +
-                        "GROUP BY \n" +
-                        "    a.file_path, \n" +
-                        "    a.paper_type, \n" +
-                        "    a.model_registry,\n" +
-                        "    a.origin_id, \n" +
-                        "    a.paper_no, \n" +
                         "    a.tenant_id,\n" +
-                        "    st.group_id, \n" +
-                        "    a.root_pipeline_id, \n" +
-                        "    a.model_registry_id, \n" +
+                        "    st.group_id,\n" +
+                        "    a.root_pipeline_id,\n" +
+                        "    a.model_registry_id,\n" +
+                        "    '${process-id}' AS process_id,\n" +
+                        "    a.batch_id\n" +
+                        "\n" +
+                        "    FROM \n" +
+                        "    macro.sor_transaction_final_tqa_audit a\n" +
+                        "JOIN \n" +
+                        "    sor_transaction.sor_transaction_payload_queue_archive st\n" +
+                        "ON \n" +
+                        "    st.origin_id = a.origin_id\n" +
+                        "WHERE \n" +
+                        "    a.model_registry = 'ARGON'\n" +
+                        "    AND a.tenant_id = 1\n" +
+                        "    AND st.group_id = '238'\n" +
+                        "    AND a.batch_id = 'BATCH-238_0'\n" +
+                        "GROUP BY \n" +
+                        "    a.file_path,\n" +
+                        "    a.paper_type,\n" +
+                        "    a.model_registry,\n" +
+                        "    a.origin_id,\n" +
+                        "    a.paper_no,\n" +
+                        "    a.tenant_id,\n" +
+                        "    st.group_id,\n" +
+                        "    a.root_pipeline_id,\n" +
+                        "    a.model_registry_id,\n" +
                         "    a.batch_id;")
-                .responseAs("sor_transaction_tqa_123456")
+                .responseAs("sor_transaction_tqa_audit")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
