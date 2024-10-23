@@ -107,6 +107,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         radonBboxRequestData.setProcess(RADON_BBOX);
         radonBboxRequestData.setInputFilePath(entity.getInputFilePath());
         radonBboxRequestData.setOutputDir(radonKvpBbox.getOutputDir());
+        radonBboxRequestData.setBatchId(entity.getBatchId());
         List<RadonBboxRequestLineItem> items = objectMapper.readValue(entity.getRadonOutput(), new TypeReference<>() {
         });
         radonBboxRequestData.setRadonBboxLineItems(items);
@@ -168,7 +169,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
                             .modelRegistry(entity.getModelRegistry())
                             .inputFilePath(entity.getInputFilePath())
                             .sorContainerName(entity.getSorContainerName())
-                            .batchId(entity.getBatchId())
+                            .batchId(radonBboxResponse.getBatchId())
                             .paperNo(radonBboxResponse.getPaperNumber())
                             .originId(radonBboxResponse.getOriginId())
                             .groupId(radonBboxResponse.getGroupId())
