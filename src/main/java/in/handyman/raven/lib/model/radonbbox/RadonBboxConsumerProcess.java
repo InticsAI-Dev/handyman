@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.radonbbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -13,18 +14,18 @@ import in.handyman.raven.lib.model.radonbbox.request.RadonBboxRequest;
 import in.handyman.raven.lib.model.radonbbox.request.RadonBboxRequestLineItem;
 import in.handyman.raven.lib.model.radonbbox.response.RadonBboxResponse;
 import in.handyman.raven.lib.model.radonbbox.response.RadonBboxResponseData;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
@@ -95,7 +96,12 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
     @NotNull
-    private RadonBboxRequest getRadonBboxRequestData(RadonBboxInputEntity entity) throws JsonProcessingException {
+    private RadonBboxRequest getRadonBboxRequestData(RadonBboxInputEntity entity) throws Exception {
+        String encryptionActivator = action.getContext().get("encryption.activator");
+        List<RadonBboxRequestLineItem> lineItems = new ArrayList<>();
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+
         final RadonBboxRequest radonBboxRequestData = new RadonBboxRequest();
         radonBboxRequestData.setOriginId(entity.getOriginId());
         radonBboxRequestData.setPaperNumber(entity.getPaperNo());
@@ -109,11 +115,73 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         radonBboxRequestData.setOutputDir(radonKvpBbox.getOutputDir());
         List<RadonBboxRequestLineItem> items = objectMapper.readValue(entity.getRadonOutput(), new TypeReference<>() {
         });
-        radonBboxRequestData.setRadonBboxLineItems(items);
+
+
+        if (Objects.equals("true",encryptionActivator)){
+                // encryption calling part
+                JSONObject listToJson = new JSONObject();
+
+                // creating unique id to map the list values
+                items.forEach(value->{
+                    listToJson.put(UUID.randomUUID().toString(),List.of(value.getSorItemName(), value.getAnswer(), value.getValueType()));
+
+                });
+
+                // new json to store answer and key of list
+                JSONObject answerKeyCombination = new JSONObject();
+                listToJson.keys().forEachRemaining(key->{
+                    JSONArray row = listToJson.getJSONArray(key);
+                    String answer = row.getString(1);
+                    answerKeyCombination.put(key, answer);              // value to pass into api call
+                });
+
+                // encryption call
+                String encryptionCall = CipherStreamUtil.encryptionApi(answerKeyCombination, action, entity.getRootPipelineId(), entity.getGroupId(), entity.getBatchId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, Math.toIntExact(entity.getPaperNo()));
+
+                ObjectMapper encryptionParsing = new ObjectMapper();
+                JsonNode data = encryptionParsing.readTree(encryptionCall);
+                JsonNode encryptedData = data.get("encryptedData");  // data from encryption result
+
+                // New JSON object to store results
+                JSONObject resultJson = new JSONObject();
+
+                listToJson.keys().forEachRemaining(key -> {
+                    if (encryptedData.has(key)) {
+                        String encryptedValue = encryptedData.get(key).asText();
+                        // Get the answer (index 1) from jsonB
+                        String answer = listToJson.getJSONArray(key).getString(1);
+                        // Put the answer and encrypted value in the result JSON
+                        resultJson.put(answer, encryptedValue);
+                    }
+
+                });
+
+
+                // Create an instance of RadonBboxRequest
+                RadonBboxRequestLineItem itemsFinal = new RadonBboxRequestLineItem();
+                items.forEach(finalValues->{
+                    if(resultJson.has(finalValues.getAnswer())){
+                        itemsFinal.setAnswer((String) resultJson.get(finalValues.getAnswer()));
+                        itemsFinal.setSorItemName(finalValues.getSorItemName());
+                        itemsFinal.setValueType(finalValues.getValueType());
+                        lineItems.add(itemsFinal);
+                    }
+                    radonBboxRequestData.setRadonBboxLineItems(lineItems);
+                    log.info("encrytion is true,  RadonBboxLineItems :"+ lineItems);
+                });
+
+                }else {
+            // when encryption is turned off
+            radonBboxRequestData.setRadonBboxLineItems(items);
+            log.info("encrytion is false,  RadonBboxLineItems :"+ items);
+
+        }
+
         return radonBboxRequestData;
     }
 
-    private void tritonRequestBuilder(RadonBboxInputEntity entity, Request request, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj) {
+
+    private void tritonRequestBuilder(RadonBboxInputEntity entity, Request request, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj) throws Exception {
 
         try (Response response = httpclient.newCall(request).execute()) {
 
@@ -123,7 +191,13 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
                 if (radonBboxModelResponse.getOutputs() != null && !radonBboxModelResponse.getOutputs().isEmpty()) {
                     radonBboxModelResponse.getOutputs().forEach(o -> o.getData().forEach(noiseModelDataItem ->
-                            extractedOutputRequest(entity, objectMapper, parentObj, radonBboxModelResponse.getModelName(), radonBboxModelResponse.getModelVersion(), noiseModelDataItem)
+                            {
+                                try {
+                                    extractedOutputRequest(entity, objectMapper, parentObj, radonBboxModelResponse.getModelName(), radonBboxModelResponse.getModelVersion(), noiseModelDataItem);
+                                } catch (Exception e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
                     ));
                 }
 
@@ -141,7 +215,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
 
-    private void extractedOutputRequest(RadonBboxInputEntity entity, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj, String modelName, String modelVersion, String radonKvpBboxDataItem) {
+    private void extractedOutputRequest(RadonBboxInputEntity entity, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj, String modelName, String modelVersion, String radonKvpBboxDataItem) throws Exception {
 
         try {
 
@@ -157,50 +231,81 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         }
     }
 
+    String predictedAttributionValue = "";
+    private void buildOutputParentObject(List<RadonBboxOutputEntity> parentObj, RadonBboxInputEntity entity, Boolean status, String message, RadonBboxResponseData radonBboxResponse) throws Exception {
 
-    private void buildOutputParentObject(List<RadonBboxOutputEntity> parentObj, RadonBboxInputEntity entity, Boolean status, String message, RadonBboxResponseData radonBboxResponse) {
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String applicationName = "APP";
+        String pipelineName = "Radon Bbox";
 
+        String decryptionCall = "";
+        if (Objects.equals("false", databaseEncryption)) {
+            JSONObject value = new JSONObject();
+
+                try {
+                    decryptionCall = CipherStreamUtil.decryptionApi(
+                    value, action, entity.getRootPipelineId(),
+                    entity.getGroupId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, Math.toIntExact(entity.getPaperNo()),entity.getBatchId()
+                );
+
+                } catch (Exception e) {
+                    log.error("Error during decryption API call: {}", e.getMessage(), e);
+                    // Handle the exception appropriately, maybe return null or an empty string
+                }
+
+                   }
+
+        ObjectMapper decryptionParsing = new ObjectMapper();
+        JsonNode data = decryptionParsing.readTree(decryptionCall);
+        JsonNode decryptedData = data.get("decryptedData");
 
         if (Boolean.TRUE.equals(status)) {
             radonBboxResponse.getRadonBboxLineItems().forEach(radonResponseBboxLineItem -> {
                 try {
-                    parentObj.add(RadonBboxOutputEntity.builder()
-                            .modelRegistry(entity.getModelRegistry())
-                            .inputFilePath(entity.getInputFilePath())
-                            .sorContainerName(entity.getSorContainerName())
-                            .batchId(entity.getBatchId())
-                            .paperNo(radonBboxResponse.getPaperNumber())
-                            .originId(radonBboxResponse.getOriginId())
-                            .groupId(radonBboxResponse.getGroupId())
-                            .tenantId(radonBboxResponse.getTenantId())
-                            .rootPipelineId(radonBboxResponse.getRootPipelineId())
-                            .bBox(objectMapper.writeValueAsString(radonResponseBboxLineItem.getBBox()))
-                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                            .stage(RADON_KVP_BBOX)
-                            .message(message)
-                            .sorItemName(radonResponseBboxLineItem.getSorItemName())
-                            .answer(radonResponseBboxLineItem.getAnswer())
-                            .valueType(radonResponseBboxLineItem.getValueType())
-                            .build());
+
+                 if (Objects.equals("false",databaseEncryption)){
+                     predictedAttributionValue = decryptedData.get(radonResponseBboxLineItem.getAnswer()).asText();
+                 }else{
+                     predictedAttributionValue = radonResponseBboxLineItem.getAnswer();
+                 }
+
+                 parentObj.add(RadonBboxOutputEntity.builder()
+                    .modelRegistry(entity.getModelRegistry())
+                    .inputFilePath(entity.getInputFilePath())
+                    .sorContainerName(entity.getSorContainerName())
+                    .batchId(entity.getBatchId())
+                    .paperNo(radonBboxResponse.getPaperNumber())
+                    .originId(radonBboxResponse.getOriginId())
+                    .groupId(radonBboxResponse.getGroupId())
+                    .tenantId(radonBboxResponse.getTenantId())
+                    .rootPipelineId(radonBboxResponse.getRootPipelineId())
+                    .bBox(objectMapper.writeValueAsString(radonResponseBboxLineItem.getBBox()))
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(RADON_KVP_BBOX)
+                    .message(message)
+                    .sorItemName(radonResponseBboxLineItem.getSorItemName())
+                    .answer(radonResponseBboxLineItem.getAnswer())
+                    .valueType(radonResponseBboxLineItem.getValueType())
+                    .build());
                 } catch (JsonProcessingException e) {
                     parentObj.add(RadonBboxOutputEntity.builder()
-                            .modelRegistry(entity.getModelRegistry())
-                            .inputFilePath(entity.getInputFilePath())
-                            .sorContainerName(entity.getSorContainerName())
-                            .batchId(entity.getBatchId())
-                            .paperNo(entity.getPaperNo())
-                            .originId(entity.getOriginId())
-                            .groupId(entity.getGroupId())
-                            .tenantId(entity.getTenantId())
-                            .rootPipelineId(entity.getRootPipelineId())
-                            .message(message)
-                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                            .stage(RADON_KVP_BBOX)
+                    .modelRegistry(entity.getModelRegistry())
+                    .inputFilePath(entity.getInputFilePath())
+                    .sorContainerName(entity.getSorContainerName())
+                    .batchId(entity.getBatchId())
+                    .paperNo(entity.getPaperNo())
+                    .originId(entity.getOriginId())
+                    .groupId(entity.getGroupId())
+                    .tenantId(entity.getTenantId())
+                    .rootPipelineId(entity.getRootPipelineId())
+                    .message(message)
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                    .stage(RADON_KVP_BBOX)
 //                    .sorItemName(entity.getRadonOutput().get(SOR_ITEM_NAME))
 //                    .answer(entity.getRadonOutput().get(ANSWER))
 //                    .paperType(entity.getRadonOutput().get(PAPER_TYPE))
 //                    .bBox(new BoundingBoxObject())
-                            .build());
+                    .build());
                 }
             });
 

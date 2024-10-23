@@ -308,15 +308,14 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
                     // Call the decryption API with the necessary parameters
                     decryptionCall = CipherStreamUtil.decryptionApi(
-                            value, action, entity.getRootPipelineId().toString(),
-                            groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName, paperNo
+                            value, action, entity.getRootPipelineId(),
+                            Long.valueOf(groupId), entity.getTenantId(), pipelineName, originId, applicationName, paperNo, entity.getBatchId()
                     );
                 }
 
             ObjectMapper decryptionParsing = new ObjectMapper();
             JsonNode data = decryptionParsing.readTree(decryptionCall);
-            JsonNode decryptedData = data.get("decryptRequestData");
-
+            JsonNode decryptedData = data.get("decryptedData");
 
 
             templateDetectionDataItem.getAttributes().forEach(attribute -> {
@@ -327,7 +326,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                 String predictedAttributionValue;
 
                 if (Objects.equals("false",databaseEncryption)){
-                    predictedAttributionValue = String.valueOf(decryptedData.get(attribute.getQuestion()));
+                    predictedAttributionValue = decryptedData.get(attribute.getQuestion()).asText();
                 }else {
                     predictedAttributionValue = attribute.getPredictedAttributionValue();
                 }

@@ -28,24 +28,6 @@ public class TritonRequestProcessor {
         // Extract the data array from the TritonRequest
         ArrayNode dataArray = objectMapper.valueToTree(requestBody.getData());
 
-        // Check if encryption is activated
-        String encryptionPipelineActivator = action.getContext().get(ENCRYPTION_CHAIN_ACTIVATOR);
-        if (Objects.equals("true", encryptionPipelineActivator)) {
-            // Encrypt only the content of each data item
-            for (int i = 0; i < dataArray.size(); i++) {
-                if (dataArray.get(i).isTextual()) {
-                    String jsonData = dataArray.get(i).asText();
-                    String encryptedData = encryptionService.encryptData(jsonData);
-//                    dataArray.set(i, TextNode.valueOf(encryptedData));
-                    // Step 3: Parse the encrypted response to extract the cipherText field
-                    JsonNode encryptedJson = objectMapper.readTree(encryptedData);
-                    String cipherText = encryptedJson.get("cipherText").toString();
-                    // Step 4: Replace the original text in dataArray with the cipherText
-                    dataArray.set(i, TextNode.valueOf(cipherText));
-                }
-            }
-        }
-
         // Create a new TritonRequest with the potentially encrypted data
         TritonRequest newRequestBody = new TritonRequest(
                 requestBody.getName(),

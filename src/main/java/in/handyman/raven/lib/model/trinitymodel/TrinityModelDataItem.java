@@ -31,4 +31,5 @@ public class TrinityModelDataItem {
     private Long tenantId;
     private Long rootPipelineId;
     private Long modelRegistryId;
+    private String batchId;
 }

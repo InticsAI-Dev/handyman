@@ -209,7 +209,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             decryptData.put("templateName",dataExtractionDataItem.getTemplateName());
 
 
-            String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId().toString(), groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName, entity.getPaperNo());
+            String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId(), Long.valueOf(entity.getGroupId()), entity.getTenantId(), pipelineName, originId, applicationName, entity.getPaperNo(), entity.getBatchId());
             System.out.println(decryptionCall);
             ObjectMapper decryptionParsing = new ObjectMapper();
             JsonNode data = decryptionParsing.readTree(decryptionCall);
@@ -258,7 +258,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             decryptData.put("pageContent",stringDataItem);
             decryptData.put("templateName",entity.getTemplateName());
 
-            String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId().toString(), groupId, Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName, entity.getPaperNo());
+            String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, entity.getRootPipelineId(), Long.valueOf(entity.getGroupId()), entity.getTenantId(), pipelineName, originId, applicationName, entity.getPaperNo(), entity.getBatchId());
             System.out.println(decryptionCall);
             ObjectMapper decryptionParsing = new ObjectMapper();
             JsonNode data = decryptionParsing.readTree(decryptionCall);

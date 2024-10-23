@@ -26,4 +26,5 @@ public class TrinityModelPayload {
     private String modelRegistry;
     private String qnCategory;
     private Long modelRegistryId;
+    private String batchId;
 }

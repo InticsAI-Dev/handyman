@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.common;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +9,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.copro.ComparisonDataItemCopro;
+import in.handyman.raven.lib.model.textextraction.DataExtractionDataItem;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -15,8 +17,10 @@ import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.util.HLogger;
+import java.util.stream.IntStream;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -29,13 +33,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
+
 public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProcess<IntellimatchInputTable, IntellimatchOutputTable> {
     public static final String CONTROL_DATA_PROCESS_NAME = PipelineName.CONTROL_DATA.getProcessName();
-    private final Logger log;
     private final Marker aMarker;
     public final ActionExecutionAudit action;
     private static ObjectMapper mapper = new ObjectMapper();
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    private final Logger log;
 
 
     private static final MediaType MEDIA_TYPE_JSON = MediaType
@@ -63,7 +68,7 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         ObjectMapper objectMapper = new ObjectMapper();
 
         if (result.getActualValue() != null) {
-            ComparisonPayload comparisonPayload = getComparisonPayload(result);
+            ComparisonPayload comparisonPayload = getComparisonPayload(result, log);
             String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
             TritonRequest requestBody = new TritonRequest();
@@ -114,15 +119,59 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
     @NotNull
-    private ComparisonPayload getComparisonPayload(IntellimatchInputTable result) throws Exception {
+    private ComparisonPayload getComparisonPayload(IntellimatchInputTable result, Logger log) throws Exception {
 
-
-
-        List<String> sentence = Collections.singletonList(result.getExtractedValue());
+        List<String> sentence = new ArrayList<>();
         final String process = "CONTROL_DATA";
         Long actionId = action.getActionId();
         Long rootpipelineId = result.getRootPipelineId();
-        String inputSentence = result.getActualValue();
+        String inputSentence = "";
+
+        String encryptionEnable = action.getContext().get("encryption.activator");
+        String encryptionCall = "";
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+
+        try {
+            if (Objects.equals("true", encryptionEnable)) {
+                JSONObject inputJson = new JSONObject();
+                inputJson.put("sentenceKey", result.getExtractedValue());
+                inputJson.put("actualValue",result.getActualValue());
+
+
+                encryptionCall = CipherStreamUtil.encryptionApi(
+                        inputJson, action, result.getRootPipelineId(),
+                        Long.valueOf(result.getGroupId()), result.getBatchId(), result.getTenantId(), pipelineName, result.getOriginId(), applicationName, 0);
+
+                ObjectMapper decryptionParsing = new ObjectMapper();
+                JsonNode data = decryptionParsing.readTree(encryptionCall);
+                JsonNode encryptedData = data.get("encryptedData");
+
+                if (Objects.equals("true", encryptionEnable)) {
+                        if (encryptedData.has("sentenceKey")) {
+                            sentence = Collections.singletonList(encryptedData.get("sentenceKey").asText());
+                        } else {
+                            log.info("has no sentenceKey");
+                        }
+                        if(encryptedData.has("actualValue")){
+                            inputSentence = encryptedData.get("actualValue").asText();
+                        }
+
+                    }else {
+                            log.info("has no actualValue");
+                     }
+            } else {
+                // Handle the case where the value is not a List<String>
+                sentence = Collections.singletonList(result.getExtractedValue());
+                inputSentence = result.getActualValue();
+            }
+
+        }catch (Exception e){
+            log.info("error occured due to key:"+e);
+        }
+
+
+
 
 //        String encryptionActivator = action.getContext().get("encryption.activator");
 //
@@ -154,6 +203,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
 //        }else {
 //            log.info("encryption is turned off");
 //        }
+
+
 
         ComparisonPayload comparisonPayload = new ComparisonPayload();
         comparisonPayload.setRootPipelineId(rootpipelineId);
@@ -209,8 +260,9 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                 ObjectMapper objectMappers = new ObjectMapper();
                 ComparisonResponse comparisonResponse = objectMappers.readValue(responseBody, ComparisonResponse.class);
                 if (comparisonResponse.getOutputs() != null && !comparisonResponse.getOutputs().isEmpty()) {
-                    comparisonResponse.getOutputs().forEach(o -> o.getData().forEach(comparisonDataItem -> {
-                        extractOuputDataRequest(result, parentObj, comparisonDataItem, comparisonResponse.getModelName(), comparisonResponse.getModelVersion());
+
+                   comparisonResponse.getOutputs().forEach(o -> o.getData().forEach(comparisonDataItem -> {
+                        extractOuputDataRequest(result, parentObj, comparisonDataItem, comparisonResponse.getModelName(), comparisonResponse.getModelVersion(), action, log);
                     }));
                 }
             } else {
@@ -257,31 +309,66 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
 
-    private static void extractOuputDataRequest(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion) {
+    private static void extractOuputDataRequest(IntellimatchInputTable result, List<IntellimatchOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion, ActionExecutionAudit action, Logger log) {
 
         try {
             List<ComparisonDataItem> comparisonDataItem1 = mapper.readValue(comparisonDataItem, new TypeReference<>() {
             });
-            for (ComparisonDataItem item : comparisonDataItem1) {
 
-                        parentObj.add(IntellimatchOutputTable.builder().
-                                fileName(result.getFileName()).
-                                originId(item.getOriginId()).
-                                groupId(item.getGroupId()).
-                                createdOn(Timestamp.valueOf(LocalDateTime.now())).
-                                rootPipelineId(item.getRootPipelineId()).
-                                actualValue(item.getInputSentence()).
-                                extractedValue(item.getSentence()).
-                                confidenceScore(result.getConfidenceScore()).
-                                intelliMatch(item.getSimilarityPercent()).
-                                tenantId(result.getTenantId()).
-                                status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
-                                stage(CONTROL_DATA_PROCESS_NAME).
-                                message("data insertion is completed").
-                                modelName(modelName).
-                                modelVersion(modelVersion).
-                                batchId(result.getBatchId()).
-                                build());
+            String applicationName = "APP";
+            String pipelineName = "TEXT EXTRACTION";
+            String databaseEncryption = action.getContext().get("encryption.activator");
+
+
+            for (ComparisonDataItem item : comparisonDataItem1) {
+                String sentence = "";
+                String inputSentence = "";
+               if (Objects.equals("false", databaseEncryption))
+                {
+                    JSONObject decryptData = new JSONObject();
+                    decryptData.put("Sentence",item.getSentence());
+                    decryptData.put("actualValue", item.getInputSentence());
+
+                    String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, result.getRootPipelineId(), Long.valueOf(result.getGroupId()), result.getTenantId(), pipelineName, result.getOriginId(), applicationName, 0, result.getBatchId());
+                    System.out.println(decryptionCall);
+                    ObjectMapper decryptionParsing = new ObjectMapper();
+                    JsonNode data = decryptionParsing.readTree(decryptionCall);
+                    JsonNode decryptedData = data.get("decryptedData");
+
+                    if(decryptedData.has("Sentence")){
+                        sentence = decryptedData.get("Sentence").asText();
+                    }else {
+                        log.info("No Key found:");
+                    }
+                    if(decryptedData.has("actualValue")){
+                        inputSentence = decryptedData.get("actualValue").asText();
+                    }else {
+                        log.info("No Key found:");
+                    }
+                }else {
+                       sentence = item.getSentence();
+                       inputSentence = item.getInputSentence();
+                        log.info("encryption is turned off");
+                    }
+
+                parentObj.add(IntellimatchOutputTable.builder().
+                        fileName(result.getFileName()).
+                        originId(item.getOriginId()).
+                        groupId(item.getGroupId()).
+                        createdOn(Timestamp.valueOf(LocalDateTime.now())).
+                        rootPipelineId(item.getRootPipelineId()).
+                        actualValue(inputSentence).
+                        extractedValue(sentence).
+                        confidenceScore(result.getConfidenceScore()).
+                        intelliMatch(item.getSimilarityPercent()).
+                        tenantId(result.getTenantId()).
+                        status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).
+                        stage(CONTROL_DATA_PROCESS_NAME).
+                        message("data insertion is completed").
+                        modelName(modelName).
+                        modelVersion(modelVersion).
+                        batchId(result.getBatchId()).
+                        build());
             }
         } catch (Exception exception) {
             parentObj.add(IntellimatchOutputTable.builder().

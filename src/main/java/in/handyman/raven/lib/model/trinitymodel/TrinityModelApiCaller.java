@@ -110,6 +110,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setPaperNo(asset.getPaperNo());
         trinityModelPayload.setProcessId(asset.getProcessId());
         trinityModelPayload.setQnCategory(asset.getQnCategory());
+        trinityModelPayload.setBatchId(asset.getBatchId());
         trinityModelPayload.setModelRegistryId(asset.getModelRegistryId());
         return trinityModelPayload;
     }

@@ -19,6 +19,8 @@ public class DataExtractionDataItem {
     private Long tenantId;
     private String templateName;
     private Long rootPipelineId;
+    private String batchId;
+
 
     }
 

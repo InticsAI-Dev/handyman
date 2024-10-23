@@ -102,6 +102,7 @@ class ZeroShotClassifierActionTest {
         action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("triton.request.activator", "false"),
+                Map.entry("encryption.pipeline.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5")));
 
@@ -119,11 +120,11 @@ class ZeroShotClassifierActionTest {
                 .readBatchSize("1")
                 .threadCount("1")
                 .writeBatchSize("1")
-                .endPoint("http://192.168.10.240:8400/v2/models/zsc-service/versions/1/infer")
+                .endPoint("http://192.168.10.248:8400/v2/models/zsc-service/versions/1/infer")
                 .querySet("SELECT 'origin123' AS origin_id, \n" +
                         "       101 AS paper_no, \n" +
                         "       'Sample page content' AS page_content, \n" +
-                        "       'group789' AS group_id, \n" +
+                        "       '789' AS group_id, \n" +
                         "       11011 AS root_pipeline_id, \n" +
                         "       'process567' AS process_id, \n" +
                         "       '{\"key\": [\"value1\", \"value2\"]}'::jsonb AS truth_placeholder, \n" +
@@ -143,6 +144,11 @@ class ZeroShotClassifierActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("encryption.pipeline.activator", "true"),
+                Map.entry("database.decryption.activator", "false"),
+                Map.entry("page.content.min.length.threshold", "5"),
+                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
+                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("encryption.activator","false"),
                 Map.entry("write.batch.size", "5")));
 
         final ZeroShotClassifierPaperFilterAction zeroShotClassifierPaperFilterAction = new ZeroShotClassifierPaperFilterAction(action, log, build);

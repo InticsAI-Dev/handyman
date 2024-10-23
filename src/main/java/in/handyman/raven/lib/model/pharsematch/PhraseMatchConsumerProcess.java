@@ -3,9 +3,11 @@ package in.handyman.raven.lib.model.pharsematch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
@@ -13,11 +15,15 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.zeroshotclassifier.ZeroShotClassifierInputTable;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -43,18 +49,20 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
     @Override
-    public List<PhraseMatchOutputTable> process(URL endpoint, PhraseMatchInputTable entity) throws JsonProcessingException {
+    public List<PhraseMatchOutputTable> process(URL endpoint, PhraseMatchInputTable entity) throws Exception {
         List<PhraseMatchOutputTable> parentObj = new ArrayList<>();
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
-        String pageContent = String.valueOf(entity.getPageContent());
-
 
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
+
+        // encryption call
+
+        String pageContent = encryptionCall(entity);
 
         //payload
         PharseMatchData data = new PharseMatchData();
@@ -67,6 +75,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setPageContent(pageContent);
         data.setKeysToFilter(keysToFilterObject);
         data.setProcess(PROCESS_NAME);
+        data.setTenantId(entity.getTenantId());
+        data.setBatchId(entity.getBatchId());
+
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(data);
@@ -276,5 +287,51 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             throw new RuntimeException(e);
         }
     }
+
+    public String encryptionCall(PhraseMatchInputTable entity) throws Exception {
+        String paperNo = String.valueOf(entity.getPaperNo());
+
+        String encryptionActivator = action.getContext().get("encryption.pipeline.activator");
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+        String pageContent = "";
+
+        try {
+            if (Objects.equals("true", encryptionActivator)) {
+                JSONObject jsonInput = new JSONObject();
+                jsonInput.put(paperNo, entity.getPageContent());
+
+                String cipherStreamUtil = CipherStreamUtil.encryptionApi(jsonInput, action,
+                        entity.getRootPipelineId(),
+                        Long.valueOf(entity.getGroupId()),
+                        entity.getBatchId(),
+                        entity.getTenantId(),
+                        pipelineName,
+                        entity.getOriginId(),
+                        applicationName,
+                        entity.getPaperNo());
+
+                ObjectMapper decryptionParsing = new ObjectMapper();
+                JsonNode data = decryptionParsing.readTree(cipherStreamUtil);
+                JsonNode encryptedData = data.get("encryptedData");
+                pageContent = encryptedData.get(paperNo).asText();
+            } else {
+                pageContent = entity.getPageContent();
+                log.info("Encryption is false");
+            }
+        } catch (JSONException e) {
+            log.error("JSON processing error: {}", e.getMessage(), e);
+            // Handle JSON exceptions (e.g., malformed JSON)
+        } catch (IOException e) {
+            log.error("I/O error during encryption: {}", e.getMessage(), e);
+            // Handle IO exceptions (e.g., issues reading/writing data)
+        } catch (Exception e) {
+            log.error("An unexpected error occurred: {}", e.getMessage(), e);
+            // Handle any other unexpected exceptions
+        }
+
+        return pageContent;
+    }
+
 }
 

@@ -2,9 +2,11 @@ package in.handyman.raven.lib.model.zeroshotclassifier;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.TritonRequestProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
@@ -12,6 +14,7 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -47,8 +50,37 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         this.action = action;
     }
 
+    public String encryptionCall(ZeroShotClassifierInputTable entity) throws Exception {
+        String paperNo = String.valueOf(entity.getPaperNo());
+
+        String encryptionActivator = action.getContext().get("encryption.pipeline.activator");
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+        String pageContent = "";
+
+        if (Objects.equals("true", encryptionActivator)) {
+            JSONObject jsonInput = new JSONObject();
+            jsonInput.put(paperNo, entity.getPageContent());
+
+            String cipherStreamUtil = CipherStreamUtil.encryptionApi(jsonInput, action,
+                    entity.getRootPipelineId(), Long.parseLong(entity.getGroupId()), entity.getBatchId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, entity.getPaperNo());
+
+
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(cipherStreamUtil);
+            JsonNode encryptedData = data.get("encryptedData");
+            pageContent = encryptedData.get(paperNo).asText();
+
+        }
+        else {
+            pageContent = entity.getPageContent();
+            log.info("encryption is false");
+        }
+        return pageContent;
+    }
+
     @Override
-    public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity) throws IOException {
+    public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity) throws Exception {
         List<ZeroShotClassifierOutputTable> parentObj = new ArrayList<>();
 
         String originId = entity.getOriginId();
@@ -57,10 +89,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
-        String pageContent = String.valueOf(entity.getPageContent());
+
+
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
+
+        // encryption call
+        String pageContent = encryptionCall(entity);
 
         // payload
         ZeroShotClassifierData data = new ZeroShotClassifierData();
@@ -71,6 +107,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setProcess(entity.getProcessId());
         data.setOriginId(originId);
         data.setPaperNo(paperNo);
+        data.setTenantId(entity.getTenantId());
         data.setGroupId(groupId);
         data.setPageContent(pageContent);
         data.setBatchId(entity.getBatchId());

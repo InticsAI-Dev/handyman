@@ -105,7 +105,7 @@ public class CipherStreamUtil {
 
 
     public static String encryptionApi(Object jsonInput, ActionExecutionAudit action,
-                                       String rootPipelineId, Integer groupId, String batchId, Integer tenantId, String pipelineName, String originId, String applicationName, Integer paperNo) throws Exception {
+                                       Long rootPipelineId, Long groupId, String batchId, Long tenantId, String pipelineName, String originId, String applicationName, Integer paperNo) throws Exception {
         OkHttpClient client = new OkHttpClient();
         String apiUrl = action.getContext().get("apiUrl");
 
@@ -148,7 +148,7 @@ public class CipherStreamUtil {
 
 
     public static String decryptionApi(Object jsonInput, ActionExecutionAudit action,
-                                       String rootPipelineId, Integer groupId, Integer tenantId, String pipelineName, String originId, String applicationName, Integer paperNo) throws Exception {
+                                       Long rootPipelineId, Long groupId, Long tenantId, String pipelineName, String originId, String applicationName, Integer paperNo, String batchId) throws Exception {
         OkHttpClient client = new OkHttpClient();
         String apiUrl = action.getContext().get("decryptApiUrl");
 
@@ -157,10 +157,10 @@ public class CipherStreamUtil {
         JSONObject decryptData = new JSONObject();
 
         // Add all required fields to the payload
-        payload.put("encryptRequestData", jsonInput);
+        payload.put("decryptRequestData", jsonInput);
         payload.put("rootPipelineId", rootPipelineId);
         payload.put("groupId", groupId);
-        payload.put("batchId", "");
+        payload.put("batchId", batchId);
         payload.put("tenantId", tenantId);
         payload.put("pipelineName", pipelineName);
         payload.put("originId",originId);
@@ -188,4 +188,13 @@ public class CipherStreamUtil {
             }
         }
     }
+
+    public String replaceQuotes(String input) {
+        if (input == null) {
+            return null; // Handle null input
+        }
+
+        return input.replace("\"","");
+    }
+
     }

@@ -21,5 +21,7 @@ public class ZeroShotClassifierDataItem {
     private String groupId;
     private Integer paperNo;
     private String batchId;
+    private Long tenantId;
+    private String rootPipelineId;
 
 }

@@ -22,6 +22,7 @@ public class IntellimatchTest {
                         "FROM control_data_macro.prescriber_name_similarity_input a\n" +
                         "join control_data.control_data_payload_queue_archive b on a.origin_id=b.origin_id")
                 .resourceConn("intics_zio_db_conn")
+
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -30,9 +31,10 @@ public class IntellimatchTest {
                 Map.entry("consumer.masterdata.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
-                Map.entry("copro.intelli-match.url", "http://192.168.10.239:9200/v2/models/cos-service/versions/1/infer"),
-                Map.entry("decryptApiUrl","http://192.168.10.239:10001/copro-utils/data-security/decrypt"),
-                Map.entry("apiUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
+                Map.entry("database.decryption.activator", "false"),
+                Map.entry("copro.intelli-match.url","http://192.168.10.248:9200/v2/models/cos-service/versions/1/infer"),
+                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
                 Map.entry("encryption.activator","true"),
                 Map.entry("consumer.intellimatch.API.count","1"),
                 Map.entry("write.batch.size", "5")));

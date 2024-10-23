@@ -65,10 +65,10 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://192.168.10.239:8300/v2/models/text-extractor-service/versions/1/infer")
+                .endPoint("http://192.168.10.248:8300/v2/models/text-extractor-service/versions/1/infer")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT 1 as process_id, 'batch-1' as batch_id  , 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/output/auto_rotation/test.jpeg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name")
+                .querySet("SELECT 1 as process_id, 'batch-1' as batch_id  , 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/input/h_hart_packet_18_1.jpg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.239:8300/v2/models/text-extractor-service/versions/1/infer");
@@ -79,10 +79,10 @@ class DataExtractionActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5"),
-                Map.entry("database.decryption.activator", "true"),
+                Map.entry("database.decryption.activator", "false"),
                 Map.entry("page.content.min.length.threshold", "5"),
-                Map.entry("apiUrl", "http://0.0.0.0:10001/copro-utils/data-security/encrypt"),
-                Map.entry("decryptApiUrl","http://192.168.10.239:10001/copro-utils/data-security/decrypt"),
+                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
+                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
                 Map.entry("encryption.activator","false")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);
         dataExtractionAction.execute();
