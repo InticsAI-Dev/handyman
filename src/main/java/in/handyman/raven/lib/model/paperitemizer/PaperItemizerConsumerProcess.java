@@ -60,6 +60,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String batchId = entity.getBatchId();
+        String outputDir = entity.getOutputDir();
         String processId = String.valueOf(entity.getProcessId());
         Long tenantId = entity.getTenantId();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -72,7 +73,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         paperitemizerData.setRootPipelineId(rootPipelineId);
         paperitemizerData.setProcess(PROCESS_NAME);
         paperitemizerData.setInputFilePath(inputFilePath);
-        paperitemizerData.setOutputDir(this.outputDir);
+        paperitemizerData.setOutputDir(outputDir);
         paperitemizerData.setActionId(actionId);
         paperitemizerData.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
