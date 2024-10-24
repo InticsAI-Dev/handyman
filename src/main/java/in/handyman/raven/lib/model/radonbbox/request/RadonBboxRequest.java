@@ -22,6 +22,7 @@ public class RadonBboxRequest {
     private String outputDir;
     private Long actionId;
     private String process;
+    private String batchId;
 
     private List<RadonBboxRequestLineItem> radonBboxLineItems;
 

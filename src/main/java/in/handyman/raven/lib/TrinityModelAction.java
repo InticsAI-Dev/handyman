@@ -317,7 +317,7 @@ public class TrinityModelAction implements IActionExecution {
                         String predictedAttributionValue;
 
                         if (Objects.equals("false",databaseEncryption)){
-                            predictedAttributionValue = String.valueOf(decryptedData.get(resultLineItem.getQuestionId().toString()));
+                            predictedAttributionValue = CipherStreamUtil.replaceQuotes(String.valueOf(decryptedData.get(resultLineItem.getQuestionId().toString())));
                         }else {
                             predictedAttributionValue = resultLineItem.getPredictedAttributionValue();
                         }

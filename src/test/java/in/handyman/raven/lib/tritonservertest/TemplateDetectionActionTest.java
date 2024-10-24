@@ -17,7 +17,7 @@ class TemplateDetectionActionTest {
         TemplateDetection templateDetection=TemplateDetection.builder()
                 .condition(true)
                 .name("template detection")
-                .coproUrl("http://192.168.10.239:9600/v2/models/argon-vqa-service/versions/1/infer")
+                .coproUrl("http://192.168.10.248:9600/v2/models/argon-vqa-service/versions/1/infer")
                 .inputTable("info.auto_rotation")
                 .ouputTable("macro.template_detection_response_audit")
                 .resourceConn("intics_zio_db_conn")

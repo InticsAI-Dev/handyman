@@ -23,6 +23,11 @@ public class RadonBboxResponseData {
     private String plottedPath;
     private Long actionId;
     private String process;
+    private String batchId;
+    private Long imageDPI;
+    private Long imageWidth;
+    private Long imageHeight;
+    private String extractedImageUnit;
     private List<RadonResponseBboxLineItem> radonBboxLineItems;
 
 

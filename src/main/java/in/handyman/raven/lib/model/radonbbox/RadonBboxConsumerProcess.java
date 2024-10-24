@@ -27,6 +27,7 @@ import org.slf4j.Marker;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<RadonBboxInputEntity, RadonBboxOutputEntity> {
@@ -113,6 +114,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         radonBboxRequestData.setProcess(RADON_BBOX);
         radonBboxRequestData.setInputFilePath(entity.getInputFilePath());
         radonBboxRequestData.setOutputDir(radonKvpBbox.getOutputDir());
+        radonBboxRequestData.setBatchId(entity.getBatchId());
         List<RadonBboxRequestLineItem> items = objectMapper.readValue(entity.getRadonOutput(), new TypeReference<>() {
         });
 
@@ -121,9 +123,10 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
                 // encryption calling part
                 JSONObject listToJson = new JSONObject();
 
+                AtomicInteger keyNum = new AtomicInteger(1);
                 // creating unique id to map the list values
                 items.forEach(value->{
-                    listToJson.put(UUID.randomUUID().toString(),List.of(value.getSorItemName(), value.getAnswer(), value.getValueType()));
+                    listToJson.put("keyNum"+ keyNum.getAndIncrement(), List.of(value.getSorItemName(), value.getAnswer(), value.getValueType()));
 
                 });
 
@@ -231,12 +234,34 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         }
     }
 
-    String predictedAttributionValue = "";
-    private void buildOutputParentObject(List<RadonBboxOutputEntity> parentObj, RadonBboxInputEntity entity, Boolean status, String message, RadonBboxResponseData radonBboxResponse) throws Exception {
+            String predictedAttributionValue = "";
+            private void buildOutputParentObject(List<RadonBboxOutputEntity> parentObj, RadonBboxInputEntity entity, Boolean status, String message, RadonBboxResponseData radonBboxResponse) throws Exception {
 
-        String databaseEncryption = action.getContext().get("database.decryption.activator");
+            JSONObject listToJson = new JSONObject();
+            radonBboxResponse.getRadonBboxLineItems().forEach(value -> {
+
+
+            AtomicInteger keyNum = new AtomicInteger(1);
+            // creating unique id to map the list values
+            listToJson.put("keyNum" + keyNum.getAndIncrement(), List.of(value.getSorItemName(), value.getAnswer(), value.getValueType()));
+
+                });
+
+        // new json to store answer and key of list
+        JSONObject answerKeyCombination = new JSONObject();
+
+        listToJson.keys().forEachRemaining(key -> {
+            JSONArray row = listToJson.getJSONArray(key);
+            String answer = row.getString(1);
+            answerKeyCombination.put(key, answer);              // value to pass into api call
+        });
+
+
+        String databaseEncryption = action.getContext().get("database.encryption.activator");
         String applicationName = "APP";
         String pipelineName = "Radon Bbox";
+        JSONObject resultJson = new JSONObject();
+
 
         String decryptionCall = "";
         if (Objects.equals("false", databaseEncryption)) {
@@ -244,7 +269,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
                 try {
                     decryptionCall = CipherStreamUtil.decryptionApi(
-                    value, action, entity.getRootPipelineId(),
+                    answerKeyCombination, action, entity.getRootPipelineId(),
                     entity.getGroupId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, Math.toIntExact(entity.getPaperNo()),entity.getBatchId()
                 );
 
@@ -252,20 +277,33 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
                     log.error("Error during decryption API call: {}", e.getMessage(), e);
                     // Handle the exception appropriately, maybe return null or an empty string
                 }
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptedData");
 
+            listToJson.keys().forEachRemaining(key -> {
+                if (decryptedData.has(key)) {
+                    String encryptedValue = decryptedData.get(key).asText();
+                    // Get the answer (index 1) from jsonB
+                    String answer = listToJson.getJSONArray(key).getString(1);
+                    // Put the answer and encrypted value in the result JSON
+                    resultJson.put(answer, encryptedValue);
+                }
+
+            });
                    }
 
-        ObjectMapper decryptionParsing = new ObjectMapper();
-        JsonNode data = decryptionParsing.readTree(decryptionCall);
-        JsonNode decryptedData = data.get("decryptedData");
+
+
+
 
         if (Boolean.TRUE.equals(status)) {
             radonBboxResponse.getRadonBboxLineItems().forEach(radonResponseBboxLineItem -> {
                 try {
 
                  if (Objects.equals("false",databaseEncryption)){
-                     predictedAttributionValue = decryptedData.get(radonResponseBboxLineItem.getAnswer()).asText();
-                 }else{
+                     predictedAttributionValue = resultJson.get(radonResponseBboxLineItem.getAnswer()).toString();
+                 }else {
                      predictedAttributionValue = radonResponseBboxLineItem.getAnswer();
                  }
 
@@ -284,7 +322,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
                     .stage(RADON_KVP_BBOX)
                     .message(message)
                     .sorItemName(radonResponseBboxLineItem.getSorItemName())
-                    .answer(radonResponseBboxLineItem.getAnswer())
+                    .answer(predictedAttributionValue)
                     .valueType(radonResponseBboxLineItem.getValueType())
                     .build());
                 } catch (JsonProcessingException e) {

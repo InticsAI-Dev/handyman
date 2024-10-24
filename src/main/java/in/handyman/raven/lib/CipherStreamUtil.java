@@ -189,7 +189,7 @@ public class CipherStreamUtil {
         }
     }
 
-    public String replaceQuotes(String input) {
+    public static String replaceQuotes(String input) {
         if (input == null) {
             return null; // Handle null input
         }

@@ -22,17 +22,12 @@ public class PharseMatchActionTest {
                 .readBatchSize("1")
                 .threadCount("1")
                 .writeBatchSize("1")
-                .querySet("select 1 AS paper_no, 'drug name, patient name, prescriber name' AS page_content, \n" +
-                        "                        1 AS group_id, \n" +
-                        "                        'INT-1' AS origin_id,  \n" +
-                        "                        1 AS process_id,  \n" +
-                        "                        'BATCH-1' as batch_id,\n" +
-                        "                        1 as tenant_id,\n" +
-                        "                        1 AS rootPipelineId,  \n" +
-                        "                        JSONB_BUILD_OBJECT( \n" +
-                        "                        'Drug', ARRAY_TO_JSON(ARRAY['Strength', 'Quantity', 'Drug Requested', 'Drug', 'Medication', 'Drug name and Strength', 'Drug name', 'Dose', 'Directions', 'Diagnosis']),  \n" +
-                        "                        'Member', ARRAY_TO_JSON(ARRAY['Members Name', 'Member Name', 'Member Id', 'Member Optima', 'Member DOB', 'Members DOB']) \n" +
-                        "                        ) AS truthPlaceholder")
+                .querySet("select a.origin_id,a.paper_no,\n" +
+                        "sot.content as page_content, 123 as group_id ,a.root_pipeline_id as root_pipeline_id,\n" +
+                        "'12345' as process_id,\n" +
+                        " a.truth_placeholder,a.tenant_id as tenant_id ,a.batch_id, now() as created_on\n" +
+                        "from paper.paper_filter_zsc_pm_input_aggregate_audit a\n" +
+                        "join info.source_of_truth sot on a.origin_id = sot.origin_id and a.paper_no = sot.paper_no and sot.batch_id = a.batch_id and sot.tenant_id = a.tenant_id\n")
 
                 .resourceConn("intics_zio_db_conn")
                 .build();

@@ -86,6 +86,7 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
         qrExtractionData.setGroupId(entity.getGroupId());
         qrExtractionData.setTenantId(entity.getTenantId());
         qrExtractionData.setPaperNo(entity.getPaperNo());
+        qrExtractionData.setBatchId(entity.getBatchId());
         qrExtractionData.setOutputDir(this.outputDir);
 
         String jsonInputRequest = objectMapper.writeValueAsString(qrExtractionData);
@@ -279,20 +280,21 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
             qrLineItems.forEach(value -> {
                 values.put(value.getBoundingBox().toString(),value.getValue());
             });
-            decryptionCall = CipherStreamUtil.encryptionApi(values, action, entity.getRootPipelineId().toString(), groupId, entity.getBatchId(), Math.toIntExact(entity.getTenantId()), pipelineName, originId, applicationName, Math.toIntExact(entity.getPaperNo()));
+
+            decryptionCall = CipherStreamUtil.decryptionApi(values, action, entity.getRootPipelineId(), Long.valueOf(groupId), entity.getTenantId(), pipelineName, originId, applicationName, Math.toIntExact(entity.getPaperNo()), entity.getBatchId());
 
         }
         ObjectMapper decryptionParsing = new ObjectMapper();
         JsonNode data = decryptionParsing.readTree(decryptionCall);
-        JsonNode decryptedData = data.get("decryptRequestData");
+        JsonNode decryptedData = data.get("decryptedData");
 
 
             if (!qrLineItems.isEmpty()) {
             qrLineItems.forEach(qrReader -> {
                 String finalDecodedValue = "";
                 String predictedAttributionValue;
-                if (Objects.equals("false",databaseEncryption)){
-                    predictedAttributionValue = String.valueOf(decryptedData.get(qrReader.getValue()));
+                if (Objects.equals("true",databaseEncryption)){
+                    predictedAttributionValue = String.valueOf(decryptedData.get(qrReader.getBoundingBox().toString()));
                 }else {
                     predictedAttributionValue = qrReader.getValue();
                 }

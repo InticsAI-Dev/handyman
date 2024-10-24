@@ -16,8 +16,8 @@ class RadonKvpBboxActionMethodsTest {
 
     @Test
     void executeMethod() throws Exception {
-        String querySet = "SELECT  a.paper_no,  a.origin_id,  a.group_id,    a.tenant_id, a.root_pipeline_id, a.batch_id, \n" +
-                "a.model_registry,  b.file_path as input_file_path, \n" +
+        String querySet = "SELECT  a.paper_no,  a.origin_id,  a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id, \n" +
+                "a.model_registry, '/data/input/2.jpg' as input_file_path, \n" +
                 "a.sor_container_name,(jsonb_agg(json_build_object('sorItemName',a.sor_item_name,'valueType','Printed' ,'answer',a.answer) )::varchar) as radon_output \n" +
                 "    FROM sor_transaction.llm_json_parser_output_audit  a \n" +
                 "    join info.source_of_truth sot on sot.origin_id = a.origin_id and sot.paper_no =a.paper_no  \n" +
@@ -32,15 +32,14 @@ class RadonKvpBboxActionMethodsTest {
                 "    a.batch_id,  \n" +
                 "    a.model_registry,  \n" +
                 "    b.file_path \n" +
-                "   order by (jsonb_agg(json_build_object('sorItemName',a.sor_item_name,'valueType','Printed' ,'answer',a.answer) )::varchar) desc \n" +
-                "   limit 1;";
+                "   order by (jsonb_agg(json_build_object('sorItemName',a.sor_item_name,'valueType','Printed' ,'answer',a.answer) )::varchar) desc \n" ;
 
         RadonKvpBbox radonKvpBbox = RadonKvpBbox.builder()
                 .name("Radon kvp bbox")
                 .condition(Boolean.TRUE)
                 .consumerApiCount("1")
                 .coproUrl("http://192.168.10.248:7600/v2/models/radon-bbox-service/versions/1/infer")
-                .inputTable("sor_transaction.llm_json_parser_output_12345")
+                .inputTable("sor_transaction.llm_json_parser_output_audit")
                 .outputTable("sor_transaction.radon_kvp_bbox_output_audit")
                 .outputDir("/data/output/")
                 .querySet(querySet)
@@ -56,7 +55,7 @@ class RadonKvpBboxActionMethodsTest {
         actionExecutionAudit.getContext().put("okhttp.client.timeout", "1000");
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","2"),
                 Map.entry("consumer.API.count","2"),
-                Map.entry("database.decryption.activator", "true"),
+                Map.entry("database.encryption.activator", "false"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("encryption.activator", "true"),
                 Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
