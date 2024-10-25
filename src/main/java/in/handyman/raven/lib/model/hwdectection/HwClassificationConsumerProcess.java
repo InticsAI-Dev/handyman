@@ -62,6 +62,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         Long rootpipelineId = action.getRootPipelineId();
         Long actionId = action.getActionId();
         String filePath = String.valueOf(entity.getFilePath());
+        String batchId = entity.getBatchId();
         ObjectMapper objectMapper = new ObjectMapper();
 
         //payload
@@ -76,6 +77,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         hwDetectionPayload.setOriginId(entity.getOriginId());
         hwDetectionPayload.setProcessId(entity.getProcessId());
         hwDetectionPayload.setPaperNo(entity.getPaperNo());
+        hwDetectionPayload.setBatchId(batchId);
 
         String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
 
@@ -288,12 +290,12 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .stage(STAGE)
                 .message("Paper Classification Finished")
                 .processId(hwDetectionDataItem.getProcessId())
-                .rootPipelineId(entity.getRootPipelineId())
+                .rootPipelineId(Long.valueOf(hwDetectionDataItem.getRootPipelineId()))
                 .modelName(modelName)
                 .modelVersion(modelVersion)
                 .createdOn(entity.getCreatedOn())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .batchId(entity.getBatchId())
+                .batchId(hwDetectionDataItem.getBatchId())
                 .request(request)
                 .response(response)
                 .endpoint(endpoint)

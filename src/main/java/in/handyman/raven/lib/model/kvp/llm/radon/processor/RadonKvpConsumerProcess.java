@@ -75,6 +75,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
+        radonKvpExtractionRequest.setBatchId(entity.getBatchId());
 
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
@@ -253,7 +254,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .batchId(entity.getBatchId())
+                .batchId(modelResponse.getBatchId())
                 .modelRegistry(entity.getModelRegistry())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)

@@ -50,7 +50,7 @@ public class TrinityModelApiCaller {
         processName=this.action.getContext().get("vqa.valuation");
     }
 
-    public String computeTriton(TrinityModelLineItem asset, ActionExecutionAudit action) throws JsonProcessingException {
+    public String computeTriton(TrinityModelLineItem asset, ActionExecutionAudit action, String batchId) throws JsonProcessingException {
 
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
@@ -58,7 +58,7 @@ public class TrinityModelApiCaller {
         ObjectMapper objectMapper = new ObjectMapper();
 
 
-        TrinityModelPayload trinityModelPayload = getTrinityModelPayload(asset, actionId, rootpipelineId);
+        TrinityModelPayload trinityModelPayload = getTrinityModelPayload(asset, actionId, rootpipelineId, batchId);
 
         String jsonInputRequest = objectMapper.writeValueAsString(trinityModelPayload);
         TritonRequest tritonRequest;
@@ -95,7 +95,7 @@ public class TrinityModelApiCaller {
     }
 
     @NotNull
-    private TrinityModelPayload getTrinityModelPayload(TrinityModelLineItem asset, Long actionId, Long rootpipelineId) {
+    private TrinityModelPayload getTrinityModelPayload(TrinityModelLineItem asset, Long actionId, Long rootpipelineId,String batchId) {
         TrinityModelPayload trinityModelPayload = new TrinityModelPayload();
         trinityModelPayload.setActionId(actionId);
         trinityModelPayload.setProcess(processName);
@@ -106,6 +106,7 @@ public class TrinityModelApiCaller {
         trinityModelPayload.setInputFilePath(asset.getFilePath());
         trinityModelPayload.setModelRegistry(asset.getModelRegistry());
         trinityModelPayload.setOriginId(asset.getOriginId());
+        trinityModelPayload.setBatchId(batchId);
         trinityModelPayload.setGroupId(asset.getGroupId());
         trinityModelPayload.setPaperNo(asset.getPaperNo());
         trinityModelPayload.setProcessId(asset.getProcessId());

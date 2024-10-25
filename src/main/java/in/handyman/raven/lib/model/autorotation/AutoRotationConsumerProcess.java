@@ -65,6 +65,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         Integer paperNo = entity.getPaperNo();
         String filePath = String.valueOf(entity.getFilePath());
+        String batchId = entity.getBatchId();
         Long actionId = action.getActionId();
 
 
@@ -81,6 +82,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         autoRotationRequest.setInputFilePath(filePath);
         autoRotationRequest.setOutputDir(outputDir);
         autoRotationRequest.setPaperNo(paperNo);
+        autoRotationRequest.setBatchId(batchId);
         String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
 
 
@@ -198,7 +200,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
                             .rootPipelineId(autoRotationFilePath.getRootPipelineId())
                             .modelName(modelName)
                             .modelVersion(modelVersion)
-                            .batchId(entity.getBatchId())
+                            .batchId(autoRotationFilePath.getBatchId())
                             .request(request)
                             .response(response)
                             .endpoint(endpoint)

@@ -55,6 +55,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
         String pageContent = String.valueOf(entity.getPageContent());
+        String batchId = entity.getBatchId();
         ObjectMapper objectMapper = new ObjectMapper();
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
@@ -73,8 +74,8 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setPaperNo(paperNo);
         data.setGroupId(groupId);
         data.setPageContent(pageContent);
-        data.setBatchId(entity.getBatchId());
         data.setKeysToFilter(keysToFilterObject);
+        data.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(data);
 
 

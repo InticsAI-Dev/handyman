@@ -20,7 +20,7 @@ public class PaperItemizerDataItem {
         private Integer groupId;
         private Long tenantId;
         private String batchId;
-        private Long rootPipelineId;
+        private String rootPipelineId;
 }
 
 

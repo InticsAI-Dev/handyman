@@ -38,6 +38,8 @@ import java.util.stream.Collectors;
 
 public class FileMergerPdfAction implements IActionExecution {
     public static final String FILE_MERGER_CONSUMER_API_COUNT = "file.merger.consumer.API.count";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
+    public static final String READ_BATCH_SIZE = "read.batch.size";
     private final ActionExecutionAudit action;
     private final Logger log;
     private final FileMergerPdf fileMergerPdf;
@@ -60,8 +62,8 @@ public class FileMergerPdfAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(fileMergerPdf.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(FILE_MERGER_CONSUMER_API_COUNT));
-            Integer writeBatchSize1 = Integer.valueOf(action.getContext().get("write.batch.size"));
-            Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
+            Integer writeBatchSize1 = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+            Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
             FileMergerPdfConsumerProcess fileMergerPdfConsumerProcess = new FileMergerPdfConsumerProcess(log, aMarker, action, fileMergerPdf);
 
             final String outputDir = fileMergerPdf.getOutputDir();

@@ -24,6 +24,15 @@ public class XenonResult {
     private  Long questionId;
     private Long synonymId;
     private String sorItemName;
+    private String batchId;
+
+    public String getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(String batchId) {
+        this.batchId = batchId;
+    }
 
     public String getQuestion() {
         return question;

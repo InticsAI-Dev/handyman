@@ -19,6 +19,7 @@ public class DataExtractionData {
     private Integer groupId;
     private Long tenantId;
     private String templateName;
+    private String batchId;
 
     }
 

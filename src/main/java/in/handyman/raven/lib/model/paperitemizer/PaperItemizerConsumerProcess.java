@@ -118,10 +118,11 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         String batchId = entity.getBatchId();
         try (Response response = httpclient.newCall(request).execute()) {
 
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
-            }
+
             if (response.isSuccessful()) {
+                if (log.isInfoEnabled()) {
+                    log.info(aMarker, "coproProcessor consumer process response successfull");
+                }
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody, jsonInputRequest, responseBody, endpoint.toString());
 
@@ -182,11 +183,10 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
         try (Response response = httpclient.newCall(request).execute()) {
 
-
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
-            }
             if (response.isSuccessful()) {
+                if (log.isInfoEnabled()) {
+                    log.info(aMarker, "coproProcessor consumer process response successful ");
+                }
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 PaperItemizerResponse paperItemizerResponse = objectMapper.readValue(responseBody, PaperItemizerResponse.class);
                 if (paperItemizerResponse.getOutputs() != null && !paperItemizerResponse.getOutputs().isEmpty()) {
@@ -277,7 +277,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
-                                .batchId(entity.getBatchId())
+                                .batchId(paperItemizeOutputData.getBatchId())
                                 .request(request)
                                 .response(response)
                                 .endpoint(endpoint)
