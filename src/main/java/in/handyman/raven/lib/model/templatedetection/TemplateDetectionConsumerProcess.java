@@ -292,8 +292,6 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer groupId = entity.getGroupId();
 
         String databaseDecryption = action.getContext().get("database.decryption.activator");
-        String applicationName = "APP";
-        String pipelineName = "TEXT EXTRACTION";
 
 
         try {

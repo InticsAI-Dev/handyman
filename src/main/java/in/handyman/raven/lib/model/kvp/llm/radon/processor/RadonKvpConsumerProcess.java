@@ -239,8 +239,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         String applicationName = "APP";
         String pipelineName = "TEXT EXTRACTION";
-        String databaseEncryption = action.getContext().get("database.decryption.activator");
-        String templateName = "";
+        String databaseDecryption = action.getContext().get("database.decryption.activator");
         String finalInference = "";
         
 
@@ -248,7 +247,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
        
 
         
-        if (Objects.equals("true", databaseEncryption))
+        if (Objects.equals("true", databaseDecryption))
         {
             JSONObject decryptData = new JSONObject();
             decryptData.put("inference",modelResponse.getInferResponse());
@@ -268,14 +267,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 finalInference = CipherStreamUtil.replaceQuotes(mapper.writeValueAsString(stringObjectMap));
                 log.info("extracted the value from the key");
 
-
             }else {
-                log.info("No Key named inference is present");
-            }
+                    log.info("No Key named inference is present");
+                }
 
         }else {
             finalInference = modelResponse.getInferResponse();
-            log.info("decryption is tirned off");
+            log.info("decryption is turned off for Radon KVP");
            
         }
 

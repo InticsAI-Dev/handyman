@@ -257,7 +257,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
              });
 
 
-            String databaseDecryption = action.getContext().get("database.encryption.activator");
+            String databaseDecryption = action.getContext().get("database.decryption.activator");
             String applicationName = "APP";
             String pipelineName = "Radon Bbox";
             JSONObject resultJson = new JSONObject();
