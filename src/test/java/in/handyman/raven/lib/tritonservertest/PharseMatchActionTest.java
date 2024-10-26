@@ -44,8 +44,7 @@ public class PharseMatchActionTest {
                 Map.entry("encryption.pipeline.activator", "true"),
                 Map.entry("database.decryption.activator", "false"),
                 Map.entry("page.content.min.length.threshold", "5"),
-                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
-                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
                 Map.entry("encryption.activator","false"),
                 Map.entry("write.batch.size", "5")));
 

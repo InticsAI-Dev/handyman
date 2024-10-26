@@ -270,18 +270,21 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
             throw new HandymanException("Exception in processing the json response using the Json node ", e);
         }
         AtomicInteger atomicInteger = new AtomicInteger();
-        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String databaseDecryption = action.getContext().get("database.decryption.activator");
         String pipelineName = "QR EXTRACTION";
         String applicationName = "APP";
         String decryptionCall = "";
 
-        if (Objects.equals("true", databaseEncryption)) {
+        if (Objects.equals("true", databaseDecryption)) {
             JSONObject values = new JSONObject();
             qrLineItems.forEach(value -> {
                 values.put(value.getBoundingBox().toString(),value.getValue());
             });
 
-            decryptionCall = CipherStreamUtil.decryptionApi(values, action, entity.getRootPipelineId(), Long.valueOf(groupId), entity.getTenantId(), pipelineName, originId, applicationName, Math.toIntExact(entity.getPaperNo()), entity.getBatchId());
+
+            ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+            CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+            decryptionCall = cipherUtil.decryptionApi(values, action, entity.getRootPipelineId(), Long.valueOf(groupId), entity.getTenantId(), pipelineName, originId, applicationName, Math.toIntExact(entity.getPaperNo()), entity.getBatchId());
 
         }
         ObjectMapper decryptionParsing = new ObjectMapper();
@@ -293,8 +296,8 @@ public class QrConsumerProcess implements CoproProcessor.ConsumerProcess<QrInput
             qrLineItems.forEach(qrReader -> {
                 String finalDecodedValue = "";
                 String predictedAttributionValue;
-                if (Objects.equals("true",databaseEncryption)){
-                    predictedAttributionValue = String.valueOf(decryptedData.get(qrReader.getBoundingBox().toString()));
+                if (Objects.equals("true",databaseDecryption)){
+                    predictedAttributionValue = CipherStreamUtil.replaceQuotes(decryptedData.get(qrReader.getBoundingBox().toString()).asText());
                 }else {
                     predictedAttributionValue = qrReader.getValue();
                 }

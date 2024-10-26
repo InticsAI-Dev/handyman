@@ -291,7 +291,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         Integer paperNo = entity.getPaperNo();
         Integer groupId = entity.getGroupId();
 
-        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String databaseDecryption = action.getContext().get("database.decryption.activator");
         String applicationName = "APP";
         String pipelineName = "TEXT EXTRACTION";
 
@@ -299,7 +299,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         try {
             TemplateDetectionDataItem templateDetectionDataItem = objectMapper.readValue(templateDetectionData, TemplateDetectionDataItem.class);
             String decryptionCall = "";
-                if (Objects.equals("false", databaseEncryption)) {
+                if (Objects.equals("false", databaseDecryption)) {
                     JSONObject value = new JSONObject();
 
                     // Iterate over templateDetectionDataItem attributes and populate JSON object
@@ -307,8 +307,10 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                         value.put(values.getQuestion(), values.getPredictedAttributionValue());
                     });
 
+                    ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                    CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
                     // Call the decryption API with the necessary parameters
-                    decryptionCall = CipherStreamUtil.decryptionApi(
+                    decryptionCall = cipherUtil.decryptionApi(
                             value, action, entity.getRootPipelineId(),
                             Long.valueOf(groupId), entity.getTenantId(), pipelineName, originId, applicationName, paperNo, entity.getBatchId()
                     );
@@ -326,7 +328,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                 Float scores = attribute.getScores();
                 String predictedAttributionValue;
 
-                if (Objects.equals("false",databaseEncryption)){
+                if (Objects.equals("true",databaseDecryption)){
                     predictedAttributionValue = decryptedData.get(attribute.getQuestion()).asText();
                 }else {
                     predictedAttributionValue = attribute.getPredictedAttributionValue();

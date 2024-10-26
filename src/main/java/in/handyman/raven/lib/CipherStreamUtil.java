@@ -1,17 +1,12 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import okhttp3.*;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -23,16 +18,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.*;
 import java.security.spec.MGF1ParameterSpec;
-import java.net.URLEncoder;
 import java.util.Objects;
-
 
 
 public class CipherStreamUtil {
     private final Logger log;
     public static ActionExecutionAudit action;
 
-    public CipherStreamUtil(Logger log, ActionExecutionAudit action) {
+    public CipherStreamUtil( Logger log, ActionExecutionAudit action) {
         this.log = log;
         CipherStreamUtil.action = action;
     }
@@ -104,10 +97,10 @@ public class CipherStreamUtil {
 
 
 
-    public static String encryptionApi(Object jsonInput, ActionExecutionAudit action,
+    public String encryptionApi(Object jsonInput, ActionExecutionAudit action,
                                        Long rootPipelineId, Long groupId, String batchId, Long tenantId, String pipelineName, String originId, String applicationName, Integer paperNo) throws Exception {
         OkHttpClient client = new OkHttpClient();
-        String apiUrl = action.getContext().get("apiUrl");
+        String apiUrl = action.getContext().get("encryptionUrl");
 
         //  Construct the JSON payload
         JSONObject payload = new JSONObject();
@@ -139,18 +132,21 @@ public class CipherStreamUtil {
         //  Send the request and get the response
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
+                log.info("Sending encryption request for Pipeline: {}, Batch ID: {} Application: {}", pipelineName, batchId,applicationName);
                 return response.body().string(); // Return the response body
+
             } else {
+                log.info("Sending encryption request failed for Pipeline: {}, Batch ID: {}, Application {}", pipelineName, batchId, applicationName);
                 throw new RuntimeException("Failed to call encryption API: " + response.code() + ", Message: " + response.message());
             }
         }
     }
 
 
-    public static String decryptionApi(Object jsonInput, ActionExecutionAudit action,
+    public String decryptionApi(Object jsonInput, ActionExecutionAudit action,
                                        Long rootPipelineId, Long groupId, Long tenantId, String pipelineName, String originId, String applicationName, Integer paperNo, String batchId) throws Exception {
         OkHttpClient client = new OkHttpClient();
-        String apiUrl = action.getContext().get("decryptApiUrl");
+        String apiUrl = action.getContext().get("decryptionUrl");
 
         //  Construct the JSON payload
         JSONObject payload = new JSONObject();
@@ -182,8 +178,11 @@ public class CipherStreamUtil {
         //  Send the request and get the response
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
+                log.info("Sending decryption request for Pipeline: {}, Batch ID: {}, Application: {}", pipelineName, batchId, applicationName);
                 return response.body().string(); //  response body
+
             } else {
+                log.info("Sending decryption failed for Pipeline: {}, Batch ID: {}, Application: {}", pipelineName, batchId, applicationName);
                 throw new RuntimeException("Failed to call encryption API: " + response.code() + ", Message: " + response.message());
             }
         }

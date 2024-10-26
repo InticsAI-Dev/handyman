@@ -293,7 +293,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
         String encryptionActivator = action.getContext().get("encryption.pipeline.activator");
         String applicationName = "APP";
-        String pipelineName = "TEXT EXTRACTION";
+        String pipelineName = "Phrase Match";
         String pageContent = "";
 
         try {
@@ -301,7 +301,10 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                 JSONObject jsonInput = new JSONObject();
                 jsonInput.put(paperNo, entity.getPageContent());
 
-                String cipherStreamUtil = CipherStreamUtil.encryptionApi(jsonInput, action,
+                ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+
+                String cipherStreamUtil = cipherUtil.encryptionApi(jsonInput, action,
                         entity.getRootPipelineId(),
                         Long.valueOf(entity.getGroupId()),
                         entity.getBatchId(),

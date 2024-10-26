@@ -55,26 +55,30 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         String encryptionActivator = action.getContext().get("encryption.pipeline.activator");
         String applicationName = "APP";
-        String pipelineName = "TEXT EXTRACTION";
+        String pipelineName = "ZSC";
         String pageContent = "";
 
         if (Objects.equals("true", encryptionActivator)) {
             JSONObject jsonInput = new JSONObject();
             jsonInput.put(paperNo, entity.getPageContent());
 
-            String cipherStreamUtil = CipherStreamUtil.encryptionApi(jsonInput, action,
+
+            ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+            CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+
+            String cipherStreamUtil = cipherUtil.encryptionApi(jsonInput, action,
                     entity.getRootPipelineId(), Long.parseLong(entity.getGroupId()), entity.getBatchId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, entity.getPaperNo());
 
 
-            ObjectMapper decryptionParsing = new ObjectMapper();
-            JsonNode data = decryptionParsing.readTree(cipherStreamUtil);
+            ObjectMapper encryptionParsing = new ObjectMapper();
+            JsonNode data = encryptionParsing.readTree(cipherStreamUtil);
             JsonNode encryptedData = data.get("encryptedData");
-            pageContent = encryptedData.get(paperNo).asText();
+            pageContent = CipherStreamUtil.replaceQuotes(encryptedData.get(paperNo).asText());
 
         }
         else {
             pageContent = entity.getPageContent();
-            log.info("encryption is false");
+            log.info("encryption is set to false");
         }
         return pageContent;
     }

@@ -41,15 +41,17 @@ public class CipherStreamUtilTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("publicKey", "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqoRdEwW3O51eTaupz8fks4PGhp1fmRHmsjijUarx0hlzRjSZm77IBbh93vlWhWnXV/CobpO/dIq0rrrDJ/CAncDCB7aQivMlplHy5+2hlZuENyNjevOXOrTxDlpnfXmumWCA6veqmcyQsASZmNMM+NVt91SirgEQt3EeTycegFN+nWl/2yQGEoqIg+2/WJ7dK+xr7rif7zRbbcBYnl+XdUrqR/4z46Q/prjiREbJCqYkrqsr/T530aS7ROEvQeK1gLbLqiIyxLLCcGMyA9nnk3RA8ADmkKm6Trx23t+6MgMct5Kde8IpoAgX8A4Iu9vQS+oB33BADEaKKtH9YVILTwIDAQAB-----END PUBLIC KEY-----"),
-                Map.entry("apiUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "1"),
-                Map.entry("decryptApiUrl","http://0.0.0.0:10001/copro-utils/data-security/decrypt"),
+                Map.entry("decryptionUrl","http://0.0.0.0:10001/copro-utils/data-security/decrypt"),
                 Map.entry("encryption.activator","true")));
 
+        ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+        CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
 
-        String cipherStreamUtil = CipherStreamUtil.encryptionApi( jsonObject,  actionExecutionAudit,
+        String cipherStreamUtil = cipherUtil.encryptionApi( jsonObject,  actionExecutionAudit,
                  rootPipelineId,  groupId, batchId,  tenantId,  pipelineName,  originId, applicationName, 0);
         System.out.println(cipherStreamUtil);
     }
@@ -75,15 +77,17 @@ public class CipherStreamUtilTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("publicKey", "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqoRdEwW3O51eTaupz8fks4PGhp1fmRHmsjijUarx0hlzRjSZm77IBbh93vlWhWnXV/CobpO/dIq0rrrDJ/CAncDCB7aQivMlplHy5+2hlZuENyNjevOXOrTxDlpnfXmumWCA6veqmcyQsASZmNMM+NVt91SirgEQt3EeTycegFN+nWl/2yQGEoqIg+2/WJ7dK+xr7rif7zRbbcBYnl+XdUrqR/4z46Q/prjiREbJCqYkrqsr/T530aS7ROEvQeK1gLbLqiIyxLLCcGMyA9nnk3RA8ADmkKm6Trx23t+6MgMct5Kde8IpoAgX8A4Iu9vQS+oB33BADEaKKtH9YVILTwIDAQAB-----END PUBLIC KEY-----"),
-                Map.entry("apiUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.239:10001/copro-utils/data-security/encrypt"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "1"),
-                Map.entry("decryptApiUrl","http://192.168.10.239:10001/copro-utils/data-security/decrypt"),
+                Map.entry("decryptionUrl","http://192.168.10.239:10001/copro-utils/data-security/decrypt"),
                 Map.entry("database.decryption.activator","true")));
 
+        ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+        CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
 
-        String cipherStreamUtil = CipherStreamUtil.decryptionApi(jsonObject, actionExecutionAudit, rootPipelineId, groupId, tenantId, pipelineName, originId, applicationName, 0,batchId);
+        String cipherStreamUtil = cipherUtil.decryptionApi(jsonObject, actionExecutionAudit, rootPipelineId, groupId, tenantId, pipelineName, originId, applicationName, 0,batchId);
         System.out.println(cipherStreamUtil);
         System.out.println(cipherStreamUtil instanceof String);
 

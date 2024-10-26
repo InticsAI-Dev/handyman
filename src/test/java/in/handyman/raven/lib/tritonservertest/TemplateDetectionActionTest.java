@@ -73,7 +73,7 @@ class TemplateDetectionActionTest {
                 Map.entry("consumer.API.count","2"),
                 Map.entry("database.decryption.activator", "true"),
                 Map.entry("triton.request.activator", "true"),
-                Map.entry("decryptApiUrl","http://0.0.0.0:10045/copro-utils/data-security/encrypt"),
+                Map.entry("decryptionUrl","http://192.168.10.248:10045/copro-utils/data-security/decrypt"),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size","2")));
 
