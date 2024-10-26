@@ -272,7 +272,7 @@ public class TrinityModelAction implements IActionExecution {
     }
 
     private void extractedTritonOuputDataResponse(String trinityModelDataItems, Jdbi jdbi,TrinityModelLineItem asset,String modelName, String modelVersion, ObjectMapper objectMapper, List<TrinityModelLineItem> assetBatchItem, String batchId) throws JsonProcessingException {
-        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String databaseDecryption = action.getContext().get("database.decryption.activator");
         String applicationName = "APP";
         String pipelineName = "KVP Extraction";
 
@@ -282,18 +282,22 @@ public class TrinityModelAction implements IActionExecution {
             });
 
             String decryptionCall = "";
-            if (Objects.equals("false", databaseEncryption)) {
+            if (Objects.equals("true", databaseDecryption)) {
                 JSONObject value = new JSONObject();
                 // Iterate over templateDetectionDataItem attributes and populate JSON object
                 trinityModelDataItem.getAttributes().forEach(values -> {
                     value.put(values.getQuestionId().toString(), values.getPredictedAttributionValue());
                 });
+
+                ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
                 // Call the decryption API with the necessary parameters
-                decryptionCall = CipherStreamUtil.decryptionApi(
+                decryptionCall = cipherUtil.decryptionApi(
                         value, action, trinityModelDataItem.getRootPipelineId(),
                         trinityModelDataItem.getGroupId(), trinityModelDataItem.getTenantId(), pipelineName, trinityModelDataItem.getOriginId(), applicationName, Math.toIntExact(trinityModelDataItem.getPaperNo()), trinityModelDataItem.getBatchId()
                 );
             }
+
             ObjectMapper decryptionParsing = new ObjectMapper();
             JsonNode data = decryptionParsing.readTree(decryptionCall);
             JsonNode decryptedData = data.get("decryptedData");
@@ -316,7 +320,7 @@ public class TrinityModelAction implements IActionExecution {
                         Float scores = resultLineItem.getScores();
                         String predictedAttributionValue;
 
-                        if (Objects.equals("false",databaseEncryption)){
+                        if (Objects.equals("true",databaseDecryption)){
                             predictedAttributionValue = CipherStreamUtil.replaceQuotes(String.valueOf(decryptedData.get(resultLineItem.getQuestionId().toString())));
                         }else {
                             predictedAttributionValue = resultLineItem.getPredictedAttributionValue();

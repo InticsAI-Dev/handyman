@@ -298,27 +298,8 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
 
         try {
             TemplateDetectionDataItem templateDetectionDataItem = objectMapper.readValue(templateDetectionData, TemplateDetectionDataItem.class);
-            String decryptionCall = "";
-                if (Objects.equals("false", databaseDecryption)) {
-                    JSONObject value = new JSONObject();
 
-                    // Iterate over templateDetectionDataItem attributes and populate JSON object
-                    templateDetectionDataItem.getAttributes().forEach(values -> {
-                        value.put(values.getQuestion(), values.getPredictedAttributionValue());
-                    });
-
-                    ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
-                    CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
-                    // Call the decryption API with the necessary parameters
-                    decryptionCall = cipherUtil.decryptionApi(
-                            value, action, entity.getRootPipelineId(),
-                            Long.valueOf(groupId), entity.getTenantId(), pipelineName, originId, applicationName, paperNo, entity.getBatchId()
-                    );
-                }
-
-            ObjectMapper decryptionParsing = new ObjectMapper();
-            JsonNode data = decryptionParsing.readTree(decryptionCall);
-            JsonNode decryptedData = data.get("decryptedData");
+            JsonNode decryptedData = databaseDecrypt(entity, templateDetectionData, objectMapper);
 
 
             templateDetectionDataItem.getAttributes().forEach(attribute -> {
@@ -471,5 +452,42 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
         }
     }
 
+    public JsonNode databaseDecrypt(TemplateDetectionInputTable entity, String templateDetectionData, ObjectMapper objectMapper) throws JsonProcessingException {
 
+        String databaseDecryption = action.getContext().get("database.decryption.activator");
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+
+
+        try {
+            TemplateDetectionDataItem templateDetectionDataItem = objectMapper.readValue(templateDetectionData, TemplateDetectionDataItem.class);
+            String decryptionCall = "";
+
+                JSONObject value = new JSONObject();
+
+                // Iterate over templateDetectionDataItem attributes and populate JSON object
+                templateDetectionDataItem.getAttributes().forEach(values -> {
+                    value.put(values.getQuestion(), values.getPredictedAttributionValue());
+                });
+
+                ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+                // Call the decryption API with the necessary parameters
+                decryptionCall = cipherUtil.decryptionApi(
+                        value, action, entity.getRootPipelineId(),
+                        Long.valueOf(entity.getGroupId()), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, entity.getPaperNo(), entity.getBatchId()
+                );
+
+
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptedData");
+
+            return decryptedData;
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
 }

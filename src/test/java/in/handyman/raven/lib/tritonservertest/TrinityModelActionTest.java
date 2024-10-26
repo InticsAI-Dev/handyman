@@ -48,8 +48,8 @@ class TrinityModelActionTest {
                 Map.entry("tenant_id","1"),
                 Map.entry("triton.request.activator","true"),
                 Map.entry("database.decryption.activator", "true"),
-                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
-                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
+                Map.entry("decryptionUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
                 Map.entry("encryption.activator","false"),
                 Map.entry("write.batch.size","5")));
 
@@ -98,8 +98,8 @@ class TrinityModelActionTest {
                 Map.entry("tenant_id","1"),
                 Map.entry("triton.request.activator","true"),
                 Map.entry("database.decryption.activator", "false"),
-                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
-                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
+                Map.entry("decryptionUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
                 Map.entry("encryption.activator","false"),
                 Map.entry("write.batch.size","5")));
 
