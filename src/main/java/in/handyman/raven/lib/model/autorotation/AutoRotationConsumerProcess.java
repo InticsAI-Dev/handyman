@@ -69,9 +69,6 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         String filePath = String.valueOf(entity.getFilePath());
         Long actionId = action.getActionId();
 
-        String publicKey = "-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxXA5Y0WmQL4hA+8oCl308ASFZGBh6moDv0b6q8RIzoqvyMGRWGPE4A5XgfRznwfMGnfGJCAdil0NFAR8bLd2mVQr6xhp1HXX4/a8t+hrMF2qCpjAe2RqeIcCwpe9tzk+ZTsIN9NaInXx9wyt46YsgC4fD0Z9+Bu7DIQONL5+zmqfaUeoBfZPn5avosqWIOwGx9uEYvuufd9r8KhyH0O/d++SzO/2XeO3MDW8pcbjiGHMRE7xna7gLHZyj8eooRpVsXZbP/anhafZYPCvfzpU8vbui01zdusmKolfEDF5ATX7cdH2naS+1E6DOcsrjxW/Ld8vDEsJuJWLaP7KlBcFiQIDAQAB-----END PUBLIC KEY-----";
-        String apiUrl = "http://0.0.0.0:10001/copro-utils/data-security/encrypt";
-
 
         //payload
         AutoRotationData autoRotationRequest = new AutoRotationData();
@@ -85,6 +82,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         autoRotationRequest.setInputFilePath(filePath);
         autoRotationRequest.setOutputDir(outputDir);
         autoRotationRequest.setPaperNo(paperNo);
+        autoRotationRequest.setBatchId(entity.getBatchId());
+
         String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
 
 
@@ -92,14 +91,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         requestBody.setName("AUTO ROTATOR START");
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype("BYTES");
-
-        // encrypting data
-//        String dataEncryption = CipherStreamUtil.encryptionApi(jsonInputRequest, action);
-//        JSONObject jsonObject = new JSONObject(dataEncryption);
-////        String finalDataEncrypted = jsonObject.getString("cipherText");
-//
-//        requestBody.setData(Collections.singletonList(dataEncryption));
-
+        requestBody.setData(Collections.singletonList(jsonInputRequest));
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));

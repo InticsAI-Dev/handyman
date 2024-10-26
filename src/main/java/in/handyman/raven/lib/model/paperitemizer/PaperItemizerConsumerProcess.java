@@ -74,6 +74,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         paperitemizerData.setInputFilePath(inputFilePath);
         paperitemizerData.setOutputDir(this.outputDir);
         paperitemizerData.setActionId(actionId);
+        paperitemizerData.setBatchId(entity.getBatchId());
         String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
 
         TritonRequest requestBody = new TritonRequest();
