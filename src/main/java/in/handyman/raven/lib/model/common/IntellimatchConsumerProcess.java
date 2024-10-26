@@ -139,7 +139,10 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
                 inputJson.put("actualValue",result.getActualValue());
 
 
-                encryptionCall = CipherStreamUtil.encryptionApi(
+                ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+
+                encryptionCall = cipherUtil.encryptionApi(
                         inputJson, action, result.getRootPipelineId(),
                         Long.valueOf(result.getGroupId()), result.getBatchId(), result.getTenantId(), pipelineName, result.getOriginId(), applicationName, 0);
 
@@ -149,12 +152,12 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
 
                 if (Objects.equals("true", encryptionEnable)) {
                         if (encryptedData.has("sentenceKey")) {
-                            sentence = Collections.singletonList(encryptedData.get("sentenceKey").asText());
+                            sentence = Collections.singletonList( CipherStreamUtil.replaceQuotes(encryptedData.get("sentenceKey").asText()));
                         } else {
                             log.info("has no sentenceKey");
                         }
                         if(encryptedData.has("actualValue")){
-                            inputSentence = encryptedData.get("actualValue").asText();
+                            inputSentence = CipherStreamUtil.replaceQuotes(encryptedData.get("actualValue").asText());
                         }
 
                     }else {
@@ -317,31 +320,34 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
 
             String applicationName = "APP";
             String pipelineName = "TEXT EXTRACTION";
-            String databaseEncryption = action.getContext().get("encryption.activator");
+            String databaseDecryption = action.getContext().get("database.decryption.activator");
 
 
             for (ComparisonDataItem item : comparisonDataItem1) {
                 String sentence = "";
                 String inputSentence = "";
-               if (Objects.equals("false", databaseEncryption))
+               if (Objects.equals("true", databaseDecryption))
                 {
                     JSONObject decryptData = new JSONObject();
                     decryptData.put("Sentence",item.getSentence());
                     decryptData.put("actualValue", item.getInputSentence());
 
-                    String decryptionCall = CipherStreamUtil.decryptionApi(decryptData, action, result.getRootPipelineId(), Long.valueOf(result.getGroupId()), result.getTenantId(), pipelineName, result.getOriginId(), applicationName, 0, result.getBatchId());
+                    ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                    CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+
+                    String decryptionCall = cipherUtil.decryptionApi(decryptData, action, result.getRootPipelineId(), Long.valueOf(result.getGroupId()), result.getTenantId(), pipelineName, result.getOriginId(), applicationName, 0, result.getBatchId());
                     System.out.println(decryptionCall);
                     ObjectMapper decryptionParsing = new ObjectMapper();
                     JsonNode data = decryptionParsing.readTree(decryptionCall);
                     JsonNode decryptedData = data.get("decryptedData");
 
                     if(decryptedData.has("Sentence")){
-                        sentence = decryptedData.get("Sentence").asText();
+                        sentence = CipherStreamUtil.replaceQuotes(decryptedData.get("Sentence").asText());
                     }else {
                         log.info("No Key found:");
                     }
                     if(decryptedData.has("actualValue")){
-                        inputSentence = decryptedData.get("actualValue").asText();
+                        inputSentence = CipherStreamUtil.replaceQuotes(decryptedData.get("actualValue").asText());
                     }else {
                         log.info("No Key found:");
                     }
@@ -457,4 +463,8 @@ public class IntellimatchConsumerProcess implements CoproProcessor.ConsumerProce
         // Join the words with commas to form a JSON array
         return "[" + String.join(",", words) + "]";
     }
+
+
+
+
 }

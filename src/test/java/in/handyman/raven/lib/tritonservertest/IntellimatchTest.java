@@ -33,8 +33,8 @@ public class IntellimatchTest {
                 Map.entry("actionId", "1"),
                 Map.entry("database.decryption.activator", "false"),
                 Map.entry("copro.intelli-match.url","http://192.168.10.248:9200/v2/models/cos-service/versions/1/infer"),
-                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
-                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
+                Map.entry("decryptionUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
                 Map.entry("encryption.activator","true"),
                 Map.entry("consumer.intellimatch.API.count","1"),
                 Map.entry("write.batch.size", "5")));
