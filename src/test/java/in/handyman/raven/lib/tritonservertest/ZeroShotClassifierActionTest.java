@@ -81,16 +81,13 @@ class ZeroShotClassifierActionTest {
                 .threadCount("1")
                 .writeBatchSize("1")
                 .endPoint("http://192.168.10.248:8400/v2/models/zsc-service/versions/1/infer")
-                .querySet("SELECT 'origin123' AS origin_id, \" +\n" +
-                        "                        \"101 AS paper_no, \" +\n" +
-                        "                        \"'Sample page content' AS page_content, \" +\n" +
-                        "                        \"'group789' AS group_id, \" +\n" +
-                        "                        \"11011 AS root_pipeline_id, \" +\n" +
-                        "                        \"'process567' AS process_id, \" +\n" +
-                        "                        \"'{\\\"key\\\": [\\\"value1\\\", \\\"value2\\\"]}'::jsonb AS truth_placeholder, \" +\n" +
-                        "                        \"1 AS tenant_id, \" +\n" +
-                        "                        \"'batch123' AS batch_id, \" +\n" +
-                        "                        \"NOW() AS created_on;")
+                .querySet("select a.origin_id,a.paper_no,\n" +
+                        "sot.content as page_content, 312 as group_id ,a.root_pipeline_id as root_pipeline_id,\n" +
+                        "123 as process_id,\n" +
+                        "a.truth_placeholder,a.tenant_id as tenant_id ,a.batch_id, now() as created_on\n" +
+                        "from paper.paper_filter_zsc_pm_input_aggregate_audit a\n" +
+                        "join info.source_of_truth sot on a.origin_id = sot.origin_id and a.paper_no = sot.paper_no and sot.batch_id = a.batch_id and sot.tenant_id = a.tenant_id\n" +
+                        "where a.batch_id='BATCH-285_0' and a.tenant_id = 1 and a.root_pipeline_id = 40695;\n")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 
@@ -138,16 +135,14 @@ class ZeroShotClassifierActionTest {
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
-        action.getContext().put("copro.paper-filtering-zero-shot-classifier.url", "http://192.168.10.240:8400/v2/models/zsc-service/versions/1/infer");
         action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("actionId", "1"),
                 Map.entry("encryption.pipeline.activator", "true"),
-                Map.entry("database.decryption.activator", "false"),
+                Map.entry("database.decryption.activator", "true"),
                 Map.entry("page.content.min.length.threshold", "5"),
-                Map.entry("apiUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
-                Map.entry("decryptApiUrl","http://192.168.10.248:10001/copro-utils/data-security/decrypt"),
+                Map.entry("encryptionUrl", "http://192.168.10.248:10001/copro-utils/data-security/encrypt"),
                 Map.entry("encryption.activator","false"),
                 Map.entry("write.batch.size", "5")));
 

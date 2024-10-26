@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.CipherStreamUtil;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
@@ -14,6 +15,7 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
 import jakarta.json.Json;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -73,6 +75,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setPrompt(prompt);
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
+        radonKvpExtractionRequest.setBatchId(entity.getBatchId());
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
 
@@ -134,6 +137,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         try {
                             extractTritonOutputDataResponse(entity, radonDataItem, parentObj);
                         } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
                     }));
@@ -222,7 +227,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws JsonProcessingException {
+    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws Exception {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -231,18 +236,57 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long rootPipelineId = entity.getRootPipelineId();
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
-        RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
+        String applicationName = "APP";
+        String pipelineName = "TEXT EXTRACTION";
+        String databaseEncryption = action.getContext().get("database.decryption.activator");
+        String templateName = "";
+        String finalInference = "";
+        
+
+        RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
+       
+
+        
+        if (Objects.equals("true", databaseEncryption))
+        {
+            JSONObject decryptData = new JSONObject();
+            decryptData.put("inference",modelResponse.getInferResponse());
+
+            ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+            CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
+
+            String decryptionCall = cipherUtil.decryptionApi(decryptData, action, entity.getRootPipelineId(), Long.valueOf(entity.getGroupId()), entity.getTenantId(), pipelineName, originId, applicationName, entity.getPaperNo(), entity.getBatchId());
+            log.info("decryption completed successfully");
+            ObjectMapper decryptionParsing = new ObjectMapper();
+            JsonNode data = decryptionParsing.readTree(decryptionCall);
+            JsonNode decryptedData = data.get("decryptedData");
+
+            if(decryptedData.has("inference")){
+                String decryptedFinalInference = decryptedData.get("inference").asText();
+                JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(decryptedFinalInference, objectMapper);
+                finalInference = CipherStreamUtil.replaceQuotes(mapper.writeValueAsString(stringObjectMap));
+                log.info("extracted the value from the key");
+
+
+            }else {
+                log.info("No Key named inference is present");
+            }
+
+        }else {
+            finalInference = modelResponse.getInferResponse();
+            log.info("decryption is tirned off");
+           
+        }
 
         parentObj.add(RadonQueryOutputTable.builder()
-                .createdOn(entity.getCreatedOn())
+                .createdOn(CreateTimeStamp.currentTimestamp())
                 .createdUserId(tenantId)
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
+                .totalResponseJson(mapper.writeValueAsString(finalInference))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())

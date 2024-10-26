@@ -38,6 +38,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     public static final String ANSWER = "answer";
     public static final String PAPER_TYPE = "paper_type";
     public static final String RADON_KVP_BBOX = "RADON_KVP_BBOX";
+    public String predictedAttributionValue = "";
 
     private final Logger log;
     private final Marker aMarker;
@@ -138,8 +139,10 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
                     answerKeyCombination.put(key, answer);              // value to pass into api call
                 });
 
+                ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
                 // encryption call
-                String encryptionCall = CipherStreamUtil.encryptionApi(answerKeyCombination, action, entity.getRootPipelineId(), entity.getGroupId(), entity.getBatchId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, Math.toIntExact(entity.getPaperNo()));
+                String encryptionCall = cipherUtil.encryptionApi(answerKeyCombination, action, entity.getRootPipelineId(), entity.getGroupId(), entity.getBatchId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, Math.toIntExact(entity.getPaperNo()));
 
                 ObjectMapper encryptionParsing = new ObjectMapper();
                 JsonNode data = encryptionParsing.readTree(encryptionCall);
@@ -161,22 +164,23 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
 
                 // Create an instance of RadonBboxRequest
-                RadonBboxRequestLineItem itemsFinal = new RadonBboxRequestLineItem();
+
                 items.forEach(finalValues->{
+                    RadonBboxRequestLineItem itemsFinal = new RadonBboxRequestLineItem();
                     if(resultJson.has(finalValues.getAnswer())){
                         itemsFinal.setAnswer((String) resultJson.get(finalValues.getAnswer()));
                         itemsFinal.setSorItemName(finalValues.getSorItemName());
                         itemsFinal.setValueType(finalValues.getValueType());
-                        lineItems.add(itemsFinal);
+
                     }
-                    radonBboxRequestData.setRadonBboxLineItems(lineItems);
+                    lineItems.add(itemsFinal);
                     log.info("encrytion is true,  RadonBboxLineItems :"+ lineItems);
                 });
-
+                     radonBboxRequestData.setRadonBboxLineItems(lineItems);
                 }else {
-            // when encryption is turned off
-            radonBboxRequestData.setRadonBboxLineItems(items);
-            log.info("encrytion is false,  RadonBboxLineItems :"+ items);
+                    // when encryption is turned off
+                    radonBboxRequestData.setRadonBboxLineItems(items);
+                    log.info("encrytion is false,  RadonBboxLineItems :"+ items);
 
         }
 
@@ -234,78 +238,71 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         }
     }
 
-            String predictedAttributionValue = "";
-            private void buildOutputParentObject(List<RadonBboxOutputEntity> parentObj, RadonBboxInputEntity entity, Boolean status, String message, RadonBboxResponseData radonBboxResponse) throws Exception {
 
+    private void buildOutputParentObject(List<RadonBboxOutputEntity> parentObj, RadonBboxInputEntity entity, Boolean status, String message, RadonBboxResponseData radonBboxResponse) throws Exception {
+            AtomicInteger keyNum = new AtomicInteger(0);
             JSONObject listToJson = new JSONObject();
             radonBboxResponse.getRadonBboxLineItems().forEach(value -> {
+                    // creating unique id to map the list values
+                    listToJson.put("keyNum" + keyNum.getAndIncrement(), List.of(value.getSorItemName(), value.getAnswer(), value.getValueType()));
+            });
+
+            // new json to store answer and key of list
+            JSONObject answerKeyDecryption = new JSONObject();
+            // AtomicInteger keyNum = new AtomicInteger(0);
+            listToJson.keys().forEachRemaining(key -> {
+                JSONArray row = listToJson.getJSONArray(key);
+                String answer = row.getString(1);
+                answerKeyDecryption.put(key, answer);              // value to pass into api call
+             });
 
 
-            AtomicInteger keyNum = new AtomicInteger(1);
-            // creating unique id to map the list values
-            listToJson.put("keyNum" + keyNum.getAndIncrement(), List.of(value.getSorItemName(), value.getAnswer(), value.getValueType()));
+            String databaseDecryption = action.getContext().get("database.encryption.activator");
+            String applicationName = "APP";
+            String pipelineName = "Radon Bbox";
+            JSONObject resultJson = new JSONObject();
 
-                });
-
-        // new json to store answer and key of list
-        JSONObject answerKeyCombination = new JSONObject();
-
-        listToJson.keys().forEachRemaining(key -> {
-            JSONArray row = listToJson.getJSONArray(key);
-            String answer = row.getString(1);
-            answerKeyCombination.put(key, answer);              // value to pass into api call
-        });
-
-
-        String databaseEncryption = action.getContext().get("database.encryption.activator");
-        String applicationName = "APP";
-        String pipelineName = "Radon Bbox";
-        JSONObject resultJson = new JSONObject();
-
-
-        String decryptionCall = "";
-        if (Objects.equals("false", databaseEncryption)) {
-            JSONObject value = new JSONObject();
+            String encryptionCall = "";
+            if (Objects.equals("true", databaseDecryption)) {
+                JSONObject value = new JSONObject();
 
                 try {
-                    decryptionCall = CipherStreamUtil.decryptionApi(
-                    answerKeyCombination, action, entity.getRootPipelineId(),
-                    entity.getGroupId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName, Math.toIntExact(entity.getPaperNo()),entity.getBatchId()
-                );
+                    ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
+                    CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
 
+                    encryptionCall = cipherUtil.encryptionApi(answerKeyDecryption, action, entity.getRootPipelineId(),
+                    entity.getGroupId(), entity.getBatchId(), entity.getTenantId(), pipelineName, entity.getOriginId(), applicationName,Math.toIntExact(entity.getPaperNo()));
                 } catch (Exception e) {
                     log.error("Error during decryption API call: {}", e.getMessage(), e);
                     // Handle the exception appropriately, maybe return null or an empty string
                 }
-            ObjectMapper decryptionParsing = new ObjectMapper();
-            JsonNode data = decryptionParsing.readTree(decryptionCall);
-            JsonNode decryptedData = data.get("decryptedData");
+                ObjectMapper encryptionParsing = new ObjectMapper();
+                JsonNode data = encryptionParsing.readTree(encryptionCall);
+                JsonNode enryptedData = data.get("encryptedData");
 
-            listToJson.keys().forEachRemaining(key -> {
-                if (decryptedData.has(key)) {
-                    String encryptedValue = decryptedData.get(key).asText();
-                    // Get the answer (index 1) from jsonB
-                    String answer = listToJson.getJSONArray(key).getString(1);
-                    // Put the answer and encrypted value in the result JSON
-                    resultJson.put(answer, encryptedValue);
-                }
+                listToJson.keys().forEachRemaining(key -> {
+                    if (enryptedData.has(key)) {
+                        String encryptedValue = enryptedData.get(key).asText();
+                        // Get the answer (index 1) from jsonB
+                        String answer = listToJson.getJSONArray(key).getString(1);
+                        // Put the answer and encrypted value in the result JSON
+                        resultJson.put(answer, encryptedValue);
+                    }else {
+                        log.info("key is not present");
+                    }
 
-            });
-                   }
-
-
-
-
+                });
+            }
 
         if (Boolean.TRUE.equals(status)) {
             radonBboxResponse.getRadonBboxLineItems().forEach(radonResponseBboxLineItem -> {
                 try {
 
-                 if (Objects.equals("false",databaseEncryption)){
-                     predictedAttributionValue = resultJson.get(radonResponseBboxLineItem.getAnswer()).toString();
-                 }else {
-                     predictedAttributionValue = radonResponseBboxLineItem.getAnswer();
-                 }
+                if (Objects.equals("true",databaseDecryption)){
+                    predictedAttributionValue = CipherStreamUtil.replaceQuotes(resultJson.get(radonResponseBboxLineItem.getAnswer()).toString());
+                } else {
+                    predictedAttributionValue = radonResponseBboxLineItem.getAnswer();
+                }
 
                  parentObj.add(RadonBboxOutputEntity.builder()
                     .modelRegistry(entity.getModelRegistry())
@@ -370,6 +367,8 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         }
 
     }
+
+
 
 }
 
