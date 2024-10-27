@@ -212,7 +212,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     JsonNode rootNode = objectMapper.readTree(jsonString);
 
                     return rootNode;
-                }else {
+                } else {
                     JsonNode rootNode = objectMapper.readTree(jsonResponse);
                     return rootNode;
                 }
@@ -241,16 +241,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String pipelineName = "TEXT EXTRACTION";
         String databaseDecryption = action.getContext().get("database.decryption.activator");
         String finalInference = "";
-        
+
 
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-       
 
-        
-        if (Objects.equals("true", databaseDecryption))
-        {
+
+        if (Objects.equals("true", databaseDecryption)) {
             JSONObject decryptData = new JSONObject();
-            decryptData.put("inference",modelResponse.getInferResponse());
+            decryptData.put("inference", modelResponse.getInferResponse());
 
             ActionExecutionAudit actionAudit = new ActionExecutionAudit(); // Initialize as needed
             CipherStreamUtil cipherUtil = new CipherStreamUtil(log, actionAudit);
@@ -261,20 +259,20 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             JsonNode data = decryptionParsing.readTree(decryptionCall);
             JsonNode decryptedData = data.get("decryptedData");
 
-            if(decryptedData.has("inference")){
+            if (decryptedData.has("inference")) {
                 String decryptedFinalInference = decryptedData.get("inference").asText();
-                JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(decryptedFinalInference, objectMapper);
+                JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(decryptedFinalInference, objectMapper);
                 finalInference = CipherStreamUtil.replaceQuotes(mapper.writeValueAsString(stringObjectMap));
                 log.info("extracted the value from the key");
 
-            }else {
-                    log.info("No Key named inference is present");
-                }
+            } else {
+                log.info("No Key named inference is present");
+            }
 
-        }else {
+        } else {
             finalInference = modelResponse.getInferResponse();
             log.info("decryption is turned off for Radon KVP");
-           
+
         }
 
         parentObj.add(RadonQueryOutputTable.builder()
@@ -407,6 +405,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     public Map<String, Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
             throws IOException {
         String json = jsonParser.getText();

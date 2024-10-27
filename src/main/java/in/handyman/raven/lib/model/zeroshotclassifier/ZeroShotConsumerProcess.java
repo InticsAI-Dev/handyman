@@ -75,8 +75,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             JsonNode encryptedData = data.get("encryptedData");
             pageContent = CipherStreamUtil.replaceQuotes(encryptedData.get(paperNo).asText());
 
-        }
-        else {
+        } else {
             pageContent = entity.getPageContent();
             log.info("encryption is set to false");
         }
@@ -93,7 +92,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
-
 
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
@@ -126,26 +124,17 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
-        String jsonRequest;
-        try {
-            jsonRequest = TritonRequestProcessor.processTritonRequest(tritonInputRequest, action);
-        } catch (Exception e) {
-            throw new IOException("Error processing TritonRequest", e);
-        }
 
+        String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
+        Request request = new Request.Builder().url(endpoint)
+                .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
         if (Objects.equals("false", tritonRequestActivator)) {
-            String jsonInputRequest = objectMapper.writeValueAsString(data);
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
             coproRequestBuilder(entity, parentObj, request, objectMapper);
         } else {
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
             tritonRequestBuilder(entity, parentObj, request);
         }
-
         return parentObj;
     }
 
