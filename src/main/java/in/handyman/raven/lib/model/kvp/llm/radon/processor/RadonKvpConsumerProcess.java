@@ -82,7 +82,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName(RADON_START);
+        requestBody.setName(entity.getApiName());
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
@@ -152,7 +152,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .rootPipelineId(rootPipelineId)
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                        .stage(PROCESS_NAME)
+                        .stage(entity.getApiName())
                         .message(response.message())
                         .batchId(entity.getBatchId())
                         .createdOn(entity.getCreatedOn())
@@ -178,7 +178,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .actionId(action.getActionId())
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                    .stage(PROCESS_NAME)
+                    .stage(entity.getApiName())
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
                     .createdOn(entity.getCreatedOn())
@@ -257,7 +257,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .batchId(modelResponse.getBatchId())
                 .modelRegistry(entity.getModelRegistry())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
+                .stage(entity.getApiName())
                 .batchId(entity.getBatchId())
                 .category(entity.getCategory())
                 .message("Radon kvp action macro completed")
@@ -303,7 +303,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .rootPipelineId(rootPipelineId)
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                        .stage(PROCESS_NAME)
+                        .stage(entity.getApiName())
                         .message(response.message())
                         .batchId(entity.getBatchId())
                         .category(entity.getCategory())
@@ -325,7 +325,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .rootPipelineId(rootPipelineId)
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                    .stage(PROCESS_NAME)
+                    .stage(entity.getApiName())
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
                     .category(entity.getCategory())
@@ -366,7 +366,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .modelRegistry(entity.getModelRegistry())
                 .process(entity.getProcess())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
+                .stage(entity.getApiName())
                 .batchId(entity.getBatchId())
                 .message("Radon kvp action macro completed")
                 .category(entity.getCategory())
