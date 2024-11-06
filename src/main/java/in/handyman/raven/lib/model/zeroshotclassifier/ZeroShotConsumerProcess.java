@@ -10,6 +10,8 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
+import in.handyman.raven.lib.replicate.ReplicateRequest;
+import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -23,6 +25,11 @@ import java.util.concurrent.TimeUnit;
 public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String ZSC_START = "ZSC START";
+
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
+    public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
+    public static final String REPLICATE_ZSC_VERSION = "replicate.zsc.version";
+
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -47,6 +54,10 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     @Override
     public List<ZeroShotClassifierOutputTable> process(URL endpoint, ZeroShotClassifierInputTable entity) throws JsonProcessingException {
         List<ZeroShotClassifierOutputTable> parentObj = new ArrayList<>();
+
+        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
+        String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
+        String replicateZscVersion = action.getContext().get(REPLICATE_ZSC_VERSION);
 
         String originId = entity.getOriginId();
         String groupId = entity.getGroupId();
@@ -76,6 +87,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setPageContent(pageContent);
         data.setKeysToFilter(keysToFilterObject);
         data.setBatchId(batchId);
+        data.setBase64img(entity.getBase64img());
         String jsonInputRequest = objectMapper.writeValueAsString(data);
 
 
@@ -92,20 +104,136 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
 
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-
-        if (Objects.equals("false", tritonRequestActivator)) {
+        if (Objects.equals("COPRO", coproHandlerName)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
             coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
-        } else {
+        } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            ReplicateRequest replicateRequest=new ReplicateRequest();
+            replicateRequest.setVersion(replicateZscVersion);
+            replicateRequest.setInput(data);
+            String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(RequestBody.create(replicateJsonRequest, MediaTypeJSON))
+                    .addHeader("Authorization", "Bearer " + replicateApiToken)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "wait")
+                    .build();
+
+            replicateRequestBuilder(entity, parentObj,request, replicateJsonRequest, endpoint );
+        }
+        else if (Objects.equals("TRITON", coproHandlerName)){
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
             tritonRequestBuilder(entity, parentObj, request,jsonRequest, endpoint);
         }
 
         return parentObj;
+    }
+
+    private void replicateRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, String jsonRequest, URL endpoint) {
+        String originId = entity.getOriginId();
+        String groupId = entity.getGroupId();
+
+        final Integer paperNo = Optional.ofNullable(entity.getPaperNo()).map(String::valueOf).map(Integer::parseInt).orElse(null);
+        Long rootPipelineId = entity.getRootPipelineId();
+
+
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = Objects.requireNonNull(response.body()).string();
+            if (response.isSuccessful()) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                ReplicateResponse modelResponse = objectMapper.readValue(responseBody, ReplicateResponse.class);
+                if (modelResponse.getOutput() != null && !modelResponse.getOutput().isEmpty()) {
+                    extractedOutputDataRequest(entity, parentObj, responseBody, objectMapper, modelResponse.getModel(), modelResponse.getVersion(), jsonRequest, responseBody, String.valueOf(endpoint));
+
+                }
+            } else {
+                parentObj.add(
+                        ZeroShotClassifierOutputTable
+                                .builder()
+                                .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                                .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                                .paperNo(paperNo)
+                                .stage(PROCESS_NAME)
+                                .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
+                                .rootPipelineId(rootPipelineId)
+                                .batchId(entity.getBatchId())
+                                .tenantId(entity.getTenantId())
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                .request(jsonRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
+                                .build());
+                log.error(aMarker, "Exception occurred in zero shot classifier replicate API call");
+            }
+        } catch (Exception exception) {
+            parentObj.add(
+                    ZeroShotClassifierOutputTable
+                            .builder()
+                            .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                            .groupId(Optional.ofNullable(groupId).map(String::valueOf).orElse(null))
+                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                            .paperNo(paperNo)
+                            .stage(PROCESS_NAME)
+                            .message(exception.getMessage())
+                            .rootPipelineId(rootPipelineId)
+                            .batchId(entity.getBatchId())
+                            .tenantId(entity.getTenantId())
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                            .request(jsonRequest)
+                            .response("Error in Response")
+                            .endpoint(String.valueOf(endpoint))
+                            .build());
+            log.error(aMarker, "Exception occurred in the zero shot classifier paper filter replicate action {}", ExceptionUtil.toString(exception));
+            HandymanException handymanException = new HandymanException(exception);
+            HandymanException.insertException("Zero shot classifier paper filter replicate action failed for groupId - " + groupId + "and originId - " + originId + "and paperNo -" + paperNo, handymanException, action);
+        }
+    }
+
+    private static void extractedReplicateOutputDataRequest(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
+
+        Long rootPipelineId = entity.getRootPipelineId();
+
+        try {
+            ZeroShotClassifierDataItem zeroShotClassifierOutputData = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItem.class);
+            zeroShotClassifierOutputData.getEntityConfidenceScore().forEach(score -> {
+                String truthEntity = score.getTruthEntity();
+                String key = score.getKey();
+                double scoreValue = score.getScore();
+
+                parentObj.add(ZeroShotClassifierOutputTable
+                        .builder()
+                        .originId(zeroShotClassifierOutputData.getOriginId())
+                        .groupId(zeroShotClassifierOutputData.getGroupId())
+                        .truthEntity(Optional.ofNullable(truthEntity).map(String::valueOf).orElse(null))
+                        .entity(Optional.ofNullable(key).map(String::valueOf).orElse(null))
+                        .confidenceScore(Optional.of(scoreValue).map(String::valueOf).orElse(null))
+                        .paperNo(zeroShotClassifierOutputData.getPaperNo())
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .stage(PROCESS_NAME)
+                        .tenantId(entity.getTenantId())
+                        .message("Completed API call zero shot classifier")
+                        .rootPipelineId(rootPipelineId)
+                        .modelName(modelName)
+                        .modelVersion(modelVersion)
+                        .batchId(entity.getBatchId())
+                        .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .request(request)
+                        .response(response)
+                        .endpoint(endpoint)
+                        .build());
+            });
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, String jsonRequest, URL endpoint) {

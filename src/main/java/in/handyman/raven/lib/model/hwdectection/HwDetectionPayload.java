@@ -21,4 +21,5 @@ public class HwDetectionPayload {
     private String outputDir;
     private Long actionId;
     private String batchId;
+    private String base64img;
 }

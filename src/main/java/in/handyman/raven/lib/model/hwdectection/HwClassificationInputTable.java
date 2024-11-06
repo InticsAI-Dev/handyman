@@ -29,6 +29,7 @@ import java.util.List;
         private Long processId;
         private String batchId;
         private Timestamp createdOn;
+       private String base64img;
 
 
 

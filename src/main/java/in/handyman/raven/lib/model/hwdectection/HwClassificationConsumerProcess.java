@@ -13,6 +13,8 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.replicate.ReplicateRequest;
+import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -36,6 +38,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     private final Marker aMarker;
     private final String outputDir;
     private final String STAGE = PipelineName.PAPER_CLASSIFICATION.getProcessName();
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
+    public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
+    public static final String REPLICATE_PAPER_CLASSIFICATION_VERSION = "replicate.paper.classification.version";
+
+
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType mediaTypeJson = MediaType
             .parse("application/json; charset=utf-8");
@@ -58,6 +65,12 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     public List<HwClassificationOutputTable> process(URL endpoint, HwClassificationInputTable entity) throws Exception {
 
         List<HwClassificationOutputTable> parentObj = new ArrayList<>();
+
+        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
+        String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
+        String replicatePaperClassificationVersion = action.getContext().get(REPLICATE_PAPER_CLASSIFICATION_VERSION);
+
+
         String entityFilePath = entity.getFilePath();
         Long rootpipelineId = action.getRootPipelineId();
         Long actionId = action.getActionId();
@@ -78,6 +91,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         hwDetectionPayload.setProcessId(entity.getProcessId());
         hwDetectionPayload.setPaperNo(entity.getPaperNo());
         hwDetectionPayload.setBatchId(batchId);
+        hwDetectionPayload.setBase64img(entity.getBase64img());
 
         String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
 
@@ -96,6 +110,31 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
+
+        if (Objects.equals("COPRO", coproHandlerName)) {
+            Request request = new Request.Builder().url(endpoint)
+                    .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
+            coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
+        } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            ReplicateRequest replicateRequest=new ReplicateRequest();
+            replicateRequest.setVersion(replicatePaperClassificationVersion);
+            replicateRequest.setInput(hwDetectionPayload);
+            String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(RequestBody.create(replicateJsonRequest, mediaTypeJson))
+                    .addHeader("Authorization", "Bearer " + replicateApiToken)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "wait")
+                    .build();
+
+            replicateRequestBuilder(entity,request, parentObj , replicateJsonRequest, endpoint );
+        }
+        else if (Objects.equals("TRITON", coproHandlerName)){
+            Request request = new Request.Builder().url(endpoint)
+                    .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
+        }
 
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
@@ -186,6 +225,77 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         }
     }
 
+    private void replicateRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonRequest, URL endpoint) {
+        String createdUserId = entity.getCreatedUserId();
+        String lastUpdatedUserId = entity.getLastUpdatedUserId();
+        Long tenantId = entity.getTenantId();
+        String originId = entity.getOriginId();
+        Integer paperNo = entity.getPaperNo();
+        String templateId = entity.getTemplateId();
+        Long modelId = entity.getModelId();
+        Integer groupId = entity.getGroupId();
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = Objects.requireNonNull(response.body()).string();
+            if (response.isSuccessful()) {
+                ObjectMapper objectMappers = new ObjectMapper();
+                ReplicateResponse hwDetectionResponse = objectMappers.readValue(responseBody, ReplicateResponse.class);
+                try {
+                    extractOutputDataRequest(entity, String.valueOf(hwDetectionResponse.getOutput()), parentObj, hwDetectionResponse.getModel(), hwDetectionResponse.getVersion(), jsonRequest, responseBody, endpoint.toString());
+                } catch (JsonProcessingException e) {
+                    throw new HandymanException("Handwritten classification failed in processing replicate response", e);
+                }
+            } else {
+                parentObj.add(HwClassificationOutputTable.builder()
+                        .createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
+                        .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
+                        .tenantId(Optional.ofNullable(tenantId).map(String::valueOf).map(Long::valueOf).orElse(null))
+                        .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                        .paperNo(Optional.ofNullable(paperNo).map(String::valueOf).map(Integer::parseInt).orElse(null))
+                        .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
+                        .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Long::parseLong).orElse(null))
+                        .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .stage(STAGE)
+                        .message(response.message())
+                        .groupId(entity.getGroupId())
+                        .rootPipelineId(entity.getRootPipelineId())
+                        .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
+                        .build());
+                log.info(aMarker, "The Exception occurred in paper classification replicate response");
+            }
+        } catch (Exception e) {
+            parentObj.add(HwClassificationOutputTable.builder()
+                    .createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
+                    .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
+                    .tenantId(Optional.ofNullable(tenantId).map(String::valueOf).map(Long::valueOf).orElse(null))
+                    .originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null))
+                    .paperNo(Optional.ofNullable(paperNo).map(String::valueOf).map(Integer::parseInt).orElse(null))
+                    .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
+                    .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Long::parseLong).orElse(null))
+                    .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                    .stage(STAGE)
+                    .message(ExceptionUtil.toString(e))
+                    .groupId(entity.getGroupId())
+                    .rootPipelineId(entity.getRootPipelineId())
+                    .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(jsonRequest)
+                    .response("Error in getting replicate Response")
+                    .endpoint(String.valueOf(endpoint))
+                    .build());
+            log.error(aMarker, "The Exception occurred in paper classification replicate request", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Paper classification (hw-detection) consumer replicate failed for batch/group " + groupId, handymanException, this.action);
+
+        }
+    }
 
     private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
