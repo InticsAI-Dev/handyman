@@ -66,7 +66,8 @@ class DataExtractionActionTest {
                 .endPoint("https://api.replicate.com/v1/predictions")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT 1 as batch_id, encode as base64img, 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name from macro.file_details_truth_audit")
+                .querySet("SELECT 1 as batch_id, encode as base64img, 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name " +
+                        "from macro.file_details_truth_audit")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://127.0.0.1:5000/v1/predictions");

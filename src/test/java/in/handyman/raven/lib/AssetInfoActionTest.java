@@ -14,9 +14,9 @@ class AssetInfoActionTest {
         AssetInfo assetInfo= AssetInfo.builder()
                 .name("info")
                 .resourceConn("intics_agadia_db_conn")
-                .assetTable("macro.file_details_truth_138978990615970048")
+                .assetTable("macro.file_details_truth_audit")
                 .auditTable("info.sanitizer_summary_audit_138978990615970048")
-                .values("select '/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia-gatekeeper/test.jpg' as file_path;")
+                .values("select '/home/logesh.b@zucisystems.com/Downloads/hw_samples_synth/hw_sample_6.jpg' as file_path;")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
