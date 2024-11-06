@@ -20,6 +20,7 @@ public class DataExtractionData {
     private Long tenantId;
     private String templateName;
     private String batchId;
+    private String base64img;
 
     }
 

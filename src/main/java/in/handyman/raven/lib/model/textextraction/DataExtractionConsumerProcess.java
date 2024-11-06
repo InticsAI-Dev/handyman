@@ -11,6 +11,8 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.TritonDataTypes;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.replicate.ReplicateRequest;
+import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -22,8 +24,6 @@ import org.slf4j.Marker;
 
 import java.io.File;
 import java.net.URL;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +34,11 @@ import java.util.concurrent.TimeUnit;
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
     public static final String TEXT_EXTRACTOR_START = "TEXT EXTRACTOR START";
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
+    public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
+    public static final String REPLICATE_TEXT_EXTRACTION_VERSION = "replicate.text.extraction.version";
+
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
     private final int pageContentMinLength;
@@ -60,9 +65,12 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity) throws JsonProcessingException {
         List<DataExtractionOutputTable> parentObj = new ArrayList<>();
 
+        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
+        String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
+        String replicateTextExtractionVersion = action.getContext().get(REPLICATE_TEXT_EXTRACTION_VERSION);
+
         String inputFilePath = entity.getFilePath();
-        Long rootpipelineId = entity.getRootPipelineId();
-        // Long actionId = action.getActionId();
+        Long rootPipelineId = entity.getRootPipelineId();
         String filePath = String.valueOf(entity.getFilePath());
         ObjectMapper objectMapper = new ObjectMapper();
         String originId = entity.getOriginId();
@@ -80,13 +88,14 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         dataExtractionData.setGroupId(groupId);
         dataExtractionData.setProcessId(Long.valueOf(processId));
         dataExtractionData.setTenantId(tenantId);
-        dataExtractionData.setRootPipelineId(rootpipelineId);
+        dataExtractionData.setRootPipelineId(rootPipelineId);
         dataExtractionData.setActionId(actionId);
         dataExtractionData.setPaperNumber(paperNumber);
         dataExtractionData.setTemplateName(entity.getTemplateName());
         dataExtractionData.setProcess(PROCESS_NAME);
         dataExtractionData.setInputFilePath(filePath);
         dataExtractionData.setBatchId(batchId);
+        dataExtractionData.setBase64img(entity.getBase64img());
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
 
@@ -106,18 +115,80 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
 
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-        if (Objects.equals("false", tritonRequestActivator)) {
+
+        if (Objects.equals("COPRO", coproHandlerName)) {
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
             coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
-        } else {
+        } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            ReplicateRequest replicateRequest=new ReplicateRequest();
+            replicateRequest.setVersion(replicateTextExtractionVersion);
+            replicateRequest.setInput(dataExtractionData);
+            String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(RequestBody.create(replicateJsonRequest, mediaType))
+                    .addHeader("Authorization", "Bearer " + replicateApiToken)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "wait")
+                    .build();
+
+            replicateRequestBuilder(endpoint , request, parentObj, entity,replicateJsonRequest);
+        }
+        else if (Objects.equals("TRITON", coproHandlerName)){
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, mediaType)).build();
+
             tritonRequestBuilder(entity, request, parentObj, originId, groupId, jsonRequest, endpoint);
         }
 
 
         return parentObj;
+    }
+
+    private void replicateRequestBuilder(URL endpoint, Request request, List<DataExtractionOutputTable> parentObj, DataExtractionInputTable entity, String replicateJsonRequest) {
+
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = Objects.requireNonNull(response.body()).string();
+
+            if (response.isSuccessful()) {
+                ReplicateResponse replicateResponse = mapper.readValue(responseBody, ReplicateResponse.class);
+                if (!replicateResponse.getOutput().isEmpty() && !replicateResponse.getOutput().isNull()) {
+                    extractedReplicateOutputResponse(endpoint, entity, replicateResponse, parentObj, replicateJsonRequest, responseBody);
+                }else {
+                    parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
+                    log.error(aMarker, "The replicate response has empty output {}", replicateResponse.getOutput());
+                }
+
+            } else {
+                parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
+                log.error(aMarker, "The replicate response status {}", response.message());
+            }
+        } catch (Exception e) {
+            parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).response("Error In getting replicate Response").endpoint(String.valueOf(endpoint)).build());
+
+            log.error(aMarker, "The Exception occurred in replicate {} ", e.toString());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("test extraction consumer failed for replicate batch/group " + entity.getGroupId() , handymanException, this.action);
+
+        }
+    }
+
+    private void extractedReplicateOutputResponse(URL endpoint, DataExtractionInputTable entity, ReplicateResponse replicateResponse, List<DataExtractionOutputTable> parentObj, String replicateJsonRequest, String replicateJsonResponse) throws JsonProcessingException {
+
+        DataExtractionDataItem dataExtractionDataItem = mapper.treeToValue(replicateResponse.getOutput(),DataExtractionDataItem.class);
+        final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
+        final String flag = (!Objects.isNull(contentString) && contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+        Integer paperNo = entity.getPaperNo();
+        String filePath = entity.getFilePath();
+        Long tenantId = entity.getTenantId();
+        String templateId = entity.getTemplateId();
+        Long processId = entity.getProcessId();
+        String templateName = entity.getTemplateName();
+        Long rootPipelineId = entity.getRootPipelineId();
+        String batchId = entity.getBatchId();
+        parentObj.add(DataExtractionOutputTable.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Text extraction action api call completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(replicateResponse.getModel()).modelVersion(replicateResponse.getVersion()).batchId(batchId).request(replicateJsonRequest).response(replicateJsonResponse).endpoint(endpoint.toString()).build());
+
+
     }
 
     private void coproRequestBuilder(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String originId, Integer groupId, String jsonInputRequest, URL endpoint) {
@@ -139,7 +210,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         } catch (Exception e) {
             parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
 
-            log.error(aMarker, "The Exception occurred {} ", e.toString());
+            log.error(aMarker, "The Exception occurred in Copro {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
 
@@ -231,4 +302,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
 }
+
+
 
