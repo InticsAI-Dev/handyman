@@ -23,12 +23,11 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
@@ -62,7 +61,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     @Override
-    public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity) throws JsonProcessingException {
+    public List<DataExtractionOutputTable> process(URL endpoint, DataExtractionInputTable entity) throws IOException {
         List<DataExtractionOutputTable> parentObj = new ArrayList<>();
 
         String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
@@ -95,7 +94,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         dataExtractionData.setProcess(PROCESS_NAME);
         dataExtractionData.setInputFilePath(filePath);
         dataExtractionData.setBatchId(batchId);
-        dataExtractionData.setBase64img(entity.getBase64img());
+
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
 
@@ -121,9 +120,13 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
             coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
         } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
+            dataExtractionData.setBase64img(base64ForPath);
+
             ReplicateRequest replicateRequest=new ReplicateRequest();
             replicateRequest.setVersion(replicateTextExtractionVersion);
             replicateRequest.setInput(dataExtractionData);
+
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
             Request request = new Request.Builder()
                     .url(endpoint)
@@ -172,6 +175,29 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         }
     }
+
+
+    public String getBase64ForPath(String imagePath) throws IOException {
+        String base64Image = new String();
+        try {
+
+                // Read the image file into a byte array
+                byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
+
+                // Encode the byte array to Base64
+                base64Image = Base64.getEncoder().encodeToString(imageBytes);
+
+                // Print the Base64 encoded string
+                log.info(aMarker, "base 64 created for this file {}", imagePath);
+
+        } catch (Exception e) {
+            log.error(aMarker, "error occurred in creating base 64 {}", ExceptionUtil.toString(e));
+            throw new HandymanException("error occurred in creating base 64 {} ", e, action);
+        }
+
+        return base64Image;
+    }
+
 
     private void extractedReplicateOutputResponse(URL endpoint, DataExtractionInputTable entity, ReplicateResponse replicateResponse, List<DataExtractionOutputTable> parentObj, String replicateJsonRequest, String replicateJsonResponse) throws JsonProcessingException {
 

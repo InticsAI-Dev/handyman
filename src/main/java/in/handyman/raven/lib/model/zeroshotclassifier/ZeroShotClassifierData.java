@@ -23,6 +23,6 @@ public class ZeroShotClassifierData {
         private Map<String, List<String>> keysToFilter;
         private String pageContent;
         private String batchId;
-        private String base64img;
+
     }
 
