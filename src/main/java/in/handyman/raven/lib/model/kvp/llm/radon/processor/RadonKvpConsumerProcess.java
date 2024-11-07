@@ -179,7 +179,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(entity.getApiName())
-                        .message(response.message())
+                        .message(responseBody)
                         .batchId(entity.getBatchId())
                         .createdOn(entity.getCreatedOn())
                         .createdUserId(tenantId)

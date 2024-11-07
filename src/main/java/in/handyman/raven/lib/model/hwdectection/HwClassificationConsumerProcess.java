@@ -245,7 +245,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
                     extractReplicateOutputDataRequest(entity, hwDetectionResponse.getOutput(), parentObj, hwDetectionResponse.getModel(), hwDetectionResponse.getVersion(), jsonRequest, responseBody, endpoint.toString());
                 } catch (JsonProcessingException e) {
-                    throw new HandymanException("Handwritten classification failed in processing replicate response", e);
+                    throw new HandymanException("Handwritten classification failed in processing replicate response ", e);
                 }
             } else {
                 parentObj.add(HwClassificationOutputTable.builder()
@@ -259,14 +259,14 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .groupId(Optional.ofNullable(groupId).map(String::valueOf).map(Integer::parseInt).orElse(null))
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(STAGE)
-                        .message(response.message())
+                        .message(responseBody)
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .request(jsonRequest)
-                        .response(response.message())
+                        .response(responseBody)
                         .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification replicate response");
