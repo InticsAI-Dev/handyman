@@ -190,7 +190,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .response(response.message())
                         .endpoint(String.valueOf(endpoint))
                         .build());
-                log.info(aMarker, "Error in getting response from replicate response {}", response.message());
+                log.info(aMarker, "Error in getting response from replicate response {}", responseBody);
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
