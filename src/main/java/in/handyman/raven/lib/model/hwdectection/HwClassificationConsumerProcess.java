@@ -138,17 +138,6 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
             tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
-        if (Objects.equals("false", tritonRequestActivator)) {
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
-        } else {
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
-        }
-
-
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} outputDir {} ", endpoint, entityFilePath, outputDir);
         }

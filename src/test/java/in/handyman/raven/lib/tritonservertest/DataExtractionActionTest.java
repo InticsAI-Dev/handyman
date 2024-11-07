@@ -3,8 +3,10 @@ package in.handyman.raven.lib.tritonservertest;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.DataExtractionAction;
 import in.handyman.raven.lib.model.DataExtraction;
+import in.handyman.raven.lib.model.textextraction.DataExtractionConsumerProcess;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Marker;
 
 import java.util.Map;
 
