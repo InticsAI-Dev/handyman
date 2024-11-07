@@ -77,8 +77,10 @@ class DataExtractionActionTest {
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "false"),
-                Map.entry("triton.request.activator.handler.name", "REPLICATE"),
+                Map.entry("copro.request.activator.handler.name", "REPLICATE"),
                 Map.entry("page.content.min.length.threshold", "5"),
+                Map.entry("replicate.text.extraction.version", "8f552aaf1283993a2375624427a8f0fd05298ad6afb443f39d4e9cba19c0d47d"),
+                Map.entry("replicate.request.api.token", ""),
                 Map.entry("", ""),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5")));
