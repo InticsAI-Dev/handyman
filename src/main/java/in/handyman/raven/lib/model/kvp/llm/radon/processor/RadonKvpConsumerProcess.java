@@ -80,7 +80,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setPrompt(prompt);
-        radonKvpExtractionRequest.setProcessId(processId);
+        radonKvpExtractionRequest.setProcessId(String.valueOf(processId));
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
@@ -153,9 +153,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+
             if (response.isSuccessful()) {
                 assert response.body() != null;
-                String responseBody = response.body().string();
                 ReplicateResponse modelResponse = mapper.readValue(responseBody, ReplicateResponse.class);
                 if (modelResponse.getOutput() != null && !modelResponse.getOutput().isEmpty()) {
                     try {

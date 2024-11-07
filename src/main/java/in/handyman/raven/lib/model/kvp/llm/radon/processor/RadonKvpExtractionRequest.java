@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 public class RadonKvpExtractionRequest {
     private String originId;
     private Integer paperNo;
-    private Long processId;
+    private String processId;
     private Long groupId;
     private Long tenantId;
     private Long rootPipelineId;

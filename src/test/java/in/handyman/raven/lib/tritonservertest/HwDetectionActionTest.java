@@ -57,7 +57,7 @@ class HwDetectionActionTest {
         action.getContext().put("okhttp.client.timeout", "10");
         action.getContext().put("copro.request.activator.handler.name", "REPLICATE");
         action.getContext().put("replicate.request.api.token", "");
-        action.getContext().put("replicate.paper.classification.version", "ad0a3825adf17794944ca2fc2f1c16c87e85b9ee7c5da64039249420215a600a");
+        action.getContext().put("replicate.paper.classification.version", "ecdae433fe1a1b7731d865e831d342961a0df6b24f5720ef4169e247873a4390");
 
         HwDetectionAction hwDetectionAction=new HwDetectionAction(action,log,hwDetection);
         hwDetectionAction.execute();
