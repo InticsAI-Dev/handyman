@@ -13,15 +13,17 @@ class AssetInfoActionTest {
     void testingAssetInfo() throws Exception {
         AssetInfo assetInfo= AssetInfo.builder()
                 .name("info")
-                .resourceConn("intics_agadia_db_conn")
+                .resourceConn("intics_zio_db_conn")
                 .assetTable("macro.file_details_truth_audit")
                 .auditTable("info.sanitizer_summary_audit_138978990615970048")
-                .values("select '/home/logesh.b@zucisystems.com/Downloads/hw_samples_synth/hw_sample_6.jpg' as file_path;")
+                .values("select '/home/anandh.andrews@zucisystems.com/Downloads/replicate-test-image.jpg' as file_path;")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
         action.setRootPipelineId(11011L);
         action.getContext().put("process-id","1234567");
+        action.getContext().put("tenant_id","1234567");
+        action.getContext().put("pipeline-id","1234567");
         AssetInfoAction assetInfoAction=new AssetInfoAction(action ,log,assetInfo);
         assetInfoAction.execute();
     }
