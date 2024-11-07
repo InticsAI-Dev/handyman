@@ -3,12 +3,14 @@ package in.handyman.raven.lib.model.hwdectection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.hwdectection.copro.HwDetectionDataItemCopro;
+import in.handyman.raven.lib.model.textextraction.DataExtractionDataItem;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
@@ -240,7 +242,8 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 ObjectMapper objectMappers = new ObjectMapper();
                 ReplicateResponse hwDetectionResponse = objectMappers.readValue(responseBody, ReplicateResponse.class);
                 try {
-                    extractOutputDataRequest(entity, String.valueOf(hwDetectionResponse.getOutput()), parentObj, hwDetectionResponse.getModel(), hwDetectionResponse.getVersion(), jsonRequest, responseBody, endpoint.toString());
+
+                    extractReplicateOutputDataRequest(entity, hwDetectionResponse.getOutput(), parentObj, hwDetectionResponse.getModel(), hwDetectionResponse.getVersion(), jsonRequest, responseBody, endpoint.toString());
                 } catch (JsonProcessingException e) {
                     throw new HandymanException("Handwritten classification failed in processing replicate response", e);
                 }
@@ -381,10 +384,45 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
-        log.info("copro api response body {}", responseBody);
 
         HwDetectionDataItem hwDetectionDataItem = mapper.readValue(responseBody, new TypeReference<>() {
         });
+
+
+
+
+        parentObj.add(HwClassificationOutputTable.builder().createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
+                .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))
+                .tenantId(hwDetectionDataItem.getTenantId())
+                .originId(hwDetectionDataItem.getOriginId())
+                .paperNo(hwDetectionDataItem.getPaperNo())
+                .templateId(Optional.ofNullable(templateId).map(String::valueOf).orElse(null))
+                .modelId(Optional.ofNullable(modelId).map(String::valueOf).map(Long::parseLong).orElse(null))
+                .groupId(hwDetectionDataItem.getGroupId())
+                .documentType(hwDetectionDataItem.getDocumentStatus())
+                .confidenceScore(hwDetectionDataItem.getConfidenceScore())
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                .stage(STAGE)
+                .message("Paper Classification Finished")
+                .processId(hwDetectionDataItem.getProcessId())
+                .rootPipelineId(Long.valueOf(hwDetectionDataItem.getRootPipelineId()))
+                .modelName(modelName)
+                .modelVersion(modelVersion)
+                .createdOn(entity.getCreatedOn())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .batchId(hwDetectionDataItem.getBatchId())
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
+                .build());
+    }
+    private void extractReplicateOutputDataRequest(HwClassificationInputTable entity, JsonNode responseLineItems, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
+        String createdUserId = entity.getCreatedUserId();
+        String lastUpdatedUserId = entity.getLastUpdatedUserId();
+        String templateId = entity.getTemplateId();
+        Long modelId = entity.getModelId();
+
+        HwDetectionDataItem hwDetectionDataItem = mapper.treeToValue(responseLineItems, HwDetectionDataItem.class);
 
         parentObj.add(HwClassificationOutputTable.builder().createdUserId(Optional.ofNullable(createdUserId).map(String::valueOf).orElse(null))
                 .lastUpdatedUserId(Optional.ofNullable(lastUpdatedUserId).map(String::valueOf).orElse(null))

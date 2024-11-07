@@ -10,6 +10,7 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
+import in.handyman.raven.lib.model.zeroshotclassifier.replicate.ZeroShotClassifierReplicate;
 import in.handyman.raven.lib.replicate.ReplicateRequest;
 import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.util.ExceptionUtil;
@@ -109,10 +110,25 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
             coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
         } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            ZeroShotClassifierReplicate zeroShotClassifierReplicateData = new ZeroShotClassifierReplicate();
+            zeroShotClassifierReplicateData.setProcess(PROCESS_NAME);
+            zeroShotClassifierReplicateData.setProcessId(processId);
+            zeroShotClassifierReplicateData.setRootPipelineId(rootPipelineId);
+            zeroShotClassifierReplicateData.setActionId(String.valueOf(actionId));
+            zeroShotClassifierReplicateData.setProcess(entity.getProcessId());
+            zeroShotClassifierReplicateData.setOriginId(originId);
+            zeroShotClassifierReplicateData.setPaperNo(Integer.parseInt(paperNo));
+            zeroShotClassifierReplicateData.setGroupId(Integer.valueOf(groupId));
+            zeroShotClassifierReplicateData.setPageContent(pageContent);
+            zeroShotClassifierReplicateData.setKeysToFilter(entity.getTruthPlaceholder());
+            zeroShotClassifierReplicateData.setBatchId(batchId);
+
             ReplicateRequest replicateRequest=new ReplicateRequest();
             replicateRequest.setVersion(replicateZscVersion);
-            replicateRequest.setInput(data);
+            replicateRequest.setInput(zeroShotClassifierReplicateData);
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+
+
             Request request = new Request.Builder()
                     .url(endpoint)
                     .post(RequestBody.create(replicateJsonRequest, MediaTypeJSON))
@@ -146,7 +162,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                 ObjectMapper objectMapper = new ObjectMapper();
                 ReplicateResponse modelResponse = objectMapper.readValue(responseBody, ReplicateResponse.class);
                 if (modelResponse.getOutput() != null && !modelResponse.getOutput().isEmpty()) {
-                    extractedOutputDataRequest(entity, parentObj, responseBody, objectMapper, modelResponse.getModel(), modelResponse.getVersion(), jsonRequest, responseBody, String.valueOf(endpoint));
+                    extractedOutputDataRequest(entity, parentObj, String.valueOf(modelResponse.getOutput()), objectMapper, modelResponse.getModel(), modelResponse.getVersion(), jsonRequest, responseBody, String.valueOf(endpoint));
 
                 }
             } else {

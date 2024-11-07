@@ -41,17 +41,23 @@ class HwDetectionActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .directoryPath("/data/output")
                 .modelPath("")
-                .endPoint("http://localhost:8600/v2/models/paper-classification-service/versions/1/infer")
-                .querySet("SELECT 'INT-1' as originId, '1234567' as preprocessedFileId, 1 as paperNo,'/data/output/pdf_to_image/1220147418/1220147418_0.jpg'  as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as modelScore, 123 as modelRegistryId;")
+                .endPoint("https://api.replicate.com/v1/predictions")
+                .querySet("SELECT encode as base64img,'BATCH-1' as batch_id, 'INT-1' as originId, '1234567' as preprocessedFileId, 1 as paperNo,'/data/output/pdf_to_image/1220147418/1220147418_0.jpg'  as filePath, '123456' as createdUserId, '123456y' as lastUpdatedUserId, '12345643' as tenantId,-1 as templateId, 90.00 as modelScore, 123 as modelRegistryId, 1 as group_id, 1 as process_id" +
+                        " from macro.file_details_truth_audit ;")
                 .build();
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
-        action.getContext().put("copro.hw-detection.url", "http://localhost:8600/v2/models/paper-classification-service/versions/1/infer");
+        action.setActionId(1L);
+
+        action.getContext().put("copro.hw-detection.url", "https://api.replicate.com/v1/predictions");
         action.getContext().put("read.batch.size", "1");
         action.getContext().put("paper.classification.consumer.API.count", "1");
         action.getContext().put("write.batch.size", "1");
         action.getContext().put("okhttp.client.timeout", "10");
+        action.getContext().put("copro.request.activator.handler.name", "REPLICATE");
+        action.getContext().put("replicate.request.api.token", "");
+        action.getContext().put("replicate.paper.classification.version", "ad0a3825adf17794944ca2fc2f1c16c87e85b9ee7c5da64039249420215a600a");
 
         HwDetectionAction hwDetectionAction=new HwDetectionAction(action,log,hwDetection);
         hwDetectionAction.execute();

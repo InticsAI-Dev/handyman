@@ -118,5 +118,52 @@ class ZeroShotClassifierActionTest {
         zeroShotClassifierPaperFilterAction.execute();
     }
 
+    @Test
+    void replicateServer() throws Exception {
+        final ZeroShotClassifierPaperFilter build = ZeroShotClassifierPaperFilter.builder()
+                .condition(true)
+                .name("Test ZSC")
+                .processID("12345")
+                .readBatchSize("1")
+                .threadCount("1")
+                .writeBatchSize("1")
+                .endPoint("https://api.replicate.com/v1/predictions")
+                .querySet("SELECT 'batch-1' as batch_id," +
+                        "1 AS paper_no, " +
+                        "'14 May 2023 02:39 HP FaxZuci 04469178911 page 14 Other Q5. if other, please provide diagnosis: L50 .8 other uiticaria Q6. For IgE-Medicated allergic asthma has the patient had previous use of an Inhaled corticosterios (ICS) AND one of the following: Please check thos ethat apply: Long-acting muscarinic antagonist (LAMA) (Spiriva) or CSLAEBLAMA(eeg, Inhaled corticosteriod /Long- acting beta ( ICS/LABA) Leukotriene receptor antagonist (LTRA) corticosteriod in the past of 6 months? None of the above Q7. Has the patient had continuing symptomatic asthma requiring one or more fills of oral Q8. Has the patient experience contiuing symptomatic requiring 3 or more offices visit for asthma OR at least one ER visit or hospitilation due to an asthma exacerbation in the Pyes No past 6 months? yes yes Yes Yes Yes famotidine)? Lyes Yes Yes No No EANO No No Q9.F For asthma, is the patient 19E level equal to or greater than 30 10/ml? Q10. For asthma does the patient weigh less than or equal to 330 1bs (150 kgs)? Q11.F For CSU, does the patient have symptoms present most days of the week over a minimum of 3 months, resulting in a significant impact on quality of life? Q12. For CSU, has the patient failed tratment on twice daily HI-anti histamines (eg. Q13. For CSU, has the patient failed tratment on twice daily H2-blockers (eg.ranitdine, Q14. For CSU has the patient required atlest one recent cause of oral steroids? Cutirizine, hydroxyzine) over a minimum of weeks No No No Q15. For reauthorization for CSU, has the patient experienced a significant decrease in itch Q16. For chronic rhinosnusitis with nasal polyps, has the patient been complaint with and severity and hive counts? 32012 HBA74WS9PBR bRfransal corticosteroid therpahy and saline irrigation?' AS page_content, " +
+                        "1 AS group_id, " +
+                        "'INT-1' AS origin_id, " +
+                        "1 as tenant_id," +
+                        "1 AS process_id, " +
+                        "1 AS rootPipelineId, " +
+                        "JSONB_BUILD_OBJECT(" +
+                        "'Drug', ARRAY_TO_JSON(ARRAY['Directions/SIG',          'Drug name and strength',          'Drug name and strength']), " +
+                        "'Patient', ARRAY_TO_JSON(ARRAY['Patient Date of Birth',          'Patient IP',          'Patient Name',          'Patient Phone #'])," +
+                        "'Servicing Provider', ARRAY_TO_JSON(ARRAY['Address',          'Name of Provider or facility',          'NPI/DEA',          'Phone Number'])," +
+                        "'Requesting Provider', ARRAY_TO_JSON(ARRAY['Address',          'Fax#',          'Name',          'NPI/DEA',          'Phone #'])" +
+                        ") AS truthPlaceholder")
+                .resourceConn("intics_zio_db_conn")
+                .build();
+
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder()
+                .build();
+        action.setRootPipelineId(11011L);
+        action.setActionId(1L);
+        action.getContext().put("copro.paper-filtering-zero-shot-classifier.url", "https://api.replicate.com/v1/predictions");
+        action.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
+                Map.entry("okhttp.client.timeout", "20"),
+                Map.entry("copro.request.activator.handler.name", "REPLICATE"),
+                Map.entry("replicate.request.api.token", ""),
+                Map.entry("replicate.zsc.version", "955a10253275aaaaed2ef9e61b032ed3776b2df2f7e876a45a5d84ed34adea94"),
+                Map.entry("triton.request.activator", "false"),
+                Map.entry("actionId", "1"),
+                Map.entry("write.batch.size", "5")));
+
+
+        final ZeroShotClassifierPaperFilterAction zeroShotClassifierPaperFilterAction = new ZeroShotClassifierPaperFilterAction(action, log, build);
+        zeroShotClassifierPaperFilterAction.execute();
+    }
+
 }
 
