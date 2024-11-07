@@ -165,7 +165,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
-                log.error(aMarker, "The replicate response status {}", response.message());
+                log.error(aMarker, "The replicate response status {}", responseBody);
             }
         } catch (Exception e) {
             parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).response("Error In getting replicate Response").endpoint(String.valueOf(endpoint)).build());
