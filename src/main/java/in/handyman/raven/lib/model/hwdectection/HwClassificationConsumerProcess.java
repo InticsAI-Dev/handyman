@@ -119,7 +119,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
             coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else if (Objects.equals("REPLICATE", coproHandlerName)) {
             ReplicateRequest replicateRequest=new ReplicateRequest();
-            replicateRequest.setVersion(replicatePaperClassificationVersion);
+//            replicateRequest.setVersion(replicatePaperClassificationVersion);
             replicateRequest.setInput(hwDetectionPayload);
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
             Request request = new Request.Builder()

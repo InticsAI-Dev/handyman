@@ -124,7 +124,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             zeroShotClassifierReplicateData.setBatchId(batchId);
 
             ReplicateRequest replicateRequest=new ReplicateRequest();
-            replicateRequest.setVersion(replicateZscVersion);
+//            replicateRequest.setVersion(replicateZscVersion);
             replicateRequest.setInput(zeroShotClassifierReplicateData);
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
 

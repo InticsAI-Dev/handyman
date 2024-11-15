@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 @Data
 public class ReplicateRequest {
 
-    private String version;
+//    private String version;
     private Object input;
 }

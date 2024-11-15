@@ -125,7 +125,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             dataExtractionData.setBase64img(base64ForPath);
 
             ReplicateRequest replicateRequest=new ReplicateRequest();
-            replicateRequest.setVersion(replicateTextExtractionVersion);
+//            replicateRequest.setVersion(replicateTextExtractionVersion);
             replicateRequest.setInput(dataExtractionData);
 
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);

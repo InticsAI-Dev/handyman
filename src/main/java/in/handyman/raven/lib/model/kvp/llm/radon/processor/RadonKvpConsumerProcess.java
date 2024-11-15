@@ -120,7 +120,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else if (Objects.equals("REPLICATE", coproHandlerName)) {
             ReplicateRequest replicateRequest=new ReplicateRequest();
-            replicateRequest.setVersion(replicateRadonVersion);
+//            replicateRequest.setVersion(replicateRadonVersion);
             replicateRequest.setInput(radonKvpExtractionRequest);
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
             Request request = new Request.Builder()
@@ -339,7 +339,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+//        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
 
         parentObj.add(RadonQueryOutputTable.builder()
@@ -349,7 +349,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
+                .totalResponseJson(modelResponse.getInferResponse())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
