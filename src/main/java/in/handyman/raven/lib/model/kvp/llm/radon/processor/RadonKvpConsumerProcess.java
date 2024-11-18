@@ -298,11 +298,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+        JsonNode jsonNode = null;
         try {
             if (jsonResponse.contains("```json")) {
                 // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
                 Matcher matcher = pattern.matcher(jsonResponse);
+                log.info("Radon kvp infer json response was trimmed and removed mark down syntax.");
 
                 if (matcher.find()) {
                     // Extract the JSON string from the matched group
@@ -311,21 +313,21 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
                     // Convert the cleaned JSON string to a JsonNode
-                    JsonNode rootNode = objectMapper.readTree(jsonString);
 
-                    return rootNode;
+                    return objectMapper.readTree(jsonString);
                 }else {
-                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
-                    return rootNode;
+                    return objectMapper.readTree(jsonResponse);
                 }
 
             } else {
-                // Handle the case where the expected markers are not found
-                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+                log.info("Radon kvp infer json response was returned,in the json string to json node.");
+                return objectMapper.readTree(jsonResponse.replace("\n", ""));
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("radon kvp consumer failed for batch/group ", handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in converting the infer response json {}", ExceptionUtil.toString(e));
+            return jsonNode;
         }
     }
 
@@ -339,7 +341,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-//        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
 
         parentObj.add(RadonQueryOutputTable.builder()
@@ -349,7 +351,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(modelResponse.getInferResponse())
+                .totalResponseJson(String.valueOf(stringObjectMap))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
