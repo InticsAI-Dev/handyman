@@ -1,7 +1,7 @@
-package in.handyman.raven.lib.model.face.detection.triton;
+package in.handyman.raven.lib.model.checkboxAttribution;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import in.handyman.raven.lib.model.autorotation.AutoRotationOutput;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpOutput;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,11 +13,12 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class FaceDetectionModelResponse {
+public class CheckboxAttributionResponse {
     @JsonProperty("model_name")
     private String modelName;
+
     @JsonProperty("model_version")
     private String modelVersion;
-    private List<AutoRotationOutput> outputs;
+    private List<RadonKvpOutput> outputs;
 
 }
