@@ -94,7 +94,7 @@ public class AssetInfoAction implements IActionExecution {
                 try {
                     log.info(aMarker, "executing  for the file {}", tableInfo);
                     final String filePathString = Optional.ofNullable(tableInfo.getFilePath()).map(String::valueOf).orElse("[]");
-                    final String batchId = Optional.ofNullable(tableInfo.getBatchId()).map(String::valueOf).orElse("");
+                    final String batchId = Optional.ofNullable(tableInfo.getBatchId()).map(String::valueOf).orElse("[]");
                     log.info(aMarker, "file path string {}", filePathString);
                     File file = new File(filePathString);
                     log.info(aMarker, "created file {}", file);

@@ -21,7 +21,7 @@ public class TrinityModelDataItem {
     private Integer imageHeight;
     private String extractedImageUnit;
     private String qnCategory;
-
+    private String batchId;
     private String modelRegistry;
     private String paperType;
     private String originId;

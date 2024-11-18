@@ -20,6 +20,7 @@ public class AutoRotationData {
     private String process;
     private String inputFilePath;
     private String outputDir;
+    private String batchId;
     }
 
 

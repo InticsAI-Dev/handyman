@@ -150,6 +150,7 @@ action:
     |multipartUpload
     |multipartDownload
     |multipartDelete
+    |multipartFolderDelete
     |systemkeyTable
     |tritonModelLoadUnload
     |tableExtractionHeaders
@@ -171,6 +172,8 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
+    |radonKvpBbox
+    |dockerInspect
     );
 
 
@@ -1107,6 +1110,14 @@ multipartDelete:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+multipartFolderDelete:
+    'multipartFolderDelete' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'delete-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
 systemkeyTable:
     'systemkeyTable' 'as' name=STRING
     'resoruce-conn' resourceConn=STRING
@@ -1297,6 +1308,33 @@ dbDataDart:
 createExactZip:
        'create-exact-zip' name = STRING 'file-name' fileName = STRING 'from' source = STRING 'destination' destination=STRING 'using'
         '{' '}' ('on-condition' condition=expression)*;
+
+radonKvpBbox:
+    'radonKvpBbox' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' coproUrl=STRING
+    'consumer-api-count' consumerApiCount=STRING
+    'triton-request-activator' tritonActivator=STRING
+    'output-dir' outputDir=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+
+dockerInspect:
+    'dockerInspect' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'api-url' apiUrl=STRING
+    'consumer-api-count' consumerApiCount=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
+
 
 //rules
 

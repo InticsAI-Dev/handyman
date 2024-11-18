@@ -9,10 +9,8 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
 import jakarta.json.Json;
 import okhttp3.*;
@@ -32,6 +30,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
+    public static final String RADON_START = "RADON START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -76,15 +75,16 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
+        radonKvpExtractionRequest.setBatchId(entity.getBatchId());
 
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("RADON START");
+        requestBody.setName(entity.getApiName());
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
@@ -106,18 +106,18 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
         return parentObj;
     }
 
-    private void tritonRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -133,7 +133,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
-                            extractTritonOutputDataResponse(entity, radonDataItem, parentObj);
+                            extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -152,14 +152,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .rootPipelineId(rootPipelineId)
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                        .stage(PROCESS_NAME)
+                        .stage(entity.getApiName())
                         .message(response.message())
                         .batchId(entity.getBatchId())
-                        .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .createdOn(entity.getCreatedOn())
                         .createdUserId(tenantId)
-                        .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response from triton response {}", response.message());
             }
@@ -175,12 +178,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .actionId(action.getActionId())
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                    .stage(PROCESS_NAME)
+                    .stage(entity.getApiName())
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
-                    .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .createdOn(entity.getCreatedOn())
                     .createdUserId(tenantId)
-                    .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)
                     .category(entity.getCategory())
                     .build());
@@ -223,7 +226,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws JsonProcessingException {
+    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -237,9 +240,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         parentObj.add(RadonQueryOutputTable.builder()
-                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .createdOn(CreateTimeStamp.currentTimestamp())
                 .createdUserId(tenantId)
-                .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
@@ -251,20 +254,23 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .batchId(entity.getBatchId())
+                .batchId(modelResponse.getBatchId())
                 .modelRegistry(entity.getModelRegistry())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
+                .stage(entity.getApiName())
                 .batchId(entity.getBatchId())
                 .category(entity.getCategory())
                 .message("Radon kvp action macro completed")
+                .request(request)
+                .response(response)
+                .endpoint(String.valueOf(endpoint))
                 .build()
         );
 
 
     }
 
-    private void coproResponseBuider(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj) {
+    private void coproResponseBuider(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -278,7 +284,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
-                            extractedCoproOutputResponse(entity, radonDataItem, parentObj);
+                            extractedCoproOutputResponse(entity, radonDataItem, parentObj, jsonInputRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -297,10 +303,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .rootPipelineId(rootPipelineId)
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                        .stage(PROCESS_NAME)
+                        .stage(entity.getApiName())
                         .message(response.message())
                         .batchId(entity.getBatchId())
                         .category(entity.getCategory())
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
@@ -316,7 +325,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .rootPipelineId(rootPipelineId)
                     .process(entity.getProcess())
                     .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                    .stage(PROCESS_NAME)
+                    .stage(entity.getApiName())
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
                     .category(entity.getCategory())
@@ -328,7 +337,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-    private void extractedCoproOutputResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj) throws JsonProcessingException {
+    private void extractedCoproOutputResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -341,9 +350,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
         parentObj.add(RadonQueryOutputTable.builder()
-                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .createdOn(entity.getCreatedOn())
                 .createdUserId(tenantId)
-                .lastUpdatedOn(Timestamp.valueOf(LocalDateTime.now()))
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
@@ -357,10 +366,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .modelRegistry(entity.getModelRegistry())
                 .process(entity.getProcess())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
+                .stage(entity.getApiName())
                 .batchId(entity.getBatchId())
                 .message("Radon kvp action macro completed")
                 .category(entity.getCategory())
+                .request(request)
+                .response(response)
+                .endpoint(String.valueOf(endpoint))
                 .build()
         );
     }

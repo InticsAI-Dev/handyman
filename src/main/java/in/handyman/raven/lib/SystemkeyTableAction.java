@@ -113,7 +113,10 @@ public class SystemkeyTableAction implements IActionExecution {
               "model_name varchar NULL," +
               "model_version varchar NULL," +
               "batch_id varchar NULL," +
-              "tenant_id int8 NULL);" ;
+              "tenant_id int8 NULL," +
+              "request text NULL," +
+              "response text NULL," +
+              "endpoint varchar NULL);" ;
       handle.execute(createTableSQL);
       log.info("Table '{}' has been created.", tableName);
       log.info("Table '{}_match' has been created", tableName);

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.hwdectection.copro.HwDetectionDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -61,6 +62,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         Long rootpipelineId = action.getRootPipelineId();
         Long actionId = action.getActionId();
         String filePath = String.valueOf(entity.getFilePath());
+        String batchId = entity.getBatchId();
         ObjectMapper objectMapper = new ObjectMapper();
 
         //payload
@@ -75,6 +77,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         hwDetectionPayload.setOriginId(entity.getOriginId());
         hwDetectionPayload.setProcessId(entity.getProcessId());
         hwDetectionPayload.setPaperNo(entity.getPaperNo());
+        hwDetectionPayload.setBatchId(batchId);
 
         String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
 
@@ -97,11 +100,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, parentObj);
+            coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -112,7 +115,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         return parentObj;
     }
 
-    private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj) {
+    private void coproRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -126,7 +129,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
 
                 String responseBody = Objects.requireNonNull(response.body()).string();
 
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
 
                 parentObj.add(HwClassificationOutputTable.builder()
@@ -144,6 +147,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -165,6 +173,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .groupId(entity.getGroupId())
                     .batchId(entity.getBatchId())
                     .rootPipelineId(action.getRootPipelineId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(jsonInputRequest)
+                    .response("Error in getting Response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -174,7 +187,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     }
 
 
-    private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj) {
+    private void tritonRequestBuilder(HwClassificationInputTable entity, Request request, List<HwClassificationOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -192,7 +205,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     hwDetectionResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(hwDetectionDataItem -> {
                             try {
-                                extractOutputDataRequest(entity, hwDetectionDataItem, parentObj, hwDetectionResponse.getModelName(), hwDetectionResponse.getModelVersion());
+                                extractOutputDataRequest(entity, hwDetectionDataItem, parentObj, hwDetectionResponse.getModelName(), hwDetectionResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                             } catch (JsonProcessingException e) {
                                 throw new HandymanException("Handwritten classification failed in processing response", e);
                             }
@@ -216,6 +229,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         .groupId(entity.getGroupId())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "The Exception occurred in paper classification response");
             }
@@ -235,6 +253,11 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                     .groupId(entity.getGroupId())
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(jsonRequest)
+                    .response("Error in getting Response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in paper classification request", e);
             HandymanException handymanException = new HandymanException(e);
@@ -243,7 +266,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         }
     }
 
-    private void extractOutputDataRequest(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
+    private void extractOutputDataRequest(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         String templateId = entity.getTemplateId();
@@ -267,14 +290,19 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .stage(STAGE)
                 .message("Paper Classification Finished")
                 .processId(hwDetectionDataItem.getProcessId())
-                .rootPipelineId(entity.getRootPipelineId())
+                .rootPipelineId(Long.valueOf(hwDetectionDataItem.getRootPipelineId()))
                 .modelName(modelName)
                 .modelVersion(modelVersion)
-                .batchId(entity.getBatchId())
+                .createdOn(entity.getCreatedOn())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .batchId(hwDetectionDataItem.getBatchId())
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
                 .build());
     }
 
-    private void extractedCoproOutputResponse(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion) throws JsonProcessingException {
+    private void extractedCoproOutputResponse(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -305,7 +333,12 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(entity.getRootPipelineId())
                 .modelName(modelName)
                 .modelVersion(modelVersion)
+                .createdOn(entity.getCreatedOn())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .batchId(entity.getBatchId())
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
                 .build());
     }
 }

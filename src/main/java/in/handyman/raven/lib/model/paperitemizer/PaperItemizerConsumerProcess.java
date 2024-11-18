@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
@@ -73,6 +74,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         paperitemizerData.setInputFilePath(inputFilePath);
         paperitemizerData.setOutputDir(this.outputDir);
         paperitemizerData.setActionId(actionId);
+        paperitemizerData.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
 
         TritonRequest requestBody = new TritonRequest();
@@ -92,22 +94,22 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, objectMapper, parentObj);
+            coproRequestBuilder(entity, request, objectMapper, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, objectMapper, parentObj);
+            tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
         }
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and outputDir {}", endpoint, inputFilePath, outputDir);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and outputDir {}", endpoint, inputFilePath, this.outputDir);
         }
 
         return parentObj;
     }
 
-    private void coproRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj) {
+    private void coproRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -116,12 +118,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         String batchId = entity.getBatchId();
         try (Response response = httpclient.newCall(request).execute()) {
 
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
-            }
+
             if (response.isSuccessful()) {
+                if (log.isInfoEnabled()) {
+                    log.info(aMarker, "coproProcessor consumer process response successfull");
+                }
                 String responseBody = Objects.requireNonNull(response.body()).string();
-                extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody);
+                extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody, jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
                 parentObj.add(
@@ -135,9 +138,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message(response.message())
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .batchId(batchId)
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -154,7 +161,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(batchId)
                             .build());
@@ -165,7 +173,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
 
-    private void tritonRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj) {
+    private void tritonRequestBuilder(PaperItemizerInputTable entity, Request request, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -175,16 +183,15 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
         try (Response response = httpclient.newCall(request).execute()) {
 
-
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "coproProcessor consumer process response with status{}, and message as {}, ", response.isSuccessful(), response.message());
-            }
             if (response.isSuccessful()) {
+                if (log.isInfoEnabled()) {
+                    log.info(aMarker, "coproProcessor consumer process response successful ");
+                }
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 PaperItemizerResponse paperItemizerResponse = objectMapper.readValue(responseBody, PaperItemizerResponse.class);
                 if (paperItemizerResponse.getOutputs() != null && !paperItemizerResponse.getOutputs().isEmpty()) {
                     paperItemizerResponse.getOutputs().forEach(o -> o.getData().forEach(paperItemizerDataItem ->
-                            extractedOutputRequest(entity, objectMapper, parentObj, paperItemizerResponse.getModelName(), paperItemizerResponse.getModelVersion(), paperItemizerDataItem)
+                            extractedOutputRequest(entity, objectMapper, parentObj, paperItemizerResponse.getModelName(), paperItemizerResponse.getModelVersion(), paperItemizerDataItem, jsonInputRequest, responseBody, endpoint.toString())
                     ));
                 }
 
@@ -200,9 +207,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message(response.message())
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .batchId(entity.getBatchId())
+                                .request(jsonInputRequest)
+                                .response(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in response {}", response.message());
             }
@@ -219,9 +230,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(exception.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
+                            .request(jsonInputRequest)
+                            .response("Error In Response")
+                            .endpoint(String.valueOf(endpoint))
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
@@ -229,7 +244,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private void extractedOutputRequest(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem) {
+    private void extractedOutputRequest(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem, String request, String response, String endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -257,11 +272,15 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message("Paper Itemizer macro completed")
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
-                                .batchId(entity.getBatchId())
+                                .batchId(paperItemizeOutputData.getBatchId())
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build());
             }
 
@@ -277,9 +296,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(e.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);
@@ -288,7 +311,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
 
-    private void extractedCoproOutputResponse(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem) {
+    private void extractedCoproOutputResponse(PaperItemizerInputTable entity, ObjectMapper objectMapper, List<PaperItemizerOutputTable> parentObj, String modelName, String modelVersion, String paperItemizerDataItem, String request, String response, String endpoint) {
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
         String templateId = entity.getTemplateId();
@@ -314,11 +337,15 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .stage(PROCESS_NAME)
                                 .message("Paper Itemizer macro completed")
-                                .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .createdOn(entity.getCreatedOn())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
                                 .batchId(entity.getBatchId())
+                                .request(request)
+                                .response(response)
+                                .endpoint(endpoint)
                                 .build());
             });
 
@@ -334,9 +361,13 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                             .stage(PROCESS_NAME)
                             .message(e.getMessage())
-                            .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .createdOn(entity.getCreatedOn())
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Paper Itemizer  consumer failed for originId " + originId, handymanException, this.action);

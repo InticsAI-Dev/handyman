@@ -61,11 +61,12 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         Long actionId = action.getActionId();
         Long rootpipelineId = action.getRootPipelineId();
         String inputSentence = result.getActualValue();
+        String batchId = result.getBatchId();
         List<String> sentences = Collections.singletonList(result.getExtractedValue());
         ObjectMapper objectMapper = new ObjectMapper();
 
 //payload
-            ComparisonPayload comparisonPayload = new ComparisonPayload();
+        ComparisonPayload comparisonPayload = new ComparisonPayload();
         comparisonPayload.setRootPipelineId(rootpipelineId);
         comparisonPayload.setActionId(actionId);
         comparisonPayload.setProcessId(action.getProcessId());
@@ -75,6 +76,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         comparisonPayload.setSentences(sentences);
         comparisonPayload.setTenantId(result.getTenantId());
         comparisonPayload.setGroupId(result.getGroupId());
+        comparisonPayload.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(comparisonPayload);
 
         TritonRequest requestBody = new TritonRequest();
@@ -91,11 +93,11 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             if (Objects.equals("false", tritonRequestActivator)) {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-                coproRequestBuider(result, request, parentObj);
+                coproRequestBuider(result, request, parentObj, jsonInputRequest, endpoint);
             } else {
                 Request request = new Request.Builder().url(endpoint)
                         .post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-                tritonRequestBuilder(result, request, parentObj);
+                tritonRequestBuilder(result, request, parentObj, jsonRequest, endpoint);
             }
         } else {
             parentObj.add(
@@ -122,7 +124,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         return parentObj;
     }
 
-    private void coproRequestBuider(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj) throws IOException {
+    private void coproRequestBuider(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj, String jsonInputRequest, URL endpoint) throws IOException {
         String eocIdentifier = result.getEocIdentifier();
         String originId = result.getOriginId();
         Integer paperNo = result.getPaperNo();
@@ -132,7 +134,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
             log.info("master data comparison response body {}", response.body());
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedCoproOutputResponse(result, parentObj, responseBody, "", "");
+                extractedCoproOutputResponse(result, parentObj, responseBody, "", "", jsonInputRequest, responseBody,endpoint.toString());
             } else {
                 parentObj.add(
                         MasterDataOutputTable.builder()
@@ -149,6 +151,9 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .rootPipelineId(action.getRootPipelineId())
                                 .tenantId(result.getTenantId())
                                 .batchId(result.getBatchId())
+                                .request(jsonInputRequest)
+                                .request(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build()
                 );
 
@@ -156,7 +161,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         }
     }
 
-    private void tritonRequestBuilder(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj) {
+    private void tritonRequestBuilder(MasterDataInputTable result, Request request, List<MasterDataOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String eocIdentifier = result.getEocIdentifier();
         String originId = result.getOriginId();
         Integer paperNo = result.getPaperNo();
@@ -171,7 +176,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                 if (Response.getOutputs() != null && !Response.getOutputs().isEmpty()) {
                     Response.getOutputs().forEach(o -> {
                         o.getData().forEach(comparisonDataItem -> {
-                            extractOuputDataRequest(result, parentObj, comparisonDataItem, Response.getModelName(), Response.getModelVersion());
+                            extractOuputDataRequest(result, parentObj, comparisonDataItem, Response.getModelName(), Response.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                         });
                     });
                 }
@@ -191,6 +196,9 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                                 .rootPipelineId(action.getRootPipelineId())
                                 .tenantId(result.getTenantId())
                                 .batchId(result.getBatchId())
+                                .request(jsonRequest)
+                                .request(response.message())
+                                .endpoint(String.valueOf(endpoint))
                                 .build()
                 );
                 log.error(aMarker, "The Exception occurred in master data comparison by {} ", response);
@@ -212,6 +220,9 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .rootPipelineId(action.getRootPipelineId())
                             .tenantId(result.getTenantId())
                             .batchId(result.getBatchId())
+                            .request(jsonRequest)
+                            .request("Error in response")
+                            .endpoint(String.valueOf(endpoint))
                             .build()
             );
 
@@ -221,7 +232,7 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
         }
     }
 
-    private static void extractOuputDataRequest(MasterDataInputTable result, List<MasterDataOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion) {
+    private static void extractOuputDataRequest(MasterDataInputTable result, List<MasterDataOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion, String request, String response, String endpoint) {
         String eocIdentifier = result.getEocIdentifier();
         String originId = result.getOriginId();
         Integer paperNo = result.getPaperNo();
@@ -249,7 +260,10 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .modelName(modelName)
                         .tenantId(tenantId)
                         .modelVersion(modelVersion)
-                        .batchId(result.getBatchId())
+                        .batchId(item.getBatchId())
+                        .request(request)
+                        .request(response)
+                        .endpoint(endpoint)
                         .build());
             }
 
@@ -269,11 +283,14 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .tenantId(tenantId)
                             .rootPipelineId(result.getRootPipelineId())
                             .batchId(result.getBatchId())
+                            .request(request)
+                            .request(response)
+                            .endpoint(endpoint)
                             .build()
             );
         }
     }
-    private static void extractedCoproOutputResponse(MasterDataInputTable result, List<MasterDataOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion) {
+    private static void extractedCoproOutputResponse(MasterDataInputTable result, List<MasterDataOutputTable> parentObj, String comparisonDataItem, String modelName, String modelVersion, String request, String response, String endpoint) {
         String eocIdentifier = result.getEocIdentifier();
         String originId = result.getOriginId();
         Integer paperNo = result.getPaperNo();
@@ -304,6 +321,9 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                         .tenantId(tenantId)
                         .modelVersion(modelVersion)
                         .batchId(result.getBatchId())
+                        .request(request)
+                        .request(response)
+                        .endpoint(endpoint)
                         .build());
             }
 
@@ -323,6 +343,9 @@ public class MasterdataComparisonProcess implements CoproProcessor.ConsumerProce
                             .tenantId(tenantId)
                             .rootPipelineId(result.getRootPipelineId())
                             .batchId(result.getBatchId())
+                            .request(request)
+                            .request(response)
+                            .endpoint(endpoint)
                             .build()
             );
         }

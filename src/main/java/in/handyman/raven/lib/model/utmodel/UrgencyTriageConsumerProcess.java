@@ -6,10 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.model.triton.PipelineName;
-import in.handyman.raven.lib.model.triton.TritonInputRequest;
-import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.utmodel.copro.UrgencyTriageModelDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
@@ -25,6 +23,9 @@ import static in.handyman.raven.lib.UrgencyTriageModelAction.urgencyTriageModel;
 public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProcess<UrgencyTriageInputTable, UrgencyTriageOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String URGENCY_TRIAGE_PROCESS_NAME = PipelineName.URGENCY_TRIAGE.getProcessName();
+    public static final String UT_START = "UT START";
+    public static final String TRITON_ACTIVATOR_FALSE = "false";
+    public static final String URGENCY_TRIAGE_MODEL = "URGENCY_TRIAGE_MODEL";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -65,15 +66,16 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
+        urgencyTriageModelPayload.setBatchId(entity.getBatchId());
 
 
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
 
 
         TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("UT START");
+        requestBody.setName(UT_START);
         requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
+        requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
 
@@ -86,14 +88,14 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
 
-        if (Objects.equals("false", tritonRequestActivator)) {
+        if (Objects.equals(TRITON_ACTIVATOR_FALSE, tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
-            coproRequestBuider(entity, request, objectMapper, parentObj);
+            coproRequestBuider(entity, request, objectMapper, parentObj, jsonInputRequest, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
-            tritonRequestBuilder(entity, request, objectMapper, parentObj);
+            tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
         }
 
         if (log.isInfoEnabled()) {
@@ -103,7 +105,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         return parentObj;
     }
 
-    private void tritonRequestBuilder(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj) {
+    private void tritonRequestBuilder(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String jsonRequest, URL endpoint) {
         String createdUserId = entity.getCreatedUserId();
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
@@ -121,7 +123,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     modelResponse.getOutputs().forEach(o -> {
                         o.getData().forEach(urgencyTriageModelDataItem -> {
 
-                            extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                            extractedOutputRequest(entity, urgencyTriageModelDataItem, objectMapper, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
 
                             log.info(aMarker, "Execute for urgency triage {}", response.isSuccessful());
                         });
@@ -138,11 +140,16 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .paperNo(paperNo)
                         .templateId(templateId)
                         .modelId(modelId)
-                        .status("FAILED")
-                        .stage("URGENCY_TRIAGE_MODEL")
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .stage(URGENCY_TRIAGE_MODEL)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
@@ -157,11 +164,16 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .paperNo(paperNo)
                     .templateId(templateId)
                     .modelId(modelId)
-                    .status("FAILED")
-                    .stage("URGENCY_TRIAGE_MODEL")
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                    .stage(URGENCY_TRIAGE_MODEL)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(jsonRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -169,7 +181,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private static void extractedOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
+    private static void extractedOutputRequest(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String templateId = entity.getTemplateId();
         Long modelId = entity.getModelId();
@@ -197,7 +209,12 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
-                    .batchId(entity.getBatchId())
+                    .batchId(urgencyTriageModelDataItem1.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -205,7 +222,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
 
-    private void coproRequestBuider(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj) {
+    private void coproRequestBuider(UrgencyTriageInputTable entity, Request request, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         try (Response response = httpclient.newCall(request).execute()) {
             final String responseBody = Objects.requireNonNull(response.body()).string();
             String createdUserId = entity.getCreatedUserId();
@@ -217,8 +234,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
             String templateId = entity.getTemplateId();
             Long modelId = entity.getModelId();
             if (response.isSuccessful()) {
-                log.info("Response Details: {}", response);
-                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, objectMapper, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
                 parentObj.add(UrgencyTriageOutputTable.builder()
@@ -231,17 +247,22 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                         .paperNo(paperNo)
                         .templateId(templateId)
                         .modelId(modelId)
-                        .status("FAILED")
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(URGENCY_TRIAGE_PROCESS_NAME)
                         .message(response.message())
                         .rootPipelineId(entity.getRootPipelineId())
                         .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.error(aMarker, "The Exception occurred in urgency triage {}", response);
             }
         } catch (Exception e) {
             String createdUserId = entity.getCreatedUserId();
-            String lastUpdatedUserId = entity.getLastUpdatedUserId();
+
             Long tenantId = entity.getTenantId();
             Long processId = entity.getProcessId();
             Integer groupId = entity.getGroupId();
@@ -261,11 +282,16 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .paperNo(paperNo)
                     .templateId(templateId)
                     .modelId(modelId)
-                    .status("FAILED")
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                     .stage(URGENCY_TRIAGE_PROCESS_NAME)
                     .message(ExceptionUtil.toString(e))
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(jsonInputRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in urgency triage", e);
             HandymanException handymanException = new HandymanException(e);
@@ -273,7 +299,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion) {
+    private static void extractedCoproOutputResponse(UrgencyTriageInputTable entity, String urgencyTriageModelDataItem, ObjectMapper objectMapper, List<UrgencyTriageOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         Long tenantId = entity.getTenantId();
@@ -308,6 +334,11 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .modelName(modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

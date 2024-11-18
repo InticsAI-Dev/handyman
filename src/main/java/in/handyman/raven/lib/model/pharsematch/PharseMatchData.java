@@ -23,6 +23,7 @@ public class PharseMatchData {
         private String groupId;
         private Map<String, List<String>> keysToFilter;
         private String pageContent;
+        private String batchId;
 
     }
 

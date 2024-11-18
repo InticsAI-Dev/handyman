@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,15 +35,20 @@ public class HwClassificationOutputTable implements CoproProcessor.Entity{
     private String modelName;
     private String modelVersion;
     private String batchId;
+    private Timestamp createdOn;
+    private Timestamp lastUpdatedOn;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.createdUserId,this.lastUpdatedUserId, this.tenantId,
+        return Stream.of(this.createdOn, this.createdUserId,this.lastUpdatedOn,this.lastUpdatedUserId, this.tenantId,
                 this.originId, this.paperNo, this.templateId, this.modelId,
                 this.documentType, this.status, this.stage, this.message, this.groupId,this.rootPipelineId, this.confidenceScore, this.modelName,
-                this.modelVersion,this.batchId).collect(Collectors.toList());
+                this.modelVersion,this.batchId, this.request, this.response, this.endpoint).collect(Collectors.toList());
 
     }
 }

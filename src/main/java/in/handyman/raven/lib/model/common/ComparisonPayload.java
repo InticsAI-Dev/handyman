@@ -20,4 +20,5 @@ public class ComparisonPayload {
     private String process;
     private String inputSentence;
     private List<String> sentences;
+    private String batchId;
 }

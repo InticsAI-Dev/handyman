@@ -22,13 +22,13 @@ class AuthTokenActionTest {
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://localhost:40002/api/v1/refresh");
+        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://localhost:10181/copro/preprocess/autorotation");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("gatekeeper.url", "http://localhost:40002/"),
-                Map.entry("gatekeeper.appid", "kissflow_rf@intics.ai"),
-                Map.entry("tenant_id", "78"),
+                Map.entry("gatekeeper.appid", "dj@intics.ai"),
+                Map.entry("tenant_id", "8"),
                 Map.entry("write.batch.size", "5")));
 
 

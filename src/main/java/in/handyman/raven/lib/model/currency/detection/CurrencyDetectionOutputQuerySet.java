@@ -35,12 +35,15 @@ public class CurrencyDetectionOutputQuerySet implements CoproProcessor.Entity {
     private String detectedAsciiValue;
     private Double confidenceScore;
     private String batchId;
+    private String request;
+    private String response;
+    private String endpoint;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processId,
                 this.paperNo, this.status, this.stage, this.message, this.createdOn, this.rootPipelineId,
-                this.modelName, this.modelVersion,this.inputFilePath,this.detectedValue,this.detectedAsciiValue,this.confidenceScore,this.batchId).collect(Collectors.toList());
+                this.modelName, this.modelVersion,this.inputFilePath,this.detectedValue,this.detectedAsciiValue,this.confidenceScore,this.batchId, this.request,this.response,this.endpoint).collect(Collectors.toList());
     }
 }

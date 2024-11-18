@@ -107,11 +107,11 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj);
+            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj);
+            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
 
@@ -119,7 +119,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
     }
 
 
-    private void coproResponseBuider(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj) {
+    private void coproResponseBuider(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -128,7 +128,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
-                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "");
+                extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 parentObj.add(ParagraphQueryOutputTable.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
@@ -142,6 +142,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
                         .batchId(entity.getBatchId())
+                        .request(jsonInputRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -158,6 +161,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
                     .batchId(entity.getBatchId())
+                    .request(jsonInputRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -166,7 +172,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void tritonRequestBuilder(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj) {
+    private void tritonRequestBuilder(ParagraphQueryInputTable entity, Request request, List<ParagraphQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -179,7 +185,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
 
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(paragraphDataItem -> {
-                        extractTritonOutputDataResponse(entity, paragraphDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion());
+                        extractTritonOutputDataResponse(entity, paragraphDataItem, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                     }));
 
                 }
@@ -197,6 +203,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                         .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                         .rootPipelineId(rootPipelineId)
                         .batchId(entity.getBatchId())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
@@ -213,6 +222,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
                     .batchId(entity.getBatchId())
+                    .request(jsonRequest)
+                    .response("Error in response")
+                    .endpoint(String.valueOf(endpoint))
                     .build());
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -221,7 +233,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void extractTritonOutputDataResponse(ParagraphQueryInputTable entity, String paragraphResponseDataItem, List<ParagraphQueryOutputTable> parentObj, String modelName, String modelVersion) {
+    private void extractTritonOutputDataResponse(ParagraphQueryInputTable entity, String paragraphResponseDataItem, List<ParagraphQueryOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -257,6 +269,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                             .processId(entity.getProcessId())
                             .outputDir(entity.getOutputDir())
                             .batchId(entity.getBatchId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
 
 
@@ -279,6 +294,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
                     .batchId(entity.getBatchId())
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
@@ -287,7 +305,7 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
     }
 
 
-    private void extractedCoproOutputResponse(ParagraphQueryInputTable entity, String paragraphResponseDataItem, List<ParagraphQueryOutputTable> parentObj, String modelName, String modelVersion) {
+    private void extractedCoproOutputResponse(ParagraphQueryInputTable entity, String paragraphResponseDataItem, List<ParagraphQueryOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -323,6 +341,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                             .processId(entity.getProcessId())
                             .outputDir(entity.getOutputDir())
                             .batchId(entity.getBatchId())
+                            .request(request)
+                            .response(response)
+                            .endpoint(endpoint)
                             .build());
 
 
@@ -346,6 +367,9 @@ public class ParagraphExtractionConsumerProcess implements CoproProcessor.Consum
                     .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                     .rootPipelineId(rootPipelineId)
                     .batchId(entity.getBatchId())
+                    .request(request)
+                    .response(response)
+                    .endpoint(endpoint)
                     .build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);

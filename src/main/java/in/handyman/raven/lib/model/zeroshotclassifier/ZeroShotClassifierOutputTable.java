@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,11 +35,17 @@ import java.util.stream.Stream;
         private String modelVersion;
         private Long tenantId;
         private String batchId;
+        private Timestamp createdOn;
+        private Timestamp lastUpdatedOn;
+        private String request;
+        private String response;
+        private String endpoint;
 
         @Override
         public List<Object> getRowData() {
             return Stream.of(this.originId, this.groupId, this.paperNo, this.entity, this.confidenceScore,
-                    this.truthEntity, this.status, this.stage, this.message, this.rootPipelineId,this.modelName, this.modelVersion,this.tenantId,this.batchId).collect(Collectors.toList());
+                    this.truthEntity, this.status, this.stage, this.message,this.createdOn, this.rootPipelineId,
+                    this.modelName, this.modelVersion,this.tenantId,this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint).collect(Collectors.toList());
         }
     }
 
