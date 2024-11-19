@@ -163,6 +163,7 @@ public class ProductResponseAction implements IActionExecution {
                                 .response(responseBody)
                                 .build());
                     }
+
                 } else {
                     parentObj.add(ProductResponseOutputTable
                             .builder()
