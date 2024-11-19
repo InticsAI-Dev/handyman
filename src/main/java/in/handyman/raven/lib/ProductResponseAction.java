@@ -158,6 +158,9 @@ public class ProductResponseAction implements IActionExecution {
                                 .status("COMPLETED")
                                 .message("alchemy product response completed for origin_id - " + originId)
                                 .batchId(entity.getBatchId())
+                                .endpoint(endpoint.toString())
+                                .request(request.toString())
+                                .response(responseBody)
                                 .build());
                     }
                 } else {
@@ -174,6 +177,9 @@ public class ProductResponseAction implements IActionExecution {
                             .status("FAILED")
                             .message("alchemy product response failed for origin_id - " + originId)
                             .batchId(entity.getBatchId())
+                            .endpoint(endpoint.toString())
+                            .request(request.toString())
+                            .response("Error in processing response")
                             .build());
                 }
             } catch (Exception e) {
@@ -255,6 +261,10 @@ public class ProductResponseAction implements IActionExecution {
         private String triggeredUrl;
         private String feature;
         private String batchId;
+        private String request;
+        private String response;
+        private String endpoint;
+
 
         @Override
         public List<Object> getRowData() {
