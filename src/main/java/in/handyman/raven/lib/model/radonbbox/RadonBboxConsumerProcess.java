@@ -182,6 +182,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
                             .sorItemName(radonResponseBboxLineItem.getSorItemName())
                             .answer(radonResponseBboxLineItem.getAnswer())
                             .valueType(radonResponseBboxLineItem.getValueType())
+                            .vqaScore(radonResponseBboxLineItem.getVqaScore())
                             .build());
                 } catch (JsonProcessingException e) {
                     parentObj.add(RadonBboxOutputEntity.builder()

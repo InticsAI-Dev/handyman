@@ -16,6 +16,7 @@ public class RadonResponseBboxLineItem {
     private String sorItemName;
     private String answer;
     private String valueType;
+    private Float vqaScore;
 
     @JsonProperty("bBox")
     private BoundingBoxObject bBox;
