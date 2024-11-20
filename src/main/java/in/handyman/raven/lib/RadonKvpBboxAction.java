@@ -53,8 +53,8 @@ public class RadonKvpBboxAction implements IActionExecution {
             "    batch_id, \n" +
             "    model_registry," +
             "    status," +
-            "    stage, message";
-    public static final String INSERT_PLACEHOLDERS = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?";
+            "    stage, message, vqa_score";
+    public static final String INSERT_PLACEHOLDERS = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
     public static final String INSERT_INTO = "INSERT INTO";
     public static final String VALUES = "VALUES";
     public static final String OPEN_PARENTHESIS = "(";

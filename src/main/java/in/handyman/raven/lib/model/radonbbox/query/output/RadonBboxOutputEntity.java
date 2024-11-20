@@ -31,6 +31,7 @@ public class RadonBboxOutputEntity implements CoproProcessor.Entity {
     private String inputFilePath;
     private String bBox;
     private String valueType;
+    private Float vqaScore;
     private String status;
     private String stage;
     private String message;
@@ -39,6 +40,6 @@ public class RadonBboxOutputEntity implements CoproProcessor.Entity {
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.sorContainerName, this.sorItemName, this.answer, this.valueType, this.bBox, this.paperNo, this.originId, this.inputFilePath,
-                this.groupId, this.tenantId, this.rootPipelineId, this.batchId, this.modelRegistry, this.status, this.stage, this.message).collect(Collectors.toList());
+                this.groupId, this.tenantId, this.rootPipelineId, this.batchId, this.modelRegistry, this.status, this.stage, this.message, this.vqaScore).collect(Collectors.toList());
     }
 }
