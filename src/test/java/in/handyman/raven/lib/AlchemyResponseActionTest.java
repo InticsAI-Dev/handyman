@@ -13,17 +13,20 @@ class AlchemyResponseActionTest {
 
         AlchemyResponse alchemyResponse = AlchemyResponse.builder()
                 .name("alchemy response action")
-                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzE3ODQ4NDAzLCJpYXQiOjE3MTc3NjIwMDMsImVtYWlsIjoibml2YXJhX2RlbW9AaW50aWNzLmFpIn0.iKZtp1SyCEWX934YP6xKGSGlSgy6SMWeE6ur16W_Q_Y")
+                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzMyMTAzNTcyLCJpYXQiOjE3MzIwMTcxNzIsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.2rMw2OpyfLu38HpXSZelmz0mjMYGPmeqresonxuXcUY")
                 .tenantId(74L)
-                .querySet("select cr.b_box ,cr.origin_id ,cr.paper_no ,cr.tenant_id ,cr.root_pipeline_id , cr.confidence_score,cr.extracted_value,\n" +
-                        "                cr.sor_item_name,cr.synonym_id,cr.question_id ,'KIE' as feature,null as state ,null as table_data\n" +
-                        "                FROM voting.cummulative_result cr\n where tenant_id =105")
-                .resourceConn("intics_zio_db_conn_bl")
+                .querySet(" select id, paper_no, origin_id, process, group_id, tenant_id, root_pipeline_id, batch_id,\n" +
+                        "model_registry, 'CHECKBOX_EXTRACTION' as feature, container_name as sor_item_name,\n" +
+                        "predicted_value as extracted_value, bbox, confidence_score, state from \n" +
+                        "checkbox_attribution.checkbox_attribution_output_audit caoa\n" +
+                        "where id = 27;")
+                .resourceConn("intics_zio_db_conn")
+
                 .condition(true).build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("alchemy.origin.valuation.url","http://localhost:8189/alchemy/api/v1/valuation/origin");
-        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzE3ODQ4NDAzLCJpYXQiOjE3MTc3NjIwMDMsImVtYWlsIjoibml2YXJhX2RlbW9AaW50aWNzLmFpIn0.iKZtp1SyCEWX934YP6xKGSGlSgy6SMWeE6ur16W_Q_Y");
-        actionExecutionAudit.getContext().put("alchemyAuth.tenantId","74");
+        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzMyMDY5MjY3LCJpYXQiOjE3MzE5ODI4NjcsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.IuVzA-yP8C9752bGFv7ZqejSovumm4N6DfbTuvF7fhc");
+        actionExecutionAudit.getContext().put("alchemyAuth.tenantId","116");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
         actionExecutionAudit.getContext().put("write.batch.size","1");
         actionExecutionAudit.getContext().put("read.batch.size","1");

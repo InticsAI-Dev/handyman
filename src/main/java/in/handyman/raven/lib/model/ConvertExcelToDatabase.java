@@ -19,18 +19,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "ConvertExcelToDatabase"
+        actionName = "ConvertExcelToDatabase"
 )
 public class ConvertExcelToDatabase implements IActionContext {
-  private String name;
+    private String name;
 
-  private String resourceConn;
+    private String resourceConn;
 
-  private String fileType;
+    private String fileType;
 
-  private String targetConn;
+    private String targetConn;
 
-  private String querySet;
+    private String querySet;
 
-  private Boolean condition = true;
+    private Boolean condition = true;
 }

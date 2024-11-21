@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CheckboxAttributionAction;
@@ -201,12 +202,10 @@ public class CheckboxAttributionConsumerProcess implements CoproProcessor.Consum
 
 
                     // Convert the cleaned JSON string to a JsonNode
-                    JsonNode rootNode = objectMapper.readTree(jsonString);
 
-                    return rootNode;
+                    return objectMapper.readTree(jsonString);
                 }else {
-                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
-                    return rootNode;
+                    return objectMapper.readTree(jsonResponse);
                 }
 
             } else {
@@ -230,32 +229,55 @@ public class CheckboxAttributionConsumerProcess implements CoproProcessor.Consum
         String originId = entity.getOriginId();
         CheckboxAttributionLineItem modelResponse = mapper.readValue(radonDataItem, CheckboxAttributionLineItem.class);
         JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+        for (JsonNode item : stringObjectMap) {
+            String containerName = item.get("container_name").asText();
+            String predictedValue = item.get("predicted_value").asText();
+            String state = item.get("state").asText();
+            float confidenceScoreObj = item.get("confidence_score").floatValue();
+            JsonNode bboxes= item.get("bbox");
 
+            Double leftPos = bboxes.get(0).doubleValue();
+            Double upperPos = bboxes.get(1).doubleValue();
+            Double rightPos = bboxes.get(2).doubleValue();
+            Double lowerPos = bboxes.get(3).doubleValue();
 
-        parentObj.add(CheckboxAttributionOutputTable.builder()
-                .createdOn(entity.getCreatedOn())
-                .createdUserId(tenantId)
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .lastUpdatedUserId(tenantId)
-                .originId(originId)
-                .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
-                .groupId(groupId)
-                .inputFilePath(processedFilePaths)
-                .actionId(action.getActionId())
-                .tenantId(tenantId)
-                .processId(processId)
-                .rootPipelineId(rootPipelineId)
-                .process(entity.getProcess())
-                .batchId(entity.getBatchId())
-                .modelRegistry(entity.getModelRegistry())
-                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
-                .batchId(entity.getBatchId())
-                .category(entity.getCategory())
-                .message("Radon kvp action macro completed")
-                .build()
-        );
+            ObjectNode jsonObject = objectMapper.createObjectNode();
+            jsonObject.put("topLeftX", leftPos);
+            jsonObject.put("topLeftY", upperPos);
+            jsonObject.put("bottomRightX", rightPos);
+            jsonObject.put("bottomRightY", lowerPos);
+
+            parentObj.add(CheckboxAttributionOutputTable.builder()
+                    .createdOn(entity.getCreatedOn())
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .lastUpdatedUserId(tenantId)
+                    .originId(originId)
+                    .paperNo(paperNo)
+                    .groupId(groupId)
+                    .inputFilePath(processedFilePaths)
+                    .actionId(action.getActionId())
+                    .tenantId(tenantId)
+                    .processId(processId)
+                    .rootPipelineId(rootPipelineId)
+                    .process(entity.getProcess())
+                    .batchId(entity.getBatchId())
+                    .modelRegistry(entity.getModelRegistry())
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(PROCESS_NAME)
+                    .batchId(entity.getBatchId())
+                    .category(entity.getCategory())
+                    .message("Radon kvp action macro completed")
+                    .containerName(containerName)
+                    .predictedValue(predictedValue)
+                    .state(state)
+                    .confidenceScore(confidenceScoreObj)
+                    .bbox(jsonObject)
+                    .build()
+            );
+
+        }
+
 
 
     }
@@ -325,7 +347,7 @@ public class CheckboxAttributionConsumerProcess implements CoproProcessor.Consum
         }
     }
 
-    private void extractedCoproOutputResponse(CheckboxAttributionInputTable entity, String radonDataItem, List<CheckboxAttributionOutputTable> parentObj) throws JsonProcessingException {
+    private void extractedCoproOutputResponse(CheckboxAttributionInputTable entity, String checkBoxDataLineItem, List<CheckboxAttributionOutputTable> parentObj) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -335,31 +357,54 @@ public class CheckboxAttributionConsumerProcess implements CoproProcessor.Consum
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
 
-        CheckboxAttributionLineItem modelResponse = mapper.readValue(radonDataItem, CheckboxAttributionLineItem.class);
+        CheckboxAttributionLineItem modelResponse = mapper.readValue(checkBoxDataLineItem, CheckboxAttributionLineItem.class);
+        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
-        parentObj.add(CheckboxAttributionOutputTable.builder()
-                .createdOn(entity.getCreatedOn())
-                .createdUserId(tenantId)
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .lastUpdatedUserId(tenantId)
-                .originId(originId)
-                .paperNo(paperNo)
-                .totalResponseJson(modelResponse.getInferResponse())
-                .groupId(groupId)
-                .inputFilePath(processedFilePaths)
-                .actionId(action.getActionId())
-                .tenantId(tenantId)
-                .processId(processId)
-                .rootPipelineId(rootPipelineId)
-                .modelRegistry(entity.getModelRegistry())
-                .process(entity.getProcess())
-                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
-                .batchId(entity.getBatchId())
-                .message("Radon kvp action macro completed")
-                .category(entity.getCategory())
-                .build()
-        );
+        for (JsonNode item : stringObjectMap) {
+            String containerName = item.get("container_name").asText();
+            String predictedValue = item.get("predicted_value").asText();
+            String state = item.get("state").asText();
+            float confidenceScore = item.get("confidence_score").floatValue();
+            JsonNode bboxes= item.get("bbox");
+
+            Double leftPos = bboxes.get(0).doubleValue();
+            Double upperPos = bboxes.get(1).doubleValue();
+            Double rightPos = bboxes.get(2).doubleValue();
+            Double lowerPos = bboxes.get(3).doubleValue();
+
+            ObjectNode jsonObject = objectMapper.createObjectNode();
+            jsonObject.put("topLeftX", leftPos);
+            jsonObject.put("topLeftY", upperPos);
+            jsonObject.put("bottomRightX", rightPos);
+            jsonObject.put("bottomRightY", lowerPos);
+            parentObj.add(CheckboxAttributionOutputTable.builder()
+                    .createdOn(entity.getCreatedOn())
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .lastUpdatedUserId(tenantId)
+                    .originId(originId)
+                    .paperNo(paperNo)
+                    .groupId(groupId)
+                    .inputFilePath(processedFilePaths)
+                    .actionId(action.getActionId())
+                    .tenantId(tenantId)
+                    .processId(processId)
+                    .rootPipelineId(rootPipelineId)
+                    .modelRegistry(entity.getModelRegistry())
+                    .process(entity.getProcess())
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(PROCESS_NAME)
+                    .batchId(entity.getBatchId())
+                    .message("Radon kvp action macro completed")
+                    .category(entity.getCategory())
+                    .containerName(containerName)
+                    .predictedValue(predictedValue)
+                    .state(state)
+                    .confidenceScore(confidenceScore)
+                    .bbox(jsonObject)
+                    .build()
+            );
+        }
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();

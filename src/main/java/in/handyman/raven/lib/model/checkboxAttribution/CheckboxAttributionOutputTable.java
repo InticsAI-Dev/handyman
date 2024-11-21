@@ -2,6 +2,7 @@
 
 package in.handyman.raven.lib.model.checkboxAttribution;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,14 +39,19 @@ public class CheckboxAttributionOutputTable implements CoproProcessor.Entity {
     private String stage;
     private String message;
     private String category;
-
+    private String containerName;
+    private  String predictedValue;
+    private String state;
+    private double confidenceScore;
+    private JsonNode bbox;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.createdOn,this.createdUserId,  this.lastUpdatedOn,this.lastUpdatedUserId,
                 this.inputFilePath, this.totalResponseJson,  this.paperNo, this.originId,
                 this.processId,this.actionId, this.process, this.groupId, this.tenantId,  this.rootPipelineId, this.batchId,
-                this.modelRegistry, this.status, this.stage, this.message, this.category).collect(Collectors.toList());
+                this.modelRegistry, this.status, this.stage, this.message, this.category,
+                this.containerName, this.predictedValue, this.state, this.confidenceScore,this.bbox).collect(Collectors.toList());
 
     }
 }
