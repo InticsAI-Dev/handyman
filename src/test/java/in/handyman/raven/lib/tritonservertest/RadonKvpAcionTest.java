@@ -45,7 +45,8 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("https://api.replicate.com/v1/predictions")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT 1 as id, '' as input_file_path,'extract kvp and return as json' prompt,'RADON_KVP' process,1 as paper_no,'ORIGIN-1' origin_id,'1' as process_id,1 as group_id,1 as tenant_id,1 as root_pipeline_id,'BATCH-1' as batch_id,'KRYPTON' model_registry, now() as created_on,'KRYPTON START' as api_name,encode as base64img\n" +
+                .querySet("SELECT 1 as id, '' as input_file_path,'extract kvp and return as json' prompt,'RADON_KVP' process,1 as paper_no,'ORIGIN-1' origin_id,'1' as process_id,1 as group_id,1 as tenant_id,1 as root_pipeline_id,'BATCH-1' as batch_id,'KRYPTON' model_registry, now() as created_on,'KRYPTON START' as api_name," +
+                        "encode as base64img\n" +
                         "from base64img;")
                 .build();
 

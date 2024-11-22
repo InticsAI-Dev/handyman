@@ -189,6 +189,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .request(jsonRequest)
                         .response(response.message())
                         .endpoint(String.valueOf(endpoint))
+                        .sipType(entity.getSipType())
+                        .truthEntityId(entity.getTruthEntityId())
                         .build());
                 log.info(aMarker, "Error in getting response from replicate response {}", responseBody);
             }
@@ -212,6 +214,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)
                     .category(entity.getCategory())
+                    .sipType(entity.getSipType())
+                    .truthEntityId(entity.getTruthEntityId())
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -264,6 +268,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
                         .request(jsonRequest)
+                        .sipType(entity.getSipType())
+                        .truthEntityId(entity.getTruthEntityId())
                         .response(response.message())
                         .endpoint(String.valueOf(endpoint))
                         .build());
@@ -289,6 +295,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)
                     .category(entity.getCategory())
+                    .sipType(entity.getSipType())
+                    .truthEntityId(entity.getTruthEntityId())
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -369,6 +377,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .request(request)
                 .response(response)
                 .endpoint(String.valueOf(endpoint))
+                .sipType(entity.getSipType())
+                .truthEntityId(entity.getTruthEntityId())
                 .build()
         );
 
@@ -415,6 +425,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .request(jsonInputRequest)
                         .response(response.message())
                         .endpoint(String.valueOf(endpoint))
+                        .sipType(entity.getSipType())
+                        .truthEntityId(entity.getTruthEntityId())
                         .build());
                 log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
@@ -434,6 +446,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
                     .category(entity.getCategory())
+                    .sipType(entity.getSipType())
+                    .truthEntityId(entity.getTruthEntityId())
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -478,6 +492,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .request(request)
                 .response(response)
                 .endpoint(String.valueOf(endpoint))
+                .sipType(entity.getSipType())
+                .truthEntityId(entity.getTruthEntityId())
                 .build()
         );
     }

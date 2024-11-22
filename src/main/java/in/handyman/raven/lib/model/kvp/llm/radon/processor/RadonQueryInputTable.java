@@ -30,6 +30,8 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Timestamp createdOn;
     private String apiName;
     private String base64img;
+    private Long truthEntityId;
+    private String sipType;
 
 
     @Override
