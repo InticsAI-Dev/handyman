@@ -1,5 +1,4 @@
 package in.handyman.raven.lib.model.utmodel;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,19 +9,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UrgencyTriageModelDataItem {
-    private String model;
-    @JsonProperty("paper_type")
-    private String paperType;
+
+public class UrgencyTriageReplicateDataLineItems {
+
+    private Long actionId;
     @JsonProperty("confidence_score")
     private Float confidenceScore;
-    private UrgencyTriageModelBoundingBox bboxes;
+    private Integer groupId;
+    @JsonProperty("infer_response")
+    private String inferResponse;
+    private String model;
     private String originId;
     private Integer paperNo;
     private Long processId;
-    private Integer groupId;
+    private Long rootPipelineId;
     private Long tenantId;
-    private String batchId;
-    private String inferResponse;
-}
+    private UrgencyTriageModelBoundingBox bboxes;
 
+
+}

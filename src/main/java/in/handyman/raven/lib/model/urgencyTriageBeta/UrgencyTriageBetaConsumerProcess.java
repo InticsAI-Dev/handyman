@@ -88,7 +88,7 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
         urgencyTriageModelPayload.setProcess(PipelineName.URGENCY_TRIAGE.getProcessName());
         urgencyTriageModelPayload.setInputFilePath(entity.getInputFilePath());
         urgencyTriageModelPayload.setActionId(action.getActionId());
-        urgencyTriageModelPayload.setOutputDir(outputDir);
+//        urgencyTriageModelPayload.setOutputDir(outputDir);
         urgencyTriageModelPayload.setTenantId(entity.getTenantId());
         urgencyTriageModelPayload.setProcessId(entity.getProcessId());
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
@@ -162,9 +162,9 @@ public class UrgencyTriageBetaConsumerProcess implements CoproProcessor.Consumer
                 .message(message)
                 .rootPipelineId(entity.getRootPipelineId())
                 .batchId(entity.getBatchId())
-                        .request(request)
-                        .response(response)
-                        .endpoint(endpoint)
+                .request(request)
+                .response(response)
+                .endpoint(endpoint)
                 .build());
     }
 

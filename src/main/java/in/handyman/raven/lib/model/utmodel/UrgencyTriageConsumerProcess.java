@@ -60,7 +60,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
         urgencyTriageModelPayload.setProcess(PipelineName.URGENCY_TRIAGE.getProcessName());
         urgencyTriageModelPayload.setInputFilePath(entity.getInputFilePath());
         urgencyTriageModelPayload.setActionId(action.getActionId());
-        urgencyTriageModelPayload.setOutputDir(outputDir);
+//        urgencyTriageModelPayload.setOutputDir(outputDir);
         urgencyTriageModelPayload.setTenantId(entity.getTenantId());
         urgencyTriageModelPayload.setProcessId(entity.getProcessId());
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
@@ -213,7 +213,7 @@ public class UrgencyTriageConsumerProcess implements CoproProcessor.ConsumerProc
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .request(request)
-                    .response(response)
+//                    .response(response)
                     .endpoint(endpoint)
                     .build());
         } catch (JsonProcessingException e) {
