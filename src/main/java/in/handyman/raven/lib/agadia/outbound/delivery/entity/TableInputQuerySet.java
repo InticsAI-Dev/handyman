@@ -21,4 +21,7 @@ public class TableInputQuerySet {
     private String outboundCondition;
     private String outboundJson;
     private String outboundZip;
+    private String uuid;
+    private String encryptionType;
+    private String encryptionKey;
 }

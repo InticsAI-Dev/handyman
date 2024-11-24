@@ -286,6 +286,13 @@
             <artifactId>sendgrid-java</artifactId>
             <version>4.4.1</version> <!-- Use the latest version available -->
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.9.0</version>
+        </dependency>
+
 
     </dependencies>
 
