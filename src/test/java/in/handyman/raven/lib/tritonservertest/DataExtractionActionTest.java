@@ -95,11 +95,12 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("https://api.replicate.com/v1/predictions")
+                .endPoint("https:///v1/deployments/inticsai-dev/deploy-mindee-ocr/predictions")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT 1 as batch_id, encode as base64img, 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/output/auto_rotation/h_hart_packet_0.jpg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name " +
-                        "from macro.file_details_truth_audit")
+                .querySet("SELECT 1 as batch_id, encode as base64img, 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id, 1 as paper_no, '/data/input/auto_rotation/26_2.jpg' as file_path, 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name \n" +
+                        "from macro.file_details_truth_audit\n" +
+                        "limit 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://127.0.0.1:5000/v1/predictions");
@@ -109,10 +110,11 @@ class DataExtractionActionTest {
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "false"),
-                Map.entry("copro.request.activator.handler.name", "REPLICATE"),
-                Map.entry("page.content.min.length.threshold", "5"),
-                Map.entry("replicate.text.extraction.version", "8f552aaf1283993a2375624427a8f0fd05298ad6afb443f39d4e9cba19c0d47d"),
                 Map.entry("replicate.request.api.token", ""),
+                Map.entry("copro.request.activator.handler.name", ""),
+                Map.entry("page.content.min.length.threshold", "5"),
+                Map.entry("replicate.text.extraction.version", ""),
+//                Map.entry("replicate.request.api.token", ""),
                 Map.entry("", ""),
                 Map.entry("actionId", "1"),
                 Map.entry("write.batch.size", "5")));

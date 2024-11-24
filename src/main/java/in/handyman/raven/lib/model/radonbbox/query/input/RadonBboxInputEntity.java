@@ -26,6 +26,7 @@ public class RadonBboxInputEntity implements CoproProcessor.Entity {
     private String modelRegistry;
     private String inputFilePath;
     private String radonOutput;
+    private String base64img;
 
     @Override
     public List<Object> getRowData() {
