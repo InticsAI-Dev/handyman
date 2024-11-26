@@ -8,7 +8,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.DataExtraction;
-import in.handyman.raven.lib.model.textextraction.DataExtractionConsumerProcess;
+import in.handyman.raven.lib.model.textextraction.DataExtractionKryptonConsumerProcess;
 import in.handyman.raven.lib.model.textextraction.DataExtractionInputTable;
 import in.handyman.raven.lib.model.textextraction.DataExtractionOutputTable;
 import lombok.AllArgsConstructor;
@@ -85,7 +85,7 @@ public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.th
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
-            DataExtractionConsumerProcess dataExtractionConsumerProcess = new DataExtractionConsumerProcess(log, aMarker, action, pageContentMinLength);
+            DataExtractionKryptonConsumerProcess dataExtractionConsumerProcess = new DataExtractionKryptonConsumerProcess(log, aMarker, action, pageContentMinLength);
 
             coproProcessor.startProducer(dataExtraction.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
