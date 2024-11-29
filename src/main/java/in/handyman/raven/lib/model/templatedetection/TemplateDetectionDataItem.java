@@ -29,6 +29,7 @@ public class TemplateDetectionDataItem {
     private Integer paperNo;
     private Integer groupId;
     private Long tenantId;
+    private String batchId;
     private Long rootPipelineId;
     private Long modelRegistryId;
 }

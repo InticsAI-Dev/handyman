@@ -335,7 +335,7 @@ public class TemplateDetectionConsumerProcess implements CoproProcessor.Consumer
                                 .modelRegistryId(templateDetectionDataItem.getModelRegistryId())
                                 .message("Template detection completed for group_id " + groupId + " and origin_id " + originId)
                                 .processedFilePath(entity.getFilePath())
-                                .batchId(attribute.getBatchId())
+                                .batchId(templateDetectionDataItem.getBatchId())
                                 .request(request)
                                 .response(response)
                                 .endpoint(endpoint)
