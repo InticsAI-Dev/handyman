@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class TemplateDetectionDataItem {
-    private List<XenonResult> attributes;
+    private List<TemplateDetectionArgonAttributes> attributes;
     private Integer imageDPI;
     private Integer imageWidth;
     private Integer imageHeight;
