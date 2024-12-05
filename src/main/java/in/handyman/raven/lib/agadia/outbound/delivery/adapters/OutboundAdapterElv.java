@@ -40,14 +40,14 @@ public class OutboundAdapterElv implements OutboundInterface {
 
 
     @Override
-    public String requestApiCaller(TableInputQuerySet tableInputQuerySet) {
+    public String   requestApiCaller(TableInputQuerySet tableInputQuerySet) {
         String documentId = tableInputQuerySet.getDocumentId();
         String outboundJson = tableInputQuerySet.getOutboundJson();
         String endpoint = tableInputQuerySet.getEndpoint();
         String uuid = tableInputQuerySet.getUuid();
 
         String encryptionType = tableInputQuerySet.getEncryptionType();
-        String encryptionKey = tableInputQuerySet.getEncryptionKey();
+        String encryptionKey = tableInputQuerySet.getEncryptionKey().trim();
 
         ObjectNode payloadJson = objectMapper.createObjectNode();
         payloadJson.put("documentId", documentId);

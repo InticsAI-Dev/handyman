@@ -1,6 +1,10 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.KafkaPublish;
+import in.handyman.raven.lib.model.OutboundDeliveryNotify;
 import in.handyman.raven.util.EncryptDecrypt;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import javax.crypto.BadPaddingException;
@@ -8,7 +12,8 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-
+import java.util.Map;
+@Slf4j
 class KafkaPublishActionTest {
 
     private static final String AES_ENCRYPTION = "AES";
@@ -817,6 +822,38 @@ class KafkaPublishActionTest {
         String encryptionType = AES_ENCRYPTION;
         String message = EncryptDecrypt.encrypt(messageNode, encryptionKey, encryptionType);
         System.out.println("Encrypted message\n" + message + "\nusing algorithm {}" + encryptionType);
+    }
+
+
+    @Test
+    void executeProduct() throws Exception {
+
+        KafkaPublish kafkaPublish = KafkaPublish.builder()
+                .name("kafka")
+                .condition(true)
+                .resourceConn("intics_zio_db_conn")
+                .outputTable("kafka_response_info")
+                .querySet("select 'localhost:9092' as endpoint, 'elv_json' as topic_name, 'SASL_SSL' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
+                        "            'anthem-elevance@intics.ai' as user_name, 'Password@1' as password, 'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdksVr9fqGbTwc=' as encryption_key, pozfi.product_json as json_data,\n" +
+                        "            pozfi.file_name as document_id, 'k9HkKUm3Htb1HhZPBczdksVr9fqG' as uuid, pozfi.origin_id, pozfi.batch_id, pozfi.tenant_id, 'TRZ-641' as transaction_id\n" +
+                        "            from product_outbound.product_outbound_zip_file_input pozfi\n" +
+                        "            left join inbound_config.ingestion_file_details ifd on pozfi.file_name = ifd.file_name\n" +
+                        "            where pozfi.group_id=32 and pozfi.tenant_id = 115 and pozfi.batch_id = 'BATCH-32_0'")
+                .build();
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "1"),
+                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("agadia.secretKey", ""),
+                Map.entry("outbound.context.condition", "Product"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        KafkaPublishAction deliveryNotifyAction = new KafkaPublishAction(actionExecutionAudit, log, kafkaPublish );
+        deliveryNotifyAction.execute();
     }
 
 }

@@ -99,7 +99,7 @@ public class KafkaPublishAction implements IActionExecution {
     }
 
     private void doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput, Jdbi jdbi, String outputTable) {
-
+      log.info("processing the kafka input data");
         String documentId = kafkaPublishQueryInput.getDocumentId();
         Long tenantId = kafkaPublishQueryInput.getTenantId();
         String transactionId = kafkaPublishQueryInput.getTransactionId();
@@ -118,7 +118,7 @@ public class KafkaPublishAction implements IActionExecution {
         String endpoint = kafkaPublishQueryInput.getEndpoint();
 
         try {
-
+            log.info("the kafka input data binding");
             String encryptionType = kafkaPublishQueryInput.getEncryptionType();
             String encryptionKey = kafkaPublishQueryInput.getEncryptionKey();
 
@@ -126,22 +126,25 @@ public class KafkaPublishAction implements IActionExecution {
             properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, endpoint);
             properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            properties.setProperty(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, "52428800");
 
             setAuthenticationProperties(authSecurityProtocol, properties, saslMechanism, userName, password);
 
             KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
-            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
-                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
-            }
-            ObjectNode objectNode = objectMapper.createObjectNode();
+//            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
+//                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
+//            }
+            ObjectMapper objectMapper1 = new ObjectMapper();
+            ObjectNode objectNode = objectMapper1.createObjectNode();
             objectNode.put("documentId", documentId);
             objectNode.put("uuid", uuid);
             objectNode.put("extractionResponse", responseNode);
 
             String messageNode;
             try {
-                messageNode = objectMapper.writeValueAsString(objectNode);
+                ObjectMapper objectMapper2 = new ObjectMapper();
+                messageNode = objectMapper2.writeValueAsString(objectNode);
             } catch (Exception e) {
                 log.error(aMarker, "Error in converting json data to kafka topic message", e);
                 insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
@@ -168,8 +171,7 @@ public class KafkaPublishAction implements IActionExecution {
             } finally {
                 producer.close();
             }
-        } catch (HandymanException | NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
-                 BadPaddingException | InvalidKeyException e) {
+        } catch (HandymanException e) {
             insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
             throw new HandymanException("Error in posting kafka topic message", e, action);
         }
