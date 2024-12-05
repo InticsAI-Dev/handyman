@@ -52,12 +52,13 @@ public class OutboundAdapterElv implements OutboundInterface {
         ObjectNode payloadJson = objectMapper.createObjectNode();
         payloadJson.put("documentId", documentId);
         payloadJson.put("uuid", uuid);
-        payloadJson.put("extractionResponse", outboundJson);
 
-        String outboundJsonNode;
+
+        String outboundJsonNodeStr;
+
 
         try {
-            outboundJsonNode = objectMapper.writeValueAsString(payloadJson);
+            outboundJsonNodeStr = objectMapper.writeValueAsString(outboundJson);
         } catch (JsonProcessingException e) {
             log.error("Error in converting jsonString to Node for file {} with exception {}", documentId, e.getMessage());
             throw new HandymanException("Error in converting jsonString to Node for file " + documentId + " with exception", e, action);
@@ -65,14 +66,17 @@ public class OutboundAdapterElv implements OutboundInterface {
 
         try {
             if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
-                outboundJsonNode = doOptionalMessageEncryption(outboundJsonNode, encryptionType, encryptionKey);
+                String outboundExtractionJsonNode = doOptionalMessageEncryption(outboundJsonNodeStr, encryptionType, encryptionKey);
+                payloadJson.put("extractionResponse", outboundExtractionJsonNode);
             }
         } catch (HandymanException | NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
                  BadPaddingException | InvalidKeyException e) {
             throw new HandymanException("Error in posting kafka topic message", e, action);
         }
 
-        RequestBody requestBody = RequestBody.create(outboundJsonNode, MediaTypeJSON);
+
+
+        RequestBody requestBody = RequestBody.create(payloadJson.toString(), MediaTypeJSON);
         Request request = new Request.Builder()
                 .url(endpoint)
                 .post(requestBody)
