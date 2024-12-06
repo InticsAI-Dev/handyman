@@ -833,12 +833,12 @@ class KafkaPublishActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("kafka_response_info")
-                .querySet("select 'localhost:9092' as endpoint, 'elv_json' as topic_name, 'SASL_SSL' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
+                .querySet("select 'localhost:9092' as endpoint, 'intics_ai_outbound' as topic_name, 'NONE' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
                         "            'anthem-elevance@intics.ai' as user_name, 'Password@1' as password, 'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdksVr9fqGbTwc=' as encryption_key, pozfi.product_json as json_data,\n" +
                         "            pozfi.file_name as document_id, 'k9HkKUm3Htb1HhZPBczdksVr9fqG' as uuid, pozfi.origin_id, pozfi.batch_id, pozfi.tenant_id, 'TRZ-641' as transaction_id\n" +
                         "            from product_outbound.product_outbound_zip_file_input pozfi\n" +
                         "            left join inbound_config.ingestion_file_details ifd on pozfi.file_name = ifd.file_name\n" +
-                        "            where pozfi.group_id=32 and pozfi.tenant_id = 115 and pozfi.batch_id = 'BATCH-32_0'")
+                        "            where pozfi.tenant_id = 115 and pozfi.origin_id = 'ORIGIN-4032'")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
