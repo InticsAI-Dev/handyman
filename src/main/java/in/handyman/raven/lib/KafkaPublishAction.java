@@ -1,5 +1,7 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
@@ -7,9 +9,11 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lambda.process.HRequestResolver;
 import in.handyman.raven.lib.model.KafkaPublish;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.EncryptDecrypt;
+import in.handyman.raven.util.PropertyHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,10 +34,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -73,11 +74,12 @@ public class KafkaPublishAction implements IActionExecution {
     public void execute() throws Exception {
 
         try {
+            objectMapper=new ObjectMapper();
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaPublish.getResourceConn());
             final List<KafkaPublishQueryInput> kafkaPublishQueryInputs = new ArrayList<>();
 
             String outputTable = kafkaPublish.getOutputTable();
-            jdbi.useTransaction(handle -> handle.execute("create table if not exists product_outbound." + outputTable + " (id bigserial not null, document_id varchar, uuid varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
+            jdbi.useTransaction(handle -> handle.execute("create table if not exists product_outbound." + outputTable + " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaPublish.getQuerySet());
@@ -92,15 +94,21 @@ public class KafkaPublishAction implements IActionExecution {
                 });
             });
 
-            kafkaPublishQueryInputs.forEach(kafkaPublishQueryInput -> doKafkaPublish(kafkaPublishQueryInput, jdbi, outputTable));
+            kafkaPublishQueryInputs.forEach(kafkaPublishQueryInput -> {
+                try {
+                    doKafkaPublish(kafkaPublishQueryInput, jdbi, outputTable);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         } catch (Exception ex) {
             log.error(aMarker, "Error in execute method for kafka publish Action", ex);
             throw new HandymanException("Error in execute method for kafka publish Action", ex, action);
         }
     }
 
-    private void doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput, Jdbi jdbi, String outputTable) {
-      log.info("processing the kafka input data");
+    private void doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput, Jdbi jdbi, String outputTable) throws JsonProcessingException {
+      log.info("processing the kafka input data kafkaPublishQueryInput: {}", kafkaPublishQueryInput);
         String documentId = kafkaPublishQueryInput.getDocumentId();
         Long tenantId = kafkaPublishQueryInput.getTenantId();
         String transactionId = kafkaPublishQueryInput.getTransactionId();
@@ -109,67 +117,67 @@ public class KafkaPublishAction implements IActionExecution {
 
         String topicName = kafkaPublishQueryInput.getTopicName();
         String responseNode = kafkaPublishQueryInput.getJsonData();
-        String uuid = kafkaPublishQueryInput.getUuid();
-
+        JsonNode productJson = objectMapper.readTree(responseNode);
+        String fileChecksum = kafkaPublishQueryInput.getFileChecksum();
         String authSecurityProtocol = kafkaPublishQueryInput.getAuthSecurityProtocol();
         String saslMechanism = kafkaPublishQueryInput.getSaslMechanism();
+
         String userName = kafkaPublishQueryInput.getUserName();
         String password = kafkaPublishQueryInput.getPassword();
-
         String endpoint = kafkaPublishQueryInput.getEndpoint();
+
 
         if(Objects.equals(authSecurityProtocol, "NONE")){
             try {
-                log.info("the kafka input data binding");
+                Map<String,Object> kafkaProperties=new HashMap<>();
+                kafkaProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,endpoint);
+                kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,StringSerializer.class.getName());
+                kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,StringSerializer.class.getName());
+                KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
 
-                Properties properties = new Properties();
-                properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, endpoint);
-                properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-                properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-                properties.setProperty(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, "52428800");
 
-                KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
-
-                ObjectMapper objectMapper1 = new ObjectMapper();
-                ObjectNode objectNode = objectMapper1.createObjectNode();
+                ObjectNode objectNode = objectMapper.createObjectNode();
                 objectNode.put("documentId", documentId);
-                objectNode.put("uuid", uuid);
-                objectNode.put("extractionResponse", responseNode);
+                objectNode.put("checksum", fileChecksum);
+                objectNode.set("extractionResponse", productJson);
 
                 String messageNode;
                 try {
-                    ObjectMapper objectMapper2 = new ObjectMapper();
-                    messageNode = objectMapper2.writeValueAsString(objectNode);
+                    messageNode = objectMapper.writeValueAsString(objectNode);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
-                    insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
+                    insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
                     throw new HandymanException("Error in converting json data to kafka topic message", e, action);
                 }
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
-
+                log.info("The sending outputJson to kafka: {}", producerRecord);
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
                         if (exception == null) {
                             log.info("Successful in sending the message to kafka topic");
                             int partition = metadata.partition();
                             log.info("Topic: {}, Partition: {}", metadata.topic(), partition);
-                            insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
+                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
                         } else {
                             log.error(aMarker, "Error in publishing message to kafka topic", exception);
-                            insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, exception.getMessage(), -1, FAILED_STATUS, transactionId);
+                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, exception.getMessage(), -1, FAILED_STATUS, transactionId);
                             throw new HandymanException("Error in publishing message to kafka topic", exception, action);
                         }
                     });
                 } finally {
+                    log.info("Closing Producer");
                     producer.close();
                 }
-            } catch (HandymanException e) {
-                insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
+            }
+            catch (HandymanException e) {
+                log.info("Error in posting kafka topic message");
+                insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
                 throw new HandymanException("Error in posting kafka topic message", e, action);
             }
         }
         else{
+
             try {
                 log.info("the kafka input data binding");
                 String encryptionType = kafkaPublishQueryInput.getEncryptionType();
@@ -179,7 +187,6 @@ public class KafkaPublishAction implements IActionExecution {
                 properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, endpoint);
                 properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
                 properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-                properties.setProperty(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, "52428800");
 
                 setAuthenticationProperties(authSecurityProtocol, properties, saslMechanism, userName, password);
 
@@ -188,19 +195,18 @@ public class KafkaPublishAction implements IActionExecution {
 //            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
 //                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
 //            }
-                ObjectMapper objectMapper1 = new ObjectMapper();
-                ObjectNode objectNode = objectMapper1.createObjectNode();
+
+                ObjectNode objectNode = objectMapper.createObjectNode();
                 objectNode.put("documentId", documentId);
-                objectNode.put("uuid", uuid);
-                objectNode.put("extractionResponse", responseNode);
+                objectNode.put("checksum", fileChecksum);
+                objectNode.set("extractionResponse", productJson);
 
                 String messageNode;
                 try {
-                    ObjectMapper objectMapper2 = new ObjectMapper();
-                    messageNode = objectMapper2.writeValueAsString(objectNode);
+                    messageNode = objectMapper.writeValueAsString(objectNode);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
-                    insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
+                    insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
                     throw new HandymanException("Error in converting json data to kafka topic message", e, action);
                 }
 
@@ -214,10 +220,10 @@ public class KafkaPublishAction implements IActionExecution {
                             log.info("Successful in sending the message to kafka topic");
                             int partition = metadata.partition();
                             log.info("Topic: {}, Partition: {}", metadata.topic(), partition);
-                            insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
+                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
                         } else {
                             log.error(aMarker, "Error in publishing message to kafka topic", exception);
-                            insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, exception.getMessage(), -1, FAILED_STATUS, transactionId);
+                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, exception.getMessage(), -1, FAILED_STATUS, transactionId);
                             throw new HandymanException("Error in publishing message to kafka topic", exception, action);
                         }
                     });
@@ -225,21 +231,21 @@ public class KafkaPublishAction implements IActionExecution {
                     producer.close();
                 }
             } catch (HandymanException e) {
-                insertExecutionInfo(jdbi, outputTable, documentId, uuid, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
+                insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
                 throw new HandymanException("Error in posting kafka topic message", e, action);
             }
         }
 
     }
 
-    private void insertExecutionInfo(Jdbi jdbi, String outputTable, String documentId, String uuid, Long tenantId, String originId,
+    private void insertExecutionInfo(Jdbi jdbi, String outputTable, String documentId, String checksum, Long tenantId, String originId,
                                      String batchId, String topicName, String endpoint, String authSecurityProtocol,
                                      String saslMechanism, String response, int partition, String executionStatus, String transactionId) {
 
-        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO product_outbound." + outputTable + "(document_id, uuid, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
-                        "VALUES(:documentId, :uuid, :tenantId, :originId, :batchId, :topicName, :endpoint, :authSecurityProtocol, :saslMechanism, :response, :partition, :execStatus, :transactionId);")
+        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO product_outbound." + outputTable + "(document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
+                        "VALUES(:documentId, :checksum, :tenantId, :originId, :batchId, :topicName, :endpoint, :authSecurityProtocol, :saslMechanism, :response, :partition, :execStatus, :transactionId);")
                 .bind("documentId", documentId)
-                .bind("uuid", uuid)
+                .bind("checksum", checksum)
                 .bind("tenantId", tenantId)
                 .bind("originId", originId)
                 .bind("batchId", batchId)
@@ -304,7 +310,7 @@ public class KafkaPublishAction implements IActionExecution {
         private String encryptionKey;
         private String jsonData;
         private String documentId;
-        private String uuid;
+        private String fileChecksum;
         private String originId;
         private String batchId;
         private Long tenantId;
