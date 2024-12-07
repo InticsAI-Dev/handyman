@@ -24,4 +24,5 @@ public class TableInputQuerySet {
     private String uuid;
     private String encryptionType;
     private String encryptionKey;
+    private String fileChecksum;
 }

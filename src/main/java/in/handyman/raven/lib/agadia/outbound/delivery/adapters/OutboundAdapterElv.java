@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.agadia.outbound.delivery.adapters;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
@@ -40,18 +41,18 @@ public class OutboundAdapterElv implements OutboundInterface {
 
 
     @Override
-    public String   requestApiCaller(TableInputQuerySet tableInputQuerySet) {
+    public String  requestApiCaller(TableInputQuerySet tableInputQuerySet) {
         String documentId = tableInputQuerySet.getDocumentId();
         String outboundJson = tableInputQuerySet.getOutboundJson();
         String endpoint = tableInputQuerySet.getEndpoint();
-        String uuid = tableInputQuerySet.getUuid();
+        String checksum = tableInputQuerySet.getFileChecksum();
 
         String encryptionType = tableInputQuerySet.getEncryptionType();
         String encryptionKey = tableInputQuerySet.getEncryptionKey().trim();
 
         ObjectNode payloadJson = objectMapper.createObjectNode();
         payloadJson.put("documentId", documentId);
-        payloadJson.put("uuid", uuid);
+        payloadJson.put("checksum", checksum);
 
 
         String outboundJsonNodeStr;
