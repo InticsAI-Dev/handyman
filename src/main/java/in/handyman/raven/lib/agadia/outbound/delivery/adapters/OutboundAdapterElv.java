@@ -46,6 +46,7 @@ public class OutboundAdapterElv implements OutboundInterface {
         String outboundJson = tableInputQuerySet.getOutboundJson();
         String endpoint = tableInputQuerySet.getEndpoint();
         String checksum = tableInputQuerySet.getFileChecksum();
+        String transactionId = tableInputQuerySet.getTransactionId();
 
         String encryptionType = tableInputQuerySet.getEncryptionType();
         String encryptionKey = tableInputQuerySet.getEncryptionKey().trim();
@@ -53,6 +54,7 @@ public class OutboundAdapterElv implements OutboundInterface {
         ObjectNode payloadJson = objectMapper.createObjectNode();
         payloadJson.put("documentId", documentId);
         payloadJson.put("checksum", checksum);
+        payloadJson.put("transactionId", transactionId);
 
 
         String outboundJsonNodeStr;

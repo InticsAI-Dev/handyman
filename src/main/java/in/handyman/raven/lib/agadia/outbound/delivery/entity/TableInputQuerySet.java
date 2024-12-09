@@ -25,4 +25,5 @@ public class TableInputQuerySet {
     private String encryptionType;
     private String encryptionKey;
     private String fileChecksum;
+    private String transactionId;
 }

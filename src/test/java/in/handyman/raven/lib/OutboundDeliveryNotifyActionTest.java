@@ -82,7 +82,7 @@ class OutboundDeliveryNotifyActionTest {
                         "'http://0.0.0.0:5001/messages' as endpoint, \n" +
                         "pozfi.product_json as outbound_json, \n" +
                         "'ELV' as outbound_condition, pozfi.batch_id, ifd.document_id as document_id,\n" +
-                        "'AES' as encryption_type, ifd.\"uuid\" as \"uuid\" , 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key\n" +
+                        "'AES' as encryption_type, ifd.\"uuid\" as \"uuid\" , 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key,ifd.transaction_id\n" +
                         "from product_outbound.product_outbound_zip_file_input pozfi join inbound_config.ingestion_file_details ifd \n" +
                         "on pozfi.file_name = ifd.file_name\n" +
                         "where pozfi.group_id=43 and pozfi.tenant_id = 115 and pozfi.batch_id = 'BATCH-43_0' and  ifd.transaction_id = 'TRZ-653'")

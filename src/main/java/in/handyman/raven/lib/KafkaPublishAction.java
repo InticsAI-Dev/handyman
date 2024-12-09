@@ -139,6 +139,7 @@ public class KafkaPublishAction implements IActionExecution {
                 ObjectNode objectNode = objectMapper.createObjectNode();
                 objectNode.put("documentId", documentId);
                 objectNode.put("checksum", fileChecksum);
+                objectNode.put("transactionId", transactionId);
                 objectNode.set("extractionResponse", productJson);
 
                 String messageNode;
@@ -199,6 +200,7 @@ public class KafkaPublishAction implements IActionExecution {
                 ObjectNode objectNode = objectMapper.createObjectNode();
                 objectNode.put("documentId", documentId);
                 objectNode.put("checksum", fileChecksum);
+                objectNode.put("transactionId", transactionId);
                 objectNode.set("extractionResponse", productJson);
 
                 String messageNode;
