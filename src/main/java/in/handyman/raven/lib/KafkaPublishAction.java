@@ -126,14 +126,15 @@ public class KafkaPublishAction implements IActionExecution {
         String password = kafkaPublishQueryInput.getPassword();
         String endpoint = kafkaPublishQueryInput.getEndpoint();
 
+        Map<String,Object> kafkaProperties=new HashMap<>();
+        kafkaProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,endpoint);
+        kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,"org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,"org.apache.kafka.common.serialization.StringSerializer");
+
+
 
         if(Objects.equals(authSecurityProtocol, "NONE")){
             try {
-                Map<String,Object> kafkaProperties=new HashMap<>();
-                kafkaProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,endpoint);
-                kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,StringSerializer.class.getName());
-                kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,StringSerializer.class.getName());
-                KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
 
 
                 ObjectNode objectNode = objectMapper.createObjectNode();
@@ -150,7 +151,7 @@ public class KafkaPublishAction implements IActionExecution {
                     insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
                     throw new HandymanException("Error in converting json data to kafka topic message", e, action);
                 }
-
+                KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
                 log.info("The sending outputJson to kafka: {}", producerRecord);
                 try {
@@ -184,14 +185,8 @@ public class KafkaPublishAction implements IActionExecution {
                 String encryptionType = kafkaPublishQueryInput.getEncryptionType();
                 String encryptionKey = kafkaPublishQueryInput.getEncryptionKey();
 
-                Properties properties = new Properties();
-                properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, endpoint);
-                properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-                properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-
-                setAuthenticationProperties(authSecurityProtocol, properties, saslMechanism, userName, password);
-
-                KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
+                setAuthenticationProperties(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+                KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
 
 //            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
 //                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
@@ -269,7 +264,7 @@ public class KafkaPublishAction implements IActionExecution {
 
     }
 
-    private static void setAuthenticationProperties(String authSecurityProtocol, Properties properties, String saslMechanism, String userName, String password) {
+    private static void setAuthenticationProperties(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
         if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
             properties.put("security.protocol", SASL_SSL);
             if (saslMechanism.equalsIgnoreCase(PLAIN_SASL)) {
@@ -289,7 +284,7 @@ public class KafkaPublishAction implements IActionExecution {
                 }
             }
         } else if (authSecurityProtocol.equalsIgnoreCase("SASL_PLAINTEXT")) {
-            properties.setProperty("security.protocol", "SASL_PLAINTEXT");
+            properties.put("security.protocol", "SASL_PLAINTEXT");
             properties.put(SASL_MECHANISM, PLAIN_SASL);
             String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
             properties.put("sasl.jaas.config", jaasConfig);
