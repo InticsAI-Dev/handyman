@@ -126,6 +126,8 @@ public class KafkaPublishAction implements IActionExecution {
         String password = kafkaPublishQueryInput.getPassword();
         String endpoint = kafkaPublishQueryInput.getEndpoint();
 
+        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+
         Map<String,Object> kafkaProperties=new HashMap<>();
         kafkaProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,endpoint);
         kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,"org.apache.kafka.common.serialization.StringSerializer");
@@ -288,6 +290,10 @@ public class KafkaPublishAction implements IActionExecution {
             properties.put(SASL_MECHANISM, PLAIN_SASL);
             String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
             properties.put("sasl.jaas.config", jaasConfig);
+//            properties.put("sasl.jaas.config",
+//                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+//                            "username=\"" + userName + "\" " +
+//                            "password=\"" + password + "\";");
 
         }
     }
