@@ -154,6 +154,7 @@ public class KafkaPublishAction implements IActionExecution {
                     throw new HandymanException("Error in converting json data to kafka topic message", e, action);
                 }
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
+                log.info( "creating the kafka instance");
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
                 log.info("The sending outputJson to kafka: {}", producerRecord);
                 try {
@@ -189,6 +190,7 @@ public class KafkaPublishAction implements IActionExecution {
 
                 setAuthenticationProperties(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
+                log.info( "creating the kafka instance");
 
 //            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
 //                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
@@ -212,6 +214,7 @@ public class KafkaPublishAction implements IActionExecution {
 
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
+                log.info( "sending the topic and outputjson");
 
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
