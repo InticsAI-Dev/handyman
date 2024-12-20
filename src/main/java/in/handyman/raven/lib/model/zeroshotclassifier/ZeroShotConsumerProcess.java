@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.zeroshotclassifier;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -158,11 +159,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            JsonNode rootNode = mapper.readTree(responseBody);
+            JsonNode outputNode = rootNode.path("output");
+
             if (response.isSuccessful()) {
                 ObjectMapper objectMapper = new ObjectMapper();
-                ReplicateResponse modelResponse = objectMapper.readValue(responseBody, ReplicateResponse.class);
-                if (modelResponse.getOutput() != null && !modelResponse.getOutput().isEmpty()) {
-                    extractedOutputDataRequest(entity, parentObj, String.valueOf(modelResponse.getOutput()), objectMapper, modelResponse.getModel(), modelResponse.getVersion(), jsonRequest, responseBody, String.valueOf(endpoint));
+
+                if (outputNode != null && !outputNode.isEmpty()) {
+                    extractedOutputDataRequest(entity, parentObj, String.valueOf(outputNode), objectMapper, "REPLICATE", "", jsonRequest, responseBody, String.valueOf(endpoint));
 
                 }
             } else {

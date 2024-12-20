@@ -14,6 +14,7 @@ import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.lib.replicate.ReplicateRequest;
 import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.util.ExceptionUtil;
+import jakarta.json.Json;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -153,14 +154,15 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            JsonNode rootNode = mapper.readTree(responseBody);
+            JsonNode outputNode = rootNode.path("output");
 
             if (response.isSuccessful()) {
-                ReplicateResponse replicateResponse = mapper.readValue(responseBody, ReplicateResponse.class);
-                if (!replicateResponse.getOutput().isEmpty() && !replicateResponse.getOutput().isNull()) {
-                    extractedReplicateOutputResponse(endpoint, entity, replicateResponse, parentObj, replicateJsonRequest, responseBody);
+                if (!outputNode.isEmpty() && !outputNode.isNull()) {
+                    extractedReplicateOutputResponse(endpoint, entity, outputNode, parentObj, replicateJsonRequest, responseBody);
                 }else {
                     parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
-                    log.error(aMarker, "The replicate response has empty output {}", replicateResponse.getOutput());
+                    log.error(aMarker, "The replicate response has empty output {}", outputNode);
                 }
 
             } else {
@@ -200,9 +202,9 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
 
-    private void extractedReplicateOutputResponse(URL endpoint, DataExtractionInputTable entity, ReplicateResponse replicateResponse, List<DataExtractionOutputTable> parentObj, String replicateJsonRequest, String replicateJsonResponse) throws JsonProcessingException {
+    private void extractedReplicateOutputResponse(URL endpoint, DataExtractionInputTable entity, JsonNode replicateResponse, List<DataExtractionOutputTable> parentObj, String replicateJsonRequest, String replicateJsonResponse) throws JsonProcessingException {
 
-        DataExtractionDataItem dataExtractionDataItem = mapper.treeToValue(replicateResponse.getOutput(),DataExtractionDataItem.class);
+        DataExtractionDataItem dataExtractionDataItem = mapper.treeToValue(replicateResponse,DataExtractionDataItem.class);
         final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
         final String flag = (!Objects.isNull(contentString) && contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
         Integer paperNo = entity.getPaperNo();
@@ -213,7 +215,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = entity.getTemplateName();
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
-        parentObj.add(DataExtractionOutputTable.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Text extraction action api call completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(replicateResponse.getModel()).modelVersion(replicateResponse.getVersion()).batchId(batchId).request(replicateJsonRequest).response(replicateJsonResponse).endpoint(endpoint.toString()).build());
+        parentObj.add(DataExtractionOutputTable.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Text extraction action api call completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName("").modelVersion("").batchId(batchId).request(replicateJsonRequest).response(replicateJsonResponse).endpoint(endpoint.toString()).build());
 
 
     }
@@ -228,7 +230,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
-                extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "", jsonInputRequest, responseBody, endpoint.toString());
+                extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "REPLICATE", "", jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(jsonInputRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());

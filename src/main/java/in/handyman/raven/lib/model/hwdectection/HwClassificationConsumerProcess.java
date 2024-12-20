@@ -227,12 +227,14 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         Integer groupId = entity.getGroupId();
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
+            JsonNode rootNode = mapper.readTree(responseBody);
+            JsonNode outputNode = rootNode.path("output");
+
             if (response.isSuccessful()) {
-                ObjectMapper objectMappers = new ObjectMapper();
-                ReplicateResponse hwDetectionResponse = objectMappers.readValue(responseBody, ReplicateResponse.class);
+
                 try {
 
-                    extractReplicateOutputDataRequest(entity, hwDetectionResponse.getOutput(), parentObj, hwDetectionResponse.getModel(), hwDetectionResponse.getVersion(), jsonRequest, responseBody, endpoint.toString());
+                    extractReplicateOutputDataRequest(entity, outputNode, parentObj, "REPLICATE", "", jsonRequest, responseBody, endpoint.toString());
                 } catch (JsonProcessingException e) {
                     throw new HandymanException("Handwritten classification failed in processing replicate response ", e);
                 }

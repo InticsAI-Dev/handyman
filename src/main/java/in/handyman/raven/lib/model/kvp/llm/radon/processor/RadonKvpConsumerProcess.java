@@ -154,13 +154,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = response.body().string();
+            JsonNode rootNode = mapper.readTree(responseBody);
+            JsonNode outputNode = rootNode.path("output");
+
+
 
             if (response.isSuccessful()) {
                 assert response.body() != null;
-                ReplicateResponse modelResponse = mapper.readValue(responseBody, ReplicateResponse.class);
-                if (modelResponse.getOutput() != null && !modelResponse.getOutput().isEmpty()) {
+
+                if (outputNode != null && !outputNode.isEmpty()) {
                     try {
-                        extractTritonOutputDataResponse(entity, String.valueOf(modelResponse.getOutput()), parentObj, jsonRequest, responseBody, endpoint.toString());
+                        extractTritonOutputDataResponse(entity, String.valueOf(outputNode), parentObj, jsonRequest, responseBody, endpoint.toString());
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
