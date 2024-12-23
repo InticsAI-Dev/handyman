@@ -1,19 +1,16 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.ExecutionStatus;
 import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.lambda.process.LContext;
 import in.handyman.raven.lambda.process.LambdaEngine;
 import in.handyman.raven.lib.model.ImportCsvToDB;
-import in.handyman.raven.lib.model.LoadCsv;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Map;
 
 @Slf4j
 class ImportCsvToDBActionTest {
@@ -24,9 +21,9 @@ class ImportCsvToDBActionTest {
 
         ImportCsvToDB importCsvToDB=new ImportCsvToDB();
         importCsvToDB.setName("import csv into db");
-        importCsvToDB.setValue(Collections.singletonList("/bh_control_data_1.csv"));
+        importCsvToDB.setValue(Collections.singletonList("/home/anandh.andrews@zucisystems.com/Downloads/bh_control_data_1.csv"));
         importCsvToDB.setCondition(true);
-        importCsvToDB.setTarget(SpwResourceConfig.builder().userName("postgres").resourceUrl("jdbc:postgresql://intics-db:5432/zio_pipeline_ui").password("xk56iIUYV1eihMke7W0gbnfnl4gBkArsF26kttM96R8utWA4hJ").build());
+        importCsvToDB.setTarget("");
         importCsvToDB.setWriteThreadCount("5");
         importCsvToDB.setBatchSize("5");
         importCsvToDB.setTableName("bh_control_data_1");
@@ -48,10 +45,23 @@ class ImportCsvToDBActionTest {
     @Test
     void importCsvLambda(){
         final PipelineExecutionAudit pipelineExecutionAudit = LambdaEngine.start(LContext.builder()
-                .pipelineName("")
-                .processLoadType("")
-                .inheritedContext("")
+                .pipelineName("import.csv.into.db")
+                .processLoadType("FILE")
+                .inheritedContext(Map.ofEntries(Map.entry("inbound_id","1")
+                        ,Map.entry("tenant_id","1")
+                        ,Map.entry("input_csv_file_directory","/home/anandh.andrews@zucisystems.com/Downloads/bh_control_data_1.csv")
+                        ,Map.entry("channel_id","1")
+                        ,Map.entry("created_user_id","1")
+                        ,Map.entry("origin_type","ORIGIN")
+                        ,Map.entry("transaction_id","1")
+                        ,Map.entry("workspace_id","1")
+                        ,Map.entry("document_type","HEALTH_CARE")
+                ))
                 .build());
+
+        pipelineExecutionAudit.getPipelineId();
+
+
 
     }
 
