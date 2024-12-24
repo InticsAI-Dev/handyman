@@ -26,6 +26,7 @@ public class AutoRotationInputTable implements CoproProcessor.Entity {
     public String process;
     private String batchId;
     private Timestamp createdOn;
+    private String base64img;
 
     @Override
     public List<Object> getRowData() {
