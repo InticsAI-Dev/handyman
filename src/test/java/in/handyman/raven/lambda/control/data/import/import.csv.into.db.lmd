@@ -36,6 +36,12 @@ try{
                     );
         "} on-condition if "true"=="true"
 
+
+        assign as "control.data.input" source "intics_zio_db_conn" using {"
+                SELECT  '${input_csv_file_name}_${process-id}' as table_name;
+        "} on-condition if "true"=="true"
+
+
         assetInfo as "insert into import control_data_csv_table"
         on-resource-conn "intics_zio_db_conn"
         get-audit-table "ingestion.sanitizer_summary_audit_${process-id}"
@@ -63,7 +69,7 @@ try{
 
         "} on-condition if "true"=="true"
 
-        importCsvToDB as "import csv file into db" target "intics_zio_db_conn" on "bh_control_data_1_${process-id}" using
+        importCsvToDB as "import csv file into db" target "intics_zio_db_conn" on "${control.data.input.table_name}" using
          {
             "${input_csv_file_directory}"
         } on-condition if "true"=="true" fielding "10" batch "10"
@@ -82,7 +88,7 @@ try{
         INSERT INTO data_nov
         (docid, ${get_sor_item.list})
         SELECT docid, ${get_sor_item.list}
-        FROM bh_control_data_1_${process-id};
+        FROM ${control.data.input.table_name};
 
         "} on-condition if "true"=="true"
 

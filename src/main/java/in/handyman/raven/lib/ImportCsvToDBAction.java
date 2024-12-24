@@ -250,7 +250,7 @@ public class ImportCsvToDBAction implements IActionExecution {
   @AllArgsConstructor
   @NoArgsConstructor
   @Builder
-  class ControlDataCsvImportDetails{
+  static class ControlDataCsvImportDetails{
     private Long assetId;
     private String filePath;
     private String fileName;

@@ -50,6 +50,7 @@ class ImportCsvToDBActionTest {
                 .inheritedContext(Map.ofEntries(Map.entry("inbound_id","1")
                         ,Map.entry("tenant_id","1")
                         ,Map.entry("input_csv_file_directory","/home/anandh.andrews@zucisystems.com/Downloads/bh_control_data_1.csv")
+                        ,Map.entry("input_csv_file_name","bh_control_data_1")
                         ,Map.entry("channel_id","1")
                         ,Map.entry("created_user_id","1")
                         ,Map.entry("origin_type","ORIGIN")
