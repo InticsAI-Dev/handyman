@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.autorotation;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -34,6 +35,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
     private final String outputDir;
 
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.auto.rotation.activator.handler.name";
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
     private final AutoRotationAction aAction;
@@ -57,6 +59,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     public List<AutoRotationOutputTable> process(URL endpoint, AutoRotationInputTable entity) throws IOException {
 
         List<AutoRotationOutputTable> parentObj = new ArrayList<>();
+        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
+
         String entityFilePath = entity.getFilePath();
         String originId = entity.getOriginId();
         Integer groupId = entity.getGroupId();
@@ -83,20 +87,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         autoRotationRequest.setOutputDir(outputDir);
         autoRotationRequest.setPaperNo(paperNo);
         autoRotationRequest.setBatchId(batchId);
-        String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
 
-
-        TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("AUTO ROTATOR START");
-        requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-
-        TritonInputRequest tritonInputRequest = new TritonInputRequest();
-        tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
-        String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
 
 
         log.info(aMarker, " Input variables id : {}", action.getActionId());
@@ -107,11 +98,34 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-
-        if (Objects.equals("false", tritonRequestActivator)) {
+        if (Objects.equals("COPRO", coproHandlerName)) {
+            String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
             coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
-        } else {
+        } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            autoRotationRequest.setBase64img(entity.getBase64img());
+            String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
+
+            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
+            replicateRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
+
+        }else if (Objects.equals("TRITON", coproHandlerName)){
+
+            String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
+
+
+            TritonRequest requestBody = new TritonRequest();
+            requestBody.setName("AUTO ROTATOR START");
+            requestBody.setShape(List.of(1, 1));
+            requestBody.setDatatype("BYTES");
+            requestBody.setData(Collections.singletonList(jsonInputRequest));
+
+
+            TritonInputRequest tritonInputRequest = new TritonInputRequest();
+            tritonInputRequest.setInputs(Collections.singletonList(requestBody));
+
+            String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
+
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
             tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
@@ -144,7 +158,34 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
         }
     }
+    private void replicateRequestBuilder(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
+        Integer groupId = entity.getGroupId();
+        Long processId = entity.getProcessId();
+        String templateId = entity.getTemplateId();
+        Long tenantId = entity.getTenantId();
+        Integer paperNo = entity.getPaperNo();
+        Long rootPipelineId = entity.getRootPipelineId();
+        try (Response response = httpclient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                String responseBody = Objects.requireNonNull(response.body()).string();
+                JsonNode rootNode = mapper.readTree(responseBody);
+                JsonNode outputNode = rootNode.path("output");
 
+                extractOuputDataRequest(entity, String.valueOf(outputNode), parentObj, "REPLICATE", "", jsonInputRequest, responseBody, endpoint.toString());
+
+
+            } else {
+                parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).request(jsonInputRequest).response(response.message()).endpoint(String.valueOf(endpoint)).build());
+                log.info(aMarker, "Error in getting response {}", response.message());
+            }
+        } catch (Exception e) {
+            parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).request(jsonInputRequest).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
+            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("AutoRotation consumer failed for batch/group " + groupId, handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+        }
+    }
     private void tritonRequestBuilder(AutoRotationInputTable entity, Request request, List<AutoRotationOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Integer groupId = entity.getGroupId();
         Long processId = entity.getProcessId();

@@ -21,6 +21,7 @@ public class AutoRotationData {
     private String inputFilePath;
     private String outputDir;
     private String batchId;
+    private String base64img;
     }
 
 
