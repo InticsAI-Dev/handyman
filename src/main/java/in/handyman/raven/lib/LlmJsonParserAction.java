@@ -164,38 +164,63 @@ public class LlmJsonParserAction implements IActionExecution {
           }else if(Objects.equals(inputTable.getProcess(), "KVP_EXTRACTION")){
 
             final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
-                    "(created_on,created_user_id, last_updated_on, last_updated_user_id, sor_item, value, paper_no, " +
+                    "(created_on,created_user_id, last_updated_on, last_updated_user_id, kvp_results, paper_no, " +
                     "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                    "image_dpi, image_height, image_width, confidence_score, bbox) "
-                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb)";
+                    "image_dpi, image_height, image_width) "
+                    + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
             log.info("\n kvp parsing started for {}:\n", inputTable.getProcess());
 
             KVPOutputTable results = new KVPOutputTable();
             SORParser parser = new SORParser(action);
             parser.parseJSON(jsonResponse);
 
-            parser.getSorItems().forEach((sorItem, value) -> {
-              handle.createUpdate(insertQueryText)
+            List<ObjectNode> aggregatedResult = new ArrayList<>();
+
+            parser.getSorItems().forEach((sorItem, value) -> {   ObjectNode boundingBox = objectMapper.createObjectNode();
+              boundingBox.put("x",0);
+              boundingBox.put("y",0);
+              boundingBox.put("width",0);
+              boundingBox.put("height",0);
+
+              // Create an ObjectNode for the content
+              ObjectNode contentNode = objectMapper.createObjectNode();
+              contentNode.put("key", sorItem);
+              contentNode.put("value", value);
+              contentNode.put("confidence", 0.0F);
+              contentNode.set("boundingBox", boundingBox);
+
+              // Add the contentNode to the aggregatedResult list
+              aggregatedResult.add(contentNode);
+            });
+
+            ObjectNode formElementsMapper = objectMapper.createObjectNode();
+            ObjectNode form = objectMapper.createObjectNode();
+
+            ArrayNode arrayNode = objectMapper.valueToTree(aggregatedResult);
+
+            formElementsMapper.set("formElements", arrayNode);
+            form.set("form", formElementsMapper);
+
+
+
+            handle.createUpdate(insertQueryText)
                       .bind(0, inputTable.getCreatedOn())           // created_on
                       .bind(1, inputTable.getTenantId())       // created_user_id
                       .bind(2, inputTable.getCreatedOn())       // last_updated_on
                       .bind(3, inputTable.getTenantId())   // last_updated_user_id
-                      .bind(4, sorItem)          // key
-                      .bind(5, value)             // value
-                      .bind(6, inputTable.getPaperNo())             // paper_no
-                      .bind(7, inputTable.getOriginId())            // origin_id
-                      .bind(8, inputTable.getGroupId())             // group_id
-                      .bind(9, inputTable.getTenantId())            // tenant_id
-                      .bind(10, inputTable.getRootPipelineId())     // root_pipeline_id
-                      .bind(11, inputTable.getBatchId())            // batch_id
-                      .bind(12, inputTable.getModelRegistry())      // model_registry
-                      .bind(13, inputTable.getImageDpi())           // image_dpi
-                      .bind(14, inputTable.getImageHeight())        // image_height
-                      .bind(15, inputTable.getImageWidth())         // image_width
-                      .bind(16, 0.0F)    // confidence_score
-                      .bind(17, results.getBBox() != null ? results.getBBox() : "{}")  // bBox (ensure valid JSON)
+                      .bind(4, form.toString())          // value
+                      .bind(5, inputTable.getPaperNo())             // paper_no
+                      .bind(6, inputTable.getOriginId())            // origin_id
+                      .bind(7, inputTable.getGroupId())             // group_id
+                      .bind(8, inputTable.getTenantId())            // tenant_id
+                      .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
+                      .bind(10, inputTable.getBatchId())            // batch_id
+                      .bind(11, inputTable.getModelRegistry())      // model_registry
+                      .bind(12, inputTable.getImageDpi())           // image_dpi
+                      .bind(13, inputTable.getImageHeight())        // image_height
+                      .bind(14, inputTable.getImageWidth())         // image_width
                       .execute();
-            });
+
           }else if(Objects.equals(inputTable.getProcess(), "TABLE_EXTRACTION")){
 
             final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +

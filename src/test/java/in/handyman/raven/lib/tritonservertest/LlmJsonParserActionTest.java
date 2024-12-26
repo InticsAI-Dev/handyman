@@ -47,11 +47,11 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("text_extraction.text_extraction_llm_json_parser_audit")
+                .outputTable("kvp_extraction.kvp_extraction_llm_json_parser_audit")
                 .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json as response, paper_no,\n" +
                         "origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category\n" +
-                        "FROM text_extraction.text_extraction_output_108428\n" +
-                        "WHERE id=1;   ")
+                        "FROM kvp_extraction.kvp_extraction_output_audit\n" +
+                        "WHERE origin_id='ORIGIN-421' and paper_no<>3  ")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
