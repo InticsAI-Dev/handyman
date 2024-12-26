@@ -19,5 +19,6 @@ public class AutoRotationDataItem {
     private Long actionId;
     private Long rootPipelineId;
     private String batchId;
+    private String base64img;
 }
 

@@ -13,8 +13,10 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -225,8 +227,12 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         Long tenantId = entity.getTenantId();
         Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
+        FileProcessingUtils fileProcessingUtils=new FileProcessingUtils(log,aMarker,action);
         try {
             AutoRotationDataItem autoRotationFilePath = mapper.readValue(autoRotationDataItem, AutoRotationDataItem.class);
+            if (!autoRotationFilePath.getBase64img().isEmpty() && !autoRotationFilePath.getBase64img().isBlank()) {
+                fileProcessingUtils.convertBase64ToFile(autoRotationFilePath.getBase64img(),autoRotationFilePath.getProcessedFilePaths());
+            }
             parentObj.add(AutoRotationOutputTable.builder()
                     .processedFilePath(autoRotationFilePath.getProcessedFilePaths())
                     .originId(autoRotationFilePath.getOriginId())
@@ -246,8 +252,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
                     .response(response)
                     .endpoint(endpoint)
                     .build());
-        } catch (JsonProcessingException e) {
-
+        } catch (IOException e) {
             parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).batchId(entity.getBatchId()).request(request).response(response).endpoint(String.valueOf(endpoint)).build());
             log.error(aMarker, "The Exception occurred in processing response {}", ExceptionUtil.toString(e));
             HandymanException handymanException = new HandymanException(e);
