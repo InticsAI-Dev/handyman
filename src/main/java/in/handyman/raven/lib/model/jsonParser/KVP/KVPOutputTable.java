@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.kvp.llm.jsonparser;
+package in.handyman.raven.lib.model.jsonParser.KVP;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,12 +7,19 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 
+
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-public class LlmJsonQueryInputTable {
-    private String response;
+
+public class KVPOutputTable {
+    private Timestamp createdOn;
+    private Long createdUserId;
+    private Timestamp lastUpdatedOn;
+    private Long lastUpdatedUserId;
+    private String sorItem;
+    private String value;
     private Integer paperNo;
     private String originId;
     private Long groupId;
@@ -20,10 +27,12 @@ public class LlmJsonQueryInputTable {
     private Long rootPipelineId;
     private String batchId;
     private String modelRegistry;
-    private String extractedImageUnit;
     private Long imageDpi;
-    private Long imageWidth;
     private Long imageHeight;
-    private Timestamp createdOn;
-    private String Process;
+    private Long imageWidth;
+    private Float confidenceScore;
+    private String bBox;
+
 }
+
+
