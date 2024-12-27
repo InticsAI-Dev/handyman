@@ -22,35 +22,45 @@ public class TableParser {
         // Extract the "Tables" node
         JsonNode tableValues = inputJson.get("Tables");
 
-        // Deserialize the "Tables" node into a List of Table objects
-        List<Table> tables = objectMapper.readValue(tableValues.toString(), new TypeReference<List<Table>>() {});
+        ObjectNode safeJson = (ObjectNode) objectMapper.readTree("{}");
 
-        ArrayNode resultArray = objectMapper.createArrayNode();
+        if (tableValues != null && !tableValues.isNull()) {
 
-        // AtomicInteger to keep track of the index
+            // Deserialize the "Tables" node into a List of Table objects
+            List<Table> tables = objectMapper.readValue(tableValues.toString(), new TypeReference<List<Table>>() {
+            });
 
-        AtomicInteger i = new AtomicInteger(0); // Define AtomicInteger outside the loop
+            ArrayNode resultArray = objectMapper.createArrayNode();
 
-        tables.forEach(s->{
-            ObjectNode boundingBox = objectMapper.createObjectNode();
-            boundingBox.put("x",0);
-            boundingBox.put("y",0);
-            boundingBox.put("width",0);
-            boundingBox.put("height",0);
+            // AtomicInteger to keep track of the index
 
-            ObjectNode tableNode = objectMapper.createObjectNode();
-            tableNode.put("TableId", i.getAndIncrement());
-            tableNode.put("Rows", objectMapper.valueToTree(s.getRows()));
-            tableNode.put("confidence", 0.0F);
-            tableNode.put("boundingBox", boundingBox);
+            AtomicInteger i = new AtomicInteger(0); // Define AtomicInteger outside the loop
 
-            resultArray.add(tableNode);
-        });
+            tables.forEach(s -> {
+                ObjectNode boundingBox = objectMapper.createObjectNode();
+                boundingBox.put("x", 0);
+                boundingBox.put("y", 0);
+                boundingBox.put("width", 0);
+                boundingBox.put("height", 0);
 
-        ObjectNode jsonObject = objectMapper.createObjectNode();
+                ObjectNode tableNode = objectMapper.createObjectNode();
+                tableNode.put("TableId", i.getAndIncrement());
+                tableNode.set("Rows", objectMapper.valueToTree(s.getRows()));
+                tableNode.put("confidence", 0.0F);
+                tableNode.set("boundingBox", boundingBox);
 
-        // Add the list to the JSON object with the key "key"
-        jsonObject.set("tables", objectMapper.valueToTree(resultArray));
-        return jsonObject;
+                resultArray.add(tableNode);
+            });
+
+            ObjectNode jsonObject = objectMapper.createObjectNode();
+
+            // Add the list to the JSON object with the key "key"
+            jsonObject.set("tables", objectMapper.valueToTree(resultArray));
+            return jsonObject;
+        }else {
+            // when null is occured
+            return safeJson;
+        }
+
     }
 }
