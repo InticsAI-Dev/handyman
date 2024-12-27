@@ -13,6 +13,7 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.replicate.ReplicateRequest;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
@@ -22,6 +23,8 @@ import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,6 +39,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
     private final String outputDir;
+    public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
 
     public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.auto.rotation.activator.handler.name";
     public final ActionExecutionAudit action;
@@ -61,6 +65,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     public List<AutoRotationOutputTable> process(URL endpoint, AutoRotationInputTable entity) throws IOException {
 
         List<AutoRotationOutputTable> parentObj = new ArrayList<>();
+        FileProcessingUtils fileProcessingUtils=new FileProcessingUtils(log,aMarker,action);
+        String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
         String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
 
         String entityFilePath = entity.getFilePath();
@@ -72,8 +78,8 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         Integer paperNo = entity.getPaperNo();
         String filePath = String.valueOf(entity.getFilePath());
         String batchId = entity.getBatchId();
-        Long actionId = action.getActionId();
-
+        //Long actionId = action.getActionId();
+        Long actionId = 100L;
 
 
         //payload
@@ -105,11 +111,20 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
             coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else if (Objects.equals("REPLICATE", coproHandlerName)) {
-            autoRotationRequest.setBase64img(entity.getBase64img());
+            String base64ForPath = fileProcessingUtils.convertFileToBase64(entity.getFilePath());
+            autoRotationRequest.setBase64img(base64ForPath);
             String jsonInputRequest = mapper.writeValueAsString(autoRotationRequest);
 
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            replicateRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
+            ReplicateRequest replicateRequest=new ReplicateRequest();
+//            replicateRequest.setVersion(replicateTextExtractionVersion);
+            replicateRequest.setInput(autoRotationRequest);
+            String replicateJsonRequest = mapper.writeValueAsString(replicateRequest);
+
+            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(replicateJsonRequest, MEDIA_TYPE_JSON))
+                    .addHeader("Authorization", "Bearer " + replicateApiToken)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "wait").build();
+            replicateRequestBuilder(entity, request, parentObj, replicateJsonRequest, endpoint);
 
         }else if (Objects.equals("TRITON", coproHandlerName)){
 

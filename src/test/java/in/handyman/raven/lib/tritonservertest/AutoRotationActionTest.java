@@ -18,21 +18,26 @@ class AutoRotationActionTest {
                 .name("auto rotation testing after copro optimization")
                 .processId("138980")
                 .resourceConn("intics_zio_db_conn")
-                .outputDir("/home/christopher.paulraj@zucisystems.com/Pictures/output")
+                .endPoint("https://api.runpod.ai/v2/f0v8parafbewlw/runsync")
+                .outputDir("/data/output/processed_images/27-12-2024_11_12_14/tenant_1/group_370/")
                 .condition(true)
-                .querySet("select 'INT-1' as origin_id,1 as group_id,'/home/christopher.paulraj@zucisystems.com/Pictures/output.png' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,'138980744174170252' as process_id\n")
+                .querySet("select 1 as root_pipeline_id, 'BATCH-1' as batch_id, 'INT-1' as origin_id,1 as group_id,'/home/logesh.b@zucisystems.com/intics-build/data/data/output/processed_images/27-12-2024_11_12_14/tenant_1/group_370/preprocess/paper_itemizer/pdf_to_image/SYNTH-SAMPLE-1/SYNTH-SAMPLE-1_1.jpg' as file_path,1 as paper_no,1 as tenant_id,'TMP-1' as template_id,'138980744174170252' as process_id\n")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://localhost:10181/copro/preprocess/autorotation");
+        actionExecutionAudit.getContext().put("copro.autorotation.url", "https://api.runpod.ai/v2/f0v8parafbewlw/runsync");
         actionExecutionAudit.setProcessId(13898007L);
+        actionExecutionAudit.setRootPipelineId(1234567L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
+                Map.entry("copro.request.auto.rotation.activator.handler.name", "REPLICATE"),
                 Map.entry("root_pipeline_id","1"),
                 Map.entry("action_id","100"),
+                Map.entry("replicate.request.api.token", "rpa_CL6G4IM6TIUB9MVMYED07G29IFG5NST4YJPD6OQB147pd2"),
                 Map.entry("triton.request.activator", "false"),
-                Map.entry("write.batch.size", "5"))
-        );
+                Map.entry("write.batch.size", "5"),
+                Map.entry("auto.rotation.consumer.API.count", "1"))
+                );
 
         AutoRotationAction action1 = new AutoRotationAction(actionExecutionAudit, log, action);
         action1.execute();
