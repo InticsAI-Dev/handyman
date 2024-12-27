@@ -9,9 +9,10 @@ import org.junit.jupiter.api.Test;
 
 @Slf4j
 public class LlmJsonParserActionTest {
-    @Test
+
     // Test Text extraction
-    public void tritonTextTest() throws Exception {
+    @Test
+    public void TextTest() throws Exception {
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
                 .condition(true)
@@ -37,7 +38,7 @@ public class LlmJsonParserActionTest {
     }
 
     @Test
-    public void tritonKVPTest() throws Exception {
+    public void KVPTest() throws Exception {
         // Test KVP Extraction
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
@@ -68,7 +69,7 @@ public class LlmJsonParserActionTest {
 
 // Table Extraction Text
     @Test
-    public void tritonTableTest() throws Exception {
+    public void TableTest() throws Exception {
         // Test Extraction
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
@@ -94,5 +95,36 @@ public class LlmJsonParserActionTest {
         llmJsonParserAction.execute();
 
     }
+
+
+    // Table Extraction Text
+    @Test
+    public void CheckboxTest() throws Exception {
+        // Checkbox Extraction
+        LlmJsonParser llmJsonParser = LlmJsonParser.builder()
+                .name("llm json parser")
+                .condition(true)
+                .resourceConn("intics_zio_db_conn")
+                .outputTable("table_extraction.table_extraction_llm_json_parser_109124")
+                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json as response, paper_no, \n" +
+                        "origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message,\n" +
+                        "category FROM checkbox_extraction.checkbox_extraction_output_109392\n" +
+                        "WHERE id=2;")
+                .build();
+
+        ActionExecutionAudit ac = new ActionExecutionAudit();
+        ac.setRootPipelineId(1234L);
+        ac.setActionId(1234L);
+        ac.setProcessId(123L);
+        ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
+        ac.getContext().put("write.batch.size", "1");
+        ac.getContext().put("read.batch.size", "1");
+
+        LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
+
+        llmJsonParserAction.execute();
+
+    }
+
 
 }
