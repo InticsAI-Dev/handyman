@@ -30,12 +30,9 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
 
-
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 
         llmJsonParserAction.execute();
-
-
 
     }
 
@@ -66,8 +63,6 @@ public class LlmJsonParserActionTest {
 
         llmJsonParserAction.execute();
 
-
-
     }
 
 
@@ -97,8 +92,6 @@ public class LlmJsonParserActionTest {
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 
         llmJsonParserAction.execute();
-
-
 
     }
 
