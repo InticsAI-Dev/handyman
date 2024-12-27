@@ -20,7 +20,7 @@ public class LlmJsonParserActionTest {
                 .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json as response, paper_no,\n" +
                         "origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category\n" +
                         "FROM text_extraction.text_extraction_output_audit teoa \n" +
-                        "where origin_id ='ORIGIN-419'   ")
+                        "where origin_id ='ORIGIN-419'")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -52,6 +52,41 @@ public class LlmJsonParserActionTest {
                         "origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category\n" +
                         "FROM kvp_extraction.kvp_extraction_output_audit\n" +
                         "WHERE origin_id='ORIGIN-421' and paper_no<>3  ")
+                .build();
+
+        ActionExecutionAudit ac = new ActionExecutionAudit();
+        ac.setRootPipelineId(1234L);
+        ac.setActionId(1234L);
+        ac.setProcessId(123L);
+        ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
+        ac.getContext().put("write.batch.size", "1");
+        ac.getContext().put("read.batch.size", "1");
+
+
+        LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
+
+        llmJsonParserAction.execute();
+
+
+
+    }
+
+
+// Table Extraction Text
+    @Test
+    public void tritonTableTest() throws Exception {
+        // Test KVP Extraction
+        LlmJsonParser llmJsonParser = LlmJsonParser.builder()
+                .name("llm json parser")
+                .condition(true)
+                .resourceConn("intics_zio_db_conn")
+                .outputTable("table_extraction.table_extraction_llm_json_parser_audit")
+                .querySet("SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,\n" +
+                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TABLE_EXTRACTION' as process\n" +
+                        "from table_extraction.table_extraction_output_109076 teeoa\n" +
+                        "WHERE tenant_id = 115 AND model_registry = 'KRYPTON' and group_id ='434' and batch_id ='BATCH-434_0'                   \n" +
+
+                        "                   ")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
