@@ -18,9 +18,6 @@ import in.handyman.raven.lib.model.jsonParser.Table.TableParser;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -296,7 +293,7 @@ public class LlmJsonParserAction implements IActionExecution {
                           if (jsonResponse.trim().startsWith("{")) {
                               try {
                                   // Try parsing it as a JSONObject
-                                  JSONObject jsonObject = new JSONObject(jsonResponse);
+                                  JsonNode jsonObject = objectMapper.readTree(jsonResponse);
                                   log.info("It is a json object");
                                   finalResult = processJson(jsonObject);
 
@@ -307,7 +304,7 @@ public class LlmJsonParserAction implements IActionExecution {
                           } else if (jsonResponse.trim().startsWith("[")) {
                               try {
                                   // Try parsing it as a JSONArray
-                                  JSONArray jsonArray = new JSONArray(jsonResponse);
+                                  ArrayNode jsonArray = (ArrayNode) objectMapper.readTree(jsonResponse);
                                   log.info("It is a json array");
                                   finalResult = processJson(jsonArray);
 
@@ -323,6 +320,7 @@ public class LlmJsonParserAction implements IActionExecution {
                       } else {
                           log.info("input is NULL for {}", inputTable.getProcess());
                           finalResult = "{}";
+
                       }
                       // Create the output JSON structure
                   } else {

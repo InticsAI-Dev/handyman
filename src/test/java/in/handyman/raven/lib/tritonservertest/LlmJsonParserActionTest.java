@@ -107,10 +107,11 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_audit")
-                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json as response, paper_no, \n" +
-                        "origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message,\n" +
-                        "category FROM checkbox_extraction.checkbox_extraction_output_109392")
+                .outputTable("checkbox_extraction.kvp_extraction_llm_json_parser_109472")
+                .querySet("sELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,\n" +
+                        "                batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'CHECKBOX_EXTRACTION' as process\n" +
+                        "                from checkbox_extraction.checkbox_extraction_output_109472 teeoa\n" +
+                        "                WHERE tenant_id = 115 AND model_registry = 'KRYPTON' and group_id ='446' and batch_id ='BATCH-446_0';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

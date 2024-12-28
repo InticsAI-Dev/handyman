@@ -1,53 +1,54 @@
 package in.handyman.raven.lib.model.jsonParser.checkbox;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
 public class Parser {
-    public static String processJson (Object jsonElement) throws IOException {
-        JSONObject finalResult = new JSONObject();
+    public static String processJson (JsonNode jsonElement) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        if (jsonElement instanceof JSONObject) {
+        ObjectNode finalResult = objectMapper.createObjectNode();
+        ObjectNode output = null;
+        if (jsonElement.isObject()) {
             // Iterate over the keys of the JSONObject
-            JSONObject jsonObject = (JSONObject) jsonElement;
-            jsonObject.keySet().forEach(key -> {
-                Object value = jsonObject.get(key);
-                try {
-                    processJson(value); // Recurse on the value
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        } else if (jsonElement instanceof JSONArray) {
-            // If the element is a JSONArray, iterate through its elements
+            Iterator<String> fieldNames = jsonElement.fieldNames();
+            while (fieldNames.hasNext()) {
+                String fieldName = fieldNames.next();
+                JsonNode value = jsonElement.get(fieldName);
+                processJson(value); // Recurse on the value
 
-            JSONArray selectionElements = new JSONArray();
+            }
+        } else if (jsonElement.isArray()) {
+            // If the element is a JSONArray, iterate through its elements
+            output = objectMapper.createObjectNode();
+            ArrayNode selectionElements = objectMapper.createArrayNode();
 
             List<DataParser> dataParser = objectMapper.readValue(jsonElement.toString(), new TypeReference<List<DataParser>>() {
             });
 
 
             dataParser.forEach(row -> {
-                JSONObject selectionElement = new JSONObject();
+                ObjectNode selectionElement = objectMapper.createObjectNode();
                 selectionElement.put("Question", row.getQuestion());
 
                 // Add options
-                JSONArray optionsArray = new JSONArray();
+                ArrayNode optionsArray = objectMapper.createArrayNode();
                 row.getOptions().forEach(option -> {
-                    JSONObject optionObject = new JSONObject();
+                    ObjectNode optionObject = objectMapper.createObjectNode();
                     optionObject.put("OptionText", option.getOptionText());
                     optionObject.put("Status", option.getStatus());
-                    optionsArray.put(optionObject);
+                    optionsArray.add(optionObject);
                 });
                 selectionElement.put("Options", optionsArray);
 
                 // Add boundingBox
-                JSONObject boundingBox = new JSONObject();
+                ObjectNode boundingBox = objectMapper.createObjectNode();
                 boundingBox.put("x", 0);
                 boundingBox.put("y", 0);
                 boundingBox.put("width", 0);
@@ -57,12 +58,12 @@ public class Parser {
                 // Add confidence
                 selectionElement.put("confidence", 0);
 
-                selectionElements.put(selectionElement);
+                selectionElements.add(selectionElement);
             });
 
-            finalResult.put("selectionElements", selectionElements);
+            output.set("selectionElements", selectionElements);
 
         }
-    return finalResult.toString();
+        return output.toString();
     }
 }
