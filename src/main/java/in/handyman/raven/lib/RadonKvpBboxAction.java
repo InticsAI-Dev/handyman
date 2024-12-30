@@ -10,6 +10,7 @@ import in.handyman.raven.lib.model.RadonKvpBbox;
 import in.handyman.raven.lib.model.radonbbox.RadonBboxConsumerProcess;
 import in.handyman.raven.lib.model.radonbbox.query.input.RadonBboxInputEntity;
 import in.handyman.raven.lib.model.radonbbox.query.output.RadonBboxOutputEntity;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
@@ -66,12 +67,15 @@ public class RadonKvpBboxAction implements IActionExecution {
     private final RadonKvpBbox radonKvpBbox;
 
     private final Marker aMarker;
+    private final String processBase64;
+    public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
     public RadonKvpBboxAction(final ActionExecutionAudit action, final Logger log,
                               final Object radonKvpBbox) {
         this.radonKvpBbox = (RadonKvpBbox) radonKvpBbox;
         this.action = action;
         this.log = log;
+        this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
         this.aMarker = MarkerFactory.getMarker(" RadonKvpBbox:" + this.radonKvpBbox.getName());
     }
 
@@ -92,6 +96,7 @@ public class RadonKvpBboxAction implements IActionExecution {
             Integer readBatchSizeInt = Integer.valueOf(readBatchSize);
             String coproUrl = radonKvpBbox.getCoproUrl();
             String outputTable = radonKvpBbox.getOutputTable();
+            FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
 
             final List<URL> urls = getCoproUrls(coproUrl);
 
@@ -112,7 +117,7 @@ public class RadonKvpBboxAction implements IActionExecution {
             log.info("start producer method from copro processor ");
             Thread.sleep(1000);
 
-            callStartConsumer(coproProcessor, insertQuery, consumerCountInt, writeBatchSizeInt, objectMapper);
+            callStartConsumer(coproProcessor, insertQuery, consumerCountInt, writeBatchSizeInt, objectMapper, fileProcessingUtils);
             log.info("start consumer method from copro processor ");
 
 
@@ -128,8 +133,8 @@ public class RadonKvpBboxAction implements IActionExecution {
         coproProcessor.startProducer(radonKvpBbox.getQuerySet(), readBatchSizeInt);
     }
 
-    private void callStartConsumer(CoproProcessor<RadonBboxInputEntity, RadonBboxOutputEntity> coproProcessor, String insertQuery, Integer consumerCountInt, Integer writeBatchSizeInt, ObjectMapper objectMapper) {
-        coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, new RadonBboxConsumerProcess(log, aMarker, action, radonKvpBbox, objectMapper));
+    private void callStartConsumer(CoproProcessor<RadonBboxInputEntity, RadonBboxOutputEntity> coproProcessor, String insertQuery, Integer consumerCountInt, Integer writeBatchSizeInt, ObjectMapper objectMapper, FileProcessingUtils fileProcessingUtils) {
+        coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, new RadonBboxConsumerProcess(log, aMarker, action, radonKvpBbox, objectMapper, processBase64, fileProcessingUtils));
     }
 
     @NotNull

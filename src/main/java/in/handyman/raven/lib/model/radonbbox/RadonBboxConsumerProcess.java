@@ -14,12 +14,15 @@ import in.handyman.raven.lib.model.radonbbox.request.RadonBboxRequestLineItem;
 import in.handyman.raven.lib.model.radonbbox.response.RadonBboxResponse;
 import in.handyman.raven.lib.model.radonbbox.response.RadonBboxResponseData;
 import in.handyman.raven.lib.model.triton.*;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,9 +35,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     public static final String RADON_BBOX = PipelineName.RADON_KVP_BBOX.getProcessName();
     public static final String RADON_BBOX_START = "RADON BBOX START";
     public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
-    public static final String SOR_ITEM_NAME = "sor_item_name";
-    public static final String ANSWER = "answer";
-    public static final String PAPER_TYPE = "paper_type";
+
     public static final String RADON_KVP_BBOX = "RADON_KVP_BBOX";
 
     private final Logger log;
@@ -53,12 +54,17 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
     public final RadonKvpBbox radonKvpBbox;
 
-    public RadonBboxConsumerProcess(Logger log, Marker aMarker, ActionExecutionAudit action, RadonKvpBbox radonKvpBbox, ObjectMapper objectMapper) {
+    private final FileProcessingUtils fileProcessingUtils;
+    private final String processBase64;
+
+    public RadonBboxConsumerProcess(Logger log, Marker aMarker, ActionExecutionAudit action, RadonKvpBbox radonKvpBbox, ObjectMapper objectMapper, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.httpClientTimeout = action.getContext().get(OKHTTP_CLIENT_TIMEOUT);
         this.radonKvpBbox = radonKvpBbox;
+        this.processBase64 = processBase64;
+        this.fileProcessingUtils = fileProcessingUtils;
         this.objectMapper = objectMapper;
     }
 
@@ -68,7 +74,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         log.info("triton consumer process started");
         List<RadonBboxOutputEntity> radonBboxOutputEntities = new ArrayList<>();
 
-        final RadonBboxRequest radonBboxRequestData = getRadonBboxRequestData(entity);
+        final RadonBboxRequest radonBboxRequestData = getRadonBboxRequestData(entity, fileProcessingUtils);
 
         final String jsonInputRequest = objectMapper.writeValueAsString(radonBboxRequestData);
 
@@ -95,7 +101,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
     @NotNull
-    private RadonBboxRequest getRadonBboxRequestData(RadonBboxInputEntity entity) throws JsonProcessingException {
+    private RadonBboxRequest getRadonBboxRequestData(RadonBboxInputEntity entity, FileProcessingUtils fileProcessingUtils) throws IOException {
         final RadonBboxRequest radonBboxRequestData = new RadonBboxRequest();
         radonBboxRequestData.setOriginId(entity.getOriginId());
         radonBboxRequestData.setPaperNumber(entity.getPaperNo());
@@ -110,6 +116,9 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
         radonBboxRequestData.setBatchId(entity.getBatchId());
         List<RadonBboxRequestLineItem> items = objectMapper.readValue(entity.getRadonOutput(), new TypeReference<>() {
         });
+        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+            radonBboxRequestData.setBase64Img(fileProcessingUtils.convertFileToBase64(entity.getInputFilePath()));
+        }
         radonBboxRequestData.setRadonBboxLineItems(items);
         return radonBboxRequestData;
     }
@@ -124,7 +133,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
                 if (radonBboxModelResponse.getOutputs() != null && !radonBboxModelResponse.getOutputs().isEmpty()) {
                     radonBboxModelResponse.getOutputs().forEach(o -> o.getData().forEach(noiseModelDataItem ->
-                            extractedOutputRequest(entity, objectMapper, parentObj, radonBboxModelResponse.getModelName(), radonBboxModelResponse.getModelVersion(), noiseModelDataItem)
+                            extractedOutputRequest(entity, objectMapper, parentObj, noiseModelDataItem)
                     ));
                 }
 
@@ -142,7 +151,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
 
-    private void extractedOutputRequest(RadonBboxInputEntity entity, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj, String modelName, String modelVersion, String radonKvpBboxDataItem) {
+    private void extractedOutputRequest(RadonBboxInputEntity entity, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj, String radonKvpBboxDataItem) {
 
         try {
 

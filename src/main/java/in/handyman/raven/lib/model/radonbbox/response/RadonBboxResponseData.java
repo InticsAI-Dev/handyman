@@ -24,6 +24,7 @@ public class RadonBboxResponseData {
     private Long actionId;
     private String process;
     private String batchId;
+    private String base64Img;
     private List<RadonResponseBboxLineItem> radonBboxLineItems;
 
 

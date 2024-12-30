@@ -23,7 +23,7 @@ public class RadonBboxRequest {
     private Long actionId;
     private String process;
     private String batchId;
-
+    private String base64Img;
     private List<RadonBboxRequestLineItem> radonBboxLineItems;
 
 }

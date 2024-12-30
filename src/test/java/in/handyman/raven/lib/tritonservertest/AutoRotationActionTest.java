@@ -28,8 +28,8 @@ class AutoRotationActionTest {
         actionExecutionAudit.setProcessId(13898007L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("consumer.API.count", "1"),
-                Map.entry("root_pipeline_id","1"),
-                Map.entry("action_id","100"),
+                Map.entry("root_pipeline_id", "1"),
+                Map.entry("action_id", "100"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("write.batch.size", "5"))
         );
@@ -54,11 +54,12 @@ class AutoRotationActionTest {
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://192.168.10.239:10181/copro/preprocess/auto-rotation");
+        actionExecutionAudit.getContext().put("copro.autorotation.url", "http://localhost:10181/copro/preprocess/auto-rotation");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "1"),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("triton.request.activator", "false"),
+                Map.entry("pipeline.copro.api.process.file.format", "base64"),
                 Map.entry("actionId", "1"),
                 Map.entry("auto.rotation.consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));

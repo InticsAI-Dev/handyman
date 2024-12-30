@@ -13,21 +13,16 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
 import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerProcess<HwClassificationInputTable, HwClassificationOutputTable> {
@@ -40,18 +35,21 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
     private static final MediaType mediaTypeJson = MediaType
             .parse("application/json; charset=utf-8");
     public final ActionExecutionAudit action;
-
+    private final String processBase64;
+    private final FileProcessingUtils fileProcessingUtils;
     private final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(100, TimeUnit.MINUTES)
             .writeTimeout(100, TimeUnit.MINUTES)
             .readTimeout(100, TimeUnit.MINUTES)
             .build();
 
-    public HwClassificationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir) {
+    public HwClassificationConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir, String processBase64, FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.outputDir = outputDir;
+        this.processBase64 = processBase64;
+        this.fileProcessingUtils = fileProcessingUtils;
     }
 
     @Override
@@ -64,6 +62,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         String filePath = String.valueOf(entity.getFilePath());
         String batchId = entity.getBatchId();
         ObjectMapper objectMapper = new ObjectMapper();
+        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
         //payload
         HwDetectionPayload hwDetectionPayload = new HwDetectionPayload();
@@ -79,29 +78,32 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         hwDetectionPayload.setPaperNo(entity.getPaperNo());
         hwDetectionPayload.setBatchId(batchId);
 
-        String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
-
-
-        TritonRequest requestBody = new TritonRequest();
-        requestBody.setName("PAPER CLASSIFIER START");
-        requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype("BYTES");
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-        TritonInputRequest tritonInputRequest = new TritonInputRequest();
-        tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
-        String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
-
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
-
-
         if (Objects.equals("false", tritonRequestActivator)) {
+            String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
             coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
+            if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+                hwDetectionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+
+            }
+
+            String jsonInputRequest = objectMapper.writeValueAsString(hwDetectionPayload);
+
+
+            TritonRequest requestBody = new TritonRequest();
+            requestBody.setName("PAPER CLASSIFIER START");
+            requestBody.setShape(List.of(1, 1));
+            requestBody.setDatatype("BYTES");
+            requestBody.setData(Collections.singletonList(jsonInputRequest));
+
+            TritonInputRequest tritonInputRequest = new TritonInputRequest();
+            tritonInputRequest.setInputs(Collections.singletonList(requestBody));
+
+            String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+
+
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
             tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
@@ -206,7 +208,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
                         o.getData().forEach(hwDetectionDataItem -> {
                             try {
                                 extractOutputDataRequest(entity, hwDetectionDataItem, parentObj, hwDetectionResponse.getModelName(), hwDetectionResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
-                            } catch (JsonProcessingException e) {
+                            } catch (IOException e) {
                                 throw new HandymanException("Handwritten classification failed in processing response", e);
                             }
 
@@ -266,7 +268,7 @@ public class HwClassificationConsumerProcess implements CoproProcessor.ConsumerP
         }
     }
 
-    private void extractOutputDataRequest(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
+    private void extractOutputDataRequest(HwClassificationInputTable entity, String responseBody, List<HwClassificationOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws IOException {
         String createdUserId = entity.getCreatedUserId();
         String lastUpdatedUserId = entity.getLastUpdatedUserId();
         String templateId = entity.getTemplateId();

@@ -1,7 +1,6 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -11,11 +10,11 @@ import in.handyman.raven.lib.model.DataExtraction;
 import in.handyman.raven.lib.model.textextraction.DataExtractionConsumerProcess;
 import in.handyman.raven.lib.model.textextraction.DataExtractionInputTable;
 import in.handyman.raven.lib.model.textextraction.DataExtractionOutputTable;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -38,25 +37,29 @@ import java.util.stream.Collectors;
  */
 @ActionExecution(actionName = "DataExtraction")
 public class DataExtractionAction implements IActionExecution {
-    public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
+
     public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
     public static final String INSERT_INTO = "INSERT INTO ";
     public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?)";
-  public static final String READ_BATCH_SIZE = "read.batch.size";
-  public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
-  public static final String WRITE_BATCH_SIZE = "write.batch.size";
-public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
-  private final ActionExecutionAudit action;
+    public static final String READ_BATCH_SIZE = "read.batch.size";
+    public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
+    public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
+    private final ActionExecutionAudit action;
+    public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
     private final Logger log;
 
     private final DataExtraction dataExtraction;
     private final Marker aMarker;
+    private final String processBase64;
 
     public DataExtractionAction(final ActionExecutionAudit action, final Logger log, final Object dataExtraction) {
         this.dataExtraction = (DataExtraction) dataExtraction;
         this.action = action;
         this.log = log;
+        this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
+
         this.aMarker = MarkerFactory.getMarker(" DataExtraction:" + this.dataExtraction.getName());
     }
 
@@ -64,6 +67,7 @@ public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.th
     public void execute() throws Exception {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dataExtraction.getResourceConn());
+            FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
 
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Data Extraction Action for {} has been started", dataExtraction.getName());
@@ -85,7 +89,7 @@ public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.th
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
-            DataExtractionConsumerProcess dataExtractionConsumerProcess = new DataExtractionConsumerProcess(log, aMarker, action, pageContentMinLength);
+            DataExtractionConsumerProcess dataExtractionConsumerProcess = new DataExtractionConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
 
             coproProcessor.startProducer(dataExtraction.getQuerySet(), readBatchSize);
             Thread.sleep(1000);

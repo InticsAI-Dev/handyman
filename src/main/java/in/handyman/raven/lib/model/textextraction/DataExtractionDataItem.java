@@ -20,7 +20,7 @@ public class DataExtractionDataItem {
     private String templateName;
     private Long rootPipelineId;
     private String batchId;
-
-    }
+    private String base64Img;
+}
 
 

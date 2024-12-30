@@ -10,6 +10,7 @@ import in.handyman.raven.lib.model.FileMergerPdf;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerPdfConsumerProcess;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerpdfInputEntity;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerpdfOutputEntity;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -44,12 +45,16 @@ public class FileMergerPdfAction implements IActionExecution {
     private final Logger log;
     private final FileMergerPdf fileMergerPdf;
     private final Marker aMarker;
+    public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
+
+    private final String processBase64;
 
     public FileMergerPdfAction(final ActionExecutionAudit action, final Logger log,
                                final Object fileMergerPdf) {
         this.fileMergerPdf = (FileMergerPdf) fileMergerPdf;
         this.action = action;
         this.log = log;
+        this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
         this.aMarker = MarkerFactory.getMarker(" FileMerger:" + this.fileMergerPdf.getName());
     }
 
@@ -64,7 +69,8 @@ public class FileMergerPdfAction implements IActionExecution {
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(FILE_MERGER_CONSUMER_API_COUNT));
             Integer writeBatchSize1 = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-            FileMergerPdfConsumerProcess fileMergerPdfConsumerProcess = new FileMergerPdfConsumerProcess(log, aMarker, action, fileMergerPdf);
+            FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
+            FileMergerPdfConsumerProcess fileMergerPdfConsumerProcess = new FileMergerPdfConsumerProcess(log, aMarker, action, fileMergerPdf, processBase64, fileProcessingUtils);
 
             final String outputDir = fileMergerPdf.getOutputDir();
             log.info(aMarker, "file mergerAction output directory {}", outputDir);
@@ -92,15 +98,15 @@ public class FileMergerPdfAction implements IActionExecution {
                             jdbi, log,
                             new FileMergerpdfInputEntity(), urls, action);
 
-            log.info(aMarker, "file mergercopro coproProcessor initialization  {}", coproProcessor);
+            log.info(aMarker, "file merger copro coproProcessor initialization  {}", coproProcessor);
 
             //4. call the method start producer from coproprocessor
 
             coproProcessor.startProducer(fileMergerPdf.getQuerySet(), readBatchSize);
-            log.info(aMarker, "file mergercopro coproProcessor startProducer called read batch size {}", readBatchSize);
+            log.info(aMarker, "file merger copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize1, fileMergerPdfConsumerProcess);
-            log.info(aMarker, "file mergercopro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize1);
+            log.info(aMarker, "file merger copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize1);
 
         } catch (Exception ex) {
             log.error(aMarker, "error in execute method for file merger ", ex);

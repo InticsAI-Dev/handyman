@@ -10,6 +10,8 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.FileMergerPdf;
 import in.handyman.raven.lib.model.filemergerpdf.copro.FileMergerDataItemCopro;
 import in.handyman.raven.lib.model.triton.PipelineName;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -19,6 +21,7 @@ import okhttp3.ResponseBody;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -47,6 +50,7 @@ import java.util.stream.Collectors;
 public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProcess<FileMergerpdfInputEntity, FileMergerpdfOutputEntity> {
     private static final MediaType mediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
     public static final String FILE_MERGER_PROCESS_NAME = PipelineName.FILE_MERGER.getProcessName();
+    public static final String MULTIPART_FILE_UPLOAD_ACTIVATOR = "multipart.file.upload.activator";
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -63,12 +67,14 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             .writeTimeout(10, TimeUnit.MINUTES)
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
-
-    public FileMergerPdfConsumerProcess(final Logger log, final Marker aMarker, final ActionExecutionAudit action, final Object fileMergerPdf) {
+    private final FileProcessingUtils fileProcessingUtils;
+    private final String processBase64;
+    public FileMergerPdfConsumerProcess(final Logger log, final Marker aMarker, final ActionExecutionAudit action, final Object fileMergerPdf, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.fileMergerPdf = (FileMergerPdf) fileMergerPdf;
-
+        this.fileProcessingUtils=fileProcessingUtils;
         this.action = action;
         this.log = log;
+        this.processBase64=processBase64;
         this.aMarker = aMarker;
 
     }
@@ -109,39 +115,42 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                 fileMergerPayload.setOriginId(entity.getOriginId());
                 fileMergerPayload.setBatchId(batchId);
                 fileMergerPayload.setTenantId(tenantId);
-
                 ObjectMapper objectMapper = new ObjectMapper();
-                String jsonInputRequest = objectMapper.writeValueAsString(fileMergerPayload);
-
-                TritonRequest requestBody = new TritonRequest();
-                requestBody.setName("MERGER START");
-                requestBody.setShape(List.of(1, 1));
-                requestBody.setDatatype("BYTES");
-                requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-                TritonInputRequest tritonInputRequest = new TritonInputRequest();
-                tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
-                String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
 
                 String tritonRequestActivator = action.getContext().get("triton.request.activator");
 
                 if (Objects.equals("false", tritonRequestActivator)) {
+                    String jsonInputRequest = objectMapper.writeValueAsString(fileMergerPayload);
                     Request request = new Request.Builder().url(endpoint)
                             .post(RequestBody.create(jsonInputRequest, mediaTypeJSON)).build();
                     coproRequestBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
                 } else {
+
+                    if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
+                        List<String> fileMergerBase64 = getBase64FromListOfFile(fileMergerPayload);
+                        fileMergerPayload.setBase64Images(fileMergerBase64);
+                    }
+
+
+
+                    String jsonInputRequest = objectMapper.writeValueAsString(fileMergerPayload);
+
+                    TritonRequest requestBody = new TritonRequest();
+                    requestBody.setName("MERGER START");
+                    requestBody.setShape(List.of(1, 1));
+                    requestBody.setDatatype("BYTES");
+                    requestBody.setData(Collections.singletonList(jsonInputRequest));
+
+                    TritonInputRequest tritonInputRequest = new TritonInputRequest();
+                    tritonInputRequest.setInputs(Collections.singletonList(requestBody));
+
+                    String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+
+
                     Request request = new Request.Builder().url(endpoint)
                             .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
                     tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
                 }
-
-
-                if (log.isInfoEnabled()) {
-                    log.info("input object node in the consumer fileMerger  inputFilePath {}", filePathString);
-                }
-
 
                 if (log.isInfoEnabled()) {
                     log.info("input object node in the consumer fileMerger coproURL {}, inputFilePath {}", endpoint, filePathString);
@@ -161,6 +170,19 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
         }
 
         return parentObj;
+    }
+
+    @NotNull
+    private List<String> getBase64FromListOfFile(FileMergerPayload fileMergerPayload) {
+        List<String> fileMergerBase64= new ArrayList<>();
+        fileMergerPayload.getInputFilePaths().forEach(s -> {
+            try {
+                fileMergerBase64.add(fileProcessingUtils.convertFileToBase64(s));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return fileMergerBase64;
     }
 
     private void coproRequestBuilder(FileMergerpdfInputEntity entity, Request request, List<FileMergerpdfOutputEntity> parentObj, String jsonInputRequest, URL endpoint) {
@@ -207,8 +229,13 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             FileMergerDataItem fileMergerDataItem1 = mapper.readValue(fileMergerDataItem, new TypeReference<>() {
             });
             String processedFilePath = fileMergerDataItem1.getProcessedFilePath();
-            String MultipartUploadActivatorVariable = "multipart.file.upload.activator";
-            String MultipartUploadActivatorValue = action.getContext().get(MultipartUploadActivatorVariable);
+
+            if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
+                fileProcessingUtils.convertBase64ToFile(fileMergerDataItem1.getBase64Img(), processedFilePath);
+            }
+
+
+            String MultipartUploadActivatorValue = action.getContext().get(MULTIPART_FILE_UPLOAD_ACTIVATOR);
             doMultipartDownloadCheck(MultipartUploadActivatorValue, processedFilePath);
             File file = new File(processedFilePath);
             String fileExtension = FilenameUtils.getExtension(file.getName());
@@ -312,6 +339,8 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
                     .endpoint(endpoint)
                     .build());
             throw new HandymanException("exception in processing triton input node", e, action);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -346,7 +375,7 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             FileMergerDataItemCopro fileMergerDataItem1 = mapper.readValue(fileMergerDataItem, new TypeReference<>() {
             });
             String processedFilePath = fileMergerDataItem1.getProcessedFilePath();
-            String MultipartUploadActivatorVariable = "multipart.file.upload.activator";
+            String MultipartUploadActivatorVariable = MULTIPART_FILE_UPLOAD_ACTIVATOR;
             String MultipartUploadActivatorValue = action.getContext().get(MultipartUploadActivatorVariable);
             doMultipartDownloadCheck(MultipartUploadActivatorValue, processedFilePath);
             File file = new File(processedFilePath);

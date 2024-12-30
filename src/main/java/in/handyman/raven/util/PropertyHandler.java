@@ -4,7 +4,9 @@ import in.handyman.raven.lambda.process.HRequestResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,21 +24,45 @@ public class PropertyHandler {
 
     static {
 
-        try (var input = HRequestResolver.class.getClassLoader().getResourceAsStream("config.properties")) {
+        String configPath = System.getProperty("config.file");
+        if (configPath == null || configPath.isEmpty()) {
+            try (var input = HRequestResolver.class.getClassLoader().getResourceAsStream(CONFIG_PROPERTIES)) {
 
-            var prop = new Properties();
-            //load a properties file from class path, inside static method
-            prop.load(input);
-            var maps = prop.entrySet().stream().collect(
-                    Collectors.toMap(
-                            e -> String.valueOf(e.getKey()),
-                            e -> String.valueOf(e.getValue()),
-                            (prev, next) -> next, HashMap::new
-                    ));
-            PROPS = Collections.unmodifiableMap(maps);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Sorry, unable to load " + CONFIG_PROPERTIES, e);
+                var prop = new Properties();
+                //load a properties file from class path, inside static method
+                prop.load(input);
+                var maps = prop.entrySet().stream().collect(
+                        Collectors.toMap(
+                                e -> String.valueOf(e.getKey()),
+                                e -> String.valueOf(e.getValue()),
+                                (prev, next) -> next, HashMap::new
+                        ));
+                PROPS = Collections.unmodifiableMap(maps);
+                LOGGER.info("Successfully loaded properties from config.properties ");
+            } catch (IOException e) {
+                throw new UncheckedIOException("Sorry, unable to load " + CONFIG_PROPERTIES, e);
+            }
+        }else{
+            Map<String, String> tempProps;
+            try (InputStream input = new FileInputStream(configPath)) {
+                Properties prop = new Properties();
+                prop.load(input);
+                tempProps = prop.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                e -> String.valueOf(e.getKey()),
+                                e -> String.valueOf(e.getValue()),
+                                (prev, next) -> next, // Handle duplicate keys
+                                HashMap::new));
+                LOGGER.info("Successfully loaded properties from config.file argument : {}", configPath);
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to load config.properties from path: " + configPath, e);
+            }
+            PROPS = Collections.unmodifiableMap(tempProps);
         }
+
+
+
+
     }
 
     private PropertyHandler() {

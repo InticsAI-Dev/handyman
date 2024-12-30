@@ -26,6 +26,8 @@ public class DataExtractionInputTable implements CoproProcessor.Entity {
     private String templateName;
     private String batchId;
     private Timestamp createdOn;
+    private String prompt;
+    private String base64Img;
 
     @Override
     public List<Object> getRowData() {

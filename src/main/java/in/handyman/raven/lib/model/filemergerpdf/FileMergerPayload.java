@@ -17,6 +17,7 @@ public class FileMergerPayload {
     private Long actionId;
     private String process;
     private List<String> inputFilePaths;
+    private List<String> base64Images;
     private String outputDir;
     private String outputFileName;
     private String originId;

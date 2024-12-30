@@ -47,17 +47,19 @@ class PaperItemizerActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .processId("138980184199100180")
-               .endpoint("http://triton.copro.paper.itemizer.instance1:8100/v2/models/paper-iterator-service/versions/1/infer")
+                .endpoint("http://localhost:8100/v2/models/paper-iterator-service/versions/1/infer")
                 .resultTable("info.paper_itemizer")
                 .outputDir("/data/output")
-                .querySet("SELECT 'INT-1' AS origin_id, 1 AS group_id, '/data/input/agadia-synt-samples/BUILD-16-BATCH-May25/humana-2page/SYNT_166564144.pdf' AS file_path, 1 AS tenant_id, 'TMP-1' AS template_id, '138980184199100180' AS process_id, 1 as rootPipelineId \n")
+                .querySet("SELECT 'INT-1' AS origin_id, 1 AS group_id, '/data/input/SYNT_166838894.pdf' AS file_path, 1 AS tenant_id, 'TMP-1' AS template_id, '138980184199100180' AS process_id, 1 as rootPipelineId,'BATCH-1' as batch_id \n")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.paper-itemizer.url", "http://192.168.10.240:8100/v2/models/paper-iterator-service/versions/1/infer"),
+        actionExecutionAudit.setActionId(1L);
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.paper-itemizer.url", "http://localhost:8100/v2/models/paper-iterator-service/versions/1/infer"),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("paper.itemizer.consumer.API.count", "1"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
                 Map.entry("actionId", "1"),
                 Map.entry("read.batch.size", "5"),
                 Map.entry("write.batch.size", "5")));

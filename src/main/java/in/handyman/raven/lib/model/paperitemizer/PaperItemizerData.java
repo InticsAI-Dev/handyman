@@ -20,4 +20,5 @@ public class PaperItemizerData {
     private String outputDir;
     private Long actionId;
     private String batchId;
+    private String base64Img;
 }

@@ -17,4 +17,5 @@ public class FileMergerDataItem {
     private Long groupId;
     private Long tenantId;
     private String batchId;
+    private String base64Img;
 }

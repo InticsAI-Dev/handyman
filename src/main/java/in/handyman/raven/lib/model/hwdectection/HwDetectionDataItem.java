@@ -12,17 +12,19 @@ import lombok.NoArgsConstructor;
 @Data
 public class HwDetectionDataItem {
 
- @JsonProperty("document_status")
- private String documentStatus;
+    @JsonProperty("document_status")
+    private String documentStatus;
 
- @JsonProperty("confidence_score")
+    @JsonProperty("confidence_score")
 
- private Float confidenceScore;
- private String originId;
- private Long processId;
- private Integer groupId;
- private Integer paperNo;
- private Long tenantId;
- private String batchId;
- private Integer rootPipelineId;
+    private Float confidenceScore;
+    private String originId;
+    private Long processId;
+    private Integer groupId;
+    private Integer paperNo;
+    private Long tenantId;
+    private String batchId;
+    private Integer rootPipelineId;
+    private String base64Img;
+    private String inputFilePath;
 }

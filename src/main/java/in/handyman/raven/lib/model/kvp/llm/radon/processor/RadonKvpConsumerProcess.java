@@ -11,16 +11,15 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
-import jakarta.json.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -30,7 +29,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
-    public static final String RADON_START = "RADON START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -38,12 +36,16 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public final ActionExecutionAudit action;
     private final OkHttpClient httpclient;
+    private final FileProcessingUtils fileProcessingUtils;
+    private final String processBase64;
 
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction) {
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         int timeOut = aAction.getTimeOut();
+        this.processBase64 = processBase64;
+        this.fileProcessingUtils = fileProcessingUtils;
         this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
     }
 
@@ -56,7 +58,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
         String prompt = entity.getPrompt();
-        String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
@@ -70,13 +71,18 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setProcess(PROCESS_NAME);
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
-        radonKvpExtractionRequest.setPrompt(prompt);
+        radonKvpExtractionRequest.setUserPrompt(prompt);
+        radonKvpExtractionRequest.setSystemPrompt("");
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
 
+
+        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+            radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+        }
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
 
@@ -134,8 +140,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
                             extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
+                        } catch (IOException e) {
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
                         }
                     }));
 
@@ -211,7 +219,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     JsonNode rootNode = objectMapper.readTree(jsonString);
 
                     return rootNode;
-                }else {
+                } else {
                     JsonNode rootNode = objectMapper.readTree(jsonResponse);
                     return rootNode;
                 }
@@ -226,7 +234,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws JsonProcessingException {
+    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws IOException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -236,8 +244,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
-
+        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+//
+//        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
+//            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
+//        }
 
         parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(CreateTimeStamp.currentTimestamp())
@@ -286,7 +297,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         try {
                             extractedCoproOutputResponse(entity, radonDataItem, parentObj, jsonInputRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting response from triton server output {}", ExceptionUtil.toString(e));
                         }
                     }));
 
@@ -378,12 +391,5 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    public Map<String, Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-            throws IOException {
-        String json = jsonParser.getText();
-        // Remove the ```json block and any leading/trailing spaces
-        json = json.replace("```json", "").replace("```", "").trim();
-        // Deserialize the cleaned JSON string into a Map
-        return objectMapper.readValue(json, Map.class);
-    }
+
 }
