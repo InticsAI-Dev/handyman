@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableParser {
 
-    public static ObjectNode parseTables(String jsonStr) throws IOException {
+    public static ArrayNode parseTables(String jsonStr) throws IOException {
         // Initialize ObjectMapper
         ObjectMapper objectMapper = new ObjectMapper();
         List<ObjectNode> aggregatedResult = new ArrayList<>();
@@ -22,7 +22,7 @@ public class TableParser {
         // Extract the "Tables" node
         JsonNode tableValues = inputJson.get("Tables");
 
-        ObjectNode safeJson = (ObjectNode) objectMapper.readTree("{}");
+        ArrayNode safeJson = objectMapper.createArrayNode(); // Correctly initialize as ArrayNode
 
         if (tableValues != null && !tableValues.isNull()) {
 
@@ -52,11 +52,8 @@ public class TableParser {
                 resultArray.add(tableNode);
             });
 
-            ObjectNode jsonObject = objectMapper.createObjectNode();
-
             // Add the list to the JSON object with the key "key"
-            jsonObject.set("tables", objectMapper.valueToTree(resultArray));
-            return jsonObject;
+            return objectMapper.valueToTree(resultArray);
         }else {
             // when null is occured
             return safeJson;
