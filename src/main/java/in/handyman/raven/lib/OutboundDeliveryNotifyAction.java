@@ -7,11 +7,11 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.agadia.outbound.delivery.adapters.OutboundAdapter;
+import in.handyman.raven.lib.agadia.outbound.delivery.adapters.OutboundAdapterElv;
 import in.handyman.raven.lib.agadia.outbound.delivery.adapters.OutboundAdapterProduct;
 import in.handyman.raven.lib.agadia.outbound.delivery.entity.TableInputQuerySet;
 import in.handyman.raven.lib.model.OutboundDeliveryNotify;
 import in.handyman.raven.util.CommonQueryUtil;
-import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -35,14 +35,13 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
 
     private final Logger log;
     private final OutboundDeliveryNotify outboundDeliveryNotify;
-    private final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-    final ObjectMapper MAPPER = new ObjectMapper();
     private final Marker aMarker;
-    String deliveryNotifyUrl;
-    String appId;
-    String appKeyId;
+    private final String deliveryNotifyUrl;
+    private final String appId;
+    private final String appKeyId;
     private final OutboundAdapter outboundAdapter;
     private final OutboundAdapterProduct outboundAdapterProduct;
+    private final OutboundAdapterElv outboundAdapterElv;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public OutboundDeliveryNotifyAction(final ActionExecutionAudit action, final Logger log,
@@ -55,6 +54,7 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
         this.deliveryNotifyUrl = action.getContext().get("doc.delivery.notify.url");
         this.outboundAdapter = new OutboundAdapter(log, objectMapper, action);
         this.outboundAdapterProduct = new OutboundAdapterProduct(log, objectMapper, action);
+        this.outboundAdapterElv = new OutboundAdapterElv(log, objectMapper, action);
         this.aMarker = MarkerFactory.getMarker(" OutboundDeliveryNotify:" + this.outboundDeliveryNotify.getName());
     }
 
@@ -84,7 +84,6 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
                 String response = doOutboundApiCall(tableInputQuerySet.getOutboundCondition(), tableInputQuerySet);
                 log.info("Response {} for Outbound Delivery Notification Action", response);
 
-
             });
 
         } catch (Exception ex) {
@@ -105,10 +104,11 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
             case "Agadia":
                 response = this.outboundAdapter.requestApiCaller(tableInputQuerySet);
                 break;
-            case "Product":
-                response = this.outboundAdapterProduct.requestApiCaller(tableInputQuerySet);
+            case "ELV":
+                response = this.outboundAdapterElv.requestApiCaller(tableInputQuerySet);
                 break;
-
+            default:
+                response = this.outboundAdapterProduct.requestApiCaller(tableInputQuerySet);
         }
         return response;
 

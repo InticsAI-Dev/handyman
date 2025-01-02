@@ -67,7 +67,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         radonKvpExtractionRequest.setActionId(actionId);
-        radonKvpExtractionRequest.setProcess(PROCESS_NAME);
+        radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setPrompt(prompt);

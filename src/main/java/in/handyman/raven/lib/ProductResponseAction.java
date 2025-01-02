@@ -201,7 +201,18 @@ public class ProductResponseAction implements IActionExecution {
                 return request;
 
 
-            } else {
+            }  else if (Objects.equals(feature, "OUTBOUND_ASIS")){
+
+                URL url = new URL(baseUrl +"paginationOutbound/"+ transactionId + "/outbound-file-index"+ "?tenantId=" + tenantId);
+                log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
+                request = new Request.Builder().url(url)
+                        .addHeader("accept", "*/*")
+                        .addHeader("Authorization", "Bearer " + authToken)
+                        .addHeader("Content-Type", "application/json")
+                        .post(requestBody)
+                        .build();
+
+            }else {
                 URL url = new URL(baseUrl + "response/featureResponse/" + transactionId + "/" + originId + "/" + feature + "?tenantId=" + tenantId);
                 log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
                 request = new Request.Builder().url(url)
