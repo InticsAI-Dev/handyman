@@ -56,7 +56,7 @@ public class LlmJsonParserAction implements IActionExecution {
   }
 
   @Override
-  public void execute() throws Exception {
+  public void execute() {
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
@@ -113,227 +113,252 @@ public class LlmJsonParserAction implements IActionExecution {
             }
           }else if(Objects.equals(inputTable.getProcess(), "TEXT_EXTRACTION")) {
 
-              final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
-                      "(created_on,created_user_id, last_updated_on, last_updated_user_id, response, paper_no, " +
-                      "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                      "image_dpi, image_height, image_width) "
-                      + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
-              log.info("\n text parsing started for {}:\n", inputTable.getProcess());
-              ObjectMapper textParser = new ObjectMapper();
-              String finalResult = "";
-
-
-              ObjectNode resultWrapper = null;
-              if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
-                  TextParser lineParser = textParser.readValue(jsonResponse, TextParser.class);
-                  List<ObjectNode> aggregatedResult = new ArrayList<>();
-
-
-                  lineParser.getLines().forEach(item -> {
-                      // Create an ObjectNode for the bounding box
-                      ObjectNode boundingBox = objectMapper.createObjectNode();
-                      boundingBox.put("x", 0);
-                      boundingBox.put("y", 0);
-                      boundingBox.put("width", 0);
-                      boundingBox.put("height", 0);
-
-                      // Create an ObjectNode for the content
-                      ObjectNode contentNode = objectMapper.createObjectNode();
-                      contentNode.put("text", item.getContent());
-                      contentNode.put("confidence", 0.0F);
-                      contentNode.set("boundingBox", boundingBox);
-
-                      // Add the contentNode to the aggregatedResult list
-                      aggregatedResult.add(contentNode);
-                  });
-                  resultWrapper = objectMapper.createObjectNode();
-                  ArrayNode arrayNode = objectMapper.valueToTree(aggregatedResult);
-
-                  finalResult= resultWrapper.set("textLine", arrayNode).toString();
-              } else {
-                  log.info("input is NULL for {}", inputTable.getProcess());
-                 finalResult="{}"; // Set an empty array to "textLine"
-              }
-
-
-              handle.createUpdate(insertQueryText)
-                      .bind(0, inputTable.getCreatedOn())           // created_on
-                      .bind(1, inputTable.getTenantId())       // created_user_id
-                      .bind(2, inputTable.getCreatedOn())       // last_updated_on
-                      .bind(3, inputTable.getTenantId())   // last_updated_user_id
-                      .bind(4, finalResult)             // content
-                      .bind(5, inputTable.getPaperNo())             // paper_no
-                      .bind(6, inputTable.getOriginId())            // origin_id
-                      .bind(7, inputTable.getGroupId())             // group_id
-                      .bind(8, inputTable.getTenantId())            // tenant_id
-                      .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
-                      .bind(10, inputTable.getBatchId())            // batch_id
-                      .bind(11, inputTable.getModelRegistry())      // model_registry
-                      .bind(12, inputTable.getImageDpi())           // image_dpi
-                      .bind(13, inputTable.getImageHeight())        // image_height
-                      .bind(14, inputTable.getImageWidth())         // image_width
-                      .execute();
-
-
-          }else if(Objects.equals(inputTable.getProcess(), "KVP_EXTRACTION")){
-
-            final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
-                    "(created_on,created_user_id, last_updated_on, last_updated_user_id, kvp_results, paper_no, " +
-                    "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                    "image_dpi, image_height, image_width) "
-                    + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
-            log.info("\n kvp parsing started for {}:\n", inputTable.getProcess());
-            String finalResult = "";
-
-              if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
-                  SORParser parser = new SORParser(action);
-                  parser.parseJSON(jsonResponse);
-
-                  List<ObjectNode> aggregatedResult = new ArrayList<>();
-
-                  parser.getSorItems().forEach((sorItem, value) -> {
-                      ObjectNode boundingBox = objectMapper.createObjectNode();
-                      boundingBox.put("x", 0);
-                      boundingBox.put("y", 0);
-                      boundingBox.put("width", 0);
-                      boundingBox.put("height", 0);
-
-                      // Create an ObjectNode for the content
-                      ObjectNode contentNode = objectMapper.createObjectNode();
-                      contentNode.put("key", sorItem);
-                      contentNode.put("value", value);
-                      contentNode.put("confidence", 0.0F);
-                      contentNode.set("boundingBox", boundingBox);
-
-                      // Add the contentNode to the aggregatedResult list
-                      aggregatedResult.add(contentNode);
-                  });
-
-                  ObjectNode formElementsMapper = objectMapper.createObjectNode();
-                  ObjectNode form = objectMapper.createObjectNode();
-
-                  ArrayNode arrayNode = objectMapper.valueToTree(aggregatedResult);
-
-                  formElementsMapper.set("formElements", arrayNode);
-                  form.set("form", formElementsMapper);
-                  finalResult = form.toString();
-              }else {
-                  log.info("input is NULL for {}", inputTable.getProcess());
-                  finalResult="{}"; // Set an empty array to "textLine"
-              }
-
-
-
-            handle.createUpdate(insertQueryText)
-                      .bind(0, inputTable.getCreatedOn())           // created_on
-                      .bind(1, inputTable.getTenantId())       // created_user_id
-                      .bind(2, inputTable.getCreatedOn())       // last_updated_on
-                      .bind(3, inputTable.getTenantId())   // last_updated_user_id
-                      .bind(4, finalResult)          // value
-                      .bind(5, inputTable.getPaperNo())             // paper_no
-                      .bind(6, inputTable.getOriginId())            // origin_id
-                      .bind(7, inputTable.getGroupId())             // group_id
-                      .bind(8, inputTable.getTenantId())            // tenant_id
-                      .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
-                      .bind(10, inputTable.getBatchId())            // batch_id
-                      .bind(11, inputTable.getModelRegistry())      // model_registry
-                      .bind(12, inputTable.getImageDpi())           // image_dpi
-                      .bind(13, inputTable.getImageHeight())        // image_height
-                      .bind(14, inputTable.getImageWidth())         // image_width
-                      .execute();
-
-          }else if(Objects.equals(inputTable.getProcess(), "TABLE_EXTRACTION")){
-
-            final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
-                    "(created_on,created_user_id, last_updated_on, last_updated_user_id, table_response, paper_no, " +
-                    "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                    "image_dpi, image_height, image_width) "
-                    + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
-
-            log.info("\n Table parsing started for {}:\n", inputTable.getProcess());
-
-            JsonNode tables = TableParser.parseTables(safeJsonResponse);
-
-
-              handle.createUpdate(insertQueryText)
-                      .bind(0, inputTable.getCreatedOn())       // created_on
-                      .bind(1, inputTable.getTenantId())        // created_user_id
-                      .bind(2, inputTable.getCreatedOn())       // last_updated_on
-                      .bind(3, inputTable.getTenantId())        // last_updated_user_id
-                      .bind(4, tables.toString())                          // response
-                      .bind(5, inputTable.getPaperNo())             // paper_no
-                      .bind(6, inputTable.getOriginId())            // origin_id
-                      .bind(7, inputTable.getGroupId())             // group_id
-                      .bind(8, inputTable.getTenantId())            // tenant_id
-                      .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
-                      .bind(10, inputTable.getBatchId())            // batch_id
-                      .bind(11, inputTable.getModelRegistry())      // model_registry
-                      .bind(12, inputTable.getImageDpi())           // image_dpi
-                      .bind(13, inputTable.getImageHeight())        // image_height
-                      .bind(14, inputTable.getImageWidth())         // image_width
-                      .execute();
-
-          }
-          else if(Objects.equals(inputTable.getProcess(), "CHECKBOX_EXTRACTION")){
-
-              String finalResult = "";
-              final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
-                      "(created_on,created_user_id, last_updated_on, last_updated_user_id, response, paper_no, " +
-                      "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                      "image_dpi, image_height, image_width) "
-                      + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
-
-              log.info("\n Checkbox parsing started for {}:\n", inputTable.getProcess());
-
               try {
+
+                  final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                          "(created_on,created_user_id, last_updated_on, last_updated_user_id, response, paper_no, " +
+                          "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
+                          "image_dpi, image_height, image_width) "
+                          + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
+                  log.info("\n text parsing started for {}:\n", inputTable.getProcess());
+                  ObjectMapper textParser = new ObjectMapper();
+                  String finalResult = "";
+
+
+                  ObjectNode resultWrapper = null;
                   if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
+                      TextParser lineParser = textParser.readValue(jsonResponse, TextParser.class);
+                      List<ObjectNode> aggregatedResult = new ArrayList<>();
 
-                      if (!Objects.equals(jsonResponse, "[]")) {
 
-                          if (jsonResponse.trim().startsWith("{")) {
-                              try {
-                                  // Try parsing it as a JSONObject
-                                  JsonNode jsonObject = objectMapper.readTree(jsonResponse);
-                                  log.info("It is a json object");
-                                  finalResult = processJson(jsonObject);
+                      lineParser.getLines().forEach(item -> {
+                          // Create an ObjectNode for the bounding box
+                          ObjectNode boundingBox = objectMapper.createObjectNode();
+                          boundingBox.put("x", 0);
+                          boundingBox.put("y", 0);
+                          boundingBox.put("width", 0);
+                          boundingBox.put("height", 0);
 
-                              } catch (Exception e) {
-                                  log.error("Error in processing the {}", inputTable.getProcess(), e);
-                                  throw new HandymanException("Error in processing the ", e, action);
+                          // Create an ObjectNode for the content
+                          ObjectNode contentNode = objectMapper.createObjectNode();
+                          contentNode.put("text", item.getContent());
+                          contentNode.put("confidence", 0.0F);
+                          contentNode.set("boundingBox", boundingBox);
+
+                          // Add the contentNode to the aggregatedResult list
+                          aggregatedResult.add(contentNode);
+                      });
+                      resultWrapper = objectMapper.createObjectNode();
+                      ArrayNode arrayNode = objectMapper.valueToTree(aggregatedResult);
+
+                      finalResult = resultWrapper.set("textLine", arrayNode).toString();
+                  } else {
+                      log.info("input is NULL for {}", inputTable.getProcess());
+                      finalResult = "{}"; // Set an empty array to "textLine"
+                  }
+
+
+                  handle.createUpdate(insertQueryText)
+                          .bind(0, inputTable.getCreatedOn())           // created_on
+                          .bind(1, inputTable.getTenantId())       // created_user_id
+                          .bind(2, inputTable.getCreatedOn())       // last_updated_on
+                          .bind(3, inputTable.getTenantId())   // last_updated_user_id
+                          .bind(4, finalResult)             // content
+                          .bind(5, inputTable.getPaperNo())             // paper_no
+                          .bind(6, inputTable.getOriginId())            // origin_id
+                          .bind(7, inputTable.getGroupId())             // group_id
+                          .bind(8, inputTable.getTenantId())            // tenant_id
+                          .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
+                          .bind(10, inputTable.getBatchId())            // batch_id
+                          .bind(11, inputTable.getModelRegistry())      // model_registry
+                          .bind(12, inputTable.getImageDpi())           // image_dpi
+                          .bind(13, inputTable.getImageHeight())        // image_height
+                          .bind(14, inputTable.getImageWidth())         // image_width
+                          .execute();
+
+              }catch (Exception e) {
+                  log.error("Error in processing the {}", inputTable.getProcess(), e);
+                  HandymanException handymanException = new HandymanException(e);
+                  HandymanException.insertException("Error in processing the ", handymanException, action);
+
+              }
+
+          }else if(Objects.equals(inputTable.getProcess(), "KVP_EXTRACTION")) {
+              try{
+                    final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                          "(created_on,created_user_id, last_updated_on, last_updated_user_id, kvp_results, paper_no, " +
+                          "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
+                          "image_dpi, image_height, image_width) "
+                          + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
+                      log.info("\n kvp parsing started for {}:\n", inputTable.getProcess());
+                      String finalResult = "";
+
+                      if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
+                          SORParser parser = new SORParser(action);
+                          parser.parseJSON(jsonResponse);
+
+                          List<ObjectNode> aggregatedResult = new ArrayList<>();
+
+                          parser.getSorItems().forEach((sorItem, value) -> {
+                              ObjectNode boundingBox = objectMapper.createObjectNode();
+                              boundingBox.put("x", 0);
+                              boundingBox.put("y", 0);
+                              boundingBox.put("width", 0);
+                              boundingBox.put("height", 0);
+
+                              // Create an ObjectNode for the content
+                              ObjectNode contentNode = objectMapper.createObjectNode();
+                              contentNode.put("key", sorItem);
+                              contentNode.put("value", value);
+                              contentNode.put("confidence", 0.0F);
+                              contentNode.set("boundingBox", boundingBox);
+
+                              // Add the contentNode to the aggregatedResult list
+                              aggregatedResult.add(contentNode);
+                          });
+
+                          ObjectNode formElementsMapper = objectMapper.createObjectNode();
+                          ObjectNode form = objectMapper.createObjectNode();
+
+                          ArrayNode arrayNode = objectMapper.valueToTree(aggregatedResult);
+
+                          formElementsMapper.set("formElements", arrayNode);
+                          form.set("form", formElementsMapper);
+                          finalResult = form.toString();
+                    } else {
+                      log.info("input is NULL for {}", inputTable.getProcess());
+                      finalResult = "{}"; // Set an empty array to "textLine"
+                    }
+
+
+                  handle.createUpdate(insertQueryText)
+                          .bind(0, inputTable.getCreatedOn())           // created_on
+                          .bind(1, inputTable.getTenantId())       // created_user_id
+                          .bind(2, inputTable.getCreatedOn())       // last_updated_on
+                          .bind(3, inputTable.getTenantId())   // last_updated_user_id
+                          .bind(4, finalResult)          // value
+                          .bind(5, inputTable.getPaperNo())             // paper_no
+                          .bind(6, inputTable.getOriginId())            // origin_id
+                          .bind(7, inputTable.getGroupId())             // group_id
+                          .bind(8, inputTable.getTenantId())            // tenant_id
+                          .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
+                          .bind(10, inputTable.getBatchId())            // batch_id
+                          .bind(11, inputTable.getModelRegistry())      // model_registry
+                          .bind(12, inputTable.getImageDpi())           // image_dpi
+                          .bind(13, inputTable.getImageHeight())        // image_height
+                          .bind(14, inputTable.getImageWidth())         // image_width
+                          .execute();
+              } catch (Exception e) {
+                  log.error("Error in processing the {}", inputTable.getProcess(), e);
+                  HandymanException handymanException = new HandymanException(e);
+                  HandymanException.insertException("Error in processing the ", handymanException, action);
+
+              }
+
+          }else if(Objects.equals(inputTable.getProcess(), "TABLE_EXTRACTION")) {
+
+              try{
+                  final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                          "(created_on,created_user_id, last_updated_on, last_updated_user_id, table_response, paper_no, " +
+                          "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
+                          "image_dpi, image_height, image_width) "
+                          + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
+
+                  log.info("\n Table parsing started for {}:\n", inputTable.getProcess());
+
+                  JsonNode tables = TableParser.parseTables(safeJsonResponse);
+
+
+                  handle.createUpdate(insertQueryText)
+                          .bind(0, inputTable.getCreatedOn())       // created_on
+                          .bind(1, inputTable.getTenantId())        // created_user_id
+                          .bind(2, inputTable.getCreatedOn())       // last_updated_on
+                          .bind(3, inputTable.getTenantId())        // last_updated_user_id
+                          .bind(4, tables.toString())                          // response
+                          .bind(5, inputTable.getPaperNo())             // paper_no
+                          .bind(6, inputTable.getOriginId())            // origin_id
+                          .bind(7, inputTable.getGroupId())             // group_id
+                          .bind(8, inputTable.getTenantId())            // tenant_id
+                          .bind(9, inputTable.getRootPipelineId())     // root_pipeline_id
+                          .bind(10, inputTable.getBatchId())            // batch_id
+                          .bind(11, inputTable.getModelRegistry())      // model_registry
+                          .bind(12, inputTable.getImageDpi())           // image_dpi
+                          .bind(13, inputTable.getImageHeight())        // image_height
+                          .bind(14, inputTable.getImageWidth())         // image_width
+                          .execute();
+
+              }catch (Exception e) {
+                      log.error("Error in processing the {}", inputTable.getProcess(), e);
+                      HandymanException handymanException = new HandymanException(e);
+                      HandymanException.insertException("Error in processing the ", handymanException, action);
+
+              }
+          }
+          else if(Objects.equals(inputTable.getProcess(), "CHECKBOX_EXTRACTION")) {
+
+              try{
+                  String finalResult = "";
+                  final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                          "(created_on,created_user_id, last_updated_on, last_updated_user_id, response, paper_no, " +
+                          "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
+                          "image_dpi, image_height, image_width) "
+                          + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
+
+                  log.info("\n Checkbox parsing started for {}:\n", inputTable.getProcess());
+
+                  try {
+                      if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
+
+                          if (!Objects.equals(jsonResponse, "[]")) {
+
+                              if (jsonResponse.trim().startsWith("{")) {
+                                  try {
+                                      // Try parsing it as a JSONObject
+                                      JsonNode jsonObject = objectMapper.readTree(jsonResponse);
+                                      log.info("It is a json object");
+                                      finalResult = processJson(jsonObject);
+
+                                  } catch (Exception e) {
+                                      log.error("Error in processing the {}", inputTable.getProcess(), e);
+                                      HandymanException handymanException = new HandymanException(e);
+                                      HandymanException.insertException("Error in processing the ", handymanException, action);
+                                  }
+                              } else if (jsonResponse.trim().startsWith("[")) {
+                                  try {
+                                      // Try parsing it as a JSONArray
+                                      ArrayNode jsonArray = (ArrayNode) objectMapper.readTree(jsonResponse);
+                                      log.info("It is a json array");
+                                      finalResult = processJson(jsonArray);
+
+                                  } catch (Exception e) {
+                                      log.error("Error in processing the {}", inputTable.getProcess(), e);
+                                      HandymanException handymanException = new HandymanException(e);
+                                      HandymanException.insertException("Error in processing the ", handymanException, action);
+                                  }
+                              } else {
+                                  log.info("input is NULL for {}", inputTable.getProcess());
+                                  finalResult = "{}";
                               }
-                          } else if (jsonResponse.trim().startsWith("[")) {
-                              try {
-                                  // Try parsing it as a JSONArray
-                                  ArrayNode jsonArray = (ArrayNode) objectMapper.readTree(jsonResponse);
-                                  log.info("It is a json array");
-                                  finalResult = processJson(jsonArray);
 
-                              } catch (Exception e) {
-                                  log.error("Error in processing the {}", inputTable.getProcess(), e);
-                                  throw new HandymanException("Error in processing the ", e, action);
-                              }
                           } else {
                               log.info("input is NULL for {}", inputTable.getProcess());
                               finalResult = "{}";
-                          }
 
+                          }
+                          // Create the output JSON structure
                       } else {
                           log.info("input is NULL for {}", inputTable.getProcess());
                           finalResult = "{}";
-
                       }
-                      // Create the output JSON structure
-                  } else {
-                      log.info("input is NULL for {}", inputTable.getProcess());
-                      finalResult = "{}";
+                  } catch (Exception e) {
+                          log.error("Error in processing the {}", inputTable.getProcess(), e);
+                          HandymanException handymanException = new HandymanException(e);
+                          HandymanException.insertException("Error in processing the ", handymanException, action);
+
                   }
-              } catch (Exception e) {
-                  log.error("Error in processing the {}", inputTable.getProcess(), e);
-                  throw new HandymanException("Error in processing the ", e, action);
-              }
 
 
-              handle.createUpdate(insertQueryText)
+                 handle.createUpdate(insertQueryText)
                       .bind(0, inputTable.getCreatedOn())       // created_on
                       .bind(1, inputTable.getTenantId())        // created_user_id
                       .bind(2, inputTable.getCreatedOn())       // last_updated_on
@@ -350,6 +375,12 @@ public class LlmJsonParserAction implements IActionExecution {
                       .bind(13, inputTable.getImageHeight())        // image_height
                       .bind(14, inputTable.getImageWidth())         // image_width
                       .execute();
+              }catch (Exception e) {
+                  log.error("Error in processing the {}", inputTable.getProcess(), e);
+                  HandymanException handymanException = new HandymanException(e);
+                  HandymanException.insertException("Error in processing the ", handymanException, action);
+
+              }
 
           }
 
