@@ -252,7 +252,7 @@ public class LlmJsonParserAction implements IActionExecution {
 
             log.info("\n Table parsing started for {}:\n", inputTable.getProcess());
 
-            ArrayNode tables = TableParser.parseTables(safeJsonResponse);
+            JsonNode tables = TableParser.parseTables(safeJsonResponse);
 
 
               handle.createUpdate(insertQueryText)

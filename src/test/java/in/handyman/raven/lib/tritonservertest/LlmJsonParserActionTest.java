@@ -18,11 +18,12 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("table_extraction_info.table_extraction_llm_json_parser_audit")
-                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json as response, paper_no,   \n" +
-                        "origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message,  \n" +
-                        "category FROM table_extraction_info.table_extraction_output_audit teoa  \n" +
-                        "where root_pipeline_id =109735;")
+                .outputTable("table_extraction_info.table_extraction_llm_json_parser_109201")
+                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, \n" +
+                        "total_response_json as response, paper_no, origin_id, process_id, action_id, process, group_id, \n" +
+                        "tenant_id, 100000000 as root_pipeline_id, batch_id, model_registry, status, stage, message,category \n" +
+                        "FROM table_extraction_info.table_extraction_output_audit teoa   \n" +
+                        "where root_pipeline_id =109735 limit 1;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

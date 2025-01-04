@@ -13,10 +13,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableParser {
 
-    public static ArrayNode parseTables(String jsonStr) throws IOException {
+    public static ObjectNode parseTables(String jsonStr) throws IOException {
         // Initialize ObjectMapper
         ObjectMapper objectMapper = new ObjectMapper();
-        List<ObjectNode> aggregatedResult = new ArrayList<>();
+        ObjectNode objectNode = objectMapper.createObjectNode();
+
+
         // Read the JSON string into JsonNode
         JsonNode inputJson = objectMapper.readTree(jsonStr);
         // Extract the "Tables" node
@@ -51,12 +53,14 @@ public class TableParser {
 
                 resultArray.add(tableNode);
             });
+            objectMapper.valueToTree(resultArray);
+
 
             // Add the list to the JSON object with the key "key"
-            return objectMapper.valueToTree(resultArray);
+            return objectNode.set("tables", resultArray);
         }else {
             // when null is occured
-            return safeJson;
+            return objectNode.set("tables", safeJson);
         }
 
     }
