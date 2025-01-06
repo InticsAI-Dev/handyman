@@ -21,7 +21,7 @@ public class LlmJsonParserActionTest {
                 .outputTable("text_extraction.text_extraction_llm_json_parser_audit")
                 .querySet("SELECT total_response_json as response, paper_no, 'ORIGIN-76499' as origin_id, group_id, tenant_id, root_pipeline_id,  \n" +
                         "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process  \n" +
-                        "from text_extraction.text_extraction_output_audit teia  where origin_id ='ORIGIN-7651';")
+                        "from text_extraction.text_extraction_output_audit teia;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
