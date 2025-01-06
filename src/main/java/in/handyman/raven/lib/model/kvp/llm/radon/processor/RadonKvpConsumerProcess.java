@@ -217,12 +217,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
             } else {
                 // Handle the case where the expected markers are not found
-                log.info("Input does not contain the required ```json``` markers.");
-                JsonNode rootNode = objectMapper.readTree(jsonResponse);
-                return rootNode;
+                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
             }
         } catch (Exception e) {
-            throw new IllegalArgumentException("Error occurred");
+            e.printStackTrace();
+            return null;
         }
     }
 

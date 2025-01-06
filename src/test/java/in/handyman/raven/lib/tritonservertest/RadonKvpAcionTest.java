@@ -16,9 +16,9 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("http://192.168.10.241:7700/v2/models/krypton-service/versions/1/infer")
                 .outputTable("kvp_extraction.kvp_extraction_output_audit")
-                .querySet(" SELECT input_file_path, user_prompt, 'you are a Copyist. copy every line in the docmuent and convert it into a json structure' as system_prompt ,process, paper_no, 'ORIGIN-19999' as origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name  \n" +
-                        "from text_extraction.text_extraction_input_audit teia  \n" +
-                        "where root_pipeline_id =178217 limit 1;\n")
+                .querySet("SELECT input_file_path, user_prompt, 'you are a Copyist. copy every line in the docmuent and convert it into a json structure' as system_prompt ,process, paper_no, 'ORIGIN-19999' as origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name   \n" +
+                        "from text_extraction.text_extraction_input_audit teia   \n" +
+                        "where root_pipeline_id =178806")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
