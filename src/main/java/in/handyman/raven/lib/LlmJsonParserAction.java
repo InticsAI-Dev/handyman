@@ -109,6 +109,7 @@ public class LlmJsonParserAction implements IActionExecution {
                     .bind(16, inputTable.getImageHeight())
                     .bind(17, inputTable.getImageWidth())
                     .execute();
+              log.info("\n insert processing for {}:\n", inputTable.getProcess());
 
             }
           }else if(Objects.equals(inputTable.getProcess(), "TEXT_EXTRACTION")) {
@@ -175,6 +176,7 @@ public class LlmJsonParserAction implements IActionExecution {
                           .bind(13, inputTable.getImageHeight())        // image_height
                           .bind(14, inputTable.getImageWidth())         // image_width
                           .execute();
+                  log.info("\n insert processing for {}:\n", inputTable.getProcess());
 
               }catch (Exception e) {
                   log.error("Error in processing the {}", inputTable.getProcess(), e);
@@ -248,6 +250,9 @@ public class LlmJsonParserAction implements IActionExecution {
                           .bind(13, inputTable.getImageHeight())        // image_height
                           .bind(14, inputTable.getImageWidth())         // image_width
                           .execute();
+
+              log.info("\n insert processing for {}:\n", inputTable.getProcess());
+
               } catch (Exception e) {
                   log.error("Error in processing the {}", inputTable.getProcess(), e);
                   HandymanException handymanException = new HandymanException(e);
@@ -286,6 +291,8 @@ public class LlmJsonParserAction implements IActionExecution {
                           .bind(13, inputTable.getImageHeight())        // image_height
                           .bind(14, inputTable.getImageWidth())         // image_width
                           .execute();
+
+                  log.info("\n insert processing for {}:\n", inputTable.getProcess());
 
               }catch (Exception e) {
                       log.error("Error in processing the {}", inputTable.getProcess(), e);
@@ -350,6 +357,7 @@ public class LlmJsonParserAction implements IActionExecution {
                           log.info("input is NULL for {}", inputTable.getProcess());
                           finalResult = "{}";
                       }
+
                   } catch (Exception e) {
                           log.error("Error in processing the {}", inputTable.getProcess(), e);
                           HandymanException handymanException = new HandymanException(e);
@@ -375,6 +383,9 @@ public class LlmJsonParserAction implements IActionExecution {
                       .bind(13, inputTable.getImageHeight())        // image_height
                       .bind(14, inputTable.getImageWidth())         // image_width
                       .execute();
+
+                  log.info("\n insert processing for {}:\n", inputTable.getProcess());
+
               }catch (Exception e) {
                   log.error("Error in processing the {}", inputTable.getProcess(), e);
                   HandymanException handymanException = new HandymanException(e);

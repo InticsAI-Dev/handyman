@@ -12,15 +12,12 @@ import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
-import jakarta.json.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -55,7 +52,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String filePath = String.valueOf(entity.getInputFilePath());
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
-        String prompt = entity.getPrompt();
+        String userPrompt = entity.getUserPrompt();
+        String systemPrompt = entity.getSystemPrompt();
         String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
@@ -70,7 +68,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
-        radonKvpExtractionRequest.setPrompt(prompt);
+        radonKvpExtractionRequest.setUserPrompt(userPrompt);
+        radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
@@ -98,7 +97,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, filePath, prompt);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, filePath, userPrompt, systemPrompt);
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
@@ -218,11 +217,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
             } else {
                 // Handle the case where the expected markers are not found
-                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+                log.info("Input does not contain the required ```json``` markers.");
+                JsonNode rootNode = objectMapper.readTree(jsonResponse);
+                return rootNode;
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new IllegalArgumentException("Error occurred");
         }
     }
 
