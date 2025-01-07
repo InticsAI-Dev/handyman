@@ -138,7 +138,7 @@ public class LlmJsonParserAction implements IActionExecution {
 
                       List<TextLineItems> lines = lineParser.getLines();
                       lines.sort(Comparator.comparing(TextLineItems::getLineNumber)); // comparator is used to order it with getLineNumber value
-                      lineParser.getLines().forEach(item -> {
+                      lines.forEach(item -> {
                           // Create an ObjectNode for the bounding box
                           Bbox bBox = new Bbox();
                           bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
