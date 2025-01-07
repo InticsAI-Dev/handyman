@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import in.handyman.raven.lib.model.jsonParser.Bbox;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,34 +33,30 @@ public class TableParser {
             List<Table> tables = objectMapper.readValue(tableValues.toString(), new TypeReference<List<Table>>() {
             });
 
-            ArrayNode resultArray = objectMapper.createArrayNode();
+            List<TableContentNode> resultArray = new ArrayList<>();  // List to hold the results
 
             // AtomicInteger to keep track of the index
 
             AtomicInteger i = new AtomicInteger(0); // Define AtomicInteger outside the loop
 
             tables.forEach(s -> {
-                ObjectNode boundingBox = objectMapper.createObjectNode();
-                boundingBox.put("x", 0);
-                boundingBox.put("y", 0);
-                boundingBox.put("width", 0);
-                boundingBox.put("height", 0);
+                Bbox bBox = new Bbox();
+                bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
-                ObjectNode tableNode = objectMapper.createObjectNode();
-                tableNode.put("TableId", i.getAndIncrement());
-                tableNode.set("Rows", objectMapper.valueToTree(s.getRows()));
-                tableNode.put("confidence", 0.0F);
-                tableNode.set("boundingBox", boundingBox);
-
-                resultArray.add(tableNode);
+                TableContentNode tableContent = new TableContentNode();
+                tableContent.setTableId(i.getAndIncrement());
+                tableContent.setRows(objectMapper.valueToTree(s.getRows()));
+                tableContent.setConfidence(0.0F);
+                tableContent.setBBox(bBox);
+                resultArray.add(tableContent);
             });
-            objectMapper.valueToTree(resultArray);
+            JsonNode finalResult = objectMapper.valueToTree(resultArray);
 
 
             // Add the list to the JSON object with the key "key"
-            return objectNode.set("tables", resultArray);
+            return objectNode.set("tables", finalResult);
         }else {
-            // when null is occured
+            // when null is occurred
             return objectNode.set("tables", safeJson);
         }
 
