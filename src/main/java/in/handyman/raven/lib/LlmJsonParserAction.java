@@ -135,6 +135,7 @@ public class LlmJsonParserAction implements IActionExecution {
                       TextParser lineParser = textParser.readValue(jsonResponse, TextParser.class);
                       List<ContentNode> aggregatedResult = new ArrayList<>(); // creating list of content object
 
+
                       List<TextLineItems> lines = lineParser.getLines();
                       lines.sort(Comparator.comparing(TextLineItems::getLineNumber)); // comparator is used to order it with getLineNumber value
                       lineParser.getLines().forEach(item -> {
