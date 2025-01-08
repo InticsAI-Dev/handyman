@@ -384,8 +384,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     private String repairJson(String jsonString) {
-        // Remove extra double quotes inside values
-        jsonString = removeExtraQuotes(jsonString);
 
         // Ensure keys and string values are enclosed in double quotes
         jsonString = addMissingQuotes(jsonString);
@@ -399,18 +397,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         return jsonString;
     }
 
-    private String removeExtraQuotes(String jsonString) {
-        // Remove extra double quotes inside values
-        jsonString = jsonString.replaceAll("(?<=:)(\"+)(.*?)(\"+)(?=,|\\s*})|(?<=:)(\"+)(.*?)(\"+)(?=\\s*\\])", ":\"$2\"");
+    private String addMissingQuotes(String jsonString) {
+        // Ensure keys are enclosed in double quotes
+        jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
+
+        // Ensure string values are enclosed in double quotes
+        // This regex matches values that are not already enclosed in quotes
+        jsonString = jsonString.replaceAll("(?<=:)\\s*([^\"\\s,\\n}\\]]+)(?=\\s*(,|}|\\n|\\]))", "\"$1\"");
+
         return jsonString;
     }
 
-    private String addMissingQuotes(String jsonString) {
-        // Ensure keys and string values are enclosed in double quotes
-        jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
-        jsonString = jsonString.replaceAll("(?<=:)\\s*([^,\n}]+)(?=\\s*(,|}|\\n))", "\"$1\"");
-        return jsonString;
-    }
 
     private String balanceBracesAndBrackets(String jsonString) {
         // Balance braces and brackets

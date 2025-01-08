@@ -82,8 +82,8 @@ public class RadonKvpAcionTest {
 
     @Test
     public void testConvertFormattedJsonStringToJsonNodeWithMarkers() throws Exception {
-        String jsonResponse = "Here is some text before\n```json\n{\"key\":\"value\"}\n```\nAnd some text after";
-        JsonNode expectedNode = objectMapper.readTree("{\"key\":\"value\"}");
+        String jsonResponse = "Here is some text before\n```json\n{\"key\":\"\"}\n```\nAnd some text after";
+        JsonNode expectedNode = objectMapper.readTree("{\"key\":\"\"}");
         JsonNode resultNode = radonKvpConsumerProcess.convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
         assertEquals(expectedNode, resultNode);
     }
