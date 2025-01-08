@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.jsonParser.Text;
 
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import in.handyman.raven.lib.model.jsonParser.Bbox;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,6 +15,8 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+
+@JsonPropertyOrder({"content", "confidence", "bBox"})
 public class ContentNode {
     private String content;
     private double confidence;

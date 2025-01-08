@@ -18,10 +18,9 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("text_extraction.text_extraction_llm_json_parser_178542")
-                .querySet("SELECT total_response_json as response, paper_no, 'ORIGIN-76499' as origin_id, group_id, tenant_id, root_pipeline_id,  \n" +
-                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process from text_extraction.text_extraction_output_audit teia \n" +
-                        "where root_pipeline_id=180025;")
+                .outputTable("text_extraction.text_extraction_llm_json_parser_177608")
+                .querySet("SELECT total_response_json as response, paper_no, origin_id, group_id, tenant_id, root_pipeline_id,  \n" +
+                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process from text_extraction.text_extraction_output_177608 teia \n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
