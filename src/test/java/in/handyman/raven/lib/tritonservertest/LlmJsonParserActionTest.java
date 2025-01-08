@@ -18,10 +18,10 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("text_extraction.text_extraction_llm_json_parser_audit")
+                .outputTable("text_extraction.text_extraction_llm_json_parser_109006")
                 .querySet("SELECT total_response_json as response, paper_no, origin_id as origin_id, group_id, tenant_id,22 as root_pipeline_id,  \n" +
                         "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process  \n" +
-                        "from text_extraction.text_extraction_output_audit where root_pipeline_id=180069;")
+                        "from text_extraction.text_extraction_output_109006;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -80,11 +80,11 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("table_extraction_info.table_extraction_llm_json_parser_audit")
+                .outputTable("table_extraction_info.table_extraction_llm_json_parser_109201")
                 .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, \n" +
-                        "total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, \n" +
-                        "root_pipeline_id, batch_id, model_registry, status, stage, message, category, request, response, endpoint\n" +
-                        "FROM table_extraction_info.table_extraction_output_audit where root_pipeline_id =180069 ;")
+                        "total_response_json as response, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, \n" +
+                        "root_pipeline_id, batch_id, model_registry, status, stage, message, category\n" +
+                        "FROM table_extraction_info.table_extraction_output_audit where root_pipeline_id=109587 and total_response_json <> 'null';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

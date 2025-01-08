@@ -5,15 +5,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import in.handyman.raven.lib.model.jsonParser.Bbox;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class Parser {
+public class CheckboxParser {
     public static String processJson (JsonNode jsonElement) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode finalResult = objectMapper.createObjectNode();
         ObjectNode output = null;
         if (jsonElement.isObject()) {
             // Iterate over the keys of the JSONObject
@@ -27,41 +28,38 @@ public class Parser {
         } else if (jsonElement.isArray()) {
             // If the element is a JSONArray, iterate through its elements
             output = objectMapper.createObjectNode();
-            ArrayNode selectionElements = objectMapper.createArrayNode();
-
+            List<CheckboxContentNode> selectionElements = new ArrayList<>();
+            // parsing the values of array with pojo
             List<DataParser> dataParser = objectMapper.readValue(jsonElement.toString(), new TypeReference<List<DataParser>>() {
             });
 
-
             dataParser.forEach(row -> {
-                ObjectNode selectionElement = objectMapper.createObjectNode();
-                selectionElement.put("Question", row.getQuestion());
+                // creating an empty list of object
+                List<CheckboxStatus> optionsArray = new ArrayList<>();
 
-                // Add options
-                ArrayNode optionsArray = objectMapper.createArrayNode();
                 row.getOptions().forEach(option -> {
-                    ObjectNode optionObject = objectMapper.createObjectNode();
-                    optionObject.put("OptionText", option.getOptionText());
-                    optionObject.put("Status", option.getStatus());
-                    optionsArray.add(optionObject);
+
+                    CheckboxStatus checkboxStatus = new CheckboxStatus();
+                    checkboxStatus.setOptionText(option.getOptionText());
+                    checkboxStatus.setStatus(option.getStatus());
+                    optionsArray.add(checkboxStatus);
                 });
-                selectionElement.put("Options", optionsArray);
 
-                // Add boundingBox
-                ObjectNode boundingBox = objectMapper.createObjectNode();
-                boundingBox.put("x", 0);
-                boundingBox.put("y", 0);
-                boundingBox.put("width", 0);
-                boundingBox.put("height", 0);
-                selectionElement.put("boundingBox", boundingBox);
 
-                // Add confidence
-                selectionElement.put("confidence", 0);
+                Bbox bBox = new Bbox();
+                bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
-                selectionElements.add(selectionElement);
+                CheckboxContentNode checkboxContentNode = new CheckboxContentNode();
+                checkboxContentNode.setBBox(bBox);
+                checkboxContentNode.setConfidence(0.0F);
+                checkboxContentNode.setOptions(optionsArray);
+                checkboxContentNode.setQuestion(row.getQuestion());
+
+                selectionElements.add(checkboxContentNode);
             });
 
-            output.set("selectionElements", selectionElements);
+            ArrayNode selectionElementsArrayNode = objectMapper.valueToTree(selectionElements);
+            output.set("selectionElements", selectionElementsArrayNode);
 
         }
         return output.toString();

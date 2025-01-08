@@ -158,6 +158,7 @@ public class ProductResponseAction implements IActionExecution {
                                 .status("COMPLETED")
                                 .message("alchemy product response completed for origin_id - " + originId)
                                 .batchId(entity.getBatchId())
+                                .inboundIransactionId(entity.getInboundIransactionId())
                                 .build());
                     }
                 } else {
@@ -174,6 +175,7 @@ public class ProductResponseAction implements IActionExecution {
                             .status("FAILED")
                             .message("alchemy product response failed for origin_id - " + originId)
                             .batchId(entity.getBatchId())
+                            .inboundIransactionId(entity.getInboundIransactionId())
                             .build());
                 }
             } catch (Exception e) {
@@ -230,6 +232,7 @@ public class ProductResponseAction implements IActionExecution {
         private String baseUrl;
         private String feature;
         private String batchId;
+        private String inboundIransactionId;
 
         @Override
         public List<Object> getRowData() {
@@ -255,10 +258,11 @@ public class ProductResponseAction implements IActionExecution {
         private String triggeredUrl;
         private String feature;
         private String batchId;
+        private String inboundIransactionId;
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId, this.inboundIransactionId).collect(Collectors.toList());
         }
     }
 }
