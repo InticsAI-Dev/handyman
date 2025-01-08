@@ -224,8 +224,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         radonKvpExtractionRequest.setProcess(PROCESS_NAME);
         radonKvpExtractionRequest.setInputFilePath(entity.getFilePath());
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
-        radonKvpExtractionRequest.setUserPrompt(entity.getPrompt());
-        radonKvpExtractionRequest.setSystemPrompt("");
+        radonKvpExtractionRequest.setUserPrompt(entity.getUserPrompt());
+        radonKvpExtractionRequest.setSystemPrompt(entity.getSystemPrompt());
         radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
 

@@ -17,8 +17,7 @@ class AlchemyInfoActionTest {
                 .tenantId(1L)
                 .condition(true)
                 .name("alchemy info action")
-                .querySet("SELECT so.tenant_id::bigint, so.origin_id, ampq.root_pipeline_id, so.group_id, at.file_path from info.source_of_origin so join info.asset at on so.file_id = at.file_id\n" +
-                        "            join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = so.origin_id;")
+                .querySet("SELECT 1 as tenant_id, 'ORIGIN-1' as origin_id, '1' as root_pipeline_id, 1 as group_id, '/home/anandh.andrews@zucisystems.com/a.txt' as file_path ")
                 .resourceConn("intics_zio_db_conn")
                 .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjk0ODA4MDEzLCJpYXQiOjE2OTQ3NjQ4MTMsImVtYWlsIjoiYWdhZGlhQGludGljcy5haSJ9.2IQEewH-cQ5TK3L8wKpk_UAXrojAnWqSTi9ORwQJyOU")
                 .build();
