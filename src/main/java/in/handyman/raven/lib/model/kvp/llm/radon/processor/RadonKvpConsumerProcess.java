@@ -197,28 +197,34 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
             if (jsonResponse.contains("```json")) {
+                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
                 // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
                 Matcher matcher = pattern.matcher(jsonResponse);
-
                 if (matcher.find()) {
                     // Extract the JSON string from the matched group
                     String jsonString = matcher.group(1);
                     jsonString = jsonString.replace("\n", "");
-
-
                     // Convert the cleaned JSON string to a JsonNode
-                    JsonNode rootNode = objectMapper.readTree(jsonString);
-
-                    return rootNode;
+                    jsonResponse = repairJson(jsonString);
+                    if(!jsonResponse.isEmpty()) {
+                        return objectMapper.readTree(jsonResponse);
+                    }else {
+                        return null;
+                    }
                 }else {
-                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
-                    return rootNode;
+                    jsonResponse = repairJson(jsonResponse);
+                    return objectMapper.readTree(jsonResponse);
                 }
-
-            } else {
-                // Handle the case where the expected markers are not found
-                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }
+            else if(jsonResponse.contains("{")) {
+                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
+                jsonResponse = repairJson(jsonResponse);
+                return objectMapper.readTree(jsonResponse);
+                //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }else {
+                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
+                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -375,6 +381,57 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .endpoint(String.valueOf(endpoint))
                 .build()
         );
+    }
+
+    private String repairJson(String jsonString) {
+        // Basic JSON repair logic
+        jsonString = addMissingQuotes(jsonString);
+        jsonString = balanceBracesAndBrackets(jsonString);
+        jsonString = assignEmptyValues(jsonString);
+        return jsonString;
+    }
+
+    private String addMissingQuotes(String jsonString) {
+        // Ensure keys and string values are enclosed in double quotes
+        // This is a simple regex-based approach and may not handle all edge cases
+        jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
+        jsonString = jsonString.replaceAll("(?<=:)\\s*([^,\n}]+)(?=\\s*(,|}|\\n))", "\"$1\"");
+        return jsonString;
+    }
+
+    private String balanceBracesAndBrackets(String jsonString) {
+        // Balance braces and brackets
+        int openBraces = 0;
+        int closeBraces = 0;
+        int openBrackets = 0;
+        int closeBrackets = 0;
+
+        for (char c : jsonString.toCharArray()) {
+            if (c == '{') openBraces++;
+            if (c == '}') closeBraces++;
+            if (c == '[') openBrackets++;
+            if (c == ']') closeBrackets++;
+        }
+
+        // Add missing closing braces
+        while (openBraces > closeBraces) {
+            jsonString += "}";
+            closeBraces++;
+        }
+
+        // Add missing closing brackets
+        while (openBrackets > closeBrackets) {
+            jsonString += "]";
+            closeBrackets++;
+        }
+
+        return jsonString;
+    }
+
+    private String assignEmptyValues(String jsonString) {
+        // Assign empty strings to keys with no values
+        jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
+        return jsonString;
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
