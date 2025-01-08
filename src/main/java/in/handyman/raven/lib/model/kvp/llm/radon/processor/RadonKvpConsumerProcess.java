@@ -384,16 +384,29 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     private String repairJson(String jsonString) {
-        // Basic JSON repair logic
+        // Remove extra double quotes inside values
+        jsonString = removeExtraQuotes(jsonString);
+
+        // Ensure keys and string values are enclosed in double quotes
         jsonString = addMissingQuotes(jsonString);
+
+        // Balance braces and brackets
         jsonString = balanceBracesAndBrackets(jsonString);
+
+        // Assign empty strings to keys with no values
         jsonString = assignEmptyValues(jsonString);
+
+        return jsonString;
+    }
+
+    private String removeExtraQuotes(String jsonString) {
+        // Remove extra double quotes inside values
+        jsonString = jsonString.replaceAll("(?<=:)(\"+)(.*?)(\"+)(?=,|\\s*})|(?<=:)(\"+)(.*?)(\"+)(?=\\s*\\])", ":\"$2\"");
         return jsonString;
     }
 
     private String addMissingQuotes(String jsonString) {
         // Ensure keys and string values are enclosed in double quotes
-        // This is a simple regex-based approach and may not handle all edge cases
         jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
         jsonString = jsonString.replaceAll("(?<=:)\\s*([^,\n}]+)(?=\\s*(,|}|\\n))", "\"$1\"");
         return jsonString;
