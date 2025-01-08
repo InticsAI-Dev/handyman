@@ -1,0 +1,930 @@
+{
+  "requestTxnId" : "20250103T172001385",
+  "transactionId" : "ITX-1004",
+  "status" : "SUCCESS",
+  "metadata" : {
+    "documentId" : "20250103T172001385.pdf",
+    "processedAt" : null,
+    "pageCount" : 2,
+    "documentType" : "GRIEVANCE_APPEALS",
+    "processingTimeMs" : null,
+    "overallConfidence" : null
+  },
+  "pageInfo" : [ {
+    "id" : 0,
+    "pageNumber" : 0,
+    "textLines" : [
+      {
+        "text" : "Quality Improvement Organizations",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Sharing Knowledge, Improving Health Care.",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "CENTERS FOR MEDICARE & MEDICAID SERVICES",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "LIVANTA",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "From practical innovations to results.",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Livanta",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "10820 Guilford Road",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Suite 202",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Annapolis Junction, MD. 20701",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "See Next Page",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Fax Cover Sheet",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Date: 4/21/2023 4:53:52 PM",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "To: Anthem Insurance Companies, Inc.",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "From: Livanta",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Phone: See Next Page",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Fax: See Next Page",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "RE: Control ID #: CA-1306216-AP",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Message: Immediate Attention Required",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "Please include this Control ID #: CA-1306216-AP with all correspondence.",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "CONFIDENTIALITY NOTICE:",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "You are receiving this facsimile at the fax number provided to Livanta for the transmission of such notifications. The document(s) accompanying this fax contains confidential patient information that must be maintained as confidential. If you are not the intended recipient, you are notified that the disclosure, copying, distribution, or retention of the contents of this faxed information is strictly prohibited and could be in violation of a patient's privacy rights.",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      }, {
+        "text" : "IF THIS FAX NUMBER IS NO LONGER THE DESIRED RECIPIENT FOR THIS NOTIFICATION, PLEASE CONTACT LIVANTA IMMEDIATELY AT THE PHONE NUMBER ON THE FOLLOWING PAGE FOR INSTRUCTIONS.",
+        "confidence" : 0.0,
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        }
+      } ],
+    "form" : {
+      "formElements" : [ {
+        "key" : "Name",
+        "value" : "Livanta",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Address",
+        "value" : "10820 Guilford Road, Suite 202, Annapolis Junction, MD 20701",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Date",
+        "value" : "4/21/2023 4:53:52 PM",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "To",
+        "value" : "Anthem Insurance Companies, Inc.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "From",
+        "value" : "Livanta",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Phone",
+        "value" : "See Next Page",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Fax",
+        "value" : "See Next Page",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "RE",
+        "value" : "Control ID #: CA-1306216-AP",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Message",
+        "value" : "Immediate Attention Required",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Note",
+        "value" : "Please include this Control ID #: CA-1306216-AP with all correspondence.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Content",
+        "value" : "You are receiving this facsimile at the fax number provided to Livanta for the transmission of such notifications. The document(s) accompanying this fax contains confidential patient information that must be maintained as confidential. If you are not the intended recipient, you are notified that the disclosure, copying, distribution, or retention of the contents of this faxed information is strictly prohibited and could be in violation of a patient's privacy rights.\n\nIF THIS FAX NUMBER IS NO LONGER THE DESIRED RECIPIENT FOR THIS NOTIFICATION, PLEASE CONTACT LIVANTA IMMEDIATELY AT THE PHONE NUMBER ON THE FOLLOWING PAGE FOR INSTRUCTIONS.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      } ]
+    },
+    "tables" : [ ],
+    "selectionElements" : [ ]
+  }, {
+    "id" : 0,
+    "pageNumber" : 1,
+    "textLines" : [ {
+      "text" : "Quality Improvement Organizations | LIVANTA",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Immediate Notification of a Medicare Beneficiary Appeal Request: Documentation Request",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "This written Immediate Notification document serves to formally notify you that Livanta LLC, the Medicare Quality Improvement Organization (QIO), has received a beneficiary’s request for an expedited appeal of your decision to terminate service as directed under your CMS Code of Federal Regulations.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Date: 4/21/2023 Time: 4:53 PM",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Provider: East Bay Post Acute",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "MA Plan: Anthem Insurance Companies, Inc.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Case Control ID: *CA-1306216-AP*",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "EMR Key: VNVKQR",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "CCN: 055239",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "NPI: 1811366586",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "MA Plan Contract No: H4036",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Beneficiary: SNAVELY, ASSUNTA",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "DOB: 1/28/1942",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "HIC: 991X08526",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "MBI: 1E66M31CR68",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Detailed Notice MUST be sent to the beneficiary and the QIO by close of business today. You MUST also supply all information requested by the QIO to review the appeal. The following sections from the medical record are needed to support the provider decision to terminate covered services or discharge.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Copy of the hospital's Important Message or the provider's Notice of Medicare Non-coverage",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Copy of Detailed Notice of Discharge or Detailed Explanation of Non-coverage",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Copy of the Face Sheet",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Discharge Physician orders and current Physician Progress notes",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Discharge Summary and Discharge planning notes",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "  - Social Services notes with the intended discharge disposition",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Physician’s Admission Order and Admission History and Physical",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Emergency Room notes (if applicable)",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Therapy evaluations and current therapy notes and goals (updated within the last 5 days), (if applicable)",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Radiology and other tests/procedure reports",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Operative Reports / Consultations (if applicable)",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "- Up to the last two (2) days of the following",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "  - Nurses' notes, vital signs, lab work and flow sheets",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "  - Medication Administrative Records (if applicable)",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "When a Medicare beneficiary requests a determination by a BFCC-QIO, the burden of proof rests with the provider or the MA organization to demonstrate termination of Medicare coverage is the correct decision, either based on medical necessity, or other Medicare coverage policies.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "The information must be received in its entirety, no later than close of business today.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Providers may submit medical documentation electronically to Livanta File Transfer (e-LiFT) with the EMR and the case number provided in the Medical Record Request.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "If electronic transmission is not possible, medical records may be sent to Livanta by FAX to 855-694-2929.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Do NOT send password protected medical record files.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Instructions and details can be found at https://livantaqio.com/en/Provider/Medical_Records.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Information and questions about quality of care or appeals.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Contact Livanta at 855-772-8566",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Complaints or concerns about Livanta’s work?",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Let CMS know at QIOCONCERNS@cms.hhs.gov.",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    }, {
+      "text" : "Check Case Status online 7/24 at https://livantaqio.com/cn/case_lookup",
+      "confidence" : 0.0,
+      "boundingBox" : {
+        "x" : 0.0,
+        "y" : 0.0,
+        "width" : 0.0,
+        "height" : 0.0
+      }
+    } ],
+    "form" : {
+      "formElements" : [ {
+        "key" : "Date",
+        "value" : "4/21/2023",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Time",
+        "value" : "4:53 PM",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Provider",
+        "value" : "East Bay Post Acute",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "MA Plan",
+        "value" : "Anthem Insurance Companies, Inc.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Case Control ID",
+        "value" : "*CA-1306216-AP*",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "EMR Key",
+        "value" : "VNVKQR",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "CCN",
+        "value" : "055239",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "NPI",
+        "value" : "1811366586",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "MA Plan Contract No",
+        "value" : "H4036",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Beneficiary",
+        "value" : "SNAVELY, ASSUNTA",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "DOB",
+        "value" : "1/28/1942",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "HIC",
+        "value" : "991X08526",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "MBI",
+        "value" : "1E66M31CR68",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Detailed Notice",
+        "value" : "MUST be sent to the beneficiary and the QIO by close of business today.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Burden of Proof",
+        "value" : "When a Medicare beneficiary requests a determination by a BFCC-QIO, the burden of proof rests with the provider or the MA organization to demonstrate termination of Medicare coverage is the correct decision, either based on medical necessity, or other Medicare coverage policies.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Deadline",
+        "value" : "no later than close of business today.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Electronic Submission",
+        "value" : "Providers may submit medical documentation electronically to Livanta File Transfer (e-LiFT) with the EMR and the case number provided in the Medical Record Request.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Fax Submission",
+        "value" : "If electronic transmission is not possible, medical records may be sent to Livanta by FAX to 855-694-2929.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Password Protection",
+        "value" : "Do NOT send password protected medical record files.",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Phone",
+        "value" : "855-772-8566",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Email",
+        "value" : "QIOCONCERNS@cms.hhs.gov",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      }, {
+        "key" : "Case Status Check",
+        "value" : "Check Case Status online 7/24 at https://livantaqio.com/en/case_lookup",
+        "boundingBox" : {
+          "x" : 0.0,
+          "y" : 0.0,
+          "width" : 0.0,
+          "height" : 0.0
+        },
+        "confidence" : 0.0
+      } ]
+    },
+    "tables" : [ ],
+    "selectionElements" : [ ]
+  } ]
+}
