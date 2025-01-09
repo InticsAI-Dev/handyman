@@ -52,10 +52,12 @@ class ProductResponseActionTest {
                 .tenantId(1L)
                 .condition(true)
                 .name("alchemy info action")
-                .querySet("SELECT ampq.origin_id, 'TRZ-26' as transaction_id, ampq.producer_process_id as process_id, '33' as group_id,\n" +
-                        "            ampq.tenant_id, ampq.root_pipeline_id\n" +
-                        "            FROM alchemy_migration.alchemy_migration_payload_queue ampq\n" +
-                        "            where status = 'IN_PROGRESS' and ampq.group_id = '33' and ampq.tenant_id = 8")
+                .querySet("SELECT '' as origin_id, 'ITX-514' as transaction_id,'184789' as process_id,\n" +
+                        "                 '4975' as group_id,\n" +
+                        "                    ampq.tenant_id, '184789' as root_pipeline_id, 'OUTBOUND_ASIS' as feature, 'BATCH-4975_0' as batch_id\n" +
+                        "                    FROM info.inbound_transaction ampq\n" +
+                        "                    where ampq.inbound_transaction_id='ITX-514' and ampq.transaction_status = 'COMPLETED'\n" +
+                        "                    and ampq.tenant_id = 115 ;")
                 .resourceConn("intics_zio_db_conn")
                 .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjk3ODM3MTk0LCJpYXQiOjE2OTc3NTA3OTQsImVtYWlsIjoiZGpAaW50aWNzLmFpIn0.OxBLAc4BQHeyQBoDjuAzaqea5ShEKrckgrjKhQ9iWAs")
                 .build();
