@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.jsonParser.checkbox;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import in.handyman.raven.lib.model.jsonParser.Bbox;
 import lombok.AllArgsConstructor;
@@ -20,7 +21,9 @@ import java.util.List;
 
 @JsonPropertyOrder({"Question", "Options", "Confidence", "boundingBox"})  // Specifying the order of fields in JSON
 public class CheckboxContentNode {
+    @JsonProperty("Question")
     private String question;
+    @JsonProperty("Options")
     private List<CheckboxStatus> Options;
     private double confidence;
     private Bbox boundingBox;
