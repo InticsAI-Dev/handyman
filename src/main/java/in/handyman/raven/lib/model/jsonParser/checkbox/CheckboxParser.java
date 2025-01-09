@@ -3,9 +3,9 @@ package in.handyman.raven.lib.model.jsonParser.checkbox;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.lib.model.jsonParser.Bbox;
+import in.handyman.raven.lib.model.jsonParser.checkbox.CheckBoxFinal;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,6 +16,7 @@ public class CheckboxParser {
     public static String processJson (JsonNode jsonElement) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode output = null;
+        String jsonResponseStr="";
         if (jsonElement.isObject()) {
             // Iterate over the keys of the JSONObject
             Iterator<String> fieldNames = jsonElement.fieldNames();
@@ -50,7 +51,7 @@ public class CheckboxParser {
                 bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
                 CheckboxContentNode checkboxContentNode = new CheckboxContentNode();
-                checkboxContentNode.setBBox(bBox);
+                checkboxContentNode.setBoundingBox(bBox);
                 checkboxContentNode.setConfidence(0.0F);
                 checkboxContentNode.setOptions(optionsArray);
                 checkboxContentNode.setQuestion(row.getQuestion());
@@ -58,10 +59,15 @@ public class CheckboxParser {
                 selectionElements.add(checkboxContentNode);
             });
 
-            ArrayNode selectionElementsArrayNode = objectMapper.valueToTree(selectionElements);
-            output.set("selectionElements", selectionElementsArrayNode);
+//            ArrayNode selectionElementsArrayNode = objectMapper.valueToTree(selectionElements);
+//            output.set("selectionElements", selectionElements);
+            CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+            checkBoxFinal.setSelectionElements(selectionElements);
+            ObjectMapper checkBoxParser = new ObjectMapper();
+            jsonResponseStr = checkBoxParser.writeValueAsString(checkBoxFinal);
+
 
         }
-        return output.toString();
+        return jsonResponseStr;
     }
 }

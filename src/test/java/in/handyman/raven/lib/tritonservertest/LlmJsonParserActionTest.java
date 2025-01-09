@@ -18,10 +18,10 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("text_extraction.text_extraction_llm_json_parser_109006")
-                .querySet("SELECT total_response_json as response, paper_no, origin_id as origin_id, group_id, tenant_id,22 as root_pipeline_id,  \n" +
-                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process  \n" +
-                        "from text_extraction.text_extraction_output_109006;")
+                .outputTable("text_extraction.text_extraction_llm_json_parser_111071")
+                .querySet("SELECT total_response_json as response, paper_no, origin_id as origin_id, group_id, tenant_id,22 as root_pipeline_id,   \n" +
+                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process from text_extraction.text_extraction_output_audit teoa \n" +
+                        "where root_pipeline_id =107195;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -48,12 +48,12 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("kvp_extraction.kvp_extraction_llm_json_parser_179899")
-                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, " +
-                        " total_response_json as response, paper_no,  origin_id, process_id, action_id, process,12345 as group_id, tenant_id, root_pipeline_id," +
-                        " batch_id, model_registry, status, stage, message, category " +
-                        "FROM kvp_extraction.kvp_extraction_output_audit keoa " +
-                        "where root_pipeline_id =180069;")
+                .outputTable("kvp_extraction.kvp_extraction_llm_json_parser_109434")
+                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path,  \n" +
+                        "total_response_json as response, paper_no,  origin_id, process_id, action_id, process,12345 as group_id, \n" +
+                        "tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category  \n" +
+                        "from kvp_extraction.kvp_extraction_output_audit teoa \n" +
+                        "where root_pipeline_id =107195;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -80,11 +80,12 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("table_extraction_info.table_extraction_llm_json_parser_109201")
+                .outputTable("table_extraction_info.table_extraction_llm_json_parser_109275")
                 .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, \n" +
                         "total_response_json as response, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, \n" +
                         "root_pipeline_id, batch_id, model_registry, status, stage, message, category\n" +
-                        "FROM table_extraction_info.table_extraction_output_audit where root_pipeline_id=109587 and total_response_json <> 'null';")
+                        "FROM table_extraction_info.table_extraction_output_audit teoa \n" +
+                        "where root_pipeline_id =109587;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -110,12 +111,11 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_109661")
-                    .querySet("SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, \n" +
-                            "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, " +
-                            "created_on, 'CHECKBOX_EXTRACTION' as process " +
-                            "from checkbox_extraction.checkbox_extraction_output_audit teeoa \n" +
-                            "where root_pipeline_id =178047;")
+                .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_109794")
+                    .querySet("SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,  \n" +
+                            "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height,  \n" +
+                            "created_on, 'CHECKBOX_EXTRACTION' as process from checkbox_extraction.checkbox_extraction_output_audit ceoa \n" +
+                            "where root_pipeline_id =109392; ")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

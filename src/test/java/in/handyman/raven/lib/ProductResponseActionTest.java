@@ -52,14 +52,14 @@ class ProductResponseActionTest {
                 .tenantId(1L)
                 .condition(true)
                 .name("alchemy info action")
-                .querySet("SELECT '' as origin_id, 'ITX-514' as transaction_id,'184789' as process_id,\n" +
-                        "                 '4975' as group_id,\n" +
-                        "                    ampq.tenant_id, '184789' as root_pipeline_id, 'OUTBOUND_ASIS' as feature, 'BATCH-4975_0' as batch_id\n" +
+                .querySet("SELECT '' as origin_id, 'ITX-529' as transaction_id,'185445' as process_id,\n" +
+                        "                 '4991' as group_id,\n" +
+                        "                    ampq.tenant_id, '185445' as root_pipeline_id, 'OUTBOUND_ASIS' as feature, 'BATCH-4991_0' as batch_id\n" +
                         "                    FROM info.inbound_transaction ampq\n" +
-                        "                    where ampq.inbound_transaction_id='ITX-514' and ampq.transaction_status = 'COMPLETED'\n" +
+                        "                    where ampq.inbound_transaction_id='ITX-529' and ampq.transaction_status = 'COMPLETED'\n" +
                         "                    and ampq.tenant_id = 115 ;")
                 .resourceConn("intics_zio_db_conn")
-                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNjk3ODM3MTk0LCJpYXQiOjE2OTc3NTA3OTQsImVtYWlsIjoiZGpAaW50aWNzLmFpIn0.OxBLAc4BQHeyQBoDjuAzaqea5ShEKrckgrjKhQ9iWAs")
+                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzM2NTIzOTQzLCJpYXQiOjE3MzY0Mzc1NDMsImVtYWlsIjoiYW50aGVtLWVsZXZhbmNlQGludGljcy5haSJ9.6n5NEDDmXmH8D6zbKsjtG_NI_ROVeTfU-fKkQU1cLD4")
                 .build();
 
 //        try (Response response = httpclient.newCall(request).execute()) {

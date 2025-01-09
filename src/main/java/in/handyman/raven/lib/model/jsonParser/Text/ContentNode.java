@@ -15,9 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 @AllArgsConstructor
 @NoArgsConstructor
 @Slf4j
-@JsonPropertyOrder({"Content", "Confidence", "BoundingBox"})
+@JsonPropertyOrder({"Text", "Confidence", "BoundingBox"})
 public class ContentNode {
-    private String content;
+    private String text;
     private double confidence;
     private Bbox boundingBox;
 }

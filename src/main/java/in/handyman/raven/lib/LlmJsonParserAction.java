@@ -18,12 +18,16 @@ import in.handyman.raven.lib.model.jsonParser.KVP.KVPContentNode;
 import in.handyman.raven.lib.model.jsonParser.Text.FinalResults;
 import in.handyman.raven.lib.model.jsonParser.Text.TextLineItems;
 import in.handyman.raven.lib.model.jsonParser.Text.TextParser;
+import in.handyman.raven.lib.model.jsonParser.checkbox.CheckBoxFinal;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParsedResponse;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryInputTable;
 import in.handyman.raven.lib.model.jsonParser.Table.TableParser;
+import org.apache.kafka.common.protocol.types.Field;
+
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import in.handyman.raven.lib.model.jsonParser.KVP.KvpFinal;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -148,7 +152,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
                                     ContentNode contentNode = new ContentNode();
-                                    contentNode.setContent(item.getContent());
+                                    contentNode.setText(item.getContent());
                                     contentNode.setConfidence(0.0F);
                                     contentNode.setBoundingBox(bBox);
                                     // Add the contentNode to the aggregatedResult list
@@ -198,6 +202,9 @@ public class LlmJsonParserAction implements IActionExecution {
                                     "image_dpi, image_height, image_width) "
                                     + " VALUES(?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,?)";
                             log.info("\n kvp parsing started for {}:\n", inputTable.getProcess());
+                            ObjectNode formElementsMapper = objectMapper.createObjectNode();
+                            ObjectNode formsFinal = objectMapper.createObjectNode();  // Create an empty ObjectNode
+                            KvpFinal form = new KvpFinal();
                             String finalResult = "";
 
                             if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
@@ -215,25 +222,24 @@ public class LlmJsonParserAction implements IActionExecution {
                                     kvpContentNode.setKey(sorItem);
                                     kvpContentNode.setValue(value);
                                     kvpContentNode.setConfidence(0.0F);
-                                    kvpContentNode.setBBox(bBox);
+                                    kvpContentNode.setBoundingBox(bBox);
 
                                     // Add the contentNode to the aggregatedResult list
                                     aggregatedResult.add(kvpContentNode);
                                 });
 
-                                ObjectNode formElementsMapper = objectMapper.createObjectNode();
-                                ObjectNode form = objectMapper.createObjectNode();
+
+
 
                                 ArrayNode arrayNode = objectMapper.valueToTree(aggregatedResult);
 
                                 formElementsMapper.set("formElements", arrayNode);
-                                form.set("form", formElementsMapper);
-                                finalResult = form.toString();
-                            } else {
 
-                                log.info("input is NULL for {}", inputTable.getProcess());
-                                finalResult = "{}"; // Set an empty array to "textLine"
+                                form.setForm(formElementsMapper);
+                                log.info("Extracted form element and converted to outbound json form");
+
                             }
+                            finalResult = objectMapper.writeValueAsString(form);
 
 
                             handle.createUpdate(insertQueryText)
@@ -352,18 +358,24 @@ public class LlmJsonParserAction implements IActionExecution {
                                             }
                                         } else {
                                             log.info("input is NULL for {}", inputTable.getProcess());
-                                            finalResult = "{}";
+                                            CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                                            ObjectMapper checkBoxParser = new ObjectMapper();
+                                            finalResult =  checkBoxParser.writeValueAsString(checkBoxFinal);
                                         }
 
                                     } else {
                                         log.info("input is NULL for {}", inputTable.getProcess());
-                                        finalResult = "{}";
+                                        CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                                        ObjectMapper checkBoxParser = new ObjectMapper();
+                                        finalResult =  checkBoxParser.writeValueAsString(checkBoxFinal);
 
                                     }
                                     // Create the output JSON structure
                                 } else {
                                     log.info("input is NULL for {}", inputTable.getProcess());
-                                    finalResult = "{}";
+                                    CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                                    ObjectMapper checkBoxParser = new ObjectMapper();
+                                    finalResult =  checkBoxParser.writeValueAsString(checkBoxFinal);
                                 }
 
                             } catch (Exception e) {

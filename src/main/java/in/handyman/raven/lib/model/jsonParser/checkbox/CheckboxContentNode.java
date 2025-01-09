@@ -18,11 +18,11 @@ import java.util.List;
 @NoArgsConstructor
 @Slf4j
 
-@JsonPropertyOrder({"question", "options", "confidence", "bBox"})  // Specifying the order of fields in JSON
+@JsonPropertyOrder({"Question", "Options", "Confidence", "boundingBox"})  // Specifying the order of fields in JSON
 public class CheckboxContentNode {
     private String question;
     private List<CheckboxStatus> Options;
     private double confidence;
-    private Bbox bBox;
+    private Bbox boundingBox;
 }
 

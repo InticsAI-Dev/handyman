@@ -1,24 +1,20 @@
 package in.handyman.raven.lib.model.jsonParser.checkbox;
 
-
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-
+import java.util.List;
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Slf4j
 
-@JsonPropertyOrder({"OptionText", "Status"})  // Specifying the order of fields in JSON
 
-public class CheckboxStatus {
-    private String optionText;
-    private String status;
-}
+public class CheckBoxFinal {
+        private List<CheckboxContentNode> selectionElements;
+    }
 
