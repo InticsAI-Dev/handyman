@@ -70,7 +70,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         radonKvpExtractionRequest.setActionId(actionId);
-        radonKvpExtractionRequest.setProcess(PROCESS_NAME);
+        radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
@@ -84,6 +84,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
             radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+        }else{
+            radonKvpExtractionRequest.setBase64Img("");
         }
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);

@@ -16,9 +16,9 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("http://192.168.10.241:7500/v2/models/radon-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_30197")
-                .querySet("SELECT id, input_file_path, prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry\n" +
-                        "FROM sor_transaction.radon_kvp_input_audit\n" +
-                        "WHERE root_pipeline_id =32789;")
+                .querySet("SELECT id, input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, 'KRYPTON START' as apiName\n" +
+                        "FROM text_extraction.text_extraction_input_184579\n" +
+                        "WHERE root_pipeline_id =184579")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -29,6 +29,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
+        ac.getContext().put("pipeline.copro.api.process.file.format","FILE");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
