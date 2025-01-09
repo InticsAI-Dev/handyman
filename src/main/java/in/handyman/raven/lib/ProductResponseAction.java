@@ -187,11 +187,12 @@ public class ProductResponseAction implements IActionExecution {
         }
 
         @NotNull
-        public Request getUrlFromFeature(URL baseUrl,@NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody) throws MalformedURLException {
+        public Request getUrlFromFeature(URL baseUrl, @NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody) throws MalformedURLException {
             Request request;
             if (Objects.equals(feature, "Product")) {
 
                 URL url = new URL(baseUrl + "paginationOutbound/" + transactionId + "/outbound-file-index" + "?tenantId=" + tenantId);
+
                 log.info(aMarker, "product api called with the url {}", url);
                 request = new Request.Builder().url(url)
                         .addHeader("accept", "*/*")
@@ -232,6 +233,7 @@ public class ProductResponseAction implements IActionExecution {
         private String baseUrl;
         private String feature;
         private String batchId;
+
         @Override
         public List<Object> getRowData() {
             return null;
@@ -260,7 +262,7 @@ public class ProductResponseAction implements IActionExecution {
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId, this.inboundIransactionId).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl, this.batchId, this.inboundIransactionId).collect(Collectors.toList());
         }
     }
 }
