@@ -1,6 +1,6 @@
-package in.handyman.raven.lib.model.jsonParser.Text;
+package in.handyman.raven.lib.model.jsonParser.KVP;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,13 +9,12 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
-
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Slf4j
-public class TextParser {
-    @JsonProperty("lines")
-    private List<TextLineItems> lines;
+
+public class KvpFinal {
+    ObjectNode form;
 }

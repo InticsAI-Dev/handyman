@@ -6,14 +6,14 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import lombok.Getter;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Getter
 public class SORParser {
     private final ActionExecutionAudit action;
-    private final Map<String, String> sorItems = new HashMap<>();
+    private final Map<String, String> sorItems = new LinkedHashMap<>();
 
     public SORParser(ActionExecutionAudit action) {
         this.action = action;
@@ -32,6 +32,7 @@ public class SORParser {
     }
 
     private void processNode(JsonNode node) {
+
         Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
 
         while (fields.hasNext()) {

@@ -57,7 +57,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String filePath = String.valueOf(entity.getInputFilePath());
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
-        String prompt = entity.getPrompt();
+        String userPrompt = entity.getUserPrompt();
+        String systemPrompt = entity.getSystemPrompt();
+        String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
@@ -68,11 +70,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         radonKvpExtractionRequest.setActionId(actionId);
-        radonKvpExtractionRequest.setProcess(PROCESS_NAME);
+        radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
-        radonKvpExtractionRequest.setUserPrompt(prompt);
-        radonKvpExtractionRequest.setSystemPrompt("");
+        radonKvpExtractionRequest.setUserPrompt(userPrompt);
+        radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
@@ -82,6 +84,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
             radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+        }else{
+            radonKvpExtractionRequest.setBase64Img("");
         }
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
@@ -104,7 +108,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, filePath, prompt);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, filePath, userPrompt, systemPrompt);
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
@@ -219,7 +223,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     JsonNode rootNode = objectMapper.readTree(jsonString);
 
                     return rootNode;
-                } else {
+                }else {
                     JsonNode rootNode = objectMapper.readTree(jsonResponse);
                     return rootNode;
                 }

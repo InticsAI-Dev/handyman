@@ -64,8 +64,8 @@ public class ProductResponseAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Product Response Action for {} has been started", productResponse.getName());
             final String insertQuery = "INSERT INTO " + productResponse.getResultTable() +
-                    "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,feature,triggered_url, batch_id) " +
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,?, ?)";
+                    "(process_id,group_id,origin_id,product_response, tenant_id,root_pipeline_id,status,stage,message,feature,triggered_url, batch_id, inbound_transaction_id) " +
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?, ?,?)";
             final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.product.response.url"))
                     .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                         try {
@@ -158,6 +158,7 @@ public class ProductResponseAction implements IActionExecution {
                                 .status("COMPLETED")
                                 .message("alchemy product response completed for origin_id - " + originId)
                                 .batchId(entity.getBatchId())
+                                .inboundIransactionId(entity.getTransactionId())
                                 .build());
                     }
                 } else {
@@ -174,6 +175,7 @@ public class ProductResponseAction implements IActionExecution {
                             .status("FAILED")
                             .message("alchemy product response failed for origin_id - " + originId)
                             .batchId(entity.getBatchId())
+                            .inboundIransactionId(entity.getTransactionId())
                             .build());
                 }
             } catch (Exception e) {
@@ -201,7 +203,18 @@ public class ProductResponseAction implements IActionExecution {
                 return request;
 
 
-            } else {
+            }  else if (Objects.equals(feature, "OUTBOUND_ASIS")){
+
+                URL url = new URL(baseUrl +"paginationOutbound/"+ transactionId + "/outbound-file-index"+ "?tenantId=" + tenantId);
+                log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
+                request = new Request.Builder().url(url)
+                        .addHeader("accept", "*/*")
+                        .addHeader("Authorization", "Bearer " + authToken)
+                        .addHeader("Content-Type", "application/json")
+                        .post(requestBody)
+                        .build();
+
+            }else {
                 URL url = new URL(baseUrl + "response/featureResponse/" + transactionId + "/" + originId + "/" + feature + "?tenantId=" + tenantId);
                 log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
                 request = new Request.Builder().url(url)
@@ -230,7 +243,6 @@ public class ProductResponseAction implements IActionExecution {
         private String baseUrl;
         private String feature;
         private String batchId;
-
         @Override
         public List<Object> getRowData() {
             return null;
@@ -255,10 +267,11 @@ public class ProductResponseAction implements IActionExecution {
         private String triggeredUrl;
         private String feature;
         private String batchId;
+        private String inboundIransactionId;
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId, this.inboundIransactionId).collect(Collectors.toList());
         }
     }
 }

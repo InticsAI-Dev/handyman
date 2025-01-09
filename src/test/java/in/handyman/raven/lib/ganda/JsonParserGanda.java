@@ -18,7 +18,7 @@ public class JsonParserGanda {
     @Test
     public void generateJson() throws Exception {
 
-        File formElementJsonFile = new File("input/20250103T172001385.json");
+        File formElementJsonFile = new File("/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-git/handyman/src/test/java/in/handyman/raven/lib/ganda/ input/20250103T172001385.json");
 
         List<PageInfo> list = parseJsonFromList(formElementJsonFile);
         GrievanceAppeals grievanceAppeals = new GrievanceAppeals();

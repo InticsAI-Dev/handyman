@@ -23,7 +23,8 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Long actionId;
     private String process;
     private String inputFilePath;
-    private String prompt;
+    private String userPrompt;
+    private String systemPrompt;
     private String modelRegistry;
     private String batchId;
     private String category;

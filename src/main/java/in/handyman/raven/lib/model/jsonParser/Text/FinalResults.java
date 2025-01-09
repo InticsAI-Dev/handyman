@@ -1,6 +1,6 @@
 package in.handyman.raven.lib.model.jsonParser.Text;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +15,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Slf4j
-public class TextParser {
-    @JsonProperty("lines")
-    private List<TextLineItems> lines;
+public class FinalResults {
+    private List<ContentNode> textLines;
 }
