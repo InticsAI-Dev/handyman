@@ -191,7 +191,7 @@ public class ProductResponseAction implements IActionExecution {
             Request request;
             if (Objects.equals(feature, "Product")) {
 
-                URL url = new URL(baseUrl + "response/" + transactionId + "/" + originId + "/?tenantId=" + tenantId);
+                URL url = new URL(baseUrl + "paginationOutbound/" + transactionId + "/outbound-file-index" + "?tenantId=" + tenantId);
                 log.info(aMarker, "product api called with the url {}", url);
                 request = new Request.Builder().url(url)
                         .addHeader("accept", "*/*")
