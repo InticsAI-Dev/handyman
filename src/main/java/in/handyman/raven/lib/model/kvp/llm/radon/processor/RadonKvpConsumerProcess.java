@@ -134,10 +134,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long rootPipelineId = entity.getRootPipelineId();
 
 
-        try {
-            if (true) {
-//                assert response.body() != null;
-                String responseBody = "{\"model_name\":\"krypton-service\",\"model_version\":\"1\",\"outputs\":[{\"name\":\"KRYPTON END\",\"datatype\":\"BYTES\",\"shape\":[1],\"data\":[\"{\\\"model\\\": \\\"TABLE_EXTRACTION\\\", \\\"infer_response\\\": \\\"```json\\\\n{\\\\n  \\\\\\\"Tables\\\\\\\": [\\\\n    {\\\\n      \\\\\\\"Table Name\\\\\\\": \\\\\\\"Recipient Explanation of Medical Benefits\\\\\\\",\\\\n      \\\\\\\"Rows\\\\\\\": [\\\\n        {\\\\n          \\\\\\\"Service Number\\\\\\\": \\\\\\\"1\\\\\\\",\\\\n          \\\\\\\"We show you got these services\\\\\\\": \\\\\\\"Office or other outpatient visit for the evaluation and management of an established patient, which requires a medically appropriate history and/or examination and moderate le\\\\\\\",\\\\n          \\\\\\\"Did you receive these services? Please check Yes or No\\\\\\\": \\\\\\\"Yes\\\\\\\"\\\\n        },\\\\n        {\\\\n          \\\\\\\"Service Number\\\\\\\": \\\\\\\"2\\\\\\\",\\\\n          \\\\\\\"We show you got these services\\\\\\\": \\\\\\\"Blood Count; Complete Cbc, Automated (Hgb, Hct, Rbc, Wbc, & Platelet) & Automated Differential Wbc\\\\\\\",\\\\n          \\\\\\\"Did you receive these services? Please check Yes or No\\\\\\\": \\\\\\\"Yes\\\\\\\"\\\\n        }\\\\n      ]\\\\n    }\\\\n  ]\\\\n}\\\\n```\\\", \\\"confidence_score\\\": \\\"\\\", \\\"bboxes\\\": \\\"\\\", \\\"originId\\\": \\\"ORIGIN-7224\\\", \\\"paperNo\\\": 1, \\\"processId\\\": 167658, \\\"groupId\\\": 4637, \\\"tenantId\\\": 115, \\\"rootPipelineId\\\": 167658, \\\"actionId\\\": 1564536}\"]}]}";
+        try (Response response = httpclient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                assert response.body() != null;
+                String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
@@ -164,7 +164,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(entity.getApiName())
-//                        .message(response.message())
+                        .message(response.message())
                         .batchId(entity.getBatchId())
                         .createdOn(entity.getCreatedOn())
                         .createdUserId(tenantId)
@@ -172,10 +172,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
                         .request(jsonRequest)
-//                        .response(response.message())
+                        .response(response.message())
                         .endpoint(String.valueOf(endpoint))
                         .build());
-//                log.info(aMarker, "Error in getting response from triton response {}", response.message());
+                log.info(aMarker, "Error in getting response from triton response {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
@@ -207,7 +207,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
-            InferResponse inferResponse = new InferResponse();
             JsonNode rootNode = objectMapper.createObjectNode();
             if (jsonResponse.contains("```json")) {
                 // Define the regex pattern to match content between ```json and ```
@@ -225,6 +224,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
                 }
             }else {
+                log.info("```json marker is not present");
                 rootNode = objectMapper.readTree(jsonResponse);
             }
             return rootNode;
@@ -290,7 +290,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                assert response.body() != null;
                 String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
