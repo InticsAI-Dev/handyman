@@ -85,7 +85,7 @@ public class LlmJsonParserActionTest {
                         "total_response_json as response, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, \n" +
                         "root_pipeline_id, batch_id, model_registry, status, stage, message, category\n" +
                         "FROM table_extraction_info.table_extraction_output_audit teoa \n" +
-                        "where root_pipeline_id =109587;")
+                        "where origin_id ='ORIGIN-8120';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

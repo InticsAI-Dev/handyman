@@ -59,7 +59,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long groupId = entity.getGroupId();
         String userPrompt = entity.getUserPrompt();
         String systemPrompt = entity.getSystemPrompt();
-        String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
@@ -206,8 +205,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+    public InferResponse convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
+            InferResponse inferResponse = new InferResponse();
             if (jsonResponse.contains("```json")) {
                 // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
@@ -222,16 +222,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     // Convert the cleaned JSON string to a JsonNode
                     JsonNode rootNode = objectMapper.readTree(jsonString);
 
-                    return rootNode;
-                }else {
-                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
-                    return rootNode;
+                    inferResponse.setLines(rootNode.get("lines"));
                 }
-
-            } else {
-                // Handle the case where the expected markers are not found
-                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }else {
+                JsonNode rootNode = objectMapper.readTree(jsonResponse);
+                inferResponse.setLines(rootNode.get("lines"));
             }
+            return inferResponse;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -248,7 +245,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+        InferResponse stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 //
 //        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
 //            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
@@ -294,6 +291,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
+                assert response.body() != null;
                 String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
