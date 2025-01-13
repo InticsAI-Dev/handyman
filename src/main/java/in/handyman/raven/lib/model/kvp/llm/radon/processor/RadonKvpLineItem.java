@@ -29,4 +29,11 @@ public class RadonKvpLineItem {
     private Long tenantId;
     private String inputFilePath;
     private String batchId;
+    private String base64Img;
+    @JsonProperty("imageDPI")
+    private Long imageDPI;
+    private Long imageWidth;
+    private Long imageHeight;
+    private String extractedImageUnit;
+
 }
