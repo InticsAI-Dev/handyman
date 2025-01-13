@@ -55,7 +55,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String filePath = String.valueOf(entity.getInputFilePath());
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
-        String prompt = entity.getPrompt();
+        String userPrompt = entity.getUserPrompt();
+        String systemPrompt = entity.getSystemPrompt();
         String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
@@ -70,7 +71,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setProcess(PROCESS_NAME);
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
-        radonKvpExtractionRequest.setPrompt(prompt);
+        radonKvpExtractionRequest.setUserPrompt(userPrompt);
+        radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
@@ -98,7 +100,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, filePath, prompt);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {}, userPrompt {} and systemPrompt {}", endpoint, filePath, userPrompt, systemPrompt);
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
@@ -134,8 +136,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
                             extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
+                        } catch (IOException e) {
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
                         }
                     }));
 
@@ -292,7 +296,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         try {
                             extractedCoproOutputResponse(entity, radonDataItem, parentObj, jsonInputRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting response from triton server output {}", ExceptionUtil.toString(e));
                         }
                     }));
 
