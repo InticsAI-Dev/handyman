@@ -21,6 +21,7 @@ public class RadonKvpExtractionRequest {
     private String inputFilePath;
     private String userPrompt;
     private String systemPrompt;
+    private String base64Img;
     private String batchId;
 
 }

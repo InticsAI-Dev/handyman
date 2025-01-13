@@ -73,6 +73,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
         radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
+        radonKvpExtractionRequest.setBase64Img("");
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
