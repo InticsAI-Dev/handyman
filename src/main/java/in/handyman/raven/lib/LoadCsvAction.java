@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.opencsv.CSVReader;
 import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -12,13 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.io.File;
+import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -45,45 +45,47 @@ public class LoadCsvAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-//        var csvFile = loadCsv.getSource();
-//        var sqlList = loadCsv.getValue().replace("\"", "");
-//        final String fileName;
-//        if (csvFile.contains("\\")) {
-//            var counter = csvFile.length() - csvFile.replace("\\\\", "").length();
-//            var file = csvFile.split("\\\\", counter + 1);
-//            fileName = file[counter];
-//        } else {
-//            var counter = csvFile.length() - csvFile.replace("\\/", "").length();
-//            var file = csvFile.split("/", counter + 1);
-//            fileName = file[counter];
-//        }
-//        log.info(aMarker, "id#{}, name#{}, from#{}, sqlList#{}", actionExecutionAudit.getActionId(), loadCsv.getName(), loadCsv.getSource(), sqlList);
-//        final String csvExtension = ".csv";
-//        final String tsvExtension = ".tsv";
-//        try (final CSVReader csvReader = new CSVReader(new FileReader(csvFile))) {
-//            final Iterator<String[]> iterator = csvReader.iterator();
-//            final String[] firstLine = iterator.next();
-//            final String ct = convertArrayToInsertLine(firstLine, "`VARCHAR(344),`");
-//            if (fileName.contains(csvExtension)) {
-//                var column = convertArrayToInsertLine(firstLine, "`,`");
-//                perform(fileName,
-//                        csvExtension,
-//                        iterator, column, ct);
-//            } else if (fileName.contains(tsvExtension)) {
-//
-//                final String atos = String.join("", firstLine).replace("\t", ",");
-//                var tsvFirstLine = atos.split(",");
-//                var column = convertArrayToInsertLine(tsvFirstLine, "`,`");
-//
-//                perform(fileName,
-//                        tsvExtension,
-//                        iterator, column, ct);
-//            } else {
-//                log.info("File format is invalid");
-//                throw new UnknownFormatConversionException("File format is invalid");
-//            }
-//        }
-//
+        var csvFile = loadCsv.getSource();
+        var sqlList = loadCsv.getValue().replace("\"", "");
+        final String fileName;
+
+        File inputCsvFile= new File(loadCsv.getSource());
+        if (csvFile.contains("\\")) {
+            var counter = csvFile.length() - csvFile.replace("\\\\", "").length();
+            var file = csvFile.split("\\\\", counter + 1);
+            fileName = file[counter];
+        } else {
+            var counter = csvFile.length() - csvFile.replace("\\/", "").length();
+            var file = csvFile.split("/", counter + 1);
+            fileName = file[counter];
+        }
+        log.info(aMarker, "id#{}, name#{}, from#{}, sqlList#{}", actionExecutionAudit.getActionId(), loadCsv.getName(), loadCsv.getSource(), sqlList);
+        final String csvExtension = ".csv";
+        final String tsvExtension = ".tsv";
+        try (final CSVReader csvReader = new CSVReader(new FileReader(csvFile))) {
+            final Iterator<String[]> iterator = csvReader.iterator();
+            final String[] firstLine = iterator.next();
+            final String ct = convertArrayToInsertLine(firstLine, " VARCHAR(344),");
+            if (fileName.contains(csvExtension)) {
+                var column = convertArrayToInsertLine(firstLine, "`,`");
+                perform(inputCsvFile.getName(),
+                        csvExtension,
+                        iterator, column, ct);
+            } else if (fileName.contains(tsvExtension)) {
+
+                final String atos = String.join("", firstLine).replace("\t", ",");
+                var tsvFirstLine = atos.split(",");
+                var column = convertArrayToInsertLine(tsvFirstLine, "`,`");
+
+                perform(fileName,
+                        tsvExtension,
+                        iterator, column, ct);
+            } else {
+                log.info("File format is invalid");
+                throw new UnknownFormatConversionException("File format is invalid");
+            }
+        }
+
 
     }
 
@@ -91,10 +93,12 @@ public class LoadCsvAction implements IActionExecution {
         var sb = new StringBuilder();
         if (firstLine != null) {
             for (var str : firstLine) {
-                sb.append(str.replace(" ", "")).append(delimiter);
+                if(!str.equals("")){
+                    sb.append(str.replace(" ", "")).append(delimiter);
+                }
             }
         }
-        return sb.substring(0, sb.length() - 2);
+        return sb.substring(0, sb.length() - 1);
     }
 
     private void perform(final String fileName, final String extension, final Iterator<String[]> iterator, final String column, final String ct) throws SQLException {
@@ -109,11 +113,11 @@ public class LoadCsvAction implements IActionExecution {
             try (final Statement st = connection.createStatement()) {
                 final Long statementId = UniqueID.getId();
                 //TODO
-                final String dQuery = "drop table if exists `" + pid + "_" + fileName.replace(extension, "") + "`;";
+                final String dQuery = "drop table if exists "+ fileName.replace(extension, "")+"_"+pid + ";";
                 log.info(aMarker, "id#{}, name#{}, from#{}, Query#{}", id, name, db, dQuery);
                 st.execute(dQuery);
 
-                final String cQuery = "CREATE TABLE `" + pid + "_" + fileName.replace(extension, "") + "` (" + "`" + ct + ");";
+                final String cQuery = "CREATE TABLE " + fileName.replace(extension, "") + "_" + pid + " (" + ct + ");";
                 log.info(aMarker, "id#{}, name#{}, from#{}, Query#{}", id, name, db, dQuery);
                 st.execute(cQuery);
             }

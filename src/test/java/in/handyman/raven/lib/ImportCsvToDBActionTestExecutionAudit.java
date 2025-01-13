@@ -24,11 +24,7 @@ class ImportCsvToDBActionTestExecutionAudit {
                 .value(Collections.singletonList("/home/shankar.t@zucisystems.com/Downloads/MOCK_DATA.csv"))
                 .batchSize("99")
                 .writeThreadCount("3")
-                .target(SpwResourceConfig.builder()
-                        .resourceUrl("jdbc:sqlserver://localhost:1433;databaseName=CCCU_DNA;")
-                        .userName("SA")
-                        .password("Marvel2018")
-                        .build())
+                .target("")
                 .build());
 
         importCsvToDBAction.execute();

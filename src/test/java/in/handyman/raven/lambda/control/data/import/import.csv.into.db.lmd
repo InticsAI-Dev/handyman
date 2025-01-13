@@ -1,0 +1,104 @@
+process "import.csv.into.db"
+{
+try{
+
+        transform as "create ddl for the csv file import" on "intics_zio_db_conn" using
+        {"
+                    CREATE SCHEMA IF NOT EXISTS macro;
+                   CREATE TABLE IF NOT EXISTS macro.file_details_csv_origin_${process-id}(
+                    origin_id_seq bigserial PRIMARY KEY,
+                    file_id varchar not null,
+                    process_id varchar  NULL,
+                    file_checksum varchar  NULL,
+                    file_extension varchar  NULL,
+                    file_name varchar  NULL,
+                    file_path varchar  NULL,
+                    file_size varchar  NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    encode text null,
+                    batch_id varchar null
+                    );
+
+
+                   CREATE TABLE IF NOT EXISTS ingestion.sanitizer_summary_audit_${process-id} (
+                    row_count int4 NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar null
+                    );
+        "} on-condition if "true"=="true"
+
+
+        assign as "control.data.input" source "intics_zio_db_conn" using {"
+                SELECT  '${input_csv_file_name}_${process-id}' as table_name;
+        "} on-condition if "true"=="true"
+
+
+        assetInfo as "insert into import control_data_csv_table"
+        on-resource-conn "intics_zio_db_conn"
+        get-audit-table "ingestion.sanitizer_summary_audit_${process-id}"
+        result-table "macro.file_details_csv_origin_${process-id}"
+        using {"
+                SELECT ${inbound_id},now() as created_on,${tenant_id} as created_user_id,now() as last_updated_on,${tenant_id} as  last_updated_user_id,${tenant_id} as tenant_id,'${input_csv_file_directory}' as file_path,${inbound_id} as document_id;
+        "} on-condition if "true"=="true"
+
+
+        transform as "insert into asset table" on "intics_zio_db_conn" using
+        {"
+
+                INSERT into info.asset
+                (file_id, file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi)
+                SELECT file_id,file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, ${channel_id},${created_user_id},now(),${created_user_id},now(), height, width, dpi
+                from macro.file_details_csv_origin_${process-id}
+                where process_id='${process-id}';
+
+                INSERT INTO info.control_data_csv_origin
+                (inbound_id, tenant_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, file_id, asset_id, origin_type, root_pipeline_id, transaction_id, workspace_id, preview_file_path)
+                select ${inbound_id},b.tenant_id,b.created_on,${created_user_id} ,b.last_updated_on,${created_user_id},'ACTIVE',1,a.file_id,b.asset_id, '${origin_type}', a.root_pipeline_id,'${transaction_id}','${workspace_id}',a.file_path
+                from macro.file_details_csv_origin_${process-id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                where a.process_id='${process-id}';
+
+        "} on-condition if "true"=="true"
+
+        importCsvToDB as "import csv file into db" target "intics_zio_db_conn" on "${control.data.input.table_name}" using
+         {
+            "${input_csv_file_directory}"
+        } on-condition if "true"=="true" fielding "10" batch "10"
+
+        assign as "get_sor_item" source "intics_zio_db_conn" using {"
+                SELECT a.column_name as list
+                FROM information_schema.columns a
+                JOIN sor_meta.sor_item si ON a.column_name =si.sor_item_name
+                JOIN sor_meta.sor_container sc ON si.sor_container_id =sc.sor_container_id AND sc.document_type ='HEALTH_CARE'
+                WHERE table_name IN ('data_nov') AND si.tenant_id=${tenant_id};
+        "} on-condition if "true"=="true"
+
+
+        transform as "insert into control data main table" on "intics_zio_db_conn" using
+        {"
+        INSERT INTO data_nov
+        (docid, ${get_sor_item.list})
+        SELECT docid, ${get_sor_item.list}
+        FROM ${control.data.input.table_name};
+
+        "} on-condition if "true"=="true"
+
+
+
+
+}
+catch{
+}
+finally{
+
+}
+}
