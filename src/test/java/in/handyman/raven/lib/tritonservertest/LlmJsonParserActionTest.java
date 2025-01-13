@@ -20,8 +20,7 @@ public class LlmJsonParserActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("text_extraction.text_extraction_llm_json_parser_111071")
                 .querySet("SELECT total_response_json as response, paper_no, origin_id as origin_id, group_id, tenant_id,22 as root_pipeline_id,   \n" +
-                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process from text_extraction.text_extraction_output_audit teoa \n" +
-                        "where root_pipeline_id =107195;")
+                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process from text_extraction.text_extraction_output_111042 teoa \n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

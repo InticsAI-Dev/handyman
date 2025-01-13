@@ -140,9 +140,8 @@ public class LlmJsonParserAction implements IActionExecution {
 
 
 
-                            if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
+                            if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty() && !jsonResponse.equals("{}")) {
                                 TextParser lineParser = textParser.readValue(jsonResponse, TextParser.class);
-
 
                                 List<TextLineItems> lines = lineParser.getLines();
                                 lines.sort(Comparator.comparing(TextLineItems::getLineNumber)); // comparator is used to order it with getLineNumber value
