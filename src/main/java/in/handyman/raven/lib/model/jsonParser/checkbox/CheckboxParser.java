@@ -47,11 +47,11 @@ public class CheckboxParser {
                 });
 
 
-                Bbox bBox = new Bbox();
-                bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
+//                Bbox bBox = new Bbox();
+//                bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
                 CheckboxContentNode checkboxContentNode = new CheckboxContentNode();
-                checkboxContentNode.setBBox(bBox);
+//                checkboxContentNode.setBBox(bBox);
                 checkboxContentNode.setConfidence(0.0F);
                 checkboxContentNode.setOptions(optionsArray);
                 checkboxContentNode.setQuestion(row.getQuestion());

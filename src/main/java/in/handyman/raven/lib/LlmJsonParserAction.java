@@ -140,13 +140,13 @@ public class LlmJsonParserAction implements IActionExecution {
                       lines.sort(Comparator.comparing(TextLineItems::getLineNumber)); // comparator is used to order it with getLineNumber value
                       lines.forEach(item -> {
                           // Create an ObjectNode for the bounding box
-                          Bbox bBox = new Bbox();
-                          bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
+//                          Bbox bBox = new Bbox();
+//                          bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
                           ContentNode contentNode = new ContentNode();
                           contentNode.setContent(item.getContent());
                           contentNode.setConfidence(0.0F);
-                          contentNode.setBBox(bBox);
+//                          contentNode.setBBox(bBox);
                           // Add the contentNode to the aggregatedResult list
                           aggregatedResult.add(contentNode);
                       });
@@ -203,15 +203,15 @@ public class LlmJsonParserAction implements IActionExecution {
                           List<KVPContentNode> aggregatedResult = new ArrayList<>();
 
                           parser.getSorItems().forEach((sorItem, value) -> {
-                              Bbox bBox = new Bbox();
-                              bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
+//                              Bbox bBox = new Bbox();
+//                              bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
                               // Create an ObjectNode for the content
                               KVPContentNode kvpContentNode = new KVPContentNode();
                               kvpContentNode.setKey(sorItem);
                               kvpContentNode.setValue(value);
                               kvpContentNode.setConfidence(0.0F);
-                              kvpContentNode.setBBox(bBox);
+//                              kvpContentNode.setBBox(bBox);
 
                               // Add the contentNode to the aggregatedResult list
                               aggregatedResult.add(kvpContentNode);

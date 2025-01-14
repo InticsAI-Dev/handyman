@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.jsonParser.Table;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import in.handyman.raven.lib.model.jsonParser.Bbox;
+import in.handyman.raven.lib.model.jsonParser.BoundingBox;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +18,6 @@ public class TableContentNode {
     private Integer tableId;
     private JsonNode rows;
     private double confidence;
-    private Bbox bBox;
+    private BoundingBox bounding_box;
 }
 

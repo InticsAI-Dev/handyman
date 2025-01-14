@@ -50,7 +50,7 @@ public class LlmJsonParserActionTest {
                 .outputTable("kvp_extraction.kvp_extraction_llm_json_parser_audit")
                 .querySet("SELECT total_response_json as response, paper_no, 'ORIGIN-76499' as origin_id, group_id, tenant_id, \n" +
                         "root_pipeline_id, batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, \n" +
-                        "0.0 as image_height, created_on, 'KVP_EXTRACTION' as process\n" +
+                        "0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process\n" +
                         "from kvp_extraction.kvp_extraction_output_audit keoa where root_pipeline_id = 180069;\n")
                 .build();
 

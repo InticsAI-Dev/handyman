@@ -40,14 +40,14 @@ public class TableParser {
             AtomicInteger i = new AtomicInteger(0); // Define AtomicInteger outside the loop
 
             tables.forEach(s -> {
-                Bbox bBox = new Bbox();
-                bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
+//                Bbox bBox = new Bbox();
+//                bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
 
                 TableContentNode tableContent = new TableContentNode();
                 tableContent.setTableId(i.getAndIncrement());
                 tableContent.setRows(objectMapper.valueToTree(s.getRows()));
                 tableContent.setConfidence(0.0F);
-                tableContent.setBBox(bBox);
+//                tableContent.setBBox(bBox);
                 resultArray.add(tableContent);
             });
             JsonNode finalResult = objectMapper.valueToTree(resultArray);

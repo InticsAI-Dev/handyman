@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.jsonParser.checkbox;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import in.handyman.raven.lib.model.jsonParser.Bbox;
+import in.handyman.raven.lib.model.jsonParser.BoundingBox;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,6 @@ public class CheckboxContentNode {
     private String question;
     private List<CheckboxStatus> Options;
     private double confidence;
-    private Bbox bBox;
+    private BoundingBox bBox;
 }
 
