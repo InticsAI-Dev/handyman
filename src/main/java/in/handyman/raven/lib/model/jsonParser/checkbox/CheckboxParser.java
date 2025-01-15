@@ -41,8 +41,7 @@ public class CheckboxParser {
                 row.getOptions().forEach(option -> {
 
                     CheckboxStatus checkboxStatus = new CheckboxStatus();
-                    checkboxStatus.setOptionText(option.getOptionText());
-                    checkboxStatus.setStatus(option.getStatus());
+
                     optionsArray.add(checkboxStatus);
                 });
 
@@ -53,7 +52,7 @@ public class CheckboxParser {
                 CheckboxContentNode checkboxContentNode = new CheckboxContentNode();
                 checkboxContentNode.setBoundingBox(bBox);
                 checkboxContentNode.setConfidence(0.0F);
-                checkboxContentNode.setOptions(optionsArray);
+                checkboxContentNode.setOptions(row.getOptions());
                 checkboxContentNode.setQuestion(row.getQuestion());
 
                 selectionElements.add(checkboxContentNode);

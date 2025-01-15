@@ -114,7 +114,7 @@ public class LlmJsonParserActionTest {
                     .querySet("SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,  \n" +
                             "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height,  \n" +
                             "created_on, 'CHECKBOX_EXTRACTION' as process from checkbox_extraction.checkbox_extraction_output_audit ceoa \n" +
-                            "where root_pipeline_id =109392; ")
+                            "where id =23; ")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
