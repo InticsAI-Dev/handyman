@@ -59,6 +59,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
+        String inputResponse = entity.getInputResponse();
 
         //payload
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
@@ -75,6 +76,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+
+        if(Objects.equals("true",action.getContext().get("krypton.bbox.activator"))) {
+            radonKvpExtractionRequest.setBBoxInputResponse(entity.getInputResponse());
+        }else {
+            radonKvpExtractionRequest.setBBoxInputResponse("");
+        }
 
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);

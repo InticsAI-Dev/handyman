@@ -22,5 +22,6 @@ public class RadonKvpExtractionRequest {
     private String userPrompt;
     private String systemPrompt;
     private String batchId;
+    private String bBoxInputResponse;
 
 }
