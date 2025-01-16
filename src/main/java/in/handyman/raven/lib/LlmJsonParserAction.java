@@ -160,7 +160,7 @@ public class LlmJsonParserAction implements IActionExecution {
 
                             } else {
                                 log.info("input is NULL for {}", inputTable.getProcess());
-                                 // Set an empty array to "textLine"
+                                // Set an empty array to "textLine"
                             }
 
                             finalResults.setTextLines(aggregatedResult);

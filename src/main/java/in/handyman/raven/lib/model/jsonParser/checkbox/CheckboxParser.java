@@ -36,13 +36,12 @@ public class CheckboxParser {
 
             dataParser.forEach(row -> {
                 // creating an empty list of object
-                List<CheckboxStatus> optionsArray = new ArrayList<>();
+                List<JsonNode> optionsArray = new ArrayList<>();
 
                 row.getOptions().forEach(option -> {
 
                     CheckboxStatus checkboxStatus = new CheckboxStatus();
-
-                    optionsArray.add(checkboxStatus);
+                    optionsArray.add(option);
                 });
 
 
@@ -52,7 +51,7 @@ public class CheckboxParser {
                 CheckboxContentNode checkboxContentNode = new CheckboxContentNode();
                 checkboxContentNode.setBoundingBox(bBox);
                 checkboxContentNode.setConfidence(0.0F);
-                checkboxContentNode.setOptions(row.getOptions());
+                checkboxContentNode.setOptions(optionsArray);
                 checkboxContentNode.setQuestion(row.getQuestion());
 
                 selectionElements.add(checkboxContentNode);

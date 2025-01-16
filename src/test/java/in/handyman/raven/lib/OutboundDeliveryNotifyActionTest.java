@@ -43,12 +43,14 @@ class OutboundDeliveryNotifyActionTest {
                 .name("Outbound delivery notify")
                 .condition(true)
                 .documentId("166730399_C1")
-                .inticsZipUri("https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g")
+                .inticsZipUri("http://localhost:5002/messages")
                 .resourceConn("intics_zio_db_conn")
                 .zipChecksum("3t4ergfe32q345r6ty")
                 .querySet("select file_name as file_name, '' as file_uri,'' as zip_file_check_sum,\n" +
-                        "              'https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g' as endpoint,'${outbound.appId}' as app_id,'${outbound.appKeyId}' as app_secret_key,product_json as outbound_json,'Product' as outbound_condition\n" +
-                        "              from product_outbound.product_outbound_zip_file_input  where group_id=101 and tenant_id =69 ;")
+                        "  'http://localhost:5002/messages' as endpoint,'demo_user' as app_id,'demo_user' as app_secret_key,product_response as outbound_json\n" +
+                        "  ,'OUTBOUND_ASIS' as outbound_condition, 'ITX-605' as document_id\n" +
+                        "  from outbound_asis.outbound_alchemy_asis_response\n" +
+                        "  where group_id=5101 and tenant_id = 115 ;")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

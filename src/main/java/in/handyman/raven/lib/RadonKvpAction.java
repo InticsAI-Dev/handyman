@@ -154,6 +154,6 @@ public class RadonKvpAction implements IActionExecution {
     }
 
     public int getTimeOut() {
-        return 0;
+        return this.timeout;
     }
 }
