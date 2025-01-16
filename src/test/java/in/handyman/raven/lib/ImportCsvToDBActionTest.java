@@ -21,9 +21,9 @@ class ImportCsvToDBActionTest {
 
         ImportCsvToDB importCsvToDB=new ImportCsvToDB();
         importCsvToDB.setName("import csv into db");
-        importCsvToDB.setValue(Collections.singletonList("/home/anandh.andrews@zucisystems.com/Downloads/bh_control_data_1.csv"));
+        importCsvToDB.setValue(Collections.singletonList("/home/anandh.andrews@zucisystems.com/Downloads/test_control_data.csv"));
         importCsvToDB.setCondition(true);
-        importCsvToDB.setTarget("");
+        importCsvToDB.setTarget("intics_zio_db_conn");
         importCsvToDB.setWriteThreadCount("5");
         importCsvToDB.setBatchSize("5");
         importCsvToDB.setTableName("bh_control_data_1");

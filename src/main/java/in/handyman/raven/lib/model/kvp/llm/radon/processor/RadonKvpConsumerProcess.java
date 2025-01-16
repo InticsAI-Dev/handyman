@@ -208,7 +208,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
-            if (jsonResponse.contains("```json")) {
+            if (jsonResponse.contains("````json")) {
                 // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
                 Matcher matcher = pattern.matcher(jsonResponse);
@@ -216,26 +216,40 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 if (matcher.find()) {
                     // Extract the JSON string from the matched group
                     String jsonString = matcher.group(1);
-                    jsonString = jsonString.replace("\n", "");
 
-
-                    // Convert the cleaned JSON string to a JsonNode
-                    JsonNode rootNode = objectMapper.readTree(jsonString);
+                    JsonNode rootNode = getJsonNodeFromInferResponse(objectMapper, jsonString);
 
                     return rootNode;
                 }else {
-                    JsonNode rootNode = objectMapper.readTree(jsonResponse);
+                    JsonNode rootNode = getJsonNodeFromInferResponse(objectMapper, jsonResponse);
                     return rootNode;
                 }
 
             } else {
                 // Handle the case where the expected markers are not found
-                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+                log.info("Input does not contain the required ```json``` markers.");
+                JsonNode rootNode = getJsonNodeFromInferResponse(objectMapper, jsonResponse);
+                return rootNode;
             }
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public JsonNode getJsonNodeFromInferResponse(ObjectMapper objectMapper, String jsonString) throws JsonProcessingException {
+        try{
+
+            jsonString = jsonString.replace("\n", "");
+
+            // Convert the cleaned JSON string to a JsonNode
+            JsonNode rootNode = objectMapper.readTree(jsonString);
+            return rootNode;
+        }catch (Exception e){
+            throw new IllegalArgumentException("Input does not have a json structure .");
+        }
+
+
     }
 
     private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws IOException {

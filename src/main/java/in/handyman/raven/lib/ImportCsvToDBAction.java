@@ -171,13 +171,15 @@ public class ImportCsvToDBAction implements IActionExecution {
   private void createTableAndInsertData(final Integer batchSize, final Jdbi jdbi, List<Map<String, Object>> data) {
     Map<String, Object> firstRow = data.get(0);
     final String delimiter = ",";
-    String columnNames = String.join(delimiter, firstRow.keySet());
-    String columnCleanedNames = columnNames.substring(0,columnNames.length()-1);
+    String columnNames = firstRow.keySet().stream()
+            .filter(s -> s != null && !s.trim().isEmpty())  // Filter out null or empty/whitespace strings
+            .collect(Collectors.joining(delimiter));
+//    String columnCleanedNames = columnNames.substring(0,columnNames.length()-1);
 
     String namedParams = firstRow.keySet().stream()
             .map(s -> ":" + s)
             .collect(Collectors.joining(delimiter));
-    String namedCleanedParams = namedParams.substring(0,namedParams.length()-2);
+//    String namedCleanedParams = namedParams.substring(0,namedParams.length()-1);
 
     String createTableDdl = generateCreateTableDDL(firstRow.keySet());
 
@@ -186,7 +188,7 @@ public class ImportCsvToDBAction implements IActionExecution {
       return null; // No result needed
     });
 
-    insertDataInBatches(batchSize, jdbi, data, columnCleanedNames, namedCleanedParams);
+    insertDataInBatches(batchSize, jdbi, data, columnNames, namedParams);
   }
 
   private String generateCreateTableDDL(Set<String> columnNames) {
@@ -224,7 +226,7 @@ public class ImportCsvToDBAction implements IActionExecution {
                                    String namedParams) {
 
     AtomicInteger counter = new AtomicInteger();
-
+    log.info("Prepared columns {} and values {}", columnNames, namedParams);
     String insertSqlFormat = String.format("INSERT INTO %s (%s) VALUES (%s);",
             importCsvToDB.getTableName(),
             columnNames,
@@ -233,14 +235,23 @@ public class ImportCsvToDBAction implements IActionExecution {
     jdbi.inTransaction(handle -> {
       try (PreparedBatch batch = handle.prepareBatch(insertSqlFormat)) {
         data.forEach(row -> {
-          batch.bindMap(row).add();
+          // Replace null values with empty strings in the row
+          Map<String, Object> cleanedRow = row.entrySet().stream()
+                  .collect(Collectors.toMap(
+                          Map.Entry::getKey,
+                          entry -> entry.getValue() == null ? "" : entry.getValue()
+                  ));
+
+          batch.bindMap(cleanedRow).add();
+
           if (counter.incrementAndGet() % batchSize == 0) {
             log.info("Added batch size {}", batch.execute().length);
           }
         });
-        log.info("Added batch size {}", batch.execute().length); // Execute remaining
+
+        log.info("Added batch size {}", batch.execute().length); // Execute remaining batch
       }
-      return counter.get();
+      return counter.get(); // Return the updated counter value
     });
 
     log.info("Completed inserting {} rows", counter.get());
