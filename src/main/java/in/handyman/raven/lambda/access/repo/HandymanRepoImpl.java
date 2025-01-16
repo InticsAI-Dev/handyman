@@ -63,9 +63,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         JDBI = Jdbi.create(hikariDataSource);
         JDBI.installPlugin(new SqlObjectPlugin());
         try (var ignored = JDBI.open()) {
-            log.info("Connected {} {} {}", url, username, password);
+            log.info("Connected {} {}", url, username);
         } catch (Exception e) {
-            log.error("Error in Connecting database with credentials {} {} {} with exception {}", url, username, password, e.getMessage());
+            log.error("Error in Connecting database with credentials {} {} with exception {}", url, username, e.getMessage());
         }
     }
 
