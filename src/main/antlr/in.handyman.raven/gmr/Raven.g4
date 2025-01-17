@@ -273,7 +273,7 @@ exportCsv:
      ('on-condition' condition=expression)* ('fielding' writeThreadCount=STRING)* ;
 
 importCsvToDB:
-	'importCsvToDB' 'as' name= STRING 'target' target=resource 'on' tableName=STRING 'using'
+	'importCsvToDB' 'as' name=STRING 'target' target=STRING 'on' tableName=STRING 'using'
 	 '{'
 		value+=STRING
 	'}' ('on-condition' condition=expression)* ('fielding' writeThreadCount=STRING)* ('batch' batchSize=STRING)*;

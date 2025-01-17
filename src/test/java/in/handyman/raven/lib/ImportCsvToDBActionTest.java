@@ -2,7 +2,6 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
-import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.lambda.process.LContext;
 import in.handyman.raven.lambda.process.LambdaEngine;
 import in.handyman.raven.lib.model.ImportCsvToDB;
