@@ -20,20 +20,22 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-        actionName = "ImportCsvToDB"
+    actionName = "ImportCsvToDB"
 )
 public class ImportCsvToDB implements IActionContext {
-    private String name;
+  private String name;
 
-    private SpwResourceConfig target;
+  private String target;
 
-    private String tableName;
+  private String tableName;
 
-    private String batchSize;
-    private String writeThreadCount;
+  private String STRING;
 
-    private List<String> value;
+  private List<String> value;
 
-    @Builder.Default
-    private Boolean condition = true;
+  private Boolean condition = true;
+
+  private String writeThreadCount;
+
+  private String batchSize;
 }
