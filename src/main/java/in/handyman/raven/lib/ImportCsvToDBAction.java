@@ -177,7 +177,7 @@ public class ImportCsvToDBAction implements IActionExecution {
     String namedParams = firstRow.keySet().stream()
             .map(s -> ":" + s)
             .collect(Collectors.joining(delimiter));
-    String namedCleanedParams = namedParams.substring(0,namedParams.length()-2);
+    String namedCleanedParams = namedParams.substring(0,namedParams.length()-1);
 
     String createTableDdl = generateCreateTableDDL(firstRow.keySet());
 
