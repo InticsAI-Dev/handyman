@@ -1,6 +1,7 @@
 package in.handyman.raven.util;
 
 import in.handyman.raven.lambda.process.HRequestResolver;
+import org.jasypt.util.text.AES256TextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,7 @@ public class PropertyHandler {
 
         String configPath = System.getProperty("config.file");
         if (configPath == null || configPath.isEmpty()) {
+            LOGGER.info("Config file is not present, loading from default config.properties");
             try (var input = HRequestResolver.class.getClassLoader().getResourceAsStream(CONFIG_PROPERTIES)) {
 
                 var prop = new Properties();
@@ -42,7 +44,16 @@ public class PropertyHandler {
             } catch (IOException e) {
                 throw new UncheckedIOException("Sorry, unable to load " + CONFIG_PROPERTIES, e);
             }
-        }else{
+        } else {
+            final String encryptionPassword = System.getenv("JASYPT_ENCRYPTOR_PASSWORD");
+            final AES256TextEncryptor aesEncryptor = new AES256TextEncryptor();
+
+            if (encryptionPassword != null && !encryptionPassword.isEmpty()) {
+                aesEncryptor.setPassword(encryptionPassword);
+            } else {
+                LOGGER.error("Encryption password is not set");
+            }
+            LOGGER.info("config.file is present");
             Map<String, String> tempProps;
             try (InputStream input = new FileInputStream(configPath)) {
                 Properties prop = new Properties();
@@ -50,9 +61,8 @@ public class PropertyHandler {
                 tempProps = prop.entrySet().stream()
                         .collect(Collectors.toMap(
                                 e -> String.valueOf(e.getKey()),
-                                e -> String.valueOf(e.getValue()),
-                                (prev, next) -> next, // Handle duplicate keys
-                                HashMap::new));
+                                e -> decryptPropertyByJasypt(String.valueOf(e.getValue()), aesEncryptor),
+                                (prev, next) -> next, HashMap::new));
                 LOGGER.info("Successfully loaded properties from config.file argument : {}", configPath);
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to load config.properties from path: " + configPath, e);
@@ -61,8 +71,19 @@ public class PropertyHandler {
         }
 
 
+    }
 
-
+    private static String decryptPropertyByJasypt(String encryptedValue, AES256TextEncryptor aesEncryptor) {
+        try {
+            if (encryptedValue.startsWith("ENC(") && encryptedValue.endsWith(")")) {
+                String encryptedText = encryptedValue.substring(4, encryptedValue.length() - 1);
+                return aesEncryptor.decrypt(encryptedText);
+            }
+            return encryptedValue;
+        } catch (Exception e) {
+            LOGGER.error("Error decrypting property: {}", encryptedValue, e);
+            return encryptedValue;
+        }
     }
 
     private PropertyHandler() {
