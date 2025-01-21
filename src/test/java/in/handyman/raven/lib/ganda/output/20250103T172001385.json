@@ -340,7 +340,8 @@
         "width" : 0.0,
         "height" : 0.0
       }
-    }, {
+    },
+      {
       "text" : "Immediate Notification of a Medicare Beneficiary Appeal Request: Documentation Request",
       "confidence" : 0.0,
       "boundingBox" : {

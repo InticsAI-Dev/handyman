@@ -12,7 +12,6 @@ import in.handyman.raven.lib.agadia.outbound.delivery.adapters.OutboundAdapterPr
 import in.handyman.raven.lib.agadia.outbound.delivery.entity.TableInputQuerySet;
 import in.handyman.raven.lib.model.OutboundDeliveryNotify;
 import in.handyman.raven.util.CommonQueryUtil;
-import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -36,8 +35,6 @@ public class OutboundDeliveryNotifyAction implements IActionExecution {
 
     private final Logger log;
     private final OutboundDeliveryNotify outboundDeliveryNotify;
-    private final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-    final ObjectMapper MAPPER = new ObjectMapper();
     private final Marker aMarker;
     private final String deliveryNotifyUrl;
     private final String appId;
