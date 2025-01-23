@@ -137,7 +137,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
-                String responseBody = response.body().string();
+                String responseBody = "{\"model_name\":\"krypton-service\",\"model_version\":\"1\",\"outputs\":[{\"name\":\"KRYPTON END\",\"datatype\":\"BYTES\",\"shape\":[1],\"data\":[\"{\\\"model\\\": \\\"RADON_KVP_ACTION\\\", \\\"infer_response\\\": \\\"```json\\\\n{\\\\n    \\\\\\\"lines\\\\\\\": [\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 1,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"Leon, Roberto\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 2,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"09/02/1939\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 3,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"CONSENT FOR PROCEDURE\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 4,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"1. I hereby authorize Dr. [blank] to perform upon me or the patient I represent, the following surgical and/or medical procedures: Right Total Knee Replacement\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 5,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"2. I consent to the use of allograft (donor) tissue or synthetic bone or bone repair enhancing agents if deemed necessary by my surgeon.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 6,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"3. I consent to the use of my dismembered tissue for education, medical research, or development purpose(s), and dispose of tissue which may be removed by a physician as necessary for my diagnosis/treatment.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 7,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"4. I understand that the procedure(s) will be performed at Hudson Regional Hospital by or under the supervision of the attending physician. He is authorized to utilize the services of such physicians or members of the house staff as necessary or advisable in the performance of the procedure(s) listed above.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 8,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"5. I understand that during the course of the surgical procedure(s), unforeseen conditions may be revealed that necessitate an extension of the original procedure(s) or different procedures than those set forth in Paragraph one. I therefore authorize and request that the above named surgeon, his assistants or his designees perform such surgical procedure(s) as are necessary and desirable in the exercise of their professional judgment.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 9,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"6. My doctor has fully explained the nature and the purpose of the procedure(s) and its benefits, possible alternative methods of diagnosis or treatment, the risks involved, the possibility of complications, the foreseeable consequences of the procedure(s) and the possible results of non-treatment. The risks identified to me include, but are not limited to the following: continued pain, limp, weakness, stiffness, instability, limb length discrepancy, bone break, loosening, wear, malfunction of prosthesis, uncontrolled bleeding, need for blood transfusion, blood vessel and nerve injury, delayed wound healing, infection, phlebitis, thromboembolic conditions such as deep venous thrombosis and pulmonary embolus, pressure sores, paralysis, and even death.\\\\\\\"\\\\n        }\\\\n    ]\\\\n}\\\\n```\\\", \\\"confidence_score\\\": \\\"\\\", \\\"bboxes\\\": \\\"\\\", \\\"originId\\\": \\\"ORIGIN-491\\\", \\\"paperNo\\\": 5, \\\"processId\\\": 109587, \\\"groupId\\\": 449, \\\"tenantId\\\": 115, \\\"rootPipelineId\\\": 109587, \\\"actionId\\\": 1047026}\"]}]}";
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
@@ -244,8 +244,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
-//
+//        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+
 //        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
 //            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
 //        }
@@ -257,7 +257,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
+                .totalResponseJson(modelResponse.getInferResponse())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())

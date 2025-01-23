@@ -14,11 +14,10 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://192.168.10.241:7500/v2/models/radon-service/versions/1/infer")
-                .outputTable("text_extraction.text_extraction_output_109006")
+                .endpoint("http://192.168.10.248:7700/predict")
+                .outputTable("kvp_extraction.kvp_extraction_output_111071")
                 .querySet("SELECT id, input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, 'KRYPTON START' as apiName\n" +
-                        "FROM text_extraction.text_extraction_input_184579\n" +
-                        "WHERE root_pipeline_id =184579")
+                        "FROM kvp_extraction.kvp_extraction_input_108971;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
