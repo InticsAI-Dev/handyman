@@ -45,6 +45,7 @@ public class SORParser {
             if (value.isObject()) {
 
                 // If it's an object, just recurse without building path
+                extractedValue.add(value);
                 processNode(value);
             } else if (value.isArray()) {
 

@@ -2,7 +2,7 @@ package in.handyman.raven.lib.model.jsonParser.Text;
 
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import in.handyman.raven.lib.model.jsonParser.Bbox;
+import in.handyman.raven.lib.model.jsonParser.BoundingBox;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +20,5 @@ import java.util.List;
 public class ContentNode {
     private String content;
     private double confidence;
-    private Bbox bBox;
+    private BoundingBox boundingBox;
 }

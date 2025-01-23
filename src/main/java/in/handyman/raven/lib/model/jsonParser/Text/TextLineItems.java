@@ -17,6 +17,8 @@ public class TextLineItems{
     private Integer lineNumber;
     @JsonProperty("content")
     private String content;
+    @JsonProperty("confidence")
+    private double confidence;
     @JsonProperty("bounding_box")
     private BoundingBox boundingBox;
 }
