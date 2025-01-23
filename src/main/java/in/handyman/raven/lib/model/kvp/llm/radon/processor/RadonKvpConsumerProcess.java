@@ -77,6 +77,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
 
+        if(Objects.equals("true",action.getContext().get("krypton.base64.activator"))) {
+            radonKvpExtractionRequest.setBase64Img(entity.getBase64Img());
+        }else {
+            radonKvpExtractionRequest.setBase64Img("");
+        }
+
+
         if(Objects.equals("true",action.getContext().get("krypton.bbox.activator"))) {
             radonKvpExtractionRequest.setBBoxInputResponse(entity.getInputResponse());
         }else {

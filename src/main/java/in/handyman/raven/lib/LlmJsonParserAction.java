@@ -12,7 +12,6 @@ import in.handyman.raven.lib.model.LlmJsonParser;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.jsonParser.KVP.SORParser;
 import in.handyman.raven.lib.model.jsonParser.Text.ContentNode;
-import in.handyman.raven.lib.model.jsonParser.KVP.KVPContentNode;
 import in.handyman.raven.lib.model.jsonParser.Text.TextLineItems;
 import in.handyman.raven.lib.model.jsonParser.Text.TextParser;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParsedResponse;
@@ -25,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import in.handyman.raven.lib.model.jsonParser.Bbox;
 
 
 import java.sql.Types;
@@ -196,26 +194,13 @@ public class LlmJsonParserAction implements IActionExecution {
                       log.info("\n kvp parsing started for {}:\n", inputTable.getProcess());
                       String finalResult = "";
 
+                      // check whether is is null or empty
                       if (!Objects.equals(jsonResponse, "null") && jsonResponse != null && !jsonResponse.isEmpty()) {
                           SORParser parser = new SORParser(action);
-                          parser.parseJSON(jsonResponse);
 
-                          List<KVPContentNode> aggregatedResult = new ArrayList<>();
-
-                          parser.getSorItems().forEach((sorItem, value) -> {
-//                              Bbox bBox = new Bbox();
-//                              bBox.setX(0); bBox.setY(0); bBox.setWidth(0); bBox.setHeight(0);
-
-                              // Create an ObjectNode for the content
-                              KVPContentNode kvpContentNode = new KVPContentNode();
-                              kvpContentNode.setKey(sorItem);
-                              kvpContentNode.setValue(value);
-                              kvpContentNode.setConfidence(0.0F);
-//                              kvpContentNode.setBBox(bBox);
-
-                              // Add the contentNode to the aggregatedResult list
-                              aggregatedResult.add(kvpContentNode);
-                          });
+                          // parsing the inout json
+                          log.info("Json is noy empty ");
+                          List<JsonNode> aggregatedResult =  parser.parseJSON(jsonResponse);
 
                           ObjectNode formElementsMapper = objectMapper.createObjectNode();
                           ObjectNode form = objectMapper.createObjectNode();
@@ -413,8 +398,7 @@ public class LlmJsonParserAction implements IActionExecution {
       Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
       while (fields.hasNext()) {
         Map.Entry<String, JsonNode> field = fields.next();
-        String key = field.getKey();
-        String newCurrentKey = key;
+        String newCurrentKey = field.getKey();
         String newParentPath = parentPath.isEmpty() ? currentKey : parentPath + ", " + currentKey;
         parseJsonNode(field.getValue(), newCurrentKey, newParentPath, parsedResponses);
       }

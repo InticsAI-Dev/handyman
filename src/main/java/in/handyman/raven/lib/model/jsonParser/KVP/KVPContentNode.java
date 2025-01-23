@@ -1,7 +1,6 @@
 package in.handyman.raven.lib.model.jsonParser.KVP;
 
 
-import in.handyman.raven.lib.model.jsonParser.Bbox;
 import in.handyman.raven.lib.model.jsonParser.BoundingBox;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +18,6 @@ public class KVPContentNode {
     private String key;
     private String value;
     private double confidence;
-    private BoundingBox bBox;
+    private BoundingBox boundingBox;
 }
 

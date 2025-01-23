@@ -6,10 +6,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import lombok.Getter;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 public class SORParser {
@@ -20,21 +17,25 @@ public class SORParser {
         this.action = action;
     }
 
-    public void parseJSON(String jsonStr) {
+    public List<JsonNode> parseJSON(String jsonStr) {
+        List<JsonNode> processedKVP = new ArrayList<>();
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode rootNode = mapper.readTree(jsonStr);
-            processNode(rootNode);
+            processedKVP =  processNode(rootNode);
         } catch (Exception e) {
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("error in execute method for KVP parser action", handymanException, action);
 
         }
+        return processedKVP;
     }
 
-    private void processNode(JsonNode node) {
+    private List<JsonNode> processNode(JsonNode node) {
 
+        List<JsonNode> extractedValue = new ArrayList<>();
         Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        ObjectMapper objectMapper = new ObjectMapper();
 
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
@@ -42,13 +43,22 @@ public class SORParser {
             JsonNode value = field.getValue();
 
             if (value.isObject()) {
+
                 // If it's an object, just recurse without building path
                 processNode(value);
-            } else {
-                // Store just the leaf key and its value
-                sorItems.put(key, value.asText());
+            } else if (value.isArray()) {
+
+                for (JsonNode element : value) {
+                    extractedValue.add(element);
+                }
+//            } else {
+//                // Store just the leaf key and its value
+//                sorItems.put(key, value.asText());
+//                extractedValue.add(sorItems);
             }
         }
+
+        return extractedValue;
     }
 
 
