@@ -29,6 +29,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
+    public static final String RADON_START = "RADON START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -59,10 +60,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long groupId = entity.getGroupId();
         String userPrompt = entity.getUserPrompt();
         String systemPrompt = entity.getSystemPrompt();
+        String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
+
 
         //payload
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
@@ -137,7 +140,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
-                String responseBody = "{\"model_name\":\"krypton-service\",\"model_version\":\"1\",\"outputs\":[{\"name\":\"KRYPTON END\",\"datatype\":\"BYTES\",\"shape\":[1],\"data\":[\"{\\\"model\\\": \\\"RADON_KVP_ACTION\\\", \\\"infer_response\\\": \\\"```json\\\\n{\\\\n    \\\\\\\"lines\\\\\\\": [\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 1,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"Leon, Roberto\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 2,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"09/02/1939\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 3,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"CONSENT FOR PROCEDURE\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 4,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"1. I hereby authorize Dr. [blank] to perform upon me or the patient I represent, the following surgical and/or medical procedures: Right Total Knee Replacement\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 5,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"2. I consent to the use of allograft (donor) tissue or synthetic bone or bone repair enhancing agents if deemed necessary by my surgeon.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 6,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"3. I consent to the use of my dismembered tissue for education, medical research, or development purpose(s), and dispose of tissue which may be removed by a physician as necessary for my diagnosis/treatment.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 7,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"4. I understand that the procedure(s) will be performed at Hudson Regional Hospital by or under the supervision of the attending physician. He is authorized to utilize the services of such physicians or members of the house staff as necessary or advisable in the performance of the procedure(s) listed above.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 8,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"5. I understand that during the course of the surgical procedure(s), unforeseen conditions may be revealed that necessitate an extension of the original procedure(s) or different procedures than those set forth in Paragraph one. I therefore authorize and request that the above named surgeon, his assistants or his designees perform such surgical procedure(s) as are necessary and desirable in the exercise of their professional judgment.\\\\\\\"\\\\n        },\\\\n        {\\\\n            \\\\\\\"line_number\\\\\\\": 9,\\\\n            \\\\\\\"content\\\\\\\": \\\\\\\"6. My doctor has fully explained the nature and the purpose of the procedure(s) and its benefits, possible alternative methods of diagnosis or treatment, the risks involved, the possibility of complications, the foreseeable consequences of the procedure(s) and the possible results of non-treatment. The risks identified to me include, but are not limited to the following: continued pain, limp, weakness, stiffness, instability, limb length discrepancy, bone break, loosening, wear, malfunction of prosthesis, uncontrolled bleeding, need for blood transfusion, blood vessel and nerve injury, delayed wound healing, infection, phlebitis, thromboembolic conditions such as deep venous thrombosis and pulmonary embolus, pressure sores, paralysis, and even death.\\\\\\\"\\\\n        }\\\\n    ]\\\\n}\\\\n```\\\", \\\"confidence_score\\\": \\\"\\\", \\\"bboxes\\\": \\\"\\\", \\\"originId\\\": \\\"ORIGIN-491\\\", \\\"paperNo\\\": 5, \\\"processId\\\": 109587, \\\"groupId\\\": 449, \\\"tenantId\\\": 115, \\\"rootPipelineId\\\": 109587, \\\"actionId\\\": 1047026}\"]}]}";
+                String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
@@ -222,19 +225,23 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     // Convert the cleaned JSON string to a JsonNode
                     rootNode = objectMapper.readTree(jsonString);
 
+                    return rootNode;
+                }else {
+                    rootNode = objectMapper.readTree(jsonResponse);
+                    return rootNode;
                 }
-            }else {
-                log.info("```json marker is not present");
-                rootNode = objectMapper.readTree(jsonResponse);
+
+            } else {
+                // Handle the case where the expected markers are not found
+                throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
             }
-            return rootNode;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws IOException {
+    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws JsonProcessingException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -244,11 +251,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-//        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+//        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
-//        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
-//            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
-//        }
 
         parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(CreateTimeStamp.currentTimestamp())
