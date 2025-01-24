@@ -66,6 +66,12 @@
             <artifactId>jdbi3-sqlobject</artifactId>
             <version>${jdbi.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.11.0</version>
+            <scope>test</scope>
+        </dependency>
         <!-- DB -->
         <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>
