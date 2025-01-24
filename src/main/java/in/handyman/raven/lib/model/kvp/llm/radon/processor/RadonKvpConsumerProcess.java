@@ -251,8 +251,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-//        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
-
+        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+//
+//        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
+//            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
+//        }
 
         parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(CreateTimeStamp.currentTimestamp())
@@ -261,7 +264,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(modelResponse.getInferResponse())
+                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
