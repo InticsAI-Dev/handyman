@@ -19,6 +19,7 @@ import in.handyman.raven.lib.model.jsonParser.Text.FinalResults;
 import in.handyman.raven.lib.model.jsonParser.Text.TextLineItems;
 import in.handyman.raven.lib.model.jsonParser.Text.TextParser;
 import in.handyman.raven.lib.model.jsonParser.checkbox.CheckBoxFinal;
+import in.handyman.raven.lib.model.jsonParser.checkbox.CheckboxContentNode;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParsedResponse;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryInputTable;
 import in.handyman.raven.lib.model.jsonParser.Table.TableParser;
@@ -317,6 +318,7 @@ public class LlmJsonParserAction implements IActionExecution {
                     else if(Objects.equals(inputTable.getProcess(), "CHECKBOX_EXTRACTION")) {
 
                         try{
+                            String jsonResponseStr = "";
                             String finalResult = "";
                             final String insertQueryText = "INSERT INTO " + llmJsonParser.getOutputTable() +
                                     "(created_on,created_user_id, last_updated_on, last_updated_user_id, response, paper_no, " +
@@ -357,24 +359,33 @@ public class LlmJsonParserAction implements IActionExecution {
                                             }
                                         } else {
                                             log.info("input is NULL for {}", inputTable.getProcess());
+
+                                            List<CheckboxContentNode> selectionElements = new ArrayList<>();
                                             CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                                            checkBoxFinal.setSelectionElements(selectionElements);
                                             ObjectMapper checkBoxParser = new ObjectMapper();
-                                            finalResult =  checkBoxParser.writeValueAsString(checkBoxFinal);
+                                            finalResult = checkBoxParser.writeValueAsString(checkBoxFinal);
                                         }
 
                                     } else {
                                         log.info("input is NULL for {}", inputTable.getProcess());
+
+                                        List<CheckboxContentNode> selectionElements = new ArrayList<>();
                                         CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                                        checkBoxFinal.setSelectionElements(selectionElements);
                                         ObjectMapper checkBoxParser = new ObjectMapper();
-                                        finalResult =  checkBoxParser.writeValueAsString(checkBoxFinal);
+                                        finalResult = checkBoxParser.writeValueAsString(checkBoxFinal);
 
                                     }
                                     // Create the output JSON structure
                                 } else {
                                     log.info("input is NULL for {}", inputTable.getProcess());
+
+                                    List<CheckboxContentNode> selectionElements = new ArrayList<>();
                                     CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                                    checkBoxFinal.setSelectionElements(selectionElements);
                                     ObjectMapper checkBoxParser = new ObjectMapper();
-                                    finalResult =  checkBoxParser.writeValueAsString(checkBoxFinal);
+                                    finalResult = checkBoxParser.writeValueAsString(checkBoxFinal);
                                 }
 
                             } catch (Exception e) {

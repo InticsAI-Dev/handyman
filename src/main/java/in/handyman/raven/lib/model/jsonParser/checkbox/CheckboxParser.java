@@ -26,6 +26,14 @@ public class CheckboxParser {
                 processJson(value); // Recurse on the value
 
             }
+            if (jsonElement.isEmpty()){
+                List<CheckboxContentNode> selectionElements = new ArrayList<>();
+                CheckBoxFinal checkBoxFinal = new CheckBoxFinal();
+                checkBoxFinal.setSelectionElements(selectionElements);
+                ObjectMapper checkBoxParser = new ObjectMapper();
+                jsonResponseStr = checkBoxParser.writeValueAsString(checkBoxFinal);
+
+            }
         } else if (jsonElement.isArray()) {
             // If the element is a JSONArray, iterate through its elements
             output = objectMapper.createObjectNode();

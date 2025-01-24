@@ -47,12 +47,11 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("kvp_extraction.kvp_extraction_llm_json_parser_109434")
-                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path,  \n" +
-                        "total_response_json as response, paper_no,  origin_id, process_id, action_id, process,12345 as group_id, \n" +
-                        "tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category  \n" +
-                        "from kvp_extraction.kvp_extraction_output_audit teoa \n" +
-                        "where root_pipeline_id =107195;")
+                .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_109794")
+                .querySet("  SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,\n" +
+                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'CHECKBOX_EXTRACTION' as process\n" +
+                        "from checkbox_extraction.checkbox_extraction_output_audit teeoa\n" +
+                        "where root_pipeline_id =206150;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -113,8 +112,9 @@ public class LlmJsonParserActionTest {
                 .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_109794")
                     .querySet("SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,  \n" +
                             "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height,  \n" +
-                            "created_on, 'CHECKBOX_EXTRACTION' as process from checkbox_extraction.checkbox_extraction_output_audit ceoa \n" +
-                            "where id =23; ")
+                            "created_on, 'CHECKBOX_EXTRACTION' as process \n" +
+                            "from checkbox_extraction.checkbox_extraction_output_audit celjpa \n" +
+                            "where root_pipeline_id =206150;\n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
