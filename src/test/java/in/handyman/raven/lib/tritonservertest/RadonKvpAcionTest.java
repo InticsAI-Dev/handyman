@@ -15,9 +15,11 @@ public class RadonKvpAcionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("http://localhost:7800/v2/models/krypton-x-service/versions/1/infer")
-                .outputTable("kvp_extraction.kvp_extraction_output_111071")
-                .querySet("SELECT id, '/data/output/Anthem_1.jpg' as input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, 'KRYPTON START' as apiName\n" +
-                        "FROM kvp_extraction.kvp_extraction_input_108971;")
+                .outputTable("table_extraction_info.table_extraction_output_109661")
+                .querySet("SELECT input_file_path, user_prompt, system_prompt, process, paper_no, origin_id, process_id, group_id,\n" +
+                        "tenant_id, root_pipeline_id,batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name\n" +
+                        "from table_extraction_info.table_extraction_input_audit teoa \n" +
+                        "where root_pipeline_id =206963;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
