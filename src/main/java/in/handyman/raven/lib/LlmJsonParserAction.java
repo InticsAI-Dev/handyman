@@ -313,7 +313,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                   try {
                                       // Try parsing it as a JSONArray
                                       ArrayNode jsonArray = (ArrayNode) objectMapper.readTree(jsonResponse);
-                                      log.info("It is a json array");
+                                      log.info("Input passed is a json array");
                                       finalResult = processJson(jsonArray);
 
                                   } catch (Exception e) {

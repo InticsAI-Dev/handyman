@@ -18,8 +18,8 @@ public class RadonKvpAcionTest {
                 .outputTable("kvp_extraction.kvp_extraction_output_audit")
                 .querySet("SELECT input_file_path, user_prompt, system_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,\n" +
                         "batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name\n" +
-                        "FROM kvp_extraction.kvp_extraction_input_audit\n" +
-                        "WHERE model_registry = 'KRYPTON'  and group_id ='521' and tenant_id='115' and batch_id ='BATCH-521_0' and process='KVP_EXTRACTION';")
+                        "FROM kvp_extraction.kvp_extraction_output_109124\n" +
+                        "WHkvp_extractionERE modkvp_extractionel_registry = 'KRYPTON'  and group_id ='521' and tenant_id='115' and batch_id ='BATCH-521_0' and process='KVP_EXTRACTION';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
