@@ -12,6 +12,8 @@ import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
 import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
 import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
+import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.AllArgsConstructor;
@@ -42,31 +44,68 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
     private static final Jdbi JDBI;
 
+    public static final String LEGACY_RESOURCE_CONNECTION_TYPE = "legacy.resource.connection.type";
+
+    public static final String LEGACY = "LEGACY";
+
+    public static final String AZURE = "AZURE";
+
+    public static final String AZURE_TENANT_ID = "azure.identity.tenantId";
+
+    public static final String AZURE_CLIENT_ID = "azure.identity.clientId";
+
+    public static final String AZURE_CLIENT_SECRET = "azure.identity.clientSecret";
+
+    public static final String AZURE_DATABASE_URL = "azure.database.url";
+
+    public static final String AZURE_TOKEN_SCOPE = "azure.token.scope";
+
     static {
+        String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
+        if(legacyResourceConnection.equals(AZURE)){
 
-        final String username = PropertyHandler.get(CONFIG_USER);
-        final String password = PropertyHandler.get(CONFIG_PASSWORD);
-        final String url = PropertyHandler.get(CONFIG_URL);
-        final int maxConnection = Integer.parseInt(PropertyHandler.get(MAX_CONNECTION));
+            String azureTenantId = PropertyHandler.get(AZURE_TENANT_ID);
+            String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
+            String azureClientSecret = PropertyHandler.get(AZURE_CLIENT_SECRET);
+            String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
+            String azureTokenScope = PropertyHandler.get(AZURE_TOKEN_SCOPE);
+            String azureUserName = PropertyHandler.get(CONFIG_USER);
 
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(url);
-        config.setUsername(username);
-        config.setPassword(password);
-        config.setMinimumIdle(0);
-        config.setConnectionTimeout(30000);
-        config.setIdleTimeout(35000);
-        config.setMaxLifetime(45000);
-        config.setMaximumPoolSize(maxConnection);
-        HikariDataSource hikariDataSource = new HikariDataSource(config);
+            AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
+            JDBI = connection.getAzureJdbiConnection();
+            JDBI.installPlugin(new SqlObjectPlugin());
+            try (var ignored = JDBI.open()) {
+                log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);
+            } catch (Exception e) {
+                log.error("Error in Connecting database with credentials {} {} with exception {}", azureDatabaseUrl, azureClientId, e.getMessage());
+            }
+        } else {
 
-        JDBI = Jdbi.create(hikariDataSource);
-        JDBI.installPlugin(new SqlObjectPlugin());
-        try (var ignored = JDBI.open()) {
-            log.info("Connected {} {}", url, username);
-        } catch (Exception e) {
-            log.error("Error in Connecting database with credentials {} {} with exception {}", url, username, e.getMessage());
+            final String username = PropertyHandler.get(CONFIG_USER);
+            final String password = PropertyHandler.get(CONFIG_PASSWORD);
+            final String url = PropertyHandler.get(CONFIG_URL);
+            final int maxConnection = Integer.parseInt(PropertyHandler.get(MAX_CONNECTION));
+
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(url);
+            config.setUsername(username);
+            config.setPassword(password);
+            config.setMinimumIdle(0);
+            config.setConnectionTimeout(30000);
+            config.setIdleTimeout(35000);
+            config.setMaxLifetime(45000);
+            config.setMaximumPoolSize(maxConnection);
+            HikariDataSource hikariDataSource = new HikariDataSource(config);
+
+            JDBI = Jdbi.create(hikariDataSource);
+            JDBI.installPlugin(new SqlObjectPlugin());
+            try (var ignored = JDBI.open()) {
+                log.info("Connected {} {}", url, username);
+            } catch (Exception e) {
+                log.error("Error in Connecting database with credentials {} {} with exception {}", url, username, e.getMessage());
+            }
         }
+
     }
 
     @Override
@@ -128,6 +167,13 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
     @Override
     public SpwResourceConfig getResourceConfig(final String name) {
+        SpwResourceConfig resourceConfig=findOneResourceConfig(name).orElseThrow();
+        resourceConfig.setPassword(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getPassword()));
+        resourceConfig.setResourceUrl(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getResourceUrl()));
+        resourceConfig.setUserName(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getUserName()));
+        resourceConfig.setDatabaseName(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getDatabaseName()));
+        resourceConfig.setPort(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getPort()));
+
         return findOneResourceConfig(name).orElseThrow();
     }
 
