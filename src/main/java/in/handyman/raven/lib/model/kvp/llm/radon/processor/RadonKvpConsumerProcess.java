@@ -12,15 +12,13 @@ import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
-import jakarta.json.Json;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -55,7 +53,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String filePath = String.valueOf(entity.getInputFilePath());
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
-        String userPrompt = entity.getUserPrompt();
+        String userPrompt = "";
         String systemPrompt = entity.getSystemPrompt();
         String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
@@ -63,12 +61,26 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
 
+        if (Objects.equals(entity.getProcess(), "RADON_BBOX_ACTION")){
+
+            log.info("action {} is turned on", entity.getProcess());
+
+
+            byte[] decodedBytes = Base64.getDecoder().decode(entity.getUserPrompt());
+            String decodedPrompt = new String(decodedBytes);
+            String  concatUserPromptAndInputResponse = entity.getInputResponse() + "\n" + decodedPrompt;
+            userPrompt = Base64.getEncoder().encodeToString(concatUserPromptAndInputResponse.getBytes());
+        }
+        else {
+            userPrompt = entity.getUserPrompt();
+        }
+
         //payload
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
 
         radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
         radonKvpExtractionRequest.setActionId(actionId);
-        radonKvpExtractionRequest.setProcess(PROCESS_NAME);
+        radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
@@ -247,7 +259,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+//        JsonNode stringObjectMap=convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 
 
         parentObj.add(RadonQueryOutputTable.builder()
@@ -257,7 +269,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
+                .totalResponseJson(modelResponse.getInferResponse())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())

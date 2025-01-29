@@ -1,16 +1,13 @@
 package in.handyman.raven.lib.tritonservertest;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.RadonKvp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpConsumerProcess;
-import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -18,11 +15,10 @@ import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
-import java.io.IOException;
-import java.util.Map;
+
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
+
 import static org.mockito.Mockito.when;
 
 public class RadonKvpAcionTest {
@@ -37,11 +33,13 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://192.168.10.240:7700/v2/models/krypton-service/versions/1/infer")
-                .outputTable("sor_transaction.radon_kvp_output_175654")
-                .querySet("SELECT id, input_file_path, prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry\n" +
-                        "FROM sor_transaction.radon_kvp_input_audit\n" +
-                        "WHERE root_pipeline_id =175654;")
+                .endpoint("http://192.168.10.245:7700/v2/models/krypton-service/versions/1/infer")
+                .outputTable("sor_transaction.radon_bbox_output_audit")
+                .querySet("sELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
+                        "batch_id, model_registry, category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
+                        " WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
+                        " WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name\n" +
+                        "FROM  sor_transaction.radon_kvp_input_audit ljpoa  where root_pipeline_id =115587 \n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -98,8 +96,8 @@ public class RadonKvpAcionTest {
 
     @Test
     public void testConvertFormattedJsonStringToJsonNodeWithInvalidJson() throws Exception {
-        String jsonResponse = "Here is some text before\n```json\n{\"key\":\"value\"\n```\nAnd some text after";
-        JsonNode expectedNode = objectMapper.readTree("{\"key\":\"value\"}");
+        String jsonResponse = "Here is some text before\n```json\n[{\"key\":\"auth_id\",\"value\":\"\",\"confidence\":1.0,\"boundingBox\":{\"topLeftX\":500,\"topLeftY\":100,\"bottomRightX\":900,\"bottomRightY\":120}},{\"key\":\"auth_admit_date\",\"value\":\"\",\"confidence\":1.0,\"boundingBox\":{\"topLeftX\":500,\"topLeftY\":100,\"bottomRightX\":900,\"bottomRightY\":120}},{\"key\":\"auth_discharge_date\",\"value\":\"\",\"confidence\":1.0,\"boundingBox\":{\"topLeftX\":500,\"topLeftY\":100,\"bottomRightX\":900,\"bottomRightY\":120}},{\"key\":\"auth_discharge_disposition\",\"value\":\"\",\"confidence\":1.0,\"boundingBox\":{\"topLeftX\":500,\"topLeftY\":100,\"bottomRightX\":900,\"bottomRightY\":120}},{\"key\":\"level_of_service\",\"value\":\"\",\"confidence\":1.0,\"boundingBox\":{\"topLeftX\":500,\"topLeftY\":100,\"bottomRightX\":900,\"bottomRightY\":120}},{\"key\":\"length_of_stay\",\"value\":\"06/12/2024 08:35:27+00:00 GMT\",\"confidence\":1.0,\"boundingBox\":{\"topLeftX\":500,\"topLeftY\":100,\"bottomRightX\":900,bottomRightY\":120}}```\nAnd some text after";
+        JsonNode expectedNode = objectMapper.readTree("[{\"key\":\"auth_id\",\"value\":\"\",\"confidence\":\"1.0\",\"boundingBox\":{\"topLeftX\":\"500\",\"topLeftY\":\"100\",\"bottomRightX\":\"900\",\"bottomRightY\":\"120\"}},{\"key\":\"auth_admit_date\",\"value\":\"\",\"confidence\":\"1.0\",\"boundingBox\":{\"topLeftX\":\"500\",\"topLeftY\":\"100\",\"bottomRightX\":\"900\",\"bottomRightY\":\"120\"}},{\"key\":\"auth_discharge_date\",\"value\":\"\",\"confidence\":\"1.0\",\"boundingBox\":{\"topLeftX\":\"500\",\"topLeftY\":\"100\",\"bottomRightX\":\"900\",\"bottomRightY\":\"120\"}},{\"key\":\"auth_discharge_disposition\",\"value\":\"\",\"confidence\":\"1.0\",\"boundingBox\":{\"topLeftX\":\"500\",\"topLeftY\":\"100\",\"bottomRightX\":\"900\",\"bottomRightY\":\"120\"}},{\"key\":\"level_of_service\",\"value\":\"\",\"confidence\":\"1.0\",\"boundingBox\":{\"topLeftX\":\"500\",\"topLeftY\":\"100\",\"bottomRightX\":\"900\",\"bottomRightY\":\"120\"}},{\"key\":\"length_of_stay\",\"value\":\"06/12/2024 08:35:27+00:00 GMT\",\"confidence\":\"1.0\",\"boundingBox\":{\"topLeftX\":\"500\",\"topLeftY\":\"100\",\"bottomRightX\":\"900\",\"bottomRightY\":\"120\"}}]");
         JsonNode resultNode = radonKvpConsumerProcess.convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
         assertEquals(expectedNode, resultNode);
     }

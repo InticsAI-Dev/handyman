@@ -1,7 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
@@ -12,22 +10,20 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.LlmJsonParser;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParsedResponse;
+import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryInputTable;
-import jakarta.json.Json;
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+//import org.simpleflatmapper.ow2asm.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,116 +34,273 @@ import java.util.regex.Pattern;
         actionName = "LlmJsonParser"
 )
 public class LlmJsonParserAction implements IActionExecution {
-  private final ActionExecutionAudit action;
+    private final ActionExecutionAudit action;
 
-  private final Logger log;
+    private final Logger log;
 
-  private final LlmJsonParser llmJsonParser;
-  public static final String READ_BATCH_SIZE = "read.batch.size";
-  public static final String WRITE_BATCH_SIZE = "write.batch.size";
-  private final Marker aMarker;
+    private final LlmJsonParser llmJsonParser;
+    public static final String READ_BATCH_SIZE = "read.batch.size";
+    public static final String WRITE_BATCH_SIZE = "write.batch.size";
+    private final Marker aMarker;
 
 
-  public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,
-                             final Object llmJsonParser) {
-    this.llmJsonParser = (LlmJsonParser) llmJsonParser;
-    this.action = action;
-    this.log = log;
-    this.aMarker = MarkerFactory.getMarker(" LlmJsonParser:" + this.llmJsonParser.getName());
+    public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,
+                               final Object llmJsonParser) {
+        this.llmJsonParser = (LlmJsonParser) llmJsonParser;
+        this.action = action;
+        this.log = log;
+        this.aMarker = MarkerFactory.getMarker(" LlmJsonParser:" + this.llmJsonParser.getName());
 
-  }
+    }
 
-  @Override
-  public void execute() throws Exception {
-    try {
-      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
-      jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-      log.info(aMarker, "Llm json parser action {} has been started ", llmJsonParser.getName());
+    @Override
+    public void execute() throws Exception {
+        try {
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
+            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+            log.info(aMarker, "Llm json parser action {} has been started ", llmJsonParser.getName());
 
-      final String insertQuery = "INSERT INTO " + llmJsonParser.getOutputTable() +
-              "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
-              "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-              "extracted_image_unit, image_dpi, image_height, image_width) "
-              + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?)";
-      log.info(aMarker, "Llm json parser insert query {}", insertQuery);
 
-      final String selectQuery = llmJsonParser.getQuerySet();
-      List<LlmJsonQueryInputTable> inputTableList = jdbi.withHandle(handle -> handle.createQuery(selectQuery)
-              .mapToBean(LlmJsonQueryInputTable.class)
-              .list());
 
-      ObjectMapper objectMapper = new ObjectMapper();
 
-      jdbi.useTransaction(handle -> {
-        for (LlmJsonQueryInputTable inputTable : inputTableList) {
-          String jsonResponse = inputTable.getResponse();
-          JsonNode rootNode = objectMapper.readTree(jsonResponse);
-          List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
-          parseJsonNode(rootNode, "", "", innerParsedResponses);
-          for (LlmJsonParsedResponse parsedResponse : innerParsedResponses) {
-            handle.createUpdate(insertQuery)
-                    .bind(0, inputTable.getCreatedOn())
-                    .bind(1, inputTable.getTenantId())
-                    .bind(2, CreateTimeStamp.currentTimestamp())
-                    .bind(3, inputTable.getTenantId())
-                    .bind(4, parsedResponse.getSorContainerName())
-                    .bind(5, parsedResponse.getSorItemName())
-                    .bind(6, parsedResponse.getAnswer())
-                    .bind(7, inputTable.getPaperNo())
-                    .bind(8, inputTable.getOriginId())
-                    .bind(9, inputTable.getGroupId())
-                    .bind(10, inputTable.getTenantId())
-                    .bind(11, inputTable.getRootPipelineId())
-                    .bind(12, inputTable.getBatchId())
-                    .bind(13, inputTable.getModelRegistry())
-                    .bind(14, inputTable.getExtractedImageUnit())
-                    .bind(15, inputTable.getImageDpi())
-                    .bind(16, inputTable.getImageHeight())
-                    .bind(17, inputTable.getImageWidth())
-                    .execute();
 
-          }
+            final String selectQuery = llmJsonParser.getQuerySet();
+            List<LlmJsonQueryInputTable> inputTableList = jdbi.withHandle(handle -> handle.createQuery(selectQuery)
+                    .mapToBean(LlmJsonQueryInputTable.class)
+                    .list());
+
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            jdbi.useTransaction(handle -> {
+                for (LlmJsonQueryInputTable inputTable : inputTableList) {
+                    String jsonResponse = inputTable.getResponse();
+                    JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
+                    if (stringObjectMap.isObject()) {
+
+                        final String insertQueryXenon = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                                "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
+                                "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
+                                "extracted_image_unit, image_dpi, image_height, image_width) "
+                                + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?)";
+
+
+
+
+                        List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
+                        log.info(aMarker, "Llm json parser insert query {}", insertQueryXenon);
+
+                        parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
+
+                        for (LlmJsonParsedResponse parsedResponse : innerParsedResponses) {
+                            handle.createUpdate(insertQueryXenon)
+                                    .bind(0, inputTable.getCreatedOn())
+                                    .bind(1, inputTable.getTenantId())
+                                    .bind(2, CreateTimeStamp.currentTimestamp())
+                                    .bind(3, inputTable.getTenantId())
+                                    .bind(4, parsedResponse.getSorContainerName())
+                                    .bind(5, parsedResponse.getSorItemName())
+                                    .bind(6, parsedResponse.getAnswer())
+                                    .bind(7, inputTable.getPaperNo())
+                                    .bind(8, inputTable.getOriginId())
+                                    .bind(9, inputTable.getGroupId())
+                                    .bind(10, inputTable.getTenantId())
+                                    .bind(11, inputTable.getRootPipelineId())
+                                    .bind(12, inputTable.getBatchId())
+                                    .bind(13, inputTable.getModelRegistry())
+                                    .bind(14, inputTable.getExtractedImageUnit())
+                                    .bind(15, inputTable.getImageDpi())
+                                    .bind(16, inputTable.getImageHeight())
+                                    .bind(17, inputTable.getImageWidth())
+                                    .execute();
+
+                        }
+                    } else if (stringObjectMap.isArray()) {
+
+                        final String insertQueryKrypton = "INSERT INTO " + llmJsonParser.getOutputTable() +
+                                "(created_on,created_user_id, last_updated_on, last_updated_user_id, confidence, sor_item_name, answer, bbox, paper_no,  \n" +
+                                "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, \n" +
+                                "extracted_image_unit, image_dpi, image_height, image_width) \n" +
+                                "  VALUES(?,?,?,?,?,?,?,?::jsonb,?,?,?,?,?,? ,?,?,?,?,?);";
+
+                        log.info(aMarker, "Llm json parser insert query {}", insertQueryKrypton);
+                        List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = new ArrayList<>();
+
+                        innerParsedResponsesKrypton = objectMapper.readValue(
+                                stringObjectMap.traverse(),
+                                new TypeReference<List<LlmJsonParserKvpKrypton>>() {}
+                        );
+
+                        for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
+                           // if bbox and confidence score is not present in the pojo
+                            String boundingBox = parsedResponse.getBoundingBox() != null ? parsedResponse.getBoundingBox().toString() : "{}";
+
+
+                            handle.createUpdate(insertQueryKrypton)
+                                    .bind(0, inputTable.getCreatedOn())
+                                    .bind(1, inputTable.getTenantId())
+                                    .bind(2, CreateTimeStamp.currentTimestamp())
+                                    .bind(3, inputTable.getTenantId())
+                                        //  .bind(4, parsedResponse.getSorContainerName())
+                                    .bind(4, parsedResponse.getConfidence())
+                                    .bind(5, parsedResponse.getKey()) //sorItemName
+                                    .bind(6, parsedResponse.getValue()) //predictedValue
+                                    .bind(7, boundingBox)
+                                    .bind(8, inputTable.getPaperNo())
+                                    .bind(9, inputTable.getOriginId())
+                                    .bind(10, inputTable.getGroupId())
+                                    .bind(11, inputTable.getTenantId())
+                                    .bind(12, inputTable.getRootPipelineId())
+                                    .bind(13, inputTable.getBatchId())
+                                    .bind(14, inputTable.getModelRegistry())
+                                    .bind(15, inputTable.getExtractedImageUnit())
+                                    .bind(16, inputTable.getImageDpi())
+                                    .bind(17, inputTable.getImageHeight())
+                                    .bind(18, inputTable.getImageWidth())
+                                    .execute();
+
+                        }
+
+                    }
+
+
+                }
+
+            });
+
+
+            log.info(aMarker, " Llm json parser actionhas been completed {}  ", llmJsonParser.getName());
+        } catch (Exception e) {
+            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
+
+        }
+    }
+
+
+    private void parseJsonNode(JsonNode rootNode, String currentKey, String parentPath, List<LlmJsonParsedResponse> parsedResponses) {
+        if (rootNode.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                String key = field.getKey();
+                String newCurrentKey = key;
+                String newParentPath = parentPath.isEmpty() ? currentKey : parentPath + ", " + currentKey;
+                parseJsonNode(field.getValue(), newCurrentKey, newParentPath, parsedResponses);
+            }
+        } else if (rootNode.isArray()) {
+            for (JsonNode arrayElement : rootNode) {
+                parseJsonNode(arrayElement, currentKey, parentPath, parsedResponses);
+            }
+        } else {
+            LlmJsonParsedResponse parsedResponse = LlmJsonParsedResponse.builder()
+                    .sorContainerName(parentPath)
+                    .sorItemName(currentKey)
+                    .answer(rootNode.asText())
+                    .build();
+            parsedResponses.add(parsedResponse);
+        }
+    }
+
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+        try {
+            if (jsonResponse.contains("```json")) {
+                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
+                // Define the regex pattern to match content between ```json and ```
+                Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
+                Matcher matcher = pattern.matcher(jsonResponse);
+                if (matcher.find()) {
+                    // Extract the JSON string from the matched group
+                    String jsonString = matcher.group(1);
+                    jsonString = jsonString.replace("\n", "");
+                    // Convert the cleaned JSON string to a JsonNode
+                    jsonResponse = repairJson(jsonString);
+                    if (!jsonResponse.isEmpty()) {
+                        return objectMapper.readTree(jsonResponse);
+                    } else {
+                        return null;
+                    }
+                } else {
+                    jsonResponse = repairJson(jsonResponse);
+                    return objectMapper.readTree(jsonResponse);
+                }
+            } else if ((jsonResponse.contains("{")) | (jsonResponse.contains("["))) {
+                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
+//                jsonResponse = repairJson(jsonResponse);
+                return objectMapper.readTree(jsonResponse);
+                //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            } else {
+                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private String repairJson(String jsonString) {
+
+        // Ensure keys and string values are enclosed in double quotes
+        jsonString = addMissingQuotes(jsonString);
+
+        // Balance braces and brackets
+        jsonString = balanceBracesAndBrackets(jsonString);
+
+        // Assign empty strings to keys with no values
+        jsonString = assignEmptyValues(jsonString);
+
+        return jsonString;
+    }
+
+    private String addMissingQuotes(String jsonString) {
+        // Ensure keys are enclosed in double quotes
+        jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
+
+        // Ensure string values are enclosed in double quotes
+        // This regex matches values that are not already enclosed in quotes
+        jsonString = jsonString.replaceAll("(?<=:)\\s*([^\"\\s,\\n}\\]]+)(?=\\s*(,|}|\\n|\\]))", "\"$1\"");
+
+        return jsonString;
+    }
+
+    private String balanceBracesAndBrackets(String jsonString) {
+        // Balance braces and brackets
+        int openBraces = 0;
+        int closeBraces = 0;
+        int openBrackets = 0;
+        int closeBrackets = 0;
+
+        for (char c : jsonString.toCharArray()) {
+            if (c == '{') openBraces++;
+            if (c == '}') closeBraces++;
+            if (c == '[') openBrackets++;
+            if (c == ']') closeBrackets++;
         }
 
-      });
+        // Add missing closing braces
+        while (openBraces > closeBraces) {
+            jsonString += "}";
+            closeBraces++;
+        }
 
+        // Add missing closing brackets
+        while (openBrackets > closeBrackets) {
+            jsonString += "]";
+            closeBrackets++;
+        }
 
-      log.info(aMarker, " Llm json parser actionhas been completed {}  ", llmJsonParser.getName());
-    } catch (Exception e) {
-      action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
-      HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
-
+        return jsonString;
     }
-  }
 
-
-      private void parseJsonNode(JsonNode rootNode, String currentKey, String parentPath, List<LlmJsonParsedResponse> parsedResponses) {
-    if (rootNode.isObject()) {
-      Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
-      while (fields.hasNext()) {
-        Map.Entry<String, JsonNode> field = fields.next();
-        String key = field.getKey();
-        String newCurrentKey = key;
-        String newParentPath = parentPath.isEmpty() ? currentKey : parentPath + ", " + currentKey;
-        parseJsonNode(field.getValue(), newCurrentKey, newParentPath, parsedResponses);
-      }
-    } else if (rootNode.isArray()) {
-      for (JsonNode arrayElement : rootNode) {
-        parseJsonNode(arrayElement, currentKey, parentPath, parsedResponses);
-      }
-    } else {
-      LlmJsonParsedResponse parsedResponse = LlmJsonParsedResponse.builder()
-              .sorContainerName(parentPath)
-              .sorItemName(currentKey)
-              .answer(rootNode.asText())
-              .build();
-      parsedResponses.add(parsedResponse);
+    private String assignEmptyValues(String jsonString) {
+        // Assign empty strings to keys with no values
+        jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
+        return jsonString;
     }
-  }
 
-  @Override
-  public boolean executeIf() throws Exception {
-    return llmJsonParser.getCondition();
-  }
+    @Override
+    public boolean executeIf() throws Exception {
+        return llmJsonParser.getCondition();
+    }
 }
