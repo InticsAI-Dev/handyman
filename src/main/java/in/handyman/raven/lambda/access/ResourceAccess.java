@@ -67,10 +67,10 @@ public class ResourceAccess {
             String azureClientSecret = PropertyHandler.get("azure.identity.clientSecret");
             String azureDatabaseUrl = PropertyHandler.get("azure.database.url");
             String azureTokenScope = PropertyHandler.get("azure.token.scope");
-            String azureUserName = PropertyHandler.get("azure.token.scope");
+            String azureUserName = PropertyHandler.get("raven.db.user");
 
             AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
-            return  connection.getAzureJdbiConnection();
+            return connection.getAzureJdbiConnection();
         }else if(legacyResourceConnection.equals("LEGACY")){
             if (Objects.isNull(resource)) {
                 log.warn("{} not found in Resource connections", resourceName);
