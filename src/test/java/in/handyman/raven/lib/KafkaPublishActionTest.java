@@ -833,20 +833,32 @@ class KafkaPublishActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("kafka_response_info")
-                .querySet("select 'localhost:9092' as endpoint, 'inticsai' as topic_name, 'SASL_PLAINTEXT' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
-                        "            'elevance' as user_name, 'elevance@123' as password, 'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key, product_json as json_data,\n" +
-                        "            ifd.document_id, ifd.uuid, pozfi.origin_id, pozfi.batch_id, pozfi.tenant_id, ifd.transaction_id\n" +
-                        "            from product_outbound.product_outbound_zip_file_input pozfi join inbound_config.ingestion_file_details ifd on pozfi.file_name = ifd.file_name\n" +
-                        "            where pozfi.group_id=70 and pozfi.tenant_id = 115 and pozfi.batch_id = 'BATCH-70_0' and ifd.transaction_id = 'TRZ-685'")
+                .querySet("select 'kafka1:9092' as endpoint, 'elv_json' as topic_name, " +
+                        "'SASL_SSL' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
+                        "            'elevance' as user_name, 'elevance@123' as password, " +
+                        "            'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key, product_json as json_data,\n" +
+                        "            file_name as document_id, 12345 as uuid, origin_id, batch_id, tenant_id, origin_id as transaction_id\n " +
+                        "            from product_outbound.product_outbound_zip_file_input limit 1; ")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("read.batch.size", "1"),
-                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("outbound.doc.delivery.notify.url", ""),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("agadia.secretKey", ""),
+                Map.entry("kafka.auth.security.protocol","SASL_PLAINTEXT"),
+                Map.entry("kafka.encryptionkey","RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk"),
+                Map.entry("kafka.encryptionType","AES"),
+                Map.entry("kafka.endpoint","127.0.0.1:9092"),
+                Map.entry("kafka.groupid",""),
+                Map.entry("kafka.publish.activator","true"),
+                Map.entry("kafka.sasl.mechanism","PLAIN"),
+                Map.entry("kafka.sasl.password","elevance@123"),
+                Map.entry("kafka.sasl.username","elevance"),
+                Map.entry("kafka.topic.name","elv_json"),
+                Map.entry("kafka.topic.partition","10"),
                 Map.entry("outbound.context.condition", "Product"),
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
