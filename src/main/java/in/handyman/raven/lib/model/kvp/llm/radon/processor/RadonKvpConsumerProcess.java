@@ -62,7 +62,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
 
-        if (  Objects.equals(action.getContext().get("bbox.radon_bbox_activator"),"true")){
+        if (  Objects.equals(action.getContext().get("bbox.radon_bbox_activator"),"true") && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")){
 
             log.info("action {} is turned on", entity.getProcess());
 

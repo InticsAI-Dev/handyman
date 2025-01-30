@@ -40,7 +40,7 @@ public class RadonKvpAcionTest {
                         "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name\n" +
                         "from sor_transaction.radon_kvp_input_audit rbia \n" +
-                        "where root_pipeline_id =1675;")
+                        "where root_pipeline_id =1807;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
