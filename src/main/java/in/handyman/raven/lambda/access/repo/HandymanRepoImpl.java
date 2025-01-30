@@ -174,7 +174,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         resourceConfig.setDatabaseName(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getDatabaseName()));
         resourceConfig.setPort(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getPort()));
 
-        return findOneResourceConfig(name).orElseThrow();
+        return resourceConfig;
     }
 
     @Override

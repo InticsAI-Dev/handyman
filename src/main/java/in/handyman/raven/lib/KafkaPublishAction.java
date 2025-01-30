@@ -9,11 +9,9 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.process.HRequestResolver;
 import in.handyman.raven.lib.model.KafkaPublish;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.EncryptDecrypt;
-import in.handyman.raven.util.PropertyHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +19,6 @@ import lombok.NoArgsConstructor;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -276,6 +273,20 @@ public class KafkaPublishAction implements IActionExecution {
                 properties.put(SASL_MECHANISM, PLAIN_SASL);
                 String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
                 properties.put("sasl.jaas.config", jaasConfig);
+                properties.put("ssl.truststore.type", "JKS");
+                properties.put("ssl.keystore.type", "JKS");
+
+                properties.put("ssl.truststore.location", "/etc/kafka/secrets/kafka.truststore.jks");
+                properties.put("ssl.truststore.password", "truststore-password");
+                properties.put("ssl.keystore.location", "/etc/kafka/secrets/kafka.keystore.jks");
+                properties.put("ssl.keystore.password", "keystore-password");
+                properties.put("ssl.key.password", "keystore-password");
+                properties.put("ssl.endpoint.identification.algorithm","");
+                properties.put("acks", "all");
+                properties.put("retries", 3);
+                properties.put("request.timeout.ms", 30000);
+                properties.put("delivery.timeout.ms", 300000);  // 5 minutes
+                properties.put("linger.ms", 500);
             } else {
                 if (saslMechanism.equalsIgnoreCase(SCRAM_SHA_256)) {
                     properties.put(SASL_MECHANISM, SCRAM_SHA_256);
