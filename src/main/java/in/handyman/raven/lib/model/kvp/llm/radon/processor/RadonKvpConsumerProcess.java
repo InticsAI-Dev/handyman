@@ -12,6 +12,7 @@ import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
+
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -61,15 +62,15 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
 
-        if (Objects.equals(entity.getProcess(), "RADON_BBOX_ACTION")){
+        if (Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")){
 
             log.info("action {} is turned on", entity.getProcess());
 
-
+            String var1 =  entity.getInputResponseJson();
             byte[] decodedBytes = Base64.getDecoder().decode(entity.getUserPrompt());
             String decodedPrompt = new String(decodedBytes);
-            String  concatUserPromptAndInputResponse = entity.getInputResponse() + "\n" + decodedPrompt;
-            userPrompt = Base64.getEncoder().encodeToString(concatUserPromptAndInputResponse.getBytes());
+            String updatedPrompt = decodedPrompt.replace(action.getContext().get("text.to.replace.prompt"),  entity.getInputResponseJson());
+            userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
         }
         else {
             userPrompt = entity.getUserPrompt();
