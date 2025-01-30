@@ -12,6 +12,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.KafkaPublish;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.EncryptDecrypt;
+import in.handyman.raven.util.PropertyHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -185,7 +186,13 @@ public class KafkaPublishAction implements IActionExecution {
                 String encryptionType = kafkaPublishQueryInput.getEncryptionType();
                 String encryptionKey = kafkaPublishQueryInput.getEncryptionKey();
 
-                setAuthenticationProperties(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+                if(PropertyHandler.get("kafka.authentication.sasl.ssl.include").equals("certs")){
+                    setAuthenticationPropertiesWithCerts(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+
+                }else {
+                    setAuthenticationProperties(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+
+                }
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
                 log.info( "creating the kafka instance");
 
@@ -211,7 +218,7 @@ public class KafkaPublishAction implements IActionExecution {
 
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
-                log.info( "sending the topic and outputjson");
+                log.info( "sending the topic and output json");
 
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
@@ -266,6 +273,54 @@ public class KafkaPublishAction implements IActionExecution {
 
     }
 
+    private static void setAuthenticationPropertiesWithCerts(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
+        if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
+            properties.put("security.protocol", SASL_SSL);
+            if (saslMechanism.equalsIgnoreCase(PLAIN_SASL)) {
+                properties.put(SASL_MECHANISM, PLAIN_SASL);
+
+                String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
+                properties.put("sasl.jaas.config", jaasConfig);
+                properties.put("ssl.truststore.type", PropertyHandler.get("kafka.ssl.truststore.type"));
+                properties.put("ssl.keystore.type", PropertyHandler.get("kafka.ssl.keystore.type"));
+                properties.put("ssl.truststore.location", PropertyHandler.get("kafka.ssl.truststore.location"));
+                properties.put("ssl.truststore.password", PropertyHandler.get("kafka.ssl.truststore.password"));
+                properties.put("ssl.keystore.location", PropertyHandler.get("kafka.ssl.keystore.location"));
+                properties.put("ssl.keystore.password", PropertyHandler.get("kafka.ssl.keystore.password"));
+                properties.put("ssl.key.password", PropertyHandler.get("kafka.ssl.key.password"));
+                properties.put("ssl.endpoint.identification.algorithm",PropertyHandler.get("kafka.ssl.endpoint.identification.algorithm"));
+                properties.put(ProducerConfig.ACKS_CONFIG, PropertyHandler.get("kafka.ssl.acks"));
+                properties.put(ProducerConfig.RETRIES_CONFIG, PropertyHandler.get("kafka.ssl.api.retries"));
+                properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, PropertyHandler.get("kafka.ssl.request.timeout.ms"));
+                properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, PropertyHandler.get("kafka.ssl.delivery.timeout.ms"));  // 5 minutes
+                properties.put(ProducerConfig.LINGER_MS_CONFIG, PropertyHandler.get("kafka.ssl.linger.ms"));
+            } else {
+                if (saslMechanism.equalsIgnoreCase(SCRAM_SHA_256)) {
+                    properties.put(SASL_MECHANISM, SCRAM_SHA_256);
+                    String jaasConfig = String.format("org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";", userName, password);
+                    properties.put("sasl.jaas.config", jaasConfig);
+                } else {
+                    if (saslMechanism.equalsIgnoreCase(OAUTH_BEARER)) {
+                        properties.put(SASL_MECHANISM, OAUTH_BEARER);
+                        properties.put("sasl.login.callback.handler.class", "your.oauth.LoginCallbackHandler");
+                    }
+                }
+            }
+        } else if (authSecurityProtocol.equalsIgnoreCase("SASL_PLAINTEXT")) {
+            properties.put("security.protocol", "SASL_PLAINTEXT");
+            properties.put(SASL_MECHANISM, PLAIN_SASL);
+            String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
+            properties.put("sasl.jaas.config", jaasConfig);
+//            properties.put("sasl.jaas.config",
+//                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+//                            "username=\"" + userName + "\" " +
+//                            "password=\"" + password + "\";");
+
+        }
+    }
+
+
+
     private static void setAuthenticationProperties(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
         if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
             properties.put("security.protocol", SASL_SSL);
@@ -273,20 +328,6 @@ public class KafkaPublishAction implements IActionExecution {
                 properties.put(SASL_MECHANISM, PLAIN_SASL);
                 String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
                 properties.put("sasl.jaas.config", jaasConfig);
-                properties.put("ssl.truststore.type", "JKS");
-                properties.put("ssl.keystore.type", "JKS");
-
-                properties.put("ssl.truststore.location", "/etc/kafka/secrets/kafka.truststore.jks");
-                properties.put("ssl.truststore.password", "truststore-password");
-                properties.put("ssl.keystore.location", "/etc/kafka/secrets/kafka.keystore.jks");
-                properties.put("ssl.keystore.password", "keystore-password");
-                properties.put("ssl.key.password", "keystore-password");
-                properties.put("ssl.endpoint.identification.algorithm","");
-                properties.put("acks", "all");
-                properties.put("retries", 3);
-                properties.put("request.timeout.ms", 30000);
-                properties.put("delivery.timeout.ms", 300000);  // 5 minutes
-                properties.put("linger.ms", 500);
             } else {
                 if (saslMechanism.equalsIgnoreCase(SCRAM_SHA_256)) {
                     properties.put(SASL_MECHANISM, SCRAM_SHA_256);
