@@ -19,7 +19,7 @@ public class LlmJsonParserActionTest {
                 .outputTable("sor_transaction.llm_json_parser_output_audit")
                 .querySet("SELECT  total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
                         "FROM sor_transaction.radon_kvp_output_audit\n" +
-                        "where root_pipeline_id =1059;" )
+                        "where root_pipeline_id =2497;" )
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -29,7 +29,8 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
-        ac.getContext().put("bbox.activator", "false");
+        ac.getContext().put("bbox.activator.enable", "true");
+        ac.getContext().put("confidence.activator.enable", "true");
 
 
 

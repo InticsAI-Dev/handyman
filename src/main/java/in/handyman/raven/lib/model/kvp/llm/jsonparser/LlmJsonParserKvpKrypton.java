@@ -16,10 +16,8 @@ import lombok.NoArgsConstructor;
 
 public class LlmJsonParserKvpKrypton {
 
-
-
     private String key;
     private String value;
-    private double confidence = 0.0;
+    private double confidence;
     private JsonNode boundingBox ;
 }

@@ -73,6 +73,7 @@ public class LlmJsonParserAction implements IActionExecution {
 
             jdbi.useTransaction(handle -> {
                 for (LlmJsonQueryInputTable inputTable : inputTableList) {
+                    String boundingBox = "";
                     String jsonResponse = inputTable.getResponse();
                     JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
                     if (stringObjectMap.isObject()) {
@@ -132,8 +133,12 @@ public class LlmJsonParserAction implements IActionExecution {
 
                         for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
                            // if bbox and confidence score is not present in the pojo
-                            String boundingBox = parsedResponse.getBoundingBox() != null ? parsedResponse.getBoundingBox().toString() : "{}";
 
+                            boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.activator.enable"), "true");
+                            boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}"): "{}";
+
+                            boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.confidence.activator.enable"), "true");
+                            double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
 
                             handle.createUpdate(insertQueryKrypton)
                                     .bind(0, inputTable.getCreatedOn())
@@ -141,7 +146,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     .bind(2, CreateTimeStamp.currentTimestamp())
                                     .bind(3, inputTable.getTenantId())
                                         //  .bind(4, parsedResponse.getSorContainerName())
-                                    .bind(4, parsedResponse.getConfidence())
+                                    .bind(4, confidenceScore)
                                     .bind(5, parsedResponse.getKey()) //sorItemName
                                     .bind(6, parsedResponse.getValue()) //predictedValue
                                     .bind(7, boundingBox)
