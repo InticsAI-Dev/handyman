@@ -34,13 +34,13 @@ public class RadonKvpAcionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("http://192.168.10.240:7800/v2/models/krypton-x-service/versions/1/infer")
-                .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("sELECT '/data/output/processed_images/09-01-2025_02_01_46/tenant_115/group_4963/preprocess/autorotation/auto_rotation/SYNTH_HW_BH_2_1_2_1.jpg' as input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
+                .outputTable("sor_transaction.radon_bbox_input_audit")
+                .querySet("sELECT input_response_json, input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
                         "batch_id, model_registry, category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
                         "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name\n" +
                         "from sor_transaction.radon_bbox_input_audit rbia \n" +
-                        "where root_pipeline_id =1895 limit 1;")
+                        "where root_pipeline_id =2649 limit 1;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -49,7 +49,7 @@ public class RadonKvpAcionTest {
         ac.setProcessId(123L);
         ac.getContext().put("Radon.kvp.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
-        ac.getContext().put("bbox.radon_bbox_activator", "false");
+        ac.getContext().put("bbox.radon_bbox_activator", "true");
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
