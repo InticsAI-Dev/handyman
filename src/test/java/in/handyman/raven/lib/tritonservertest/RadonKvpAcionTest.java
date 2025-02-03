@@ -40,7 +40,7 @@ public class RadonKvpAcionTest {
                         "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name\n" +
                         "from sor_transaction.radon_bbox_input_audit rbia \n" +
-                        "where root_pipeline_id =2649 limit 1;")
+                        "where root_pipeline_id =3009;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -53,6 +53,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
+        ac.getContext().put("prompt.base64.activator", "false");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);

@@ -117,6 +117,8 @@ public class LlmJsonParserAction implements IActionExecution {
                         }
                     } else if (stringObjectMap.isArray()) {
 
+                        log.info("Processing an array-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
+
                         final String insertQueryKrypton = "INSERT INTO " + llmJsonParser.getOutputTable() +
                                 "(created_on,created_user_id, last_updated_on, last_updated_user_id, confidence, sor_item_name, answer, bbox, paper_no,  \n" +
                                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, \n" +
@@ -135,9 +137,12 @@ public class LlmJsonParserAction implements IActionExecution {
                            // if bbox and confidence score is not present in the pojo
 
                             boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.activator.enable"), "true");
+                            log.info("Status for the activator sor.transaction.bbox.activator.enable. Result: {} ", isBboxEnabled);
                             boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}"): "{}";
 
                             boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.confidence.activator.enable"), "true");
+                            log.info("Status for the activator sor.transaction.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
+
                             double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
 
                             handle.createUpdate(insertQueryKrypton)

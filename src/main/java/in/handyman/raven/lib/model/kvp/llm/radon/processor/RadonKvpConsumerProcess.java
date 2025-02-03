@@ -64,13 +64,24 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         if (  Objects.equals(action.getContext().get("bbox.radon_bbox_activator"),"true") && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")){
 
-            log.info("action {} is turned on", entity.getProcess());
+            if (Objects.equals("sor.transaction.prompt.base64.activator", "true")) {
+                log.info("action {} is turned on", entity.getProcess());
+                Base64toActualVaue base64Caller = new Base64toActualVaue();
+                String base64Value = base64Caller.base64toActual(entity.getUserPrompt());
+                byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
 
-            String var1 =  entity.getInputResponseJson();
-            byte[] decodedBytes = Base64.getDecoder().decode(entity.getUserPrompt());
-            String decodedPrompt = new String(decodedBytes);
-            String updatedPrompt = decodedPrompt.replace(action.getContext().get("text.to.replace.prompt"),  entity.getInputResponseJson());
-            userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
+                String decodedPrompt = new String(decodedBytes);
+                String updatedPrompt = decodedPrompt.replace(action.getContext().get("text.to.replace.prompt"), entity.getInputResponseJson());
+                userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
+                log.info("prompt is of base64 type");
+
+            }else {
+                log.info("prompt is of actual type");
+                String actualUserPrompt = entity.getUserPrompt();
+                userPrompt = actualUserPrompt.replace(action.getContext().get("text.to.replace.prompt"), entity.getInputResponseJson());
+            }
+
+
         }
         else {
             userPrompt = entity.getUserPrompt();
