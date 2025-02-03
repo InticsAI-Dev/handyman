@@ -51,6 +51,13 @@ public class KafkaPublishAction implements IActionExecution {
 
     private final Marker aMarker;
     private ObjectMapper objectMapper;
+    private static final String SASL_MECHANISM = "sasl.mechanism";
+    private static final String SASL_SSL = "SASL_SSL";
+    private static final String SCRAM_SHA_256 = "SCRAM-SHA-256";
+    private static final String OAUTH_BEARER = "OAUTHBEARER";
+    private static final String PLAIN_SASL = "PLAIN";
+    private static final String AES_ENCRYPTION = "AES";
+    private static final String FAILED_STATUS = "FAILED";
 
     public KafkaPublishAction(final ActionExecutionAudit action, final Logger log,
                               final Object kafkaPublish) {
@@ -60,13 +67,6 @@ public class KafkaPublishAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" KafkaPublish:" + this.kafkaPublish.getName());
     }
 
-    private static final String SASL_MECHANISM = "sasl.mechanism";
-    private static final String SASL_SSL = "SASL_SSL";
-    private static final String SCRAM_SHA_256 = "SCRAM-SHA-256";
-    private static final String OAUTH_BEARER = "OAUTHBEARER";
-    private static final String PLAIN_SASL = "PLAIN";
-    private static final String AES_ENCRYPTION = "AES";
-    private static final String FAILED_STATUS = "FAILED";
 
     @Override
     public void execute() throws Exception {
@@ -137,15 +137,9 @@ public class KafkaPublishAction implements IActionExecution {
             try {
 
 
-                ObjectNode objectNode = objectMapper.createObjectNode();
-                objectNode.put("documentId", documentId);
-                objectNode.put("checksum", fileChecksum);
-                objectNode.put("transactionId", transactionId);
-                objectNode.set("extractionResponse", productJson);
-
                 String messageNode;
                 try {
-                    messageNode = objectMapper.writeValueAsString(objectNode);
+                    messageNode = objectMapper.writeValueAsString(productJson);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
                     insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
@@ -200,15 +194,9 @@ public class KafkaPublishAction implements IActionExecution {
 //                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
 //            }
 
-                ObjectNode objectNode = objectMapper.createObjectNode();
-                objectNode.put("documentId", documentId);
-                objectNode.put("checksum", fileChecksum);
-                objectNode.put("transactionId", transactionId);
-                objectNode.set("extractionResponse", productJson);
-
                 String messageNode;
                 try {
-                    messageNode = objectMapper.writeValueAsString(objectNode);
+                    messageNode = objectMapper.writeValueAsString(productJson);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
                     insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
