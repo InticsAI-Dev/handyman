@@ -90,8 +90,8 @@ public class ControlDataComparisonAction implements IActionExecution {
       log.info(aMarker, "Control Data Comparison Action has been completed {}  ", controlDataComparison.getName());
     } catch (Exception e) {
       action.getContext().put(controlDataComparison.getName() + ".isSuccessful", "false");
-      log.error(aMarker, "error in execute method for Control Data Comparison ", e);
-      throw new HandymanException("error ikn execute method for Control Data Comparison", e, action);
+      log.error(aMarker, "Error in execute method for Control Data Comparison ", e);
+      throw new HandymanException("Error in execute method for Control Data Comparison", e, action);
     }
   }
 
@@ -118,8 +118,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         log.info("Inserting date type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
       } catch (HandymanException e) {
-        log.info("Error while inserting date type data validation {}:", e);
-        throw new HandymanException(e);
+        throw new HandymanException("Error while inserting date type data validation", e, action);
       }
     }
     //gender
@@ -130,8 +129,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         log.info("Inserting gender type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
       } catch (HandymanException e) {
-        log.info("Error while inserting gender type data validation {}:", e);
-        throw new HandymanException(e);
+        throw new HandymanException("Error while inserting gender type data validation.", e ,action);
       }
     }
     else {
@@ -141,8 +139,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         log.info("Inserting string type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
       } catch (HandymanException e) {
-        log.info("Error while inserting string type data validation {}:", e);
-        throw new HandymanException(e);
+        throw new HandymanException("Error while inserting gender type data validation.", e, action);
       }
     }
   }
@@ -180,12 +177,12 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   public Long dataValidation(String extractedData, String actualData) {
-    if (extractedData == null) {
-      log.error("Invalid input for actualData={}", actualData);
+    if (extractedData == null || extractedData.isEmpty()) {
+      log.error("Invalid input for extractedData={}", extractedData);
       return (long) actualData.length();
     }
-    if (actualData == null){
-      log.error("Invalid input for extractedData={}", extractedData);
+    if (actualData == null || actualData.isEmpty()){
+      log.error("Invalid input for actualData={}", actualData);
       return (long) extractedData.length();
     }
 
@@ -218,12 +215,12 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   public Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
-    if (extractedDate == null || extractedDate.trim().isEmpty()) {
-      log.error("Invalid input for actualDate={}", actualDate);
+    if (extractedDate == null || extractedDate.isEmpty()) {
+      log.error("Invalid input for extractedDate={}", extractedDate);
       return (long) actualDate.length();
     }
-    if (actualDate == null || actualDate.trim().isEmpty()){
-      log.error("Invalid input for extractedDate={}", extractedDate);
+    if (actualDate == null || actualDate.isEmpty()){
+      log.error("Invalid input for actualDate={}", actualDate);
       return (long) extractedDate.length();
     }
 
@@ -238,7 +235,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         extractedLocalDate =  parseDateWithFormat(extractedDate, inputFormat);
       }
     } catch (DateTimeParseException e) {
-      log.error("Invalid actual date format: {}", actualDate);
+      log.error("Invalid extracted date format: {}", extractedDate);
       return (long) actualDate.length();
     }
 
@@ -250,10 +247,7 @@ public class ControlDataComparisonAction implements IActionExecution {
       return (long) actualDate.length();
     }
 
-    String extractedStr = extractedLocalDate.toString();
-    String actualStr = actualLocalDate.toString();
-
-    return getMismatchCount(extractedStr, actualStr);
+    return getMismatchCount(extractedLocalDate, actualLocalDate);
   }
 
   private String parseDateWithFormat(String date, String inputFormat) {
@@ -276,7 +270,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     for (String format : possibleFormats) {
       try {
         String reformattedDate = reformatEightDigitDate(date, format);
-        if (reformattedDate == null) continue;
+        if (reformattedDate.isEmpty()) continue;
 
         DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         LocalDate parsedDate = LocalDate.parse(reformattedDate, inputFormatter);
@@ -290,19 +284,19 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   private String reformatEightDigitDate(String date, String format) {
+    if (date.length() != 8) return "";
     try {
-      if (date.length() != 8) return null;
-
-      if (format.equals("yyyyMMdd")) {
-        return date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
-      } else if (format.equals("MMddyyyy")) {
-        return date.substring(4, 8) + "-" + date.substring(0, 2) + "-" + date.substring(2, 4);
-      } else if (format.equals("ddMMyyyy")) {
-        return date.substring(4, 8) + "-" + date.substring(2, 4) + "-" + date.substring(0, 2);
-      }
+        switch (format) {
+            case "yyyyMMdd":
+                return date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
+            case "MMddyyyy":
+                return date.substring(4, 8) + "-" + date.substring(0, 2) + "-" + date.substring(2, 4);
+            case "ddMMyyyy":
+                return date.substring(4, 8) + "-" + date.substring(2, 4) + "-" + date.substring(0, 2);
+        }
     } catch (Exception ignored) {
     }
-    return null;
+    return "";
   }
 
   public Long genderValidation(String extractedGender, String generatedGender) {
