@@ -67,6 +67,8 @@ public class AlchemyResponseAction implements IActionExecution {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(alchemyResponse.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+            String consumerApiCountStr = action.getContext().get("alchemy.response.consumer.API.count");
+            Integer consumerApiCount = Integer.valueOf(consumerApiCountStr);
             log.info(aMarker, "Alchemy Response Action for {} has been started", alchemyResponse.getName());
             final String insertQuery = "";
             final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.origin.valuation.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
@@ -86,7 +88,7 @@ public class AlchemyResponseAction implements IActionExecution {
                             new AlchemyResponseAction.AlchemyResponseInputTable(), urls, action);
             coproProcessor.startProducer(alchemyResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery,consumerApiCount , Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action));
             log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyResponse.getName());
         } catch (Exception t) {
             action.getContext().put(alchemyResponse.getName() + ".isSuccessful", "false");
