@@ -29,8 +29,8 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
-        ac.getContext().put("sor.transaction.bbox.activator.enable", "true");
-        ac.getContext().put("sor.transaction.confidence.activator.enable", "true");
+        ac.getContext().put("sor.transaction.bbox.parser.activator.enable", "true");
+        ac.getContext().put("sor.transaction.parser.confidence.activator.enable", "true");
 
 
 

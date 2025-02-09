@@ -154,12 +154,12 @@ public class LlmJsonParserAction implements IActionExecution {
                         for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
                            // if bbox and confidence score is not present in the pojo
 
-                            boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.activator.enable"), "true");
-                            log.info("Status for the activator sor.transaction.bbox.activator.enable. Result: {} ", isBboxEnabled);
+                            boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
+                            log.info("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
                             boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}"): "{}";
 
-                            boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.confidence.activator.enable"), "true");
-                            log.info("Status for the activator sor.transaction.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
+                            boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
+                            log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
                             double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
 

@@ -27,6 +27,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
     public static final String TEXT_EXTRACTOR_START = "TEXT EXTRACTOR START";
@@ -279,6 +281,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     private void extractedKryptonOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
 
         RadonKvpLineItem dataExtractionDataItem = mapper.readValue(stringDataItem, RadonKvpLineItem.class);
+
         final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String templateId = entity.getTemplateId();
@@ -546,6 +549,45 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(modelName).modelVersion(modelVersion).batchId(batchId).request(request).response(response).endpoint(endpoint).build());
 
 
+    }
+
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+        try {
+            if (jsonResponse.contains("```json")) {
+                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
+                // Define the regex pattern to match content between ```json and ```
+                Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
+                Matcher matcher = pattern.matcher(jsonResponse);
+
+                if (matcher.find()) {
+                    // Extract the JSON string from the matched group
+                    String jsonString = matcher.group(1);
+                    jsonString = jsonString.replace("\n", "");
+                    // Convert the cleaned JSON string to a JsonNode
+
+                    if(!jsonResponse.isEmpty()) {
+                        return objectMapper.readTree(jsonResponse);
+                    }else {
+                        return null;
+                    }
+                }else {
+
+                    return objectMapper.readTree(jsonResponse);
+                }
+            }
+            else if(jsonResponse.contains("{")) {
+                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
+
+                return objectMapper.readTree(jsonResponse);
+                //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }else {
+                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private static String extractPageContent(String jsonString) {

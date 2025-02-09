@@ -75,14 +75,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
 
                 String decodedPrompt = new String(decodedBytes);
-                String updatedPrompt = decodedPrompt.replace(action.getContext().get("text.to.replace.prompt"), entity.getInputResponseJson());
+                String updatedPrompt = decodedPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), entity.getInputResponseJson());
                 userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
                 log.info("prompt is of base64 type");
 
             }else {
-                log.info("prompt is of actual type");
+                log.info("prompt is of plain text type");
                 String actualUserPrompt = entity.getUserPrompt();
-                userPrompt = actualUserPrompt.replace(action.getContext().get("text.to.replace.prompt"), entity.getInputResponseJson());
+                userPrompt = actualUserPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), entity.getInputResponseJson());
             }
 
 
