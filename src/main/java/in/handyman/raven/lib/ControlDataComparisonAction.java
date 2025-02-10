@@ -38,7 +38,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
   private final ControlDataComparison controlDataComparison;
 
-  private final Logger log;
+  private static Logger log = null;
 
   private final Marker aMarker;
 
@@ -176,7 +176,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return matchStatus;
   }
 
-  public Long dataValidation(String extractedData, String actualData) {
+  public static Long dataValidation(String extractedData, String actualData) {
     if (extractedData == null || extractedData.isEmpty()) {
       log.error("Invalid input for extractedData={}", extractedData);
       return (long) actualData.length();
@@ -214,7 +214,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return (long) distance;
   }
 
-  public Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
+  public static Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
     if (extractedDate == null || extractedDate.isEmpty()) {
       log.error("Invalid input for extractedDate={}", extractedDate);
       return (long) actualDate.length();
@@ -250,7 +250,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return getMismatchCount(extractedLocalDate, actualLocalDate);
   }
 
-  private String parseDateWithFormat(String date, String inputFormat) {
+  private static String parseDateWithFormat(String date, String inputFormat) {
     for (String format : POSSIBLE_DATE_FORMATS) {
       try {
         DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern(format);
@@ -264,7 +264,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return date;
   }
 
-  private String parseEightDigitDate(String date, String inputFormat) {
+  private static String parseEightDigitDate(String date, String inputFormat) {
     String[] possibleFormats = {"yyyyMMdd", "MMddyyyy", "ddMMyyyy"};
 
     for (String format : possibleFormats) {
@@ -283,7 +283,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return null;
   }
 
-  private String reformatEightDigitDate(String date, String format) {
+  private static String reformatEightDigitDate(String date, String format) {
     if (date.length() != 8) return "";
     try {
         switch (format) {
@@ -332,7 +332,7 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   // Custom method to calculate mismatch count manually
-  private Long getMismatchCount(String str1, String str2) {
+  private static Long getMismatchCount(String str1, String str2) {
     int mismatchCount = 0;
     int length = Math.max(str1.length(), str2.length());
 

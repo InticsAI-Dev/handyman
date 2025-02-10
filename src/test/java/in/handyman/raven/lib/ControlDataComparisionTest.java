@@ -41,4 +41,16 @@ public class ControlDataComparisionTest {
         ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, controlDataComparison );
         deliveryNotifyAction.execute();
     }
+
+    @Test
+    void dateValidation() throws Exception{
+        Long validationResults = ControlDataComparisonAction.dateValidation("17-Feb-2002", "17/02/2000", "yyyy/MM/dd");
+        System.out.println(validationResults);
+    }
+
+    @Test
+    void dataValidation() throws Exception{
+        Long validationResults = ControlDataComparisonAction.dataValidation("Hemantho R", "Hemantho");
+        System.out.println(validationResults);
+    }
 }
