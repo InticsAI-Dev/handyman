@@ -50,7 +50,7 @@ public class ControlDataComparisionTest {
 
     @Test
     void dataValidation() throws Exception{
-        Long validationResults = ControlDataComparisonAction.dataValidation("Hemantho R", "Hemantho");
+        Long validationResults = ControlDataComparisonAction.dataValidation("John D", "John");
         System.out.println(validationResults);
     }
 }
