@@ -17,9 +17,9 @@ public class LlmJsonParserActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("sor_transaction.llm_json_parser_output_audit")
-                .querySet("SELECT  total_response_json , paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
+                .querySet("SELECT  total_response_json as response , paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
                         "FROM sor_transaction.radon_kvp_output_audit\n" +
-                        "where root_pipeline_id =117059;")
+                        "where root_pipeline_id =833 " )
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

@@ -93,7 +93,7 @@ public class LlmJsonParserAction implements IActionExecution {
                     String boundingBox = "";
                     String jsonResponse = inputTable.getResponse();
                     JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
-                    if (stringObjectMap.isObject()) {
+                    if (stringObjectMap != null && stringObjectMap.isObject()) {
 
                         final String insertQueryXenon = "INSERT INTO " + llmJsonParser.getOutputTable() +
                                 "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
@@ -133,7 +133,7 @@ public class LlmJsonParserAction implements IActionExecution {
                             log.info("\n insert processing for process {} :\n", inputTable.getProcess());
 
                         }
-                    } else if (stringObjectMap.isArray()) {
+                    } else if (stringObjectMap != null && stringObjectMap.isArray()) {
 
                         log.info("Processing an array-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
 
@@ -143,20 +143,28 @@ public class LlmJsonParserAction implements IActionExecution {
                                 "extracted_image_unit, image_dpi, image_height, image_width) \n" +
                                 "  VALUES(?,?,?,?,?,?,?,?::jsonb,?,?,?,?,?,? ,?,?,?,?,?);";
 
-                        log.info(aMarker, "Llm json parser insert query {}", insertQueryKrypton);
-                        List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = new ArrayList<>();
+                        List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = null;
+                        try {
+                            log.info(aMarker, "Llm json parser insert query {}", insertQueryKrypton);
+                            innerParsedResponsesKrypton = new ArrayList<>();
 
-                        innerParsedResponsesKrypton = objectMapper.readValue(
-                                stringObjectMap.traverse(),
-                                new TypeReference<List<LlmJsonParserKvpKrypton>>() {}
-                        );
+                            innerParsedResponsesKrypton = objectMapper.readValue(
+                                    stringObjectMap.traverse(),
+                                    new TypeReference<List<LlmJsonParserKvpKrypton>>() {
+                                    }
+                            );
+                        } catch (Exception e) {
+                            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
 
+                        }
                         for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
-                           // if bbox and confidence score is not present in the pojo
+                            // if bbox and confidence score is not present in the pojo
 
                             boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
                             log.info("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
-                            boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}"): "{}";
+                            boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
 
                             boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
                             log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
@@ -168,7 +176,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     .bind(1, inputTable.getTenantId())
                                     .bind(2, CreateTimeStamp.currentTimestamp())
                                     .bind(3, inputTable.getTenantId())
-                                        //  .bind(4, parsedResponse.getSorContainerName())
+                                    //  .bind(4, parsedResponse.getSorContainerName())
                                     .bind(4, confidenceScore)
                                     .bind(5, parsedResponse.getKey()) //sorItemName
                                     .bind(6, parsedResponse.getValue()) //predictedValue
