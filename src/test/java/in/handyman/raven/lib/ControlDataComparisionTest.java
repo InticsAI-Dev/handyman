@@ -4,8 +4,10 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.ControlDataComparison;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.logging.Logger;
 
 @Slf4j
 public class ControlDataComparisionTest {
@@ -44,13 +46,41 @@ public class ControlDataComparisionTest {
 
     @Test
     void dateValidation() throws Exception{
-        Long validationResults = ControlDataComparisonAction.dateValidation("17-Feb-2002", "17/02/2000", "yyyy/MM/dd");
+        log.info("Date validation started");
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "1"),
+                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("agadia.secretKey", ""),
+                Map.entry("outbound.context.condition", "Product"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build() );
+        Long validationResults = deliveryNotifyAction.dateValidation("20000217", "17/02/2000", "yyyy/MM/dd");
         System.out.println(validationResults);
+        log.info("Date validation completed");
     }
 
     @Test
     void dataValidation() throws Exception{
-        Long validationResults = ControlDataComparisonAction.dataValidation("John D", "John");
+        log.info("Data validation started");
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "1"),
+                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("agadia.secretKey", ""),
+                Map.entry("outbound.context.condition", "Product"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")));
+
+        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build() );
+        Long validationResults = deliveryNotifyAction.dataValidation("Jon D", "John");
         System.out.println(validationResults);
+        log.info("Data validation completed");
     }
 }

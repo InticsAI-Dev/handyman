@@ -38,7 +38,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
   private final ControlDataComparison controlDataComparison;
 
-  private static Logger log = null;
+  private final Logger log;
 
   private final Marker aMarker;
 
@@ -57,6 +57,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
   private static final String THRESHOLD_ONE_TOUCH = "1";
   private static final String THRESHOLD_LOW_TOUCH = "3";
+  private static final String PIPELINE_DATE_VALIDATION = "yyyy/MM/dd";
   @Override
   public void execute() throws Exception {
     try {
@@ -113,7 +114,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     Long mismatchCount;
     if(allowedAdapters.equals("date")  || allowedAdapters.equals("date_reg")){
       try {
-        mismatchCount = dateValidation(extractedValue, actualValue, "yyyy/MM/dd");
+        mismatchCount = dateValidation(extractedValue, actualValue, PIPELINE_DATE_VALIDATION);
         String matchStatus = calculateValidationScores(mismatchCount);
         log.info("Inserting date type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
@@ -176,7 +177,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return matchStatus;
   }
 
-  public static Long dataValidation(String extractedData, String actualData) {
+  public Long dataValidation(String extractedData, String actualData) {
     if (extractedData == null || extractedData.isEmpty()) {
       log.error("Invalid input for extractedData={}", extractedData);
       return (long) actualData.length();
@@ -214,7 +215,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return (long) distance;
   }
 
-  public static Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
+  public Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
     if (extractedDate == null || extractedDate.isEmpty()) {
       log.error("Invalid input for extractedDate={}", extractedDate);
       return (long) actualDate.length();
@@ -250,7 +251,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return getMismatchCount(extractedLocalDate, actualLocalDate);
   }
 
-  private static String parseDateWithFormat(String date, String inputFormat) {
+  private String parseDateWithFormat(String date, String inputFormat) {
     for (String format : POSSIBLE_DATE_FORMATS) {
       try {
         DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern(format);
@@ -264,8 +265,8 @@ public class ControlDataComparisonAction implements IActionExecution {
     return date;
   }
 
-  private static String parseEightDigitDate(String date, String inputFormat) {
-    String[] possibleFormats = {"yyyyMMdd", "MMddyyyy", "ddMMyyyy"};
+  private String parseEightDigitDate(String date, String inputFormat) {
+    String[] possibleFormats = {"yyyyMMdd", "MMddyyyy", "ddMMyyyy", "MMyyyydd"};
 
     for (String format : possibleFormats) {
       try {
@@ -283,7 +284,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     return null;
   }
 
-  private static String reformatEightDigitDate(String date, String format) {
+  private String reformatEightDigitDate(String date, String format) {
     if (date.length() != 8) return "";
     try {
         switch (format) {
@@ -332,7 +333,7 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   // Custom method to calculate mismatch count manually
-  private static Long getMismatchCount(String str1, String str2) {
+  private Long getMismatchCount(String str1, String str2) {
     int mismatchCount = 0;
     int length = Math.max(str1.length(), str2.length());
 
