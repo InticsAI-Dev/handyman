@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
         actionName = "ZeroShotClassifierPaperFilter"
 )
 public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
-    public static final String SCHEMA_NAME = "paper";
+    public static final String SCHEMA_NAME = "temp_schema_name";
     public static final String OUTPUT_TABLE_NAME = "zero_shot_classifier_filtering_result_";
     public static final String INSERT_INTO_COLUMNS = "origin_id,group_id,paper_no,synonym,confidence_score,truth_entity,status,stage,message, created_on, root_pipeline_id,model_name,model_version,tenant_id,batch_id, last_updated_on,request, response, endpoint";
     public static final String INSERT_INTO = "INSERT INTO";
@@ -59,8 +59,9 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(zeroShotClassifierPaperFilter.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Phrase match paper filter Action for {} has been started", zeroShotClassifierPaperFilter.getName());
+            String outputSchema = action.getContext().get(SCHEMA_NAME);
             final String processId = Optional.ofNullable(zeroShotClassifierPaperFilter.getProcessID()).map(String::valueOf).orElse(null);
-            final String insertQuery = INSERT_INTO + " " + SCHEMA_NAME + "." + OUTPUT_TABLE_NAME + processId + "(" + INSERT_INTO_COLUMNS + ") " +
+            final String insertQuery = INSERT_INTO + " " + outputSchema + "." + OUTPUT_TABLE_NAME + processId + "(" + INSERT_INTO_COLUMNS + ") " +
                     " VALUES(" + INSERT_INTO_VALUES + ")";
             final List<URL> urls = Optional.ofNullable(zeroShotClassifierPaperFilter.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
