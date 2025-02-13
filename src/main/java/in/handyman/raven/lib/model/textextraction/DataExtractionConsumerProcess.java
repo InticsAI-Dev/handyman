@@ -182,14 +182,15 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         } else if (Objects.equals("TRITON", coproHandlerName)) {
             log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
             if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
-                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-                    dataExtractionData.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
 
-                }else {
-                    dataExtractionData.setBase64Img("");
-                }
 
                 DataExtractionData dataExtractionPayload = getArgonRequestPayloadFromEntity(entity);
+                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+                    dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+
+                }else {
+                    dataExtractionPayload.setBase64Img("");
+                }
                 String dataExtractionPayloadString = mapper.writeValueAsString(dataExtractionPayload);
 
                 String jsonRequestTritonArgon = getTritonRequestPayload(dataExtractionPayloadString, TEXT_EXTRACTOR_START, mapper);
