@@ -171,6 +171,9 @@ public class LlmJsonParserAction implements IActionExecution {
 
                             double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
 
+                            Boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
+                            String trimmedPredictedValue = trimExtractedValue? trimTo255Characters(parsedResponse.getValue()) : parsedResponse.getValue() ;
+
                             handle.createUpdate(insertQueryKrypton)
                                     .bind(0, inputTable.getCreatedOn())
                                     .bind(1, inputTable.getTenantId())
@@ -179,7 +182,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     //  .bind(4, parsedResponse.getSorContainerName())
                                     .bind(4, confidenceScore)
                                     .bind(5, parsedResponse.getKey()) //sorItemName
-                                    .bind(6, parsedResponse.getValue()) //predictedValue
+                                    .bind(6, trimmedPredictedValue) //predictedValue
                                     .bind(7, boundingBox)
                                     .bind(8, inputTable.getPaperNo())
                                     .bind(9, inputTable.getOriginId())
@@ -333,6 +336,17 @@ public class LlmJsonParserAction implements IActionExecution {
         jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
         return jsonString;
     }
+
+
+        private String trimTo255Characters(String input) {
+            // Check if the input is null to avoid NullPointerException
+            if (input != null && input.length() > 255) {
+                return input.substring(0, 255);
+            }else{
+                // Return the original string if length is <= 255
+                return input;
+            }
+           }
 
     @Override
     public boolean executeIf() throws Exception {

@@ -183,6 +183,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
                                         try {
                                             int[] execute = preparedBatch.execute();
+                                            preparedBatch.close();
                                             logger.info("Consumer persisted {}", execute);
                                         }catch(Exception e){
                                             logger.error("exception in prepared batch {}", e);
@@ -238,7 +239,9 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                             }
                             preparedStatement.addBatch();
                         }
-                        rowCount = (int) Arrays.stream(preparedStatement.executeBatch()).count();
+                        int[] array = preparedStatement.executeBatch();
+                        rowCount = (int) Arrays.stream(array).count();
+                        preparedStatement.close();
                         insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                     }
                 } catch (Exception e) {

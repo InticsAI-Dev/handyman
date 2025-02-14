@@ -17,9 +17,10 @@ public class LlmJsonParserActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("sor_transaction.llm_json_parser_output_audit")
-                .querySet("SELECT  total_response_json as response , paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
+                .querySet("SELECT  total_response_json as response , paper_no,  origin_id, group_id, \n" +
+                        "tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
                         "FROM sor_transaction.radon_kvp_output_audit\n" +
-                        "where root_pipeline_id =833 " )
+                        "where root_pipeline_id =833  limit 1;" )
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -31,6 +32,7 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("sor.transaction.bbox.parser.activator.enable", "true");
         ac.getContext().put("sor.transaction.parser.confidence.activator.enable", "true");
+        ac.getContext().put("llm.json.parser.trim.extracted.value", "false");
 
 
 
