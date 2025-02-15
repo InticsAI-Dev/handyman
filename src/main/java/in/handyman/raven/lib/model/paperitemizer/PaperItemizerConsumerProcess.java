@@ -55,7 +55,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
     @Override
     public List<PaperItemizerOutputTable> process(URL endpoint, PaperItemizerInputTable entity) throws Exception {
-        log.info(aMarker, "coproProcessor consumer process started with endpoint {} and entity {}", endpoint, entity);
+        log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
 
 
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
@@ -114,7 +114,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and outputDir {}", endpoint, inputFilePath, this.outputDir);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with entity {}", endpoint, entity);
         }
 
         return parentObj;
@@ -133,7 +133,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             if (response.isSuccessful()) {
                 if (log.isInfoEnabled()) {
-                    log.info(aMarker, "successfully received coproProcessor consumer process response");
+                    log.info(aMarker, "successfully received coproProcessor consumer process response for file {} ",entity.getFilePath());
                 }
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody, jsonInputRequest, responseBody, endpoint.toString());
@@ -158,7 +158,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .response(response.message())
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
-                log.error(aMarker, "Error in response {}", response.message());
+                log.error(aMarker, "Error in getting response from copro {}", response.message());
             }
 
         } catch (Exception exception) {
@@ -197,7 +197,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             if (response.isSuccessful()) {
                 if (log.isInfoEnabled()) {
-                    log.info(aMarker, "coproProcessor consumer process response successful ");
+                    log.info(aMarker, "coproProcessor consumer process response successful for origin_id {}", entity.getOriginId());
                 }
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 PaperItemizerResponse paperItemizerResponse = objectMapper.readValue(responseBody, PaperItemizerResponse.class);
@@ -227,7 +227,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .response(response.message())
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
-                log.error(aMarker, "Error in getting response {}", response.message());
+                log.error(aMarker, "Error in getting response from copro {}", response.message());
             }
 
         } catch (Exception exception) {
@@ -247,12 +247,12 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
                             .request(jsonInputRequest)
-                            .response("Error In Response")
+                            .response("Error In getting Response from copro")
                             .endpoint(String.valueOf(endpoint))
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("Paper Itemize consumer failed for originId " + originId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in request {}", request, exception);
+            log.error(aMarker, "The Exception occurred in request {}", exception.getMessage(), exception);
         }
     }
 

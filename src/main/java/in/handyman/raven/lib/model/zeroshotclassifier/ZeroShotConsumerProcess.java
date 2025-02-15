@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
@@ -54,7 +57,21 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String processId = String.valueOf(entity.getProcessId());
         String paperNo = String.valueOf(entity.getPaperNo());
         Long actionId = action.getActionId();
+
+
         String pageContent = String.valueOf(entity.getPageContent());
+        String extractedContent;
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+
+        if(Objects.equals(encryptSotPageContent, "true")){
+            extractedContent = encryption.decrypt(pageContent,"","");
+        }else {
+            extractedContent = pageContent;
+        }
+
+
         String batchId = entity.getBatchId();
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -73,7 +90,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setOriginId(originId);
         data.setPaperNo(paperNo);
         data.setGroupId(groupId);
-        data.setPageContent(pageContent);
+        data.setPageContent(extractedContent);
         data.setKeysToFilter(keysToFilterObject);
         data.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(data);

@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
@@ -283,12 +286,23 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         RadonKvpLineItem dataExtractionDataItem = mapper.readValue(stringDataItem, RadonKvpLineItem.class);
 
+        String extractedContent;
+
         final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+
+        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        if(Objects.equals(encryptSotPageContent, "true")){
+            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(),"","");
+        }else {
+            extractedContent = dataExtractionDataItem.getInferResponse();
+        }
 
         String templateId = entity.getTemplateId();
         parentObj.add(DataExtractionOutputTable.builder()
                 .filePath(entity.getFilePath())
-                .extractedText(dataExtractionDataItem.getInferResponse())
+                .extractedText(extractedContent)
                 .originId(dataExtractionDataItem.getOriginId())
                 .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
                 .paperNo(dataExtractionDataItem.getPaperNo())
@@ -312,13 +326,23 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private void extractedArgonOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
-        JsonNode jsonNode = mapper.readTree(stringDataItem);
-        String pageContent = jsonNode.get("pageContent").asText();
-        final String contentString = Optional.of(pageContent).map(String::valueOf).orElse(null);
-        final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
+
+        final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
+        final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+
+        String extractedContent;
+        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        if(Objects.equals(encryptSotPageContent, "true")){
+            extractedContent = encryption.encrypt(contentString,"","");
+        }else {
+            extractedContent = contentString;
+        }
+
         String templateId = entity.getTemplateId();
-        parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).filePath(dataExtractionDataItem.getInputFilePath()).extractedText(dataExtractionDataItem.getPageContent()).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(dataExtractionDataItem.getBatchId()).request(request).response(response).endpoint(String.valueOf(endpoint)).build());
+        parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).filePath(dataExtractionDataItem.getInputFilePath()).extractedText(extractedContent).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(dataExtractionDataItem.getBatchId()).request(request).response(response).endpoint(String.valueOf(endpoint)).build());
     }
 
     private void tritonRequestArgonExecutor(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String jsonRequest, URL endpoint) {

@@ -51,6 +51,8 @@ public class NerInputTable implements CoproProcessor.Entity {
     private double confidenceScore;
     private String sorItemName;
     private String batchId;
+    private String isEncrypted;
+    private String encryptionPolicy;
 
     @Override
     public List<Object> getRowData() {

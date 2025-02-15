@@ -9,6 +9,8 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
@@ -67,7 +69,16 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long tenantId = entity.getTenantId();
 
         if (  Objects.equals(action.getContext().get("bbox.radon_bbox_activator"),"true") && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")){
+            String inputResponseJsonstr = entity.getInputResponseJson();
+            String inputResponseJson;
+            String encryptOutputJsonContent= action.getContext().get("pipeline.end.to.end.encryption");
+            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
+            if(Objects.equals(encryptOutputJsonContent, "true")){
+                inputResponseJson = encryption.encrypt(inputResponseJsonstr,"","");
+            }else {
+                inputResponseJson = inputResponseJsonstr;
+            }
             if (Objects.equals("sor.transaction.prompt.base64.activator", "true")) {
                 log.info("action {} is turned on", entity.getProcess());
                 Base64toActualVaue base64Caller = new Base64toActualVaue();
@@ -75,14 +86,15 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
 
                 String decodedPrompt = new String(decodedBytes);
-                String updatedPrompt = decodedPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), entity.getInputResponseJson());
+
+                String updatedPrompt = decodedPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
                 userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
                 log.info("prompt is of base64 type");
 
             }else {
                 log.info("prompt is of plain text type");
                 String actualUserPrompt = entity.getUserPrompt();
-                userPrompt = actualUserPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), entity.getInputResponseJson());
+                userPrompt = actualUserPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
             }
 
 
@@ -141,11 +153,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         if (Objects.equals("false", tritonRequestActivator)) {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode and json input {}", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonInputRequest);
+            log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
             coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode  and json input {} ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator, jsonRequest);
+            log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
             tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
@@ -296,12 +308,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long rootPipelineId = entity.getRootPipelineId();
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
+        String extractedContent;
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-//        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
-//
-//        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
-//            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
-//        }
+
+        String encryptOutputJsonContent= action.getContext().get("pipeline.end.to.end.encryption");
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        if(Objects.equals(encryptOutputJsonContent, "true")){
+            extractedContent = encryption.encrypt(modelResponse.getInferResponse(),"","");
+        }else {
+            extractedContent = modelResponse.getInferResponse();
+        }
 
         parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(CreateTimeStamp.currentTimestamp())
@@ -310,7 +327,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(modelResponse.getInferResponse())
+                .totalResponseJson(extractedContent)
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -327,6 +344,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .message("Radon kvp action macro completed")
                 .request(request)
                 .response(response)
+                .sorContainerId(entity.getSorContainerId())
                 .endpoint(String.valueOf(endpoint))
                 .build()
         );
@@ -376,6 +394,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .request(jsonInputRequest)
                         .response(response.message())
                         .endpoint(String.valueOf(endpoint))
+                        .sorContainerId(entity.getSorContainerId())
                         .build());
                 log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
@@ -395,6 +414,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
                     .category(entity.getCategory())
+                    .sorContainerId(entity.getSorContainerId())
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
@@ -439,6 +459,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .request(request)
                 .response(response)
                 .endpoint(String.valueOf(endpoint))
+                .sorContainerId(entity.getSorContainerId())
                 .build()
         );
     }

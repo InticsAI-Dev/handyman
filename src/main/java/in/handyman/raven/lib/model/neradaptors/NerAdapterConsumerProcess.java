@@ -5,6 +5,8 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
 import in.handyman.raven.lib.adapters.AlphaAdapter;
 import in.handyman.raven.lib.adapters.NameAdapter;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.ExceptionUtil;
@@ -16,9 +18,7 @@ import org.slf4j.Marker;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -75,6 +75,15 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
     @Override
     public List<NerOutputTable> process(URL endpoint, NerInputTable result) throws Exception {
+
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
+        if (Objects.equals(encryptData, "true")) {
+            if (Objects.equals(result.getIsEncrypted(), "true")) {
+                result.setInputValue(encryption.decrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+            }
+        }
+
         URI = String.valueOf(endpoint);
         multiverseValidator = Boolean.parseBoolean(action.getContext().get("validation.multiverse-mode"));
         restrictedAnswers = action.getContext().get("validation.restricted-answers").split(",");
@@ -128,6 +137,12 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         if (valConfidenceScore >= 0) {
+
+            if (Objects.equals(encryptData, "true")) {
+                if (Objects.equals(result.getIsEncrypted(), "true")) {
+                    result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                }
+            }
             parentObj.add(
                     NerOutputTable
                             .builder()
@@ -165,6 +180,11 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         } else {
+            if (Objects.equals(encryptData, "true")) {
+                if (Objects.equals(result.getIsEncrypted(), "true")) {
+                    result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                }
+            }
             parentObj.add(
                     NerOutputTable
                             .builder()

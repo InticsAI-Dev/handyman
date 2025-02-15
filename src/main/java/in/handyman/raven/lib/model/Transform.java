@@ -2,10 +2,7 @@ package in.handyman.raven.lib.model;
 
 import in.handyman.raven.lambda.action.ActionContext;
 import in.handyman.raven.lambda.action.IActionContext;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
@@ -15,6 +12,8 @@ import java.util.List;
 @Data
 @EqualsAndHashCode
 @NoArgsConstructor
+@Builder
+@AllArgsConstructor
 @ActionContext(
         actionName = "Transform"
 )
