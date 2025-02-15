@@ -42,7 +42,7 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("sor.transaction.bbox.activator.enable", "true");
         ac.getContext().put("sor.transaction.confidence.activator.enable", "true");
         ac.getContext().put("pipeline.end.to.end.encryption", "true");
-        ac.getContext().put("pipeline.encryption.default.holder", "");
+        ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
 
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
