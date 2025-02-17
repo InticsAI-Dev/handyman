@@ -1,8 +1,8 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -10,37 +10,18 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.LlmJsonParser;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import in.handyman.raven.lib.model.jsonParser.KVP.SORParser;
-import in.handyman.raven.lib.model.jsonParser.Table.TableContentNode;
-import in.handyman.raven.lib.model.jsonParser.Table.TableFinalResults;
-import in.handyman.raven.lib.model.jsonParser.Text.ContentNode;
-import in.handyman.raven.lib.model.jsonParser.KVP.KVPContentNode;
-import in.handyman.raven.lib.model.jsonParser.Text.FinalResults;
-import in.handyman.raven.lib.model.jsonParser.Text.TextLineItems;
-import in.handyman.raven.lib.model.jsonParser.Text.TextParser;
-import in.handyman.raven.lib.model.jsonParser.checkbox.CheckBoxFinal;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParsedResponse;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryInputTable;
-import in.handyman.raven.lib.model.jsonParser.Table.TableParser;
-import org.apache.kafka.common.protocol.types.Field;
-import com.fasterxml.jackson.core.type.TypeReference;
-
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
-import in.handyman.raven.lib.model.jsonParser.KVP.KvpFinal;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import in.handyman.raven.lib.model.jsonParser.Bbox;
-
 
 import java.sql.Types;
 import java.util.*;
-
-import static in.handyman.raven.lib.model.jsonParser.checkbox.CheckboxParser.processJson;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 /**
@@ -110,6 +91,15 @@ public class LlmJsonParserAction implements IActionExecution {
                         parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
 
                         for (LlmJsonParsedResponse parsedResponse : innerParsedResponses) {
+
+                            boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
+                            String trimmedPredictedValue;
+                            if (trimExtractedValue){
+                                trimmedPredictedValue =trimTo255Characters(parsedResponse.getAnswer());
+                            }else {
+                                trimmedPredictedValue=parsedResponse.getAnswer();
+                            }
+
                             handle.createUpdate(insertQueryXenon)
                                     .bind(0, inputTable.getCreatedOn())
                                     .bind(1, inputTable.getTenantId())
@@ -117,7 +107,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     .bind(3, inputTable.getTenantId())
                                     .bind(4, parsedResponse.getSorContainerName())
                                     .bind(5, parsedResponse.getSorItemName())
-                                    .bind(6, parsedResponse.getAnswer())
+                                    .bind(6, trimmedPredictedValue)
                                     .bind(7, inputTable.getPaperNo())
                                     .bind(8, inputTable.getOriginId())
                                     .bind(9, inputTable.getGroupId())
@@ -170,9 +160,14 @@ public class LlmJsonParserAction implements IActionExecution {
                             log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
                             double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
+                            boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
+                            String trimmedPredictedValue;
+                            if (trimExtractedValue){
+                                trimmedPredictedValue =trimTo255Characters(parsedResponse.getValue());
+                            }else {
+                                trimmedPredictedValue=parsedResponse.getValue();
+                            }
 
-                            Boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
-                            String trimmedPredictedValue = trimExtractedValue? trimTo255Characters(parsedResponse.getValue()) : parsedResponse.getValue() ;
 
                             handle.createUpdate(insertQueryKrypton)
                                     .bind(0, inputTable.getCreatedOn())
