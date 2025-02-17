@@ -143,6 +143,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                 "extracted_image_unit, image_dpi, image_height, image_width) \n" +
                                 "  VALUES(?,?,?,?,?,?,?,?::jsonb,?,?,?,?,?,? ,?,?,?,?,?);";
 
+
                         List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = null;
                         try {
                             log.info(aMarker, "Llm json parser insert query {}", insertQueryKrypton);
