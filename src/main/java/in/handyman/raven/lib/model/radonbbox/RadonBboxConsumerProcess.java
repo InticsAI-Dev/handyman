@@ -35,7 +35,9 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     public static final String RADON_BBOX = PipelineName.RADON_KVP_BBOX.getProcessName();
     public static final String RADON_BBOX_START = "RADON BBOX START";
     public static final String OKHTTP_CLIENT_TIMEOUT = "okhttp.client.timeout";
-
+    public static final String SOR_ITEM_NAME = "sor_item_name";
+    public static final String ANSWER = "answer";
+    public static final String PAPER_TYPE = "paper_type";
     public static final String RADON_KVP_BBOX = "RADON_KVP_BBOX";
 
     private final Logger log;
@@ -133,7 +135,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
                 if (radonBboxModelResponse.getOutputs() != null && !radonBboxModelResponse.getOutputs().isEmpty()) {
                     radonBboxModelResponse.getOutputs().forEach(o -> o.getData().forEach(noiseModelDataItem ->
-                            extractedOutputRequest(entity, objectMapper, parentObj, noiseModelDataItem)
+                            extractedOutputRequest(entity, objectMapper, parentObj, radonBboxModelResponse.getModelName(), radonBboxModelResponse.getModelVersion(), noiseModelDataItem)
                     ));
                 }
 
@@ -151,7 +153,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
 
-    private void extractedOutputRequest(RadonBboxInputEntity entity, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj, String radonKvpBboxDataItem) {
+    private void extractedOutputRequest(RadonBboxInputEntity entity, ObjectMapper objectMapper, List<RadonBboxOutputEntity> parentObj, String modelName, String modelVersion, String radonKvpBboxDataItem) {
 
         try {
 

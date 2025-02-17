@@ -29,6 +29,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
+    public static final String RADON_START = "RADON START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -57,13 +58,38 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String filePath = String.valueOf(entity.getInputFilePath());
         Long actionId = action.getActionId();
         Long groupId = entity.getGroupId();
-        String userPrompt = entity.getUserPrompt();
+        String userPrompt = "";
         String systemPrompt = entity.getSystemPrompt();
         String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
+
+        if (  Objects.equals(action.getContext().get("bbox.radon_bbox_activator"),"true") && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")){
+
+            if (Objects.equals("sor.transaction.prompt.base64.activator", "true")) {
+                log.info("action {} is turned on", entity.getProcess());
+                Base64toActualVaue base64Caller = new Base64toActualVaue();
+                String base64Value = base64Caller.base64toActual(entity.getUserPrompt());
+                byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
+
+                String decodedPrompt = new String(decodedBytes);
+                String updatedPrompt = decodedPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), entity.getInputResponseJson());
+                userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
+                log.info("prompt is of base64 type");
+
+            }else {
+                log.info("prompt is of plain text type");
+                String actualUserPrompt = entity.getUserPrompt();
+                userPrompt = actualUserPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), entity.getInputResponseJson());
+            }
+
+
+        }
+        else {
+            userPrompt = entity.getUserPrompt();
+        }
 
         //payload
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
@@ -75,6 +101,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
         radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
+        radonKvpExtractionRequest.setBase64Img("");
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
@@ -108,7 +135,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} and prompt {}", endpoint, filePath, userPrompt, systemPrompt);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {}, userPrompt {} and systemPrompt {}", endpoint, filePath, userPrompt, systemPrompt);
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
@@ -209,6 +236,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
             if (jsonResponse.contains("```json")) {
+                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
                 // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
                 Matcher matcher = pattern.matcher(jsonResponse);
@@ -216,20 +244,27 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 if (matcher.find()) {
                     // Extract the JSON string from the matched group
                     String jsonString = matcher.group(1);
-
-                    JsonNode rootNode = getJsonNodeFromInferResponse(objectMapper, jsonString);
-
-                    return rootNode;
+                    jsonString = jsonString.replace("\n", "");
+                    // Convert the cleaned JSON string to a JsonNode
+                    jsonResponse = repairJson(jsonString);
+                    if(!jsonResponse.isEmpty()) {
+                        return objectMapper.readTree(jsonResponse);
+                    }else {
+                        return null;
+                    }
                 }else {
-                    JsonNode rootNode = getJsonNodeFromInferResponse(objectMapper, jsonResponse);
-                    return rootNode;
+                    jsonResponse = repairJson(jsonResponse);
+                    return objectMapper.readTree(jsonResponse);
                 }
-
-            } else {
-                // Handle the case where the expected markers are not found
-                log.info("Input does not contain the required ```json``` markers.");
-                JsonNode rootNode = getJsonNodeFromInferResponse(objectMapper, jsonResponse);
-                return rootNode;
+            }
+            else if(jsonResponse.contains("{")) {
+                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
+                jsonResponse = repairJson(jsonResponse);
+                return objectMapper.readTree(jsonResponse);
+                //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }else {
+                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
+                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -262,7 +297,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
-        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
+//        JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(modelResponse.getInferResponse(), objectMapper);
 //
 //        if(processBase64.equals(ProcessFileFormatE.BASE64.name())){
 //            fileProcessingUtils.convertBase64ToFile(modelResponse.getBase64Img(), modelResponse.getInputFilePath());
@@ -275,7 +310,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(mapper.writeValueAsString(stringObjectMap))
+                .totalResponseJson(modelResponse.getInferResponse())
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -408,6 +443,74 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         );
     }
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private String repairJson(String jsonString) {
 
+        // Ensure keys and string values are enclosed in double quotes
+        jsonString = addMissingQuotes(jsonString);
+
+        // Balance braces and brackets
+        jsonString = balanceBracesAndBrackets(jsonString);
+
+        // Assign empty strings to keys with no values
+        jsonString = assignEmptyValues(jsonString);
+
+        return jsonString;
+    }
+
+    private String addMissingQuotes(String jsonString) {
+        // Ensure keys are enclosed in double quotes
+        jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
+
+        // Ensure string values are enclosed in double quotes
+        // This regex matches values that are not already enclosed in quotes
+        jsonString = jsonString.replaceAll("(?<=:)\\s*([^\"\\s,\\n}\\]]+)(?=\\s*(,|}|\\n|\\]))", "\"$1\"");
+
+        return jsonString;
+    }
+
+
+    private String balanceBracesAndBrackets(String jsonString) {
+        // Balance braces and brackets
+        int openBraces = 0;
+        int closeBraces = 0;
+        int openBrackets = 0;
+        int closeBrackets = 0;
+
+        for (char c : jsonString.toCharArray()) {
+            if (c == '{') openBraces++;
+            if (c == '}') closeBraces++;
+            if (c == '[') openBrackets++;
+            if (c == ']') closeBrackets++;
+        }
+
+        // Add missing closing braces
+        while (openBraces > closeBraces) {
+            jsonString += "}";
+            closeBraces++;
+        }
+
+        // Add missing closing brackets
+        while (openBrackets > closeBrackets) {
+            jsonString += "]";
+            closeBrackets++;
+        }
+
+        return jsonString;
+    }
+
+    private String assignEmptyValues(String jsonString) {
+        // Assign empty strings to keys with no values
+        jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
+        return jsonString;
+    }
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    public Map<String, Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+            throws IOException {
+        String json = jsonParser.getText();
+        // Remove the ```json block and any leading/trailing spaces
+        json = json.replace("```json", "").replace("```", "").trim();
+        // Deserialize the cleaned JSON string into a Map
+        return objectMapper.readValue(json, Map.class);
+    }
 }

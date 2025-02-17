@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.ganda;
+package in.handyman.raven.lib.model.kvp.llm.jsonparser;
 
 
 import lombok.AllArgsConstructor;
@@ -13,9 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Builder
 public class BoundingBox {
-    private double x;
-    private double y;
-    private double width;
-    private double height;
-
+    private int topLeftX;
+    private int topLeftY;
+    private int bottomRightX;
+    private int bottomRightY;
 }
