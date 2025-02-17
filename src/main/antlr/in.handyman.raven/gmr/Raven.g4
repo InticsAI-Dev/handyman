@@ -175,6 +175,7 @@ action:
     |radonKvpBbox
     |dockerInspect
     |kafkaPublish
+    |folderDeleteByProcess
     );
 
 
@@ -1115,6 +1116,14 @@ multipartFolderDelete:
     'multipartFolderDelete' 'as' name=STRING
     'resource-conn' resourceConn=STRING
     'delete-url' endPoint=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+folderDeleteByProcess:
+    'folderDeleteByProcess' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'cleanup-process-name' cleanupProcessName=STRING
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
