@@ -229,8 +229,7 @@ public class AlchemyResponseAction implements IActionExecution {
 
             try (Response response = httpclient.newCall(request).execute()) {
                 if (response.isSuccessful()) {
-                    log.info("Response Details: {}", response);
-                    log.info(aMarker, "Execute for alchemy response {}", response);
+                    log.info("Response code: {}, and response header: {}, for sor-item {}", response.code(), response.headers(), sorItemName);
                 }
             } catch (Exception e) {
                 log.error(aMarker, "The Exception occurred in alchemy response action", e);
