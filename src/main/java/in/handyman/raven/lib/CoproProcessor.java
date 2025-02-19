@@ -88,7 +88,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
-        jdbi = checkJDBIConnection(jdbi);
+     jdbi = checkJDBIConnection(jdbi);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
@@ -165,6 +165,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                 }
                                 processedEntity.addAll(results);
                                 if (nodeCount.get() % writeBatchSize == 0) {
+
                                     jdbi = checkJDBIConnection(jdbi);
                                     jdbi.useTransaction(handle -> {
                                         final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
@@ -175,12 +176,13 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
                                             }
                                             preparedBatch.add();
-                                            logger.info("prepared batch insert query input entity \n {}  and \n {} ", take, processedEntity);
+
+                                            logger.info("prepared batch insert query input entity size \n {}  and \n {} ", take, processedEntity.size());
                                         }
 
                                         try {
                                             int[] execute = preparedBatch.execute();
-                                            preparedBatch.close();
+//                                            preparedBatch.close();
                                             logger.info("Consumer persisted {}", execute);
                                         } catch (Exception e) {
                                             logger.error("exception in prepared batch {}", e);
@@ -223,6 +225,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
         if (!processedEntity.isEmpty()) {
+
             jdbi = checkJDBIConnection(jdbi);
             jdbi.useTransaction(handle -> {
                 int rowCount = 0;
@@ -239,7 +242,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                         }
                         int[] array = preparedStatement.executeBatch();
                         rowCount = (int) Arrays.stream(array).count();
-                        preparedStatement.close();
+//                        preparedStatement.close();
                         insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                     }
                 } catch (Exception e) {
