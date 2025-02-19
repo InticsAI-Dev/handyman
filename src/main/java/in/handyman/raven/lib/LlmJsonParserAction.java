@@ -90,6 +90,7 @@ public class LlmJsonParserAction implements IActionExecution {
 
                             boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
                             String trimmedPredictedValue;
+
                             if (trimExtractedValue) {
                                 trimmedPredictedValue = trimTo255Characters(parsedResponse.getAnswer());
                             } else {
@@ -157,6 +158,13 @@ public class LlmJsonParserAction implements IActionExecution {
                             log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
                             double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
+                            boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
+                            String trimmedPredictedValue;
+                            if (trimExtractedValue){
+                                trimmedPredictedValue =trimTo255Characters(parsedResponse.getValue());
+                            }else {
+                                trimmedPredictedValue=parsedResponse.getValue();
+                            }
 
                             boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
                             String trimmedPredictedValue;
