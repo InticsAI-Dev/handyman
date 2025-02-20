@@ -37,7 +37,6 @@ public class AzureJdbiConnection {
     public Jdbi getAzureJdbiConnection() {
 
         String token= AzureAuthTokenSession.getInstance().getToken().get();
-        log.info("token {}",token);
         // Construct connection properties
         Properties connectionProps = new Properties();
         connectionProps.put("user", azureUserName);  // Can also use a specific user if applicable
