@@ -166,14 +166,6 @@ public class LlmJsonParserAction implements IActionExecution {
                                 trimmedPredictedValue=parsedResponse.getValue();
                             }
 
-                            boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
-                            String trimmedPredictedValue;
-                            if (trimExtractedValue) {
-                                trimmedPredictedValue = trimTo255Characters(parsedResponse.getValue());
-                            } else {
-                                trimmedPredictedValue = parsedResponse.getValue();
-                            }
-
                             handle.createUpdate(insertQueryKrypton)
                                     .bind(0, inputTable.getCreatedOn())
                                     .bind(1, inputTable.getTenantId())
