@@ -222,8 +222,10 @@ public class LlmJsonParserAction implements IActionExecution {
 
                     if (Objects.equals(encryptData, "true")) {
                         if (Objects.equals(meta.getIsEncrypted().toString(), "true")) {
+                            response.setAnswer(trimTo255Characters(response.getAnswer(),action));
                             response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), meta.getEncryptionPolicy(), meta.getSorItemName()));
                         } else {
+                            response.setAnswer(trimTo255Characters(response.getAnswer(),action));
                             response.setAnswer(response.getAnswer());
                         }
                     } else {
@@ -257,14 +259,20 @@ public class LlmJsonParserAction implements IActionExecution {
 
         if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
             if (Objects.equals(encryptData, "true")) {
+                response.setValue(trimTo255Characters(response.getValue(),action));
                 response.setValue(inticsIntegrity.encrypt(response.getValue(), meta.getEncryptionPolicy(), meta.getSorItemName()));
+            }else{
+                response.setValue(trimTo255Characters(response.getValue(),action));
             }
+        }else{
+            response.setValue(trimTo255Characters(response.getValue(),action));
         }
 
         return response;
     }
 
     private static void getInsertIntoArgonResultTable(Handle handle, LlmJsonQueryInputTable inputTable, LlmJsonParsedResponse parsedResponse, String insertQueryXenon, String encryptedValue) {
+
         handle.createUpdate(insertQueryXenon)
                 .bind(0, inputTable.getCreatedOn())
                 .bind(1, inputTable.getTenantId())
@@ -441,4 +449,20 @@ public class LlmJsonParserAction implements IActionExecution {
     public boolean executeIf() throws Exception {
         return llmJsonParser.getCondition();
     }
+
+    private static String trimTo255Characters(String input, ActionExecutionAudit action) {
+        boolean trimExtractedValue = Objects.equals(action.getContext().get("llm.json.parser.trim.extracted.value"), "true");
+        String trimmedPredictedValue = "";
+        if (trimExtractedValue) {
+            if (input != null && input.length() > 255) {
+                trimmedPredictedValue = input.substring(0, 255);
+            } else {
+                // Return the original string if length is <= 255
+                trimmedPredictedValue = input;
+            }
+
+        }
+        return trimmedPredictedValue;
+    }
+
 }

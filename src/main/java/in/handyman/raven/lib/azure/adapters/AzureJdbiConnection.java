@@ -36,25 +36,11 @@ public class AzureJdbiConnection {
 
     public Jdbi getAzureJdbiConnection() {
 
-
-        // Initialize the client credential using Azure authentication
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .tenantId(tenantId)
-                .clientId(clientId)
-                .clientSecret(clientSecret)
-                .build();
-
-        log.debug("Azure configurations tenantId {} and clientID {} and clientSecret {} and databaseUrl {} and tokenScope {} ",tenantId,clientId,clientSecret,databaseUrl,tokenScope);
-        // Request token for the specific scope, typically the Azure database scope.
-        TokenRequestContext tokenRequestContext = new TokenRequestContext().addScopes(tokenScope);
-
-        // Obtain the access token
-        AccessToken accessToken = clientSecretCredential.getToken(tokenRequestContext).block();
-
+        String token= AzureAuthTokenSession.getInstance().getToken().get();
         // Construct connection properties
         Properties connectionProps = new Properties();
         connectionProps.put("user", azureUserName);  // Can also use a specific user if applicable
-        connectionProps.put("password", accessToken.getToken());
+        connectionProps.put("password",token );
 
         try {
             // Establish JDBC connection using the token

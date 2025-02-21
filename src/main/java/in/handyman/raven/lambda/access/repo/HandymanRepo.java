@@ -100,6 +100,10 @@ public interface HandymanRepo {
 
     List<ActionExecutionAudit> findAllActionsByRootPipelineId(final Long rootPipelineId);
 
+    List<ActionExecutionAudit> findActionByRootPipelineIdAndActionName(final Long rootPipelineId, final String actionName);
+
+    ActionExecutionAudit findActionByActionId(final Long actionId);
+
     List<PipelineExecutionAudit> findAllPipelinesByParentActionId(final Long parentActionId);
 
     List<PipelineExecutionAudit> findAllPipelines();
