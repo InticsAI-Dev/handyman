@@ -17,10 +17,19 @@ public class LlmJsonParserActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("sor_transaction.llm_json_parser_output_audit")
-                .querySet("SELECT  total_response_json as response , paper_no,  origin_id, group_id, \n" +
-                        "tenant_id, root_pipeline_id, batch_id, model_registry, category, now() as created_on\n" +
-                        "FROM sor_transaction.radon_kvp_output_audit\n" +
-                        "where root_pipeline_id =833  limit 1;" )
+                .querySet("               \n" +
+                        "SELECT  b.total_response_json as response, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
+                        "b.model_registry, b.category, a.created_on, sc.sor_container_id,\n" +
+                        "jsonb_agg(jsonb_build_object('sorItemName',si.sor_item_name,'isEncrypted',si.is_encrypted,'encryptionPolicy',ep.encryption_policy))::varchar as sor_meta_detail\n" +
+                        "from sor_transaction.sor_transaction_payload_queue_archive a\n" +
+                        "join sor_transaction.radon_kvp_output_audit b on a.origin_id = b.origin_id and a.batch_id = b.batch_id and a.tenant_id =b.tenant_id\n" +
+                        "join sor_meta.sor_container sc ON sc.tenant_id=a.tenant_id and b.sor_container_id =sc.sor_container_id \n" +
+                        "JOIN sor_meta.sor_item si ON sc.sor_container_id=si.sor_container_id\n" +
+                        "join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
+                        "WHERE b.id=53 and sc.tenant_id=1 AND sc.document_type='HEALTH_CARE'\n" +
+                        "and si.sor_item_name in ('member_first_name')\n" +
+                        "group by b.total_response_json, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
+                        "b.model_registry, b.category, a.created_on,sc.sor_container_id;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -30,10 +39,10 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
-        ac.getContext().put("sor.transaction.bbox.parser.activator.enable", "true");
-        ac.getContext().put("sor.transaction.parser.confidence.activator.enable", "true");
-        ac.getContext().put("llm.json.parser.trim.extracted.value", "false");
-
+        ac.getContext().put("sor.transaction.bbox.activator.enable", "true");
+        ac.getContext().put("sor.transaction.confidence.activator.enable", "true");
+        ac.getContext().put("pipeline.end.to.end.encryption", "true");
+        ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
 
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);

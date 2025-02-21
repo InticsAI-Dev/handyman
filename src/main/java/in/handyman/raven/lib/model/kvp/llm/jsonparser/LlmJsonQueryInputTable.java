@@ -26,4 +26,7 @@ public class LlmJsonQueryInputTable {
     private Long imageHeight;
     private Timestamp createdOn;
     private String Process;
+    private String sorMetaDetail;
+    private Long sorContainerId;
+
 }

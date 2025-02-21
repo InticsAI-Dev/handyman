@@ -833,12 +833,11 @@ class KafkaPublishActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("kafka_response_info")
-                .querySet("select 'kafka1:9092' as endpoint, 'elv_json' as topic_name, " +
-                        "'SASL_SSL' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
-                        "            'elevance' as user_name, 'elevance@123' as password, " +
-                        "            'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key, product_json as json_data,\n" +
-                        "            file_name as document_id, 12345 as uuid, origin_id, batch_id, tenant_id, origin_id as transaction_id\n " +
-                        "            from product_outbound.product_outbound_zip_file_input limit 1; ")
+                .querySet("select '127.0.0.1:9092' as endpoint, 'elv_json' as topic_name, 'SASL_PLAINTEXT' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
+                        "            'elevance' as user_name, 'elevance@123' as password, 'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key, product_json as json_data,\n" +
+                        "            ifd.document_id, ifd.uuid, pozfi.origin_id, pozfi.batch_id, pozfi.tenant_id, ifd.transaction_id\n" +
+                        "            from product_outbound.product_outbound_zip_file_input pozfi join inbound_config.ingestion_file_details ifd on pozfi.file_name = ifd.document_id\n" +
+                        "            where pozfi.origin_id='ORIGIN-10'")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

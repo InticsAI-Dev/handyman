@@ -13,20 +13,23 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class LlmJsonQueryOutputTable {
-    private Timestamp createdOn;
-    private Long createdUserId;
+    private String createdOn;
+    private Long tenantId;
     private Timestamp lastUpdatedOn;
     private Long lastUpdatedUserId;
-    private List<LlmJsonParsedResponse> parsedOutput;
+    private double confidenceScore;
+    private String sorItemName;
+    private String answer;
+    private String boundingBox;
     private Integer paperNo;
     private String originId;
     private Long groupId;
-    private Long tenantId;
     private Long rootPipelineId;
     private String batchId;
     private String modelRegistry;
     private String extractedImageUnit;
     private Long imageDpi;
-    private Long imageWidth;
     private Long imageHeight;
+    private Long imageWidth;
+    private Long sorContainerId;
 }

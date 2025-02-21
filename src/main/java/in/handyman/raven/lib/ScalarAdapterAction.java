@@ -6,6 +6,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -22,7 +24,9 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -168,6 +172,15 @@ public class ScalarAdapterAction implements IActionExecution {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
             for (ValidatorConfigurationDetail result : listOfDetails) {
 
+                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+                String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
+                if (Objects.equals(encryptData, "true")) {
+                    if (Objects.equals(result.getIsEncrypted(), "true")) {
+                        result.setInputValue(encryption.decrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                    }
+                }
+
+
                 if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
 
                     log.info(aMarker, "Build 19- scalar executing  validator {}", result);
@@ -214,6 +227,14 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
                     result.setCategory(result.getCategory());
+
+
+                    if (Objects.equals(encryptData, "true")) {
+                        if (Objects.equals(result.getIsEncrypted(), "true")) {
+                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                        }
+                    }
+
                     resultQueue.add(result);
                     log.info(aMarker, "executed  validator {}", result);
 
@@ -232,6 +253,13 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setStatus("COMPLETED");
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
+
+                    if (Objects.equals(encryptData, "true")) {
+                        if (Objects.equals(result.getIsEncrypted(), "true")) {
+                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                        }
+                    }
+
                     resultQueue.add(result);
                     log.info(aMarker, "executed  validator else {}", result);
                 }
@@ -549,6 +577,8 @@ public class ScalarAdapterAction implements IActionExecution {
         private String sorItemName;
         private String batchId;
         private String category;
+        private String isEncrypted;
+        private String encryptionPolicy;
     }
 
 }

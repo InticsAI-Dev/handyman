@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
@@ -52,6 +55,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String pageContent = String.valueOf(entity.getPageContent());
         String batchId = entity.getBatchId();
 
+        String extractedContent;
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+
+        if(Objects.equals(encryptSotPageContent, "true")){
+            extractedContent = encryption.decrypt(pageContent,"","");
+        }else {
+            extractedContent = pageContent;
+        }
 
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
@@ -65,7 +78,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setOriginId(originId);
         data.setPaperNo(Long.valueOf(paperNo));
         data.setGroupId(groupId);
-        data.setPageContent(pageContent);
+        data.setPageContent(extractedContent);
         data.setKeysToFilter(keysToFilterObject);
         data.setProcess(PROCESS_NAME);
         data.setBatchId(batchId);
