@@ -66,7 +66,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
 
         if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.decrypt(pageContent,"","");
+            extractedContent = encryption.decrypt(pageContent,"AES256","ZSC_TEXT_DATA");
         }else {
             extractedContent = pageContent;
         }

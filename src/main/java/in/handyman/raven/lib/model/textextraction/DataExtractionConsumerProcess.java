@@ -294,7 +294,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(),"","");
+            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(),"AES256", "TEXT_DATA");
         }else {
             extractedContent = dataExtractionDataItem.getInferResponse();
         }
@@ -336,7 +336,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.encrypt(contentString,"","");
+            extractedContent = encryption.encrypt(contentString,"AES256", "TEXT_DATA");
         }else {
             extractedContent = contentString;
         }

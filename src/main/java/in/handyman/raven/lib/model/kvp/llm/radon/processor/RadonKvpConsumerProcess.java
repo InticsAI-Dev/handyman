@@ -68,40 +68,66 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
 
-        if (  Objects.equals(action.getContext().get("bbox.radon_bbox_activator"),"true") && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")){
+        if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
+                && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")) {
+
+            log.info("RADON_KVP_ACTION process started. BBox activator is enabled.");
+
             String inputResponseJsonstr = entity.getInputResponseJson();
             String inputResponseJson;
-            String encryptOutputJsonContent= action.getContext().get("pipeline.end.to.end.encryption");
+            String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
+
+            log.info("Checking if end-to-end encryption is enabled: {}", encryptOutputJsonContent);
+
             InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-            if(Objects.equals(encryptOutputJsonContent, "true")){
-                inputResponseJson = encryption.encrypt(inputResponseJsonstr,"","");
-            }else {
+            if (Objects.equals(encryptOutputJsonContent, "true")) {
+                log.info("Encrypting input response JSON...");
+                inputResponseJson = encryption.decrypt(inputResponseJsonstr, "AES256", "RADON_KVP_JSON");
+                log.info("Encryption completed successfully.");
+            } else {
+                log.info("Encryption is disabled. Using raw input response JSON.");
                 inputResponseJson = inputResponseJsonstr;
             }
-            if (Objects.equals("sor.transaction.prompt.base64.activator", "true")) {
-                log.info("action {} is turned on", entity.getProcess());
+
+            String base64Activator = action.getContext().get("sor.transaction.prompt.base64.activator");
+            log.info("Checking if Base64 activator is enabled: {}", base64Activator);
+
+            if (Objects.equals(base64Activator, "true")) {
+                log.info("Base64 activator is turned ON for process: {}", entity.getProcess());
+
                 Base64toActualVaue base64Caller = new Base64toActualVaue();
                 String base64Value = base64Caller.base64toActual(entity.getUserPrompt());
-                byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
 
+                log.info("Decoded Base64 value successfully.");
+
+                byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
                 String decodedPrompt = new String(decodedBytes);
 
-                String updatedPrompt = decodedPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
+                log.info("Decoded prompt before replacing placeholder: {}", decodedPrompt);
+
+                String updatedPrompt = decodedPrompt.replace(
+                        action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
+
                 userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
-                log.info("prompt is of base64 type");
 
-            }else {
-                log.info("prompt is of plain text type");
+                log.info("Updated prompt encoded back to Base64 successfully.");
+            } else {
+                log.info("Base64 activator is OFF. Using plain text prompt.");
+
                 String actualUserPrompt = entity.getUserPrompt();
-                userPrompt = actualUserPrompt.replace(action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
+                log.info("Original user prompt before replacing placeholder: {}", actualUserPrompt);
+
+                userPrompt = actualUserPrompt.replace(
+                        action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
+
+                log.info("Updated user prompt in plain text.");
             }
-
-
-        }
-        else {
+        } else {
+            log.info("BBox activator is disabled or process is not RADON_KVP_ACTION. Using original user prompt.");
             userPrompt = entity.getUserPrompt();
         }
+
 
         //payload
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
@@ -315,7 +341,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         if(Objects.equals(encryptOutputJsonContent, "true")){
-            extractedContent = encryption.encrypt(modelResponse.getInferResponse(),"","");
+            extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
         }else {
             extractedContent = modelResponse.getInferResponse();
         }
