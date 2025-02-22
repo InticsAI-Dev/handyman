@@ -306,13 +306,14 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
     void consumerBatch(final Jdbi jdbi, List<ValidatorConfigurationDetail> resultQueue) {
+
         try {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
                                 String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question,question_id, synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,root_pipeline_id,model_name,model_version, model_registry, category, batch_id";
                                 String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:questionId, :synonymId, :inputValue,:vqaScore, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:rootPipelineId,:modelName,:modelVersion, :modelRegistry, :category, :batchId";
-                                Update update = handle.createUpdate("  INSERT INTO sor_transaction.adapter_result_" + scalarAdapter.getProcessID() +
+                                Update update = handle.createUpdate("  INSERT INTO " + scalarAdapter.getProcessID() +
                                         " ( " + COLUMN_LIST + ") " +
                                         " VALUES( " + COLUMN_BINDED_LIST + ");" +
                                         "   ");
