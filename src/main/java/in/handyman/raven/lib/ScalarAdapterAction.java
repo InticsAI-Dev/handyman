@@ -306,14 +306,14 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
     void consumerBatch(final Jdbi jdbi, List<ValidatorConfigurationDetail> resultQueue) {
-
+        String schemaName=action.getContext().get("temp_schema_name");
         try {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
                                 String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question,question_id, synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,root_pipeline_id,model_name,model_version, model_registry, category, batch_id";
                                 String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:questionId, :synonymId, :inputValue,:vqaScore, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:rootPipelineId,:modelName,:modelVersion, :modelRegistry, :category, :batchId";
-                                Update update = handle.createUpdate("  INSERT INTO " + scalarAdapter.getProcessID() +
+                                Update update = handle.createUpdate("  INSERT INTO "+schemaName+".adapter_result_" + scalarAdapter.getProcessID() +
                                         " ( " + COLUMN_LIST + ") " +
                                         " VALUES( " + COLUMN_BINDED_LIST + ");" +
                                         "   ");
@@ -402,13 +402,14 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount) {
+        String schemaName=action.getContext().get("temp_schema_name");
         SanitarySummary summary = new SanitarySummary().builder()
                 .rowCount(rowCount)
                 .correctRowCount(executeCount)
                 .errorRowCount(errorCount)
                 .build();
         jdbi.useTransaction(handle -> {
-            Update update = handle.createUpdate("  INSERT INTO sor_transaction.sanitizer_summary_" + scalarAdapter.getProcessID() +
+            Update update = handle.createUpdate("  INSERT INTO "+schemaName+".sanitizer_summary_" + scalarAdapter.getProcessID() +
                     " ( row_count, correct_row_count, error_row_count, created_at) " +
                     " VALUES(:rowCount, :correctRowCount, :errorRowCount, NOW());");
             Update bindBean = update.bindBean(summary);
