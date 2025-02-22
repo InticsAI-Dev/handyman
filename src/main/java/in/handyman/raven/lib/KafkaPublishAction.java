@@ -77,7 +77,7 @@ public class KafkaPublishAction implements IActionExecution {
             final List<KafkaPublishQueryInput> kafkaPublishQueryInputs = new ArrayList<>();
 
             String outputTable = kafkaPublish.getOutputTable();
-            jdbi.useTransaction(handle -> handle.execute("create table if not exists product_outbound." + outputTable + " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
+            jdbi.useTransaction(handle -> handle.execute("create table if not exists " + outputTable + " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaPublish.getQuerySet());
