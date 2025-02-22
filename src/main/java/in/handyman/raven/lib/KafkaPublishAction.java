@@ -236,7 +236,7 @@ public class KafkaPublishAction implements IActionExecution {
                                      String batchId, String topicName, String endpoint, String authSecurityProtocol,
                                      String saslMechanism, String response, int partition, String executionStatus, String transactionId) {
 
-        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO product_outbound." + outputTable + "(document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
+        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + "(document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
                         "VALUES(:documentId, :checksum, :tenantId, :originId, :batchId, :topicName, :endpoint, :authSecurityProtocol, :saslMechanism, :response, :partition, :execStatus, :transactionId);")
                 .bind("documentId", documentId)
                 .bind("checksum", checksum)
