@@ -194,25 +194,29 @@ public class ScalarAdapterAction implements IActionExecution {
                             .threshold(result.getValidatorThreshold())
                             .build();
 
-                    Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
-                    String inputValue = configurationDetails.getInputValue();
+                    computeScrubbingForValue(scrubbingInput);
+
+                    String inputValue = scrubbingInput.getInputValue();
                     result.setInputValue(inputValue);
                     int wordScore = wordcountAction.getWordCount(inputValue,
                             result.getWordLimit(), result.getWordThreshold());
                     int charScore = charactercountAction.getCharCount(inputValue,
                             result.getCharLimit(), result.getCharThreshold());
 
-                    int validatorScore = computeAdapterScore(configurationDetails);
+
                     int validatorNegativeScore = 0;
+                    int validatorScore = computeAdapterScore(scrubbingInput);
                     if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
-                        configurationDetails.setAdapter(result.getRestrictedAdapter());
-                        validatorNegativeScore = computeAdapterScore(configurationDetails);
+                        scrubbingInput.setAdapter(result.getRestrictedAdapter());
+                        validatorNegativeScore = computeAdapterScore(scrubbingInput);
                     }
 
                     double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
                     log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.update.empty.wrt.score"),"true")){
+                        updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    }
 
-                    updateEmptyValueIfLowCf(result, valConfidenceScore);
                     updateEmptyValueForRestrictedAns(result, inputValue);
                     log.info(aMarker, "Build 19-validator vqa score {}", result.getVqaScore());
 
@@ -261,7 +265,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     }
 
                     resultQueue.add(result);
-                    log.info(aMarker, "executed  validator else {}", result);
+                    log.info(aMarker, "executed  validator for originId {} , paperNo {} ,sorItemName {}", result.getOriginId() ,result.getPaperNo(), result.getSorItemName());
                 }
 
             }
@@ -291,6 +295,7 @@ public class ScalarAdapterAction implements IActionExecution {
             }
         }
     }
+
 
     private void updateEmptyValueIfLowCf(ValidatorConfigurationDetail result, double valConfidenceScore) {
         if (valConfidenceScore < 100 && multiverseValidator) {
@@ -340,32 +345,46 @@ public class ScalarAdapterAction implements IActionExecution {
         int confidenceScore = 0;
         try {
             switch (inputDetail.getAdapter()) {
-                case "alpha":
-                    confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+                case "alpha" :
+                    if( Objects.equals(action.getContext().get("scalar.adapter.alpha.activator"),"true")){
+                        confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+                    }
                     break;
                 case "alphanumeric":
-                    confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.alphanumeric.activator"),"true")){
+                        confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+                    }
                     break;
                 case "numeric":
-                    confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.numeric.activator"),"true")){
+                        confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    }
                     break;
                 case "date":
-                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.date.activator"),"true")){
+                        confidenceScore = this.dateAction.getDateScore(inputDetail);
 //                    confidenceScore = inputDetail.getThreshold();
+                    }
                     break;
                 case "date_reg":
-//                    confidenceScore = this.dateAction.getDateScore(inputDetail);
-                    confidenceScore = inputDetail.getThreshold();
+                    if(Objects.equals(action.getContext().get("scalar.adapter.date_reg.activator"),"true")){
+//                        confidenceScore = this.dateAction.getDateScore(inputDetail);
+                        confidenceScore = inputDetail.getThreshold();
+                    }
                     break;
                 case "phone_reg":
-                    confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.phone_reg.activator"),"true")){
+                        confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    }
                     break;
                 case "numeric_reg":
-                    confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.numeric_reg.activator"),"true")){
+                        confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+                    }
                     break;
             }
         } catch (Exception t) {
-            log.error(aMarker, "error adpater validation{}", inputDetail, t);
+            log.error(aMarker, "error adapter validation{}", inputDetail, t);
             HandymanException handymanException = new HandymanException(t);
             HandymanException.insertException("Exception occurred in computing adapter score", handymanException, action);
         }
@@ -373,28 +392,37 @@ public class ScalarAdapterAction implements IActionExecution {
 
     }
 
+
     Validator computeScrubbingForValue(Validator inputDetail) {
         try {
             switch (inputDetail.getAdapter()) {
                 case "alpha":
                     //Special character removed
-                    inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9 ]");
+                    if(Objects.equals(action.getContext().get("scalar.adapter.scrubbing.alpha.activator"),"true")){
+                        inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9 ]");
+                    }
                     break;
                 case "numeric":
                 case "numeric_reg":
                     //Special character and alphabets removed
-                    inputDetail = removePrefixAndSuffix(inputDetail);
-                    inputDetail = scrubbingInput(inputDetail, "[^0-9 ]");
+                    if(Objects.equals(action.getContext().get("scalar.adapter.scrubbing.numeric.activator"),"true")){
+                        inputDetail = removePrefixAndSuffix(inputDetail);
+                        inputDetail = scrubbingInput(inputDetail, "[^0-9 ]");
+                    }
                     break;
                 case "date_reg":
                     //Remove prefix and suffix alphabets
                     // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
-                    inputDetail = removePrefixAndSuffix(inputDetail);
-                    inputDetail = scrubbingDate(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.scrubbing.date.activator"),"true")){
+//                        inputDetail = removePrefixAndSuffix(inputDetail);
+//                        inputDetail = scrubbingDate(inputDetail);
+                        inputDetail= this.dateAction.formatDate(inputDetail);
+                    }
+
                     break;
             }
         } catch (Exception t) {
-            log.error(aMarker, "error adpater validation{}", inputDetail, t);
+            log.error(aMarker, "error adapter validation{}", inputDetail, t);
             HandymanException handymanException = new HandymanException(t);
             HandymanException.insertException("Exception occurred in computing adapter score", handymanException, action);
         }

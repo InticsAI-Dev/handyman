@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.Datevalidator;
 import in.handyman.raven.lib.model.ScalarAdapter;
 import in.handyman.raven.lib.model.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -193,6 +194,32 @@ class ScalarAdapterActionTest {
         System.out.println(validator);
     }
 
+    @Test
+    public void formatDate(){
+        final ActionExecutionAudit action = ActionExecutionAudit.builder()
+                .build();
+        action.setRootPipelineId(11011L);
+        action.getContext().put("validation.multiverse-mode", "true");
+        action.getContext().put("validation.restricted-answers", "No,None of the above");
+        action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put("pipeline.encryption.default.holder", "");
+        action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
+        action.getContext().put("validaiton.char-limit-count", "1");
+
+        Datevalidator datevalidator= Datevalidator.builder()
+                .allowedDateFormats("")
+                .comparableDate("")
+                .condition(true)
+                .name("")
+                .thresholdValue("")
+                .inputValue("")
+                .build();
+        Validator validator= Validator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/2025").build();
+        DatevalidatorAction datevalidatorAction=new DatevalidatorAction(action,log,datevalidator);
+        System.out.println(validator.getInputValue());
+        datevalidatorAction.formatDate(validator);
+        System.out.println(validator.getInputValue());
+    }
 
     @Test
     public void remove() {

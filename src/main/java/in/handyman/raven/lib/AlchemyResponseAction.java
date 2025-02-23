@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
@@ -7,9 +8,11 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
 import in.handyman.raven.lib.alchemy.common.BoundingBox;
 import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.lib.model.AlchemyResponse;
+import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +26,9 @@ import okhttp3.Response;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.Query;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -30,13 +36,10 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +49,7 @@ import java.util.stream.Collectors;
         actionName = "AlchemyResponse"
 )
 public class AlchemyResponseAction implements IActionExecution {
+    public static final String ALCHEMY_TRANSFORM = "ALCHEMY_TRANSFORM";
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -67,34 +71,79 @@ public class AlchemyResponseAction implements IActionExecution {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(alchemyResponse.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-            String consumerApiCountStr = action.getContext().get("alchemy.response.consumer.API.count");
-            Integer consumerApiCount = Integer.valueOf(consumerApiCountStr);
-            log.info(aMarker, "Alchemy Response Action for {} has been started", alchemyResponse.getName());
-            final String insertQuery = "";
-            final List<URL> urls = Optional.ofNullable(action.getContext().get("alchemy.origin.valuation.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new RuntimeException(e);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            Long consumerApiCount = getConsumerApiCount();
+            Long tenantId = getTenantId();
+            URL url = getOriginValuationUrl();
+            String authToken = getAlchemyAuthToken();
+            ObjectMapper mapper = new ObjectMapper();
+            MediaType mediaTypeJSON = MediaType
+                    .parse("application/json; charset=utf-8");
 
-            final CoproProcessor<AlchemyResponseAction.AlchemyResponseInputTable, AlchemyResponseAction.AlchemyResponseOutputTable> coproProcessor =
-                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                            AlchemyResponseAction.AlchemyResponseOutputTable.class,
-                            AlchemyResponseAction.AlchemyResponseInputTable.class,
-                            jdbi, log,
-                            new AlchemyResponseAction.AlchemyResponseInputTable(), urls, action);
-            coproProcessor.startProducer(alchemyResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
-            Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery,consumerApiCount , Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyResponseAction.AlchemyReponseConsumerProcess(log, aMarker, action));
-            log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyResponse.getName());
+
+            final OkHttpClient httpclient = new OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.MINUTES)
+                    .writeTimeout(10, TimeUnit.MINUTES)
+                    .readTimeout(10, TimeUnit.MINUTES)
+                    .build();
+
+
+            log.info(aMarker, "Alchemy Response Action for {} has been started", alchemyResponse.getName());
+
+            List<AlchemyResponseInputTable> tableInfos = getDataFromSelectQuery(jdbi);
+
+            process(url,tableInfos, tenantId,authToken, mapper, mediaTypeJSON, httpclient,jdbi);
+
+
+
         } catch (Exception t) {
-            action.getContext().put(alchemyResponse.getName() + ".isSuccessful", "false");
-            log.error(aMarker, "Error at alchemy response execute method {}", ExceptionUtil.toString(t));
-            throw new HandymanException("Error at alchemyResponse execute method ", t, action);
+            handleExecutionError(t);
         }
+    }
+
+    private void handleExecutionError(Exception e) {
+        action.getContext().put(alchemyResponse.getName() + ".isSuccessful", "false");
+        log.error(aMarker, "Error in AlchemyResponse execution: {}", ExceptionUtil.toString(e));
+        throw new HandymanException("Error in AlchemyResponse execution", e, action);
+    }
+
+    private List<AlchemyResponseInputTable> getDataFromSelectQuery(Jdbi jdbi) {
+        List<AlchemyResponseInputTable> tableInfos =new ArrayList<>();
+        jdbi.useTransaction(handle -> {
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(alchemyResponse.getQuerySet());
+            AtomicInteger i = new AtomicInteger(0);
+            formattedQuery.forEach(sqlToExecute -> {
+                log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
+                Query query = handle.createQuery(sqlToExecute);
+                ResultIterable<AlchemyResponseInputTable> resultIterable = query.mapToBean(AlchemyResponseInputTable.class);
+                List<AlchemyResponseInputTable> detailList = resultIterable.stream().collect(Collectors.toList());
+                tableInfos.addAll(detailList);
+                log.info(aMarker, "executed query from index {}", i.get());
+            });
+        });
+        return tableInfos;
+    }
+
+    private String getAlchemyAuthToken() {
+        String authToken = action.getContext().get("alchemyAuth.token");
+        return authToken;
+    }
+
+    @NotNull
+    private URL getOriginValuationUrl() throws MalformedURLException {
+        URL url=new URL(action.getContext().get("alchemy.origin.valuation.url"));
+        return url;
+    }
+
+    @NotNull
+    private Long getTenantId() {
+        Long tenantId = Long.valueOf(action.getContext().get("alchemyAuth.tenantId"));
+        return tenantId;
+    }
+
+    private Long getConsumerApiCount() {
+        String consumerApiCountStr = action.getContext().get("alchemy.response.consumer.API.count");
+        Long consumerApiCount = Long.valueOf(consumerApiCountStr);
+        return consumerApiCount;
     }
 
     @Override
@@ -102,143 +151,234 @@ public class AlchemyResponseAction implements IActionExecution {
         return alchemyResponse.getCondition();
     }
 
-    public static class AlchemyReponseConsumerProcess implements CoproProcessor.ConsumerProcess<AlchemyResponseAction.AlchemyResponseInputTable, AlchemyResponseAction.AlchemyResponseOutputTable> {
-        private final Logger log;
-        private final Marker aMarker;
-        private final ObjectMapper mapper = new ObjectMapper();
+    public List<AlchemyResponseOutputTable> process(
+            URL endpoint,
+            List<AlchemyResponseInputTable> entities,
+            Long tenantId,
+            String authToken,
+            ObjectMapper objectMapper,
+            MediaType mediaType,
+            OkHttpClient httpClient,
+            Jdbi jdbi
+    ) throws Exception {
 
-        public final ActionExecutionAudit action;
+        List<AlchemyResponseOutputTable> parentObj = new ArrayList<>();
+        Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = getOriginBasedPredictions(entities);
 
-        private final Long tenantId;
-        private final String authToken;
-        private static final MediaType MediaTypeJSON = MediaType
-                .parse("application/json; charset=utf-8");
-        final OkHttpClient httpclient = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.MINUTES)
-                .writeTimeout(10, TimeUnit.MINUTES)
-                .readTimeout(10, TimeUnit.MINUTES)
-                .build();
+        for (Map.Entry<String, List<AlchemyResponseInputTable>> entry : groupedByOriginId.entrySet()) {
+            String originId = entry.getKey();
+            List<AlchemyResponseInputTable> inputTables = entry.getValue();
+            List<AlchemyRequestBody> requestData = new ArrayList<>();
 
-        public AlchemyReponseConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
-            this.log = log;
-            this.aMarker = aMarker;
-            this.action = action;
-            this.tenantId = Long.valueOf(action.getContext().get("alchemyAuth.tenantId"));
-            this.authToken = action.getContext().get("alchemyAuth.token");
+            for (AlchemyResponseInputTable input : inputTables) {
+                requestData.add(buildAlchemyRequest(input, objectMapper));
+            }
+            AlchemyResponseOutputTable alchemyResponseOutputTable=new AlchemyResponseOutputTable();
+            executeAlchemyPredictionApi(endpoint, originId, tenantId, authToken, requestData, objectMapper, mediaType, httpClient, alchemyResponseOutputTable);
+            consumerBatch(jdbi,alchemyResponseOutputTable);
         }
 
-        @Override
-        public List<AlchemyResponseAction.AlchemyResponseOutputTable> process(URL endpoint, AlchemyResponseAction.AlchemyResponseInputTable entity) throws Exception {
+        return parentObj;
+    }
+    private AlchemyRequestBody buildAlchemyRequest(AlchemyResponseInputTable input, ObjectMapper objectMapper) {
+        AlchemyRequestBody request = AlchemyRequestBody.builder()
+                .paperNo(input.getPaperNo())
+                .rootPipelineId(input.getRootPipelineId())
+                .feature(input.getFeature())
+                .build();
 
-            List<AlchemyResponseAction.AlchemyResponseOutputTable> parentObj = new ArrayList<>();
-            String originId = entity.getOriginId();
-            Integer paperNo = entity.getPaperNo();
-            Long rootPipelineId = entity.getRootPipelineId();
-            Integer confidenceScore = entity.getConfidenceScore();
-            String extractedValue = entity.getExtractedValue();
-            String sorItemName = entity.getSorItemName();
-            Long synonymId = entity.getSynonymId();
-            Long questionId = entity.getQuestionId();
-            String bbox = entity.getBbox();
-            String feature = entity.getFeature();
-            String batchId = entity.getBatchId();
+        try {
+            switch (Feature.valueOf(input.getFeature())) {
+                case KIE:
+                case CHECKBOX_EXTRACTION:
+                    request.setBbox(objectMapper.readTree(input.getBbox()));
+                    request.setConfidenceScore(input.getConfidenceScore());
+                    request.setExtractedValue(input.getExtractedValue());
+                    request.setSynonymId(input.getSynonymId());
+                    request.setQuestionId(input.getQuestionId());
+                    request.setBatchId(input.getBatchId());
+                    break;
 
-            AlchemyRequestTable alchemyRequestTable = AlchemyRequestTable
-                    .builder()
-                    .paperNo(paperNo)
-                    .rootPipelineId(rootPipelineId)
-                    .feature(feature)
-                    .build();
+                case TABLE_EXTRACT:
+                    request.setTableData(objectMapper.readTree(input.getTableData()));
+                    request.setCsvFilePath(input.getCsvFilePath());
+                    request.setTruthEntityId(input.getTruthEntityId());
+                    break;
 
-            if(feature.equals(Feature.KIE.name())){
-                alchemyRequestTable.setBbox(mapper.readTree(bbox));
-                alchemyRequestTable.setConfidenceScore(confidenceScore);
-                alchemyRequestTable.setExtractedValue(extractedValue);
-                alchemyRequestTable.setSynonymId(synonymId);
-                alchemyRequestTable.setQuestionId(questionId);
-                alchemyRequestTable.setBatchId(batchId);
-            }
-            if(feature.equals(Feature.CHECKBOX_EXTRACTION.name())){
-                alchemyRequestTable.setBbox(mapper.readTree(bbox));
-                alchemyRequestTable.setConfidenceScore(confidenceScore);
-                alchemyRequestTable.setExtractedValue(extractedValue);
-                alchemyRequestTable.setState(entity.getState());
-                alchemyRequestTable.setBatchId(entity.getBatchId());
-            }
-            if(feature.equals(Feature.TABLE_EXTRACT.name())){
-                JsonNode tableNode = mapper.readTree(entity.getTableData());
-                alchemyRequestTable.setTableData(tableNode);
-                alchemyRequestTable.setCsvFilePath(entity.getCsvFilePath());
-                alchemyRequestTable.setTruthEntityId(entity.getTruthEntityId());
-            }
-            if(feature.equals(Feature.CURRENCY_DETECTION.name())){
-                alchemyRequestTable.setDetectedValue(entity.getDetectedValue());
-                alchemyRequestTable.setDetectedAsciiValue(entity.getDetectedAsciiValue());
-                alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
-            }
-            if(feature.equals(Feature.TABLE_EXTRACT_AGGREGATE.name())){
-                JsonNode tableAggregateNode = mapper.readTree(entity.getTableAggregateNode());
-                JsonNode tableNode = mapper.readTree(entity.getTableData());
-                alchemyRequestTable.setTableData(tableNode);
-                alchemyRequestTable.setAggregateJson(tableAggregateNode);
-                alchemyRequestTable.setSorItemId(entity.sorItemId);
-            }
-            if(feature.equals(Feature.BULLETIN_EXTRACTION.name())){
-                JsonNode bulletinOutput = mapper.readTree(entity.getBulletinPoints());
-                alchemyRequestTable.setBulletinPoints(bulletinOutput);
-                alchemyRequestTable.setBulletinSection(entity.getBulletinSection());
-                alchemyRequestTable.setSynonymId(entity.getSynonymId());
-            }
-            if(feature.equals(Feature.PARAGRAPH_EXTRACTION.name())){
-                JsonNode paragraphOutput = mapper.readTree(entity.getParagraphPoints());
-                alchemyRequestTable.setParagraphPoints(paragraphOutput);
-                alchemyRequestTable.setParagraphSection(entity.getParagraphSection());
-                alchemyRequestTable.setSynonymId(entity.getSynonymId());
-            }
-            if(feature.equals(Feature.FACE_DETECTION.name())){
-                 BoundingBox bboxJsonObject =new BoundingBox();
-                bboxJsonObject.setTopLeftX(Integer.parseInt(entity.getLeftPos()));
-                bboxJsonObject.setTopLeftY(Integer.parseInt(entity.getUpperPos()));
-                bboxJsonObject.setBottomRightX(Integer.parseInt(entity.getRightPos()));
-                bboxJsonObject.setBottomRightY(Integer.parseInt(entity.getLowerPos()));
+                case CURRENCY_DETECTION:
+                    request.setDetectedValue(input.getDetectedValue());
+                    request.setDetectedAsciiValue(input.getDetectedAsciiValue());
+                    request.setConfidenceScore(input.getConfidenceScore());
+                    break;
 
-                String jsonNode = mapper.writeValueAsString(bboxJsonObject);
-                alchemyRequestTable.setBbox(mapper.readTree(jsonNode));
-                alchemyRequestTable.setEncode(entity.getEncode());
-                alchemyRequestTable.setConfidenceScore(entity.getConfidenceScore());
-            }
-            if(feature.equals(Feature.FIGURE_DETECTION.name())){
-                alchemyRequestTable.setEncode(entity.getEncode());
+                case TABLE_EXTRACT_AGGREGATE:
+                    request.setTableData(objectMapper.readTree(input.getTableData()));
+                    request.setAggregateJson(objectMapper.readTree(input.getTableAggregateNode()));
+                    request.setSorItemId(input.getSorItemId());
+                    break;
 
-            }
-            if(feature.equals(Feature.DOCUMENT_PARSER.name())){
-                alchemyRequestTable.setEncode(entity.getEncode());
+                case BULLETIN_EXTRACTION:
+                    request.setBulletinPoints(objectMapper.readTree(input.getBulletinPoints()));
+                    request.setBulletinSection(input.getBulletinSection());
+                    request.setSynonymId(input.getSynonymId());
+                    break;
 
-            }
+                case PARAGRAPH_EXTRACTION:
+                    request.setParagraphPoints(objectMapper.readTree(input.getParagraphPoints()));
+                    request.setParagraphSection(input.getParagraphSection());
+                    request.setSynonymId(input.getSynonymId());
+                    break;
 
-            Request request = new Request.Builder().url(endpoint + "/" + originId + "/?tenantId=" + this.tenantId)
+                case FACE_DETECTION:
+                    request.setBbox(buildBoundingBox(input, objectMapper));
+                    request.setEncode(input.getEncode());
+                    request.setConfidenceScore(input.getConfidenceScore());
+                    break;
+
+                case FIGURE_DETECTION:
+                case DOCUMENT_PARSER:
+                    request.setEncode(input.getEncode());
+                    break;
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error processing JSON for feature: " + input.getFeature(), e);
+        }
+
+        return request;
+    }
+
+    private JsonNode buildBoundingBox(AlchemyResponseInputTable input, ObjectMapper objectMapper) throws JsonProcessingException {
+        BoundingBox bbox = new BoundingBox();
+        bbox.setTopLeftX(Integer.parseInt(input.getLeftPos()));
+        bbox.setTopLeftY(Integer.parseInt(input.getUpperPos()));
+        bbox.setBottomRightX(Integer.parseInt(input.getRightPos()));
+        bbox.setBottomRightY(Integer.parseInt(input.getLowerPos()));
+
+        return objectMapper.readTree(objectMapper.writeValueAsString(bbox));
+    }
+
+    private void executeAlchemyPredictionApi(
+            URL endpoint,
+            String originId,
+            Long tenantId,
+            String authToken,
+            List<AlchemyRequestBody> requestData,
+            ObjectMapper objectMapper,
+            MediaType mediaType,
+            OkHttpClient httpClient,
+            AlchemyResponseOutputTable alchemyResponseOutputTable
+    ) {
+
+        alchemyResponseOutputTable.setOriginId(originId);
+        alchemyResponseOutputTable.setTenantId(tenantId);
+        alchemyResponseOutputTable.setGroupId(getGroupIdFromContext());
+        alchemyResponseOutputTable.setRootPipelineId(action.getRootPipelineId());
+        alchemyResponseOutputTable.setEndpoint(endpoint.toString());
+        try {
+
+            String url = endpoint + "/" + originId + "/?tenantId=" + tenantId;
+            String requestBodyStr = objectMapper.writeValueAsString(requestData);
+            RequestBody body = RequestBody.create(requestBodyStr, mediaType);
+            alchemyResponseOutputTable.setRequest(requestBodyStr);
+            alchemyResponseOutputTable.setCreatedOn(LocalDateTime.now());
+            Request request = new Request.Builder()
+                    .url(url)
                     .addHeader("accept", "*/*")
                     .addHeader("Authorization", "Bearer " + authToken)
                     .addHeader("Content-Type", "application/json")
-                    .post(RequestBody.create(mapper.writeValueAsString(alchemyRequestTable), MediaTypeJSON))
+                    .post(body)
                     .build();
 
             if (log.isInfoEnabled()) {
-                log.info(aMarker, "Request has been build with the parameters {}, alchemy originId : {}, sorItemName : {}", endpoint, originId, sorItemName);
+                log.info(aMarker, "Sending request to {} for originId {}", endpoint, originId);
             }
 
-            try (Response response = httpclient.newCall(request).execute()) {
+            try (Response response = httpClient.newCall(request).execute()) {
                 if (response.isSuccessful()) {
-                    log.info("Response code: {}, and response header: {}, for sor-item {}", response.code(), response.headers(), sorItemName);
+                    alchemyResponseOutputTable.setStatus("COMPLETED");
+                    alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
+                    alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
+                    alchemyResponseOutputTable.setResponse(response.body().string());
+                    log.info("Response code: {}, Headers: {}", response.code(), response.headers());
+                } else {
+                    alchemyResponseOutputTable.setStatus("FAILED");
+                    alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
+                    alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
+                    alchemyResponseOutputTable.setResponse(response.message());
+                    log.error("Request failed with status: {}", response.code());
                 }
-            } catch (Exception e) {
-                log.error(aMarker, "The Exception occurred in alchemy response action", e);
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Exception occurred in alchemy response action for alchemy originId - " + originId + " and sorItemName - " + sorItemName, handymanException, this.action);
             }
-            return parentObj;
+        } catch (Exception e) {
+            log.error(aMarker, "Exception during Alchemy request for originId {}", originId, e);
+            HandymanException handymanException = new HandymanException(e);
+            alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
+            alchemyResponseOutputTable.setStatus("FAILED");
+            alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
+            alchemyResponseOutputTable.setResponse(e.getMessage());
+            HandymanException.insertException("Error in Alchemy request for originId - " + originId, handymanException, this.action);
+        }
+
+
+    }
+
+    @NotNull
+    private Long getGroupIdFromContext() {
+        return Long.valueOf(action.getContext().get("group_id"));
+    }
+
+    void consumerBatch(final Jdbi jdbi, AlchemyResponseOutputTable resultQueue) {
+        String outputTableName = getOutputTableName();
+        try {
+            jdbi.useTransaction(handle -> {
+                try {
+                    handle.createUpdate("INSERT INTO "+outputTableName+
+                                    "(origin_id, root_pipeline_id, tenant_id, group_id, request, response, endpoint, status, stage, created_on, completed_on) " +
+                                    "VALUES (:originId, :rootPipelineId, :tenantId, :groupId, :request, :response, :endpoint, :status, :stage, :createdOn, :completedOn);")
+                            .bindBean(resultQueue)
+                            .execute();
+                    log.info("Inserted {} into alchemy_response_output_table", resultQueue.getOriginId());
+                } catch (Throwable t) {
+
+                    log.error("Error inserting result {}", resultQueue, t);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error inserting result {}", resultQueue, e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error inserting result " + resultQueue, handymanException, action);
         }
     }
+
+    private String getOutputTableName() {
+        String outputTableName = action.getContext().get("alchemy.response.output.table");
+        return outputTableName;
+    }
+
+    @NotNull
+    private static Map<String, List<AlchemyResponseInputTable>> getOriginBasedPredictions(List<AlchemyResponseInputTable> entities) {
+        Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = entities.stream()
+                .collect(Collectors.groupingBy(AlchemyResponseInputTable::getOriginId));
+        return groupedByOriginId;
+    }
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    @Builder
+    public static class AlchemyResponseOutputTable{
+        private String originId;
+        private Long rootPipelineId;
+        private Long tenantId;
+        private Long groupId;
+        private String request;
+        private String response;
+        private String endpoint;
+        private String status;
+        private String stage;
+        private LocalDateTime createdOn;
+        private LocalDateTime completedOn;
+    }
+
 
     @AllArgsConstructor
     @NoArgsConstructor
@@ -295,7 +435,7 @@ public class AlchemyResponseAction implements IActionExecution {
     @NoArgsConstructor
     @Data
     @Builder
-    public static class AlchemyRequestTable {
+    public static class AlchemyRequestBody {
         private Integer paperNo;
         private Integer confidenceScore;
         private String extractedValue;
@@ -322,15 +462,5 @@ public class AlchemyResponseAction implements IActionExecution {
 
     }
 
-    @AllArgsConstructor
-    @Data
-    @Builder
-    public static class AlchemyResponseOutputTable implements CoproProcessor.Entity {
-
-        @Override
-        public List<Object> getRowData() {
-            return null;
-        }
-    }
 
 }
