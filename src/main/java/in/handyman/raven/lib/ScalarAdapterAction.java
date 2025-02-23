@@ -102,7 +102,7 @@ public class ScalarAdapterAction implements IActionExecution {
             });
 
             //Add summary audit - ${process-id}.sanitizer_summary - this should hold row count, correct row count, error_row_count
-            insertSummaryAudit(jdbi, validatorConfigurationDetails.size(), 0, 0);
+//            insertSummaryAudit(jdbi, validatorConfigurationDetails.size(), 0, 0);
             doCompute(jdbi, validatorConfigurationDetails);
             //doProcess(jdbi, validatorConfigurationDetails);
             log.info(aMarker, "scalar has completed" + scalarAdapter.getName());
@@ -175,7 +175,7 @@ public class ScalarAdapterAction implements IActionExecution {
                 InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
                 String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
                 if (Objects.equals(encryptData, "true")) {
-                    if (Objects.equals(result.getIsEncrypted(), "true")) {
+                    if (Objects.equals(result.getIsEncrypted(), "t")) {
                         result.setInputValue(encryption.decrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
                     }
                 }
@@ -211,10 +211,16 @@ public class ScalarAdapterAction implements IActionExecution {
                         validatorNegativeScore = computeAdapterScore(scrubbingInput);
                     }
 
-                    double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
-                    log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+
+                    double valConfidenceScore;
                     if(Objects.equals(action.getContext().get("scalar.adapter.update.empty.wrt.score"),"true")){
+                        valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
+                        log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
                         updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    }else{
+                        valConfidenceScore = result.getConfidenceScore();
+                        log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+
                     }
 
                     updateEmptyValueForRestrictedAns(result, inputValue);
@@ -234,7 +240,7 @@ public class ScalarAdapterAction implements IActionExecution {
 
 
                     if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(result.getIsEncrypted(), "true")) {
+                        if (Objects.equals(result.getIsEncrypted(), "t")) {
                             result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
                         }
                     }
@@ -259,7 +265,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setMessage("scalar validation macro completed");
 
                     if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(result.getIsEncrypted(), "true")) {
+                        if (Objects.equals(result.getIsEncrypted(), "t")) {
                             result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
                         }
                     }

@@ -28,13 +28,13 @@ class ScalarAdapterActionTest {
                         "si.validator_threshold , si.allowed_characters ,\n" +
                         "si.comparable_characters, si.restricted_adapter_flag,\n" +
                         "dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-                        "dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id, si.is_encrypted::varchar, ep.encryption_policy as encryption_policy\n" +
+                        "dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id, si.is_encrypted, ep.encryption_policy as encryption_policy\n" +
                         "FROM sor_transaction.vqa_transaction dp\n" +
                         "JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name and si.tenant_id=dp.tenant_id\n" +
                         "join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
                         "join sor_meta.sor_container sc on si.sor_container_id=sc.sor_container_id and si.tenant_id=sc.tenant_id\n" +
                         "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=dp.origin_id\n" +
-                        "WHERE dp.transaction_id =215 AND si.allowed_adapter !='ner'\n" +
+                        "WHERE dp.transaction_id =1145 AND si.allowed_adapter !='ner'\n" +
                         "AND dp.answer is not null and sc.document_type='HEALTH_CARE';")
                 .resourceConn("intics_zio_db_conn")
 
@@ -49,6 +49,22 @@ class ScalarAdapterActionTest {
         action.getContext().put("pipeline.end.to.end.encryption", "true");
         action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("validaiton.char-limit-count", "1");
+
+        action.getContext().put("scalar.adapter.scrubbing.alpha.activator", "false");
+        action.getContext().put("scalar.adapter.scrubbing.numeric.activator", "false");
+        action.getContext().put("scalar.adapter.scrubbing.date.activator", "true");
+
+        action.getContext().put("scalar.adapter.alpha.activator", "false");
+        action.getContext().put("scalar.adapter.alphanumeric.activator", "false");
+        action.getContext().put("scalar.adapter.numeric.activator", "false");
+        action.getContext().put("scalar.adapter.date.activator", "false");
+        action.getContext().put("scalar.adapter.date_reg.activator", "false");
+        action.getContext().put("scalar.adapter.phone_reg.activator", "false");
+        action.getContext().put("scalar.adapter.numeric_reg.activator", "false");
+        action.getContext().put("temp_schema_name", "transist_data");
+
+        action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
+
         //action.getContext().put("copro.text-validation.url", "http://localhost:10189/copro/text-validation/patient");
         final ScalarAdapterAction scalarAdapterAction = new ScalarAdapterAction(action, log, build);
         scalarAdapterAction.execute();
