@@ -258,7 +258,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     }
                 } else {
                     result.setRootPipelineId(action.getRootPipelineId());
-                    result.setConfidenceScore(0L);
+//                    result.setConfidenceScore(0L);
                     result.setProcessId(String.valueOf(action.getProcessId()));
                     result.setStatus("COMPLETED");
                     result.setStage("SCALAR_VALIDATION");
