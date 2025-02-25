@@ -68,7 +68,6 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
             parentObj = paperItemizationCoproApi(entity, action, endpoint, paperItemizer.getOutputDir());
         }else if(Objects.equals(action.getContext().get(modelRegistry), ModelRegistry.XENON.name())){
             parentObj= PdfToPaperItemizer.paperItemizer(entity.getFilePath(),paperItemizer.getOutputDir() , action, log, entity);
-//            parentObj = PdfToPaperItemizer.PaperItemizerOuputInsert(entity, action, log, aMarker, imgToPdf);
         }
 
         if (log.isInfoEnabled()) {

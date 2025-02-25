@@ -36,6 +36,8 @@ public class PdfToPaperItemizer {
         final String PAPER_ITEMIZER_RESIZE_HEIGHT = "paper.itemizer.resize.height";
         final String PAPER_ITEMIZER_FILE_FORMAT = "paper.itemizer.output.format";
         final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
+        final String MODEL_NAME = "APP";
+        final String VERSION = "1";
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
 
 
@@ -171,8 +173,8 @@ public class PdfToPaperItemizer {
                                         .createdOn(CreateTimeStamp.currentTimestamp())
                                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                         .rootPipelineId(entity.getRootPipelineId())
-                                        .modelName("APP")
-                                        .modelVersion("1")
+                                        .modelName(MODEL_NAME)
+                                        .modelVersion(VERSION)
                                         .batchId(entity.getBatchId())
                                         .request("")
                                         .response("")
