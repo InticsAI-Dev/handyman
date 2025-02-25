@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProcess<PaperItemizerInputTable, PaperItemizerOutputTable> {
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
-    public static final String modelRegistry = "ARGON_MODEL_NAME";
+    public static final String modelRegistry = "paper.itemizer.model.name";
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
     public static final String PAPER_ITERATOR_START = "PAPER ITERATOR START";
     private final Logger log;
