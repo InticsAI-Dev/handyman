@@ -50,7 +50,7 @@ class PaperItemizerActionTest {
                 .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
                 .resultTable("info.paper_itemizer")
                 .outputDir("/data/tenant/PI")
-                .querySet(" SELECT a.origin_id, a.group_id ,c.file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
+                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/taulia/Sample 6 620762476-facture-galaxy-z-fold.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
                         "from preprocess.preprocess_payload_queue_archive a\n" +
                         "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
                         "join info.asset c on b.file_id=c.file_id\n" +
@@ -73,7 +73,9 @@ class PaperItemizerActionTest {
                 Map.entry("paper.itemizer.file.dpi", "300"),
                 Map.entry("output.image.extension", ".jpg"),
                 Map.entry("paper.itemizer.output.format", "jpeg"),
-                Map.entry("paper.itemization.resize.activator", "false"),
+                Map.entry("paper.itemizer.image.type.rgb", "false"),
+                Map.entry("paper.itemization.resize.activator", "true"),
+
                 Map.entry("write.batch.size", "5")));
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);

@@ -38,10 +38,9 @@ public class PdfToPaperItemizer {
         final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
         final String MODEL_NAME = "APP";
         final String VERSION = "1";
+        final String IMAGE_TYPE = action.getContext().get("paper.itemizer.image.type.rgb");
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
 
-
-        List<HashMap<Integer, File>> itemizedFilePaths = new ArrayList<>();
 
         File targetDir = readFile(outputDir, log);
 
@@ -86,9 +85,10 @@ public class PdfToPaperItemizer {
                 int pageCount = document.getNumberOfPages();
                 File outputFile = null;
                 Integer pageNumber = 0;
+                ImageType imageType = Objects.equals("true", IMAGE_TYPE)? ImageType.RGB: ImageType.GRAY;
 
                 for (int page = 0; page < pageCount; page++) {
-                    BufferedImage image = pdfRenderer.renderImageWithDPI(page, dpi, ImageType.RGB);
+                    BufferedImage image = pdfRenderer.renderImageWithDPI(page, dpi, imageType);
                     if (resizeActive) {
                         int resizeWidth = Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_WIDTH));
                         int resizeHeight = Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_HEIGHT));
@@ -103,11 +103,7 @@ public class PdfToPaperItemizer {
                     pageNumber = page + 1;
                     ImageIO.write(image, fileFormat, outputFile);
                     log.info("Page {} successfully saved for document ID: {}", page, entity.getOriginId());
-//                    HashMap<Integer, File> fileMap = new HashMap<>();
-//                    fileMap.put(page+1, outputFile);
-//                    itemizedFilePaths.add(fileMap);
 
-                    //-----------------------------------------------------------------
                     try {
                         parentObj.add(
                                 PaperItemizerOutputTable
@@ -160,7 +156,7 @@ public class PdfToPaperItemizer {
                     log.info("Itemized papers successfully created in folder: {}", targetDir.getAbsolutePath());
 
                 }
-//                    ---------------------------------------------------------------------
+
                 return parentObj;
 
 
