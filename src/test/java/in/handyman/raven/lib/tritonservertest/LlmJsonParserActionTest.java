@@ -8,114 +8,28 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 
-
 @Slf4j
 public class LlmJsonParserActionTest {
-
-    @Test
-    public void textExtractionTest() throws Exception {
-        LlmJsonParser llmJsonParser = LlmJsonParser.builder()
-                .name("llm json parser")
-                .condition(true)
-                .resourceConn("intics_zio_db_conn")
-                .outputTable("text_extraction.text_extraction_llm_json_parser_audit")
-                .querySet("SELECT total_response_json as response, paper_no, origin_id as origin_id, group_id, tenant_id,22 as root_pipeline_id,  \n" +
-                        "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'TEXT_EXTRACTION' as process  \n" +
-                        "from text_extraction.text_extraction_output_audit where root_pipeline_id=180069;")
-                .build();
-
-        ActionExecutionAudit ac = new ActionExecutionAudit();
-        ac.setRootPipelineId(1234L);
-        ac.setActionId(1234L);
-        ac.setProcessId(123L);
-        ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
-        ac.getContext().put("write.batch.size", "1");
-        ac.getContext().put("read.batch.size", "1");
-
-
-        LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
-
-        llmJsonParserAction.execute();
-
-
-
-    }
-
-
-    @Test
-    public void kvpExtractionTest() throws Exception {
-        LlmJsonParser llmJsonParser = LlmJsonParser.builder()
-                .name("llm json parser")
-                .condition(true)
-                .resourceConn("intics_zio_db_conn")
-                .outputTable("kvp_extraction.kvp_extraction_llm_json_parser_179899")
-                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, " +
-                        " total_response_json as response, paper_no,  origin_id, process_id, action_id, process,12345 as group_id, tenant_id, root_pipeline_id," +
-                        " batch_id, model_registry, status, stage, message, category " +
-                        "FROM kvp_extraction.kvp_extraction_output_audit keoa " +
-                        "where root_pipeline_id =180069;")
-                .build();
-
-        ActionExecutionAudit ac = new ActionExecutionAudit();
-        ac.setRootPipelineId(1234L);
-        ac.setActionId(1234L);
-        ac.setProcessId(123L);
-        ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
-        ac.getContext().put("write.batch.size", "1");
-        ac.getContext().put("read.batch.size", "1");
-
-
-        LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
-
-        llmJsonParserAction.execute();
-
-
-
-    }
-
-
-    @Test
-    public void tableExtractionTest() throws Exception {
-        LlmJsonParser llmJsonParser = LlmJsonParser.builder()
-                .name("llm json parser")
-                .condition(true)
-                .resourceConn("intics_zio_db_conn")
-                .outputTable("table_extraction_info.table_extraction_llm_json_parser_audit")
-                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, \n" +
-                        "total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, \n" +
-                        "root_pipeline_id, batch_id, model_registry, status, stage, message, category, request, response, endpoint\n" +
-                        "FROM table_extraction_info.table_extraction_output_audit where root_pipeline_id =180069 ;")
-                .build();
-
-        ActionExecutionAudit ac = new ActionExecutionAudit();
-        ac.setRootPipelineId(1234L);
-        ac.setActionId(1234L);
-        ac.setProcessId(123L);
-        ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
-        ac.getContext().put("write.batch.size", "1");
-        ac.getContext().put("read.batch.size", "1");
-
-
-        LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
-
-        llmJsonParserAction.execute();
-
-
-
-    }
-
     @Test
     public void tritonTest() throws Exception {
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_109661")
-                    .querySet("SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, \n" +
-                            "batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, " +
-                            "created_on, 'CHECKBOX_EXTRACTION' as process " +
-                            "from checkbox_extraction.checkbox_extraction_output_audit teeoa \n" +
-                            "where root_pipeline_id =178047;")
+                .outputTable("sor_transaction.llm_json_parser_output_audit")
+                .querySet("               \n" +
+                        "SELECT  b.total_response_json as response, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
+                        "b.model_registry, b.category, a.created_on, sc.sor_container_id,\n" +
+                        "jsonb_agg(jsonb_build_object('sorItemName',si.sor_item_name,'isEncrypted',si.is_encrypted,'encryptionPolicy',ep.encryption_policy))::varchar as sor_meta_detail\n" +
+                        "from sor_transaction.sor_transaction_payload_queue_archive a\n" +
+                        "join sor_transaction.radon_kvp_output_audit b on a.origin_id = b.origin_id and a.batch_id = b.batch_id and a.tenant_id =b.tenant_id\n" +
+                        "join sor_meta.sor_container sc ON sc.tenant_id=a.tenant_id and b.sor_container_id =sc.sor_container_id \n" +
+                        "JOIN sor_meta.sor_item si ON sc.sor_container_id=si.sor_container_id\n" +
+                        "join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
+                        "WHERE b.id=53 and sc.tenant_id=1 AND sc.document_type='HEALTH_CARE'\n" +
+                        "and si.sor_item_name in ('member_first_name')\n" +
+                        "group by b.total_response_json, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
+                        "b.model_registry, b.category, a.created_on,sc.sor_container_id;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -125,6 +39,10 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("llm.kvp.parser.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
+        ac.getContext().put("sor.transaction.bbox.activator.enable", "true");
+        ac.getContext().put("sor.transaction.confidence.activator.enable", "true");
+        ac.getContext().put("pipeline.end.to.end.encryption", "true");
+        ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
 
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);

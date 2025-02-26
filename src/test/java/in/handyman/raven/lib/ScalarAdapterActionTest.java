@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.Datevalidator;
 import in.handyman.raven.lib.model.ScalarAdapter;
 import in.handyman.raven.lib.model.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -19,21 +20,22 @@ class ScalarAdapterActionTest {
         final ScalarAdapter build = ScalarAdapter.builder()
                 .condition(true)
                 .name("Test ScalarAdapter")
-                .processID("138968829607360172")
-                .resultSet(" SELECT distinct dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
-                        "                     si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'${init_process_id.process_id}' as process_id,\n" +
-                        "                     si.word_limit , si.word_threshold ,\n" +
-                        "                     si.char_limit , si.char_threshold ,\n" +
-                        "                     si.validator_threshold , si.allowed_characters ,\n" +
-                        "                     si.comparable_characters, si.restricted_adapter_flag,\n" +
-                        "                     dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-                        "                     dp.created_user_id, dp.root_pipeline_id, dp.tenant_id,dp.b_box,dp.model_registry\n" +
-                        "                     FROM sor_transaction.vqa_transaction dp\n" +
-                        "                     JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\n" +
-                        "                     WHERE dp.group_id = '23' AND si.allowed_adapter ='ner' AND dp.answer is not null" +
-                        " AND dp.sor_item_name ='patient_name';\n" +
-                        "   ")
-
+                .processID("12345")
+                .resultSet("SELECT dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
+                        "si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'12345' as process_id,\n" +
+                        "si.word_limit , si.word_threshold ,\n" +
+                        "si.char_limit , si.char_threshold ,\n" +
+                        "si.validator_threshold , si.allowed_characters ,\n" +
+                        "si.comparable_characters, si.restricted_adapter_flag,\n" +
+                        "dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
+                        "dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id, si.is_encrypted, ep.encryption_policy as encryption_policy\n" +
+                        "FROM sor_transaction.vqa_transaction dp\n" +
+                        "JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name and si.tenant_id=dp.tenant_id\n" +
+                        "join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
+                        "join sor_meta.sor_container sc on si.sor_container_id=sc.sor_container_id and si.tenant_id=sc.tenant_id\n" +
+                        "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=dp.origin_id\n" +
+                        "WHERE dp.transaction_id =1145 AND si.allowed_adapter !='ner'\n" +
+                        "AND dp.answer is not null and sc.document_type='HEALTH_CARE';")
                 .resourceConn("intics_zio_db_conn")
 
                 .build();
@@ -44,7 +46,25 @@ class ScalarAdapterActionTest {
         action.setRootPipelineId(11011L);
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
+        action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("validaiton.char-limit-count", "1");
+
+        action.getContext().put("scalar.adapter.scrubbing.alpha.activator", "false");
+        action.getContext().put("scalar.adapter.scrubbing.numeric.activator", "false");
+        action.getContext().put("scalar.adapter.scrubbing.date.activator", "true");
+
+        action.getContext().put("scalar.adapter.alpha.activator", "false");
+        action.getContext().put("scalar.adapter.alphanumeric.activator", "false");
+        action.getContext().put("scalar.adapter.numeric.activator", "false");
+        action.getContext().put("scalar.adapter.date.activator", "false");
+        action.getContext().put("scalar.adapter.date_reg.activator", "false");
+        action.getContext().put("scalar.adapter.phone_reg.activator", "false");
+        action.getContext().put("scalar.adapter.numeric_reg.activator", "false");
+        action.getContext().put("temp_schema_name", "transist_data");
+
+        action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
+
         //action.getContext().put("copro.text-validation.url", "http://localhost:10189/copro/text-validation/patient");
         final ScalarAdapterAction scalarAdapterAction = new ScalarAdapterAction(action, log, build);
         scalarAdapterAction.execute();
@@ -190,6 +210,32 @@ class ScalarAdapterActionTest {
         System.out.println(validator);
     }
 
+    @Test
+    public void formatDate(){
+        final ActionExecutionAudit action = ActionExecutionAudit.builder()
+                .build();
+        action.setRootPipelineId(11011L);
+        action.getContext().put("validation.multiverse-mode", "true");
+        action.getContext().put("validation.restricted-answers", "No,None of the above");
+        action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put("pipeline.encryption.default.holder", "");
+        action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
+        action.getContext().put("validaiton.char-limit-count", "1");
+
+        Datevalidator datevalidator= Datevalidator.builder()
+                .allowedDateFormats("")
+                .comparableDate("")
+                .condition(true)
+                .name("")
+                .thresholdValue("")
+                .inputValue("")
+                .build();
+        Validator validator= Validator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/2025").build();
+        DatevalidatorAction datevalidatorAction=new DatevalidatorAction(action,log,datevalidator);
+        System.out.println(validator.getInputValue());
+        datevalidatorAction.formatDate(validator);
+        System.out.println(validator.getInputValue());
+    }
 
     @Test
     public void remove() {

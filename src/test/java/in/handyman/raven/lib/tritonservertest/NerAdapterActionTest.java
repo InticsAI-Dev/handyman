@@ -17,26 +17,27 @@ class NerAdapterActionTest {
                 .name("ner")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .resultSet("\n" +
-                        "SELECT dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\n" +
-                        "si.allowed_adapter , si.restricted_adapter,dp.synonym_id,dp.question_id, '123' as process_id,\n" +
-                        "si.word_limit , si.word_threshold ,\n" +
-                        "si.char_limit , si.char_threshold ,\n" +
-                        "si.validator_threshold , si.allowed_characters ,\n" +
-                        "si.comparable_characters, si.restricted_adapter_flag,\n" +
-                        "dp.origin_id ,dp.paper_no ,dp.group_id,\n" +
-                        "dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id\n" +
-                        "FROM sor_transaction.vqa_transaction dp\n" +
-                        "JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name\t\n" +
-                        "join sor_transaction.sor_transaction_payload_queue st on st.origin_id=dp.origin_id\n" +
-                        "WHERE dp.group_id = '10' AND si.allowed_adapter ='ner'\n" +
-                        "AND dp.answer is not null AND dp.tenant_id = 1 and dp.batch_id = 'BATCH-10_0'\n")
+                .resultSet("SELECT dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,\\n\" +\n" +
+                        "                        \"si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'12345' as process_id,\\n\" +\n" +
+                        "                        \"si.word_limit , si.word_threshold ,\\n\" +\n" +
+                        "                        \"si.char_limit , si.char_threshold ,\\n\" +\n" +
+                        "                        \"si.validator_threshold , si.allowed_characters ,\\n\" +\n" +
+                        "                        \"si.comparable_characters, si.restricted_adapter_flag,\\n\" +\n" +
+                        "                        \"dp.origin_id ,dp.paper_no ,dp.group_id,\\n\" +\n" +
+                        "                        \"dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id, si.is_encrypted::varchar, ep.encryption_policy as encryption_policy\\n\" +\n" +
+                        "                        \"FROM sor_transaction.vqa_transaction dp\\n\" +\n" +
+                        "                        \"JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name and si.tenant_id=dp.tenant_id\\n\" +\n" +
+                        "                        \"join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\\n\" +\n" +
+                        "                        \"join sor_meta.sor_container sc on si.sor_container_id=sc.sor_container_id and si.tenant_id=sc.tenant_id\\n\" +\n" +
+                        "                        \"join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=dp.origin_id\\n\" +\n" +
+                        "                        \"WHERE dp.transaction_id =215 AND si.allowed_adapter ='ner'\\n\" +\n" +
+                        "                        \"AND dp.answer is not null and sc.document_type='HEALTH_CARE';")
                 .resultTable("sor_transaction.adapter_result_12345")
 
                 .build();
 
         ActionExecutionAudit actionExecutionAudit=new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.text-validation.url","http://192..168.10.248:9100/v2/models/ner-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.text-validation.url","http://192.168.10.248:9100/v2/models/ner-service/versions/1/infer");
         actionExecutionAudit.setProcessId(12345L);
         actionExecutionAudit.setRootPipelineId(12345L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size","5"),

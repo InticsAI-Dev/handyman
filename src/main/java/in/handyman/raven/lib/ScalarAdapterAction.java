@@ -6,6 +6,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -22,7 +24,9 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -98,7 +102,7 @@ public class ScalarAdapterAction implements IActionExecution {
             });
 
             //Add summary audit - ${process-id}.sanitizer_summary - this should hold row count, correct row count, error_row_count
-            insertSummaryAudit(jdbi, validatorConfigurationDetails.size(), 0, 0);
+//            insertSummaryAudit(jdbi, validatorConfigurationDetails.size(), 0, 0);
             doCompute(jdbi, validatorConfigurationDetails);
             //doProcess(jdbi, validatorConfigurationDetails);
             log.info(aMarker, "scalar has completed" + scalarAdapter.getName());
@@ -168,6 +172,15 @@ public class ScalarAdapterAction implements IActionExecution {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
             for (ValidatorConfigurationDetail result : listOfDetails) {
 
+                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+                String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
+                if (Objects.equals(encryptData, "true")) {
+                    if (Objects.equals(result.getIsEncrypted(), "t")) {
+                        result.setInputValue(encryption.decrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                    }
+                }
+
+
                 if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
 
                     log.info(aMarker, "Build 19- scalar executing  validator {}", result);
@@ -181,25 +194,35 @@ public class ScalarAdapterAction implements IActionExecution {
                             .threshold(result.getValidatorThreshold())
                             .build();
 
-                    Validator configurationDetails = computeScrubbingForValue(scrubbingInput);
-                    String inputValue = configurationDetails.getInputValue();
+                    computeScrubbingForValue(scrubbingInput);
+
+                    String inputValue = scrubbingInput.getInputValue();
                     result.setInputValue(inputValue);
                     int wordScore = wordcountAction.getWordCount(inputValue,
                             result.getWordLimit(), result.getWordThreshold());
                     int charScore = charactercountAction.getCharCount(inputValue,
                             result.getCharLimit(), result.getCharThreshold());
 
-                    int validatorScore = computeAdapterScore(configurationDetails);
+
                     int validatorNegativeScore = 0;
+                    int validatorScore = computeAdapterScore(scrubbingInput);
                     if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
-                        configurationDetails.setAdapter(result.getRestrictedAdapter());
-                        validatorNegativeScore = computeAdapterScore(configurationDetails);
+                        scrubbingInput.setAdapter(result.getRestrictedAdapter());
+                        validatorNegativeScore = computeAdapterScore(scrubbingInput);
                     }
 
-                    double valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
-                    log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
 
-                    updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    double valConfidenceScore;
+                    if(Objects.equals(action.getContext().get("scalar.adapter.update.empty.wrt.score"),"true")){
+                        valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
+                        log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+                        updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    }else{
+                        valConfidenceScore = result.getConfidenceScore();
+                        log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
+
+                    }
+
                     updateEmptyValueForRestrictedAns(result, inputValue);
                     log.info(aMarker, "Build 19-validator vqa score {}", result.getVqaScore());
 
@@ -214,6 +237,14 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
                     result.setCategory(result.getCategory());
+
+
+                    if (Objects.equals(encryptData, "true")) {
+                        if (Objects.equals(result.getIsEncrypted(), "t")) {
+                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                        }
+                    }
+
                     resultQueue.add(result);
                     log.info(aMarker, "executed  validator {}", result);
 
@@ -227,13 +258,20 @@ public class ScalarAdapterAction implements IActionExecution {
                     }
                 } else {
                     result.setRootPipelineId(action.getRootPipelineId());
-                    result.setConfidenceScore(0L);
+//                    result.setConfidenceScore(0L);
                     result.setProcessId(String.valueOf(action.getProcessId()));
                     result.setStatus("COMPLETED");
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
+
+                    if (Objects.equals(encryptData, "true")) {
+                        if (Objects.equals(result.getIsEncrypted(), "t")) {
+                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                        }
+                    }
+
                     resultQueue.add(result);
-                    log.info(aMarker, "executed  validator else {}", result);
+                    log.info(aMarker, "executed  validator for originId {} , paperNo {} ,sorItemName {}", result.getOriginId() ,result.getPaperNo(), result.getSorItemName());
                 }
 
             }
@@ -264,6 +302,7 @@ public class ScalarAdapterAction implements IActionExecution {
         }
     }
 
+
     private void updateEmptyValueIfLowCf(ValidatorConfigurationDetail result, double valConfidenceScore) {
         if (valConfidenceScore < 100 && multiverseValidator) {
             log.info(aMarker, "Build 19-validator updateEmptyValueIfLowCf {}", valConfidenceScore);
@@ -278,13 +317,14 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
     void consumerBatch(final Jdbi jdbi, List<ValidatorConfigurationDetail> resultQueue) {
+        String schemaName=action.getContext().get("temp_schema_name");
         try {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
                                 String COLUMN_LIST = "origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name,question,question_id, synonym_id, answer,vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score,validation_name,b_box,status,stage,message,root_pipeline_id,model_name,model_version, model_registry, category, batch_id";
                                 String COLUMN_BINDED_LIST = ":originId, :paperNo, :groupId, :processId , :sorId, :sorItemId, :sorKey, :question ,:questionId, :synonymId, :inputValue,:vqaScore, :weight, :createdUserId, :tenantId, NOW(), :wordScore , :charScore , :validatorScore, :validatorNegativeScore, :confidenceScore,:allowedAdapter,:bbox,:status,:stage,:message,:rootPipelineId,:modelName,:modelVersion, :modelRegistry, :category, :batchId";
-                                Update update = handle.createUpdate("  INSERT INTO sor_transaction.adapter_result_" + scalarAdapter.getProcessID() +
+                                Update update = handle.createUpdate("  INSERT INTO "+schemaName+".adapter_result_" + scalarAdapter.getProcessID() +
                                         " ( " + COLUMN_LIST + ") " +
                                         " VALUES( " + COLUMN_BINDED_LIST + ");" +
                                         "   ");
@@ -311,32 +351,46 @@ public class ScalarAdapterAction implements IActionExecution {
         int confidenceScore = 0;
         try {
             switch (inputDetail.getAdapter()) {
-                case "alpha":
-                    confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+                case "alpha" :
+                    if( Objects.equals(action.getContext().get("scalar.adapter.alpha.activator"),"true")){
+                        confidenceScore = this.alphaAction.getAlphaScore(inputDetail);
+                    }
                     break;
                 case "alphanumeric":
-                    confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.alphanumeric.activator"),"true")){
+                        confidenceScore = this.alphaNumericAction.getAlphaNumericScore(inputDetail);
+                    }
                     break;
                 case "numeric":
-                    confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.numeric.activator"),"true")){
+                        confidenceScore = this.numericAction.getNumericScore(inputDetail);
+                    }
                     break;
                 case "date":
-                    confidenceScore = this.dateAction.getDateScore(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.date.activator"),"true")){
+                        confidenceScore = this.dateAction.getDateScore(inputDetail);
 //                    confidenceScore = inputDetail.getThreshold();
+                    }
                     break;
                 case "date_reg":
-//                    confidenceScore = this.dateAction.getDateScore(inputDetail);
-                    confidenceScore = inputDetail.getThreshold();
+                    if(Objects.equals(action.getContext().get("scalar.adapter.date_reg.activator"),"true")){
+//                        confidenceScore = this.dateAction.getDateScore(inputDetail);
+                        confidenceScore = inputDetail.getThreshold();
+                    }
                     break;
                 case "phone_reg":
-                    confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.phone_reg.activator"),"true")){
+                        confidenceScore = regValidator(inputDetail, PHONE_NUMBER_REGEX);
+                    }
                     break;
                 case "numeric_reg":
-                    confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.numeric_reg.activator"),"true")){
+                        confidenceScore = regValidator(inputDetail, NUMBER_REGEX);
+                    }
                     break;
             }
         } catch (Exception t) {
-            log.error(aMarker, "error adpater validation{}", inputDetail, t);
+            log.error(aMarker, "error adapter validation{}", inputDetail, t);
             HandymanException handymanException = new HandymanException(t);
             HandymanException.insertException("Exception occurred in computing adapter score", handymanException, action);
         }
@@ -344,28 +398,37 @@ public class ScalarAdapterAction implements IActionExecution {
 
     }
 
+
     Validator computeScrubbingForValue(Validator inputDetail) {
         try {
             switch (inputDetail.getAdapter()) {
                 case "alpha":
                     //Special character removed
-                    inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9 ]");
+                    if(Objects.equals(action.getContext().get("scalar.adapter.scrubbing.alpha.activator"),"true")){
+                        inputDetail = scrubbingInput(inputDetail, "[^a-zA-Z0-9 ]");
+                    }
                     break;
                 case "numeric":
                 case "numeric_reg":
                     //Special character and alphabets removed
-                    inputDetail = removePrefixAndSuffix(inputDetail);
-                    inputDetail = scrubbingInput(inputDetail, "[^0-9 ]");
+                    if(Objects.equals(action.getContext().get("scalar.adapter.scrubbing.numeric.activator"),"true")){
+                        inputDetail = removePrefixAndSuffix(inputDetail);
+                        inputDetail = scrubbingInput(inputDetail, "[^0-9 ]");
+                    }
                     break;
                 case "date_reg":
                     //Remove prefix and suffix alphabets
                     // inputDetail = scrubbingInput(inputDetail,"[a-zA-Z]");
-                    inputDetail = removePrefixAndSuffix(inputDetail);
-                    inputDetail = scrubbingDate(inputDetail);
+                    if(Objects.equals(action.getContext().get("scalar.adapter.scrubbing.date.activator"),"true")){
+//                        inputDetail = removePrefixAndSuffix(inputDetail);
+//                        inputDetail = scrubbingDate(inputDetail);
+                        inputDetail= this.dateAction.formatDate(inputDetail);
+                    }
+
                     break;
             }
         } catch (Exception t) {
-            log.error(aMarker, "error adpater validation{}", inputDetail, t);
+            log.error(aMarker, "error adapter validation{}", inputDetail, t);
             HandymanException handymanException = new HandymanException(t);
             HandymanException.insertException("Exception occurred in computing adapter score", handymanException, action);
         }
@@ -373,13 +436,14 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount) {
+        String schemaName=action.getContext().get("temp_schema_name");
         SanitarySummary summary = new SanitarySummary().builder()
                 .rowCount(rowCount)
                 .correctRowCount(executeCount)
                 .errorRowCount(errorCount)
                 .build();
         jdbi.useTransaction(handle -> {
-            Update update = handle.createUpdate("  INSERT INTO sor_transaction.sanitizer_summary_" + scalarAdapter.getProcessID() +
+            Update update = handle.createUpdate("  INSERT INTO "+schemaName+".sanitizer_summary_" + scalarAdapter.getProcessID() +
                     " ( row_count, correct_row_count, error_row_count, created_at) " +
                     " VALUES(:rowCount, :correctRowCount, :errorRowCount, NOW());");
             Update bindBean = update.bindBean(summary);
@@ -549,6 +613,8 @@ public class ScalarAdapterAction implements IActionExecution {
         private String sorItemName;
         private String batchId;
         private String category;
+        private String isEncrypted;
+        private String encryptionPolicy;
     }
 
 }

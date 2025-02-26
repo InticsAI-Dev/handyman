@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
@@ -27,6 +30,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
     public static final String TEXT_EXTRACTOR_START = "TEXT EXTRACTOR START";
@@ -180,14 +185,15 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         } else if (Objects.equals("TRITON", coproHandlerName)) {
             log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
             if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
-                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-                    dataExtractionData.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
 
-                }else {
-                    dataExtractionData.setBase64Img("");
-                }
 
                 DataExtractionData dataExtractionPayload = getArgonRequestPayloadFromEntity(entity);
+                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+                    dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+
+                }else {
+                    dataExtractionPayload.setBase64Img("");
+                }
                 String dataExtractionPayloadString = mapper.writeValueAsString(dataExtractionPayload);
 
                 String jsonRequestTritonArgon = getTritonRequestPayload(dataExtractionPayloadString, TEXT_EXTRACTOR_START, mapper);
@@ -279,12 +285,24 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     private void extractedKryptonOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
 
         RadonKvpLineItem dataExtractionDataItem = mapper.readValue(stringDataItem, RadonKvpLineItem.class);
+
+        String extractedContent;
+
         final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+
+        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        if(Objects.equals(encryptSotPageContent, "true")){
+            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(),"AES256", "TEXT_DATA");
+        }else {
+            extractedContent = dataExtractionDataItem.getInferResponse();
+        }
 
         String templateId = entity.getTemplateId();
         parentObj.add(DataExtractionOutputTable.builder()
                 .filePath(entity.getFilePath())
-                .extractedText(dataExtractionDataItem.getInferResponse())
+                .extractedText(extractedContent)
                 .originId(dataExtractionDataItem.getOriginId())
                 .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
                 .paperNo(dataExtractionDataItem.getPaperNo())
@@ -308,13 +326,23 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private void extractedArgonOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
-        JsonNode jsonNode = mapper.readTree(stringDataItem);
-        String pageContent = jsonNode.get("pageContent").asText();
-        final String contentString = Optional.of(pageContent).map(String::valueOf).orElse(null);
-        final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
+
+        final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
+        final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+
+        String extractedContent;
+        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        if(Objects.equals(encryptSotPageContent, "true")){
+            extractedContent = encryption.encrypt(contentString,"AES256", "TEXT_DATA");
+        }else {
+            extractedContent = contentString;
+        }
+
         String templateId = entity.getTemplateId();
-        parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).filePath(dataExtractionDataItem.getInputFilePath()).extractedText(dataExtractionDataItem.getPageContent()).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(dataExtractionDataItem.getBatchId()).request(request).response(response).endpoint(String.valueOf(endpoint)).build());
+        parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).filePath(dataExtractionDataItem.getInputFilePath()).extractedText(extractedContent).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(dataExtractionDataItem.getBatchId()).request(request).response(response).endpoint(String.valueOf(endpoint)).build());
     }
 
     private void tritonRequestArgonExecutor(DataExtractionInputTable entity, Request request, List<DataExtractionOutputTable> parentObj, String jsonRequest, URL endpoint) {
@@ -546,6 +574,45 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(modelName).modelVersion(modelVersion).batchId(batchId).request(request).response(response).endpoint(endpoint).build());
 
 
+    }
+
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+        try {
+            if (jsonResponse.contains("```json")) {
+                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
+                // Define the regex pattern to match content between ```json and ```
+                Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
+                Matcher matcher = pattern.matcher(jsonResponse);
+
+                if (matcher.find()) {
+                    // Extract the JSON string from the matched group
+                    String jsonString = matcher.group(1);
+                    jsonString = jsonString.replace("\n", "");
+                    // Convert the cleaned JSON string to a JsonNode
+
+                    if(!jsonResponse.isEmpty()) {
+                        return objectMapper.readTree(jsonResponse);
+                    }else {
+                        return null;
+                    }
+                }else {
+
+                    return objectMapper.readTree(jsonResponse);
+                }
+            }
+            else if(jsonResponse.contains("{")) {
+                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
+
+                return objectMapper.readTree(jsonResponse);
+                //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
+            }else {
+                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private static String extractPageContent(String jsonString) {

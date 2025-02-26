@@ -1,6 +1,7 @@
 package in.handyman.raven.util;
 
 import in.handyman.raven.lambda.process.HRequestResolver;
+import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class PropertyHandler {
                 tempProps = prop.entrySet().stream()
                         .collect(Collectors.toMap(
                                 e -> String.valueOf(e.getKey()),
-                                e -> decryptPropertyByJasypt(String.valueOf(e.getValue()), aesEncryptor),
+                                e -> ConfigEncryptionUtils.fromEnv().decryptProperty(String.valueOf(e.getValue())),
                                 (prev, next) -> next, HashMap::new));
                 LOGGER.info("Successfully loaded properties from config.file argument : {}", configPath);
             } catch (IOException e) {
@@ -73,18 +74,6 @@ public class PropertyHandler {
 
     }
 
-    private static String decryptPropertyByJasypt(String encryptedValue, AES256TextEncryptor aesEncryptor) {
-        try {
-            if (encryptedValue.startsWith("ENC(") && encryptedValue.endsWith(")")) {
-                String encryptedText = encryptedValue.substring(4, encryptedValue.length() - 1);
-                return aesEncryptor.decrypt(encryptedText);
-            }
-            return encryptedValue;
-        } catch (Exception e) {
-            LOGGER.error("Error decrypting property: {}", encryptedValue, e);
-            return encryptedValue;
-        }
-    }
 
     private PropertyHandler() {
     }

@@ -14,11 +14,12 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://192.168.10.241:7500/v2/models/radon-service/versions/1/infer")
-                .outputTable("sor_transaction.radon_kvp_output_30197")
-                .querySet("SELECT id, input_file_path, prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry\n" +
-                        "FROM sor_transaction.radon_kvp_input_audit\n" +
-                        "WHERE root_pipeline_id =32789;")
+                .endpoint("https://intics.elevance.ngrok.dev/krypton-x/v2/models/krypton-x-service/versions/1/infer")
+                .outputTable("sor_transaction.radon_kvp_output_audit")
+                .querySet("SELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
+                        "                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name,sor_container_id\n" +
+                        "                FROM sor_transaction.radon_kvp_input_audit\n" +
+                        "                WHERE id=45;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -27,8 +28,25 @@ public class RadonKvpAcionTest {
         ac.setProcessId(123L);
         ac.getContext().put("Radon.kvp.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
+        ac.getContext().put("bbox.radon_bbox_activator", "true");
         ac.getContext().put("read.batch.size", "1");
+        ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
+        ac.getContext().put("prompt.base64.activator", "false");
+        ac.getContext().put("copro.client.socket.timeout", "10");
+        ac.getContext().put("copro.client.api.sleeptime", "10");
+        ac.getContext().put("pipeline.copro.api.process.file.format", "BASE64");
+        ac.getContext().put("pipeline.encryption.default.holder", "");
+        ac.getContext().put("pipeline.text.extraction.encryption", "true");
+        ac.getContext().put("bbox.radon_bbox_activator", "false");
+        ac.getContext().put("pipeline.end.to.end.encryption", "true");
+        ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
+
+
+
+
+
+
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
