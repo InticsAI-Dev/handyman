@@ -5,8 +5,6 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
-import javassist.bytecode.stackmap.BasicBlock;
-import org.apache.commons.net.bsd.RLoginClient;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -15,13 +13,9 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
-import java.text.MessageFormat;
 import java.util.List;
 import org.slf4j.Marker;
 import org.slf4j.Logger;
@@ -59,8 +53,6 @@ public class PdfToPaperItemizer {
         // getting file extension
         String fileExtension = getFileExtension(new File(filePath)).toLowerCase();
         log.info("The input file has Origin ID {} and file extension {}", entity.getOriginId(), fileExtension);
-        String outputImageExtension = action.getContext().get("paper.itemizer.file.format");
-
 
        if (fileExtension.equals("pdf")) {
             try (PDDocument document = PDDocument.load(new File(filePath))) {
@@ -194,67 +186,6 @@ public class PdfToPaperItemizer {
         graphics.drawImage(originalImage, 0, 0, width, height, null);
         graphics.dispose();
         return resizedImage;
-    }
-
-    public static List<PaperItemizerOutputTable> PaperItemizerOuputInsert(PaperItemizerInputTable entity, ActionExecutionAudit action, Logger log, Marker aMarker , List<HashMap<Integer, File>> itemizedPapers){
-        log.info("Paper Itemization with app is started");
-        List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
-
-        try {
-            // Process all itemized papers in a single flattened loop
-            for (HashMap<Integer, File> itemizedPaperMap : itemizedPapers) {
-                itemizedPaperMap.forEach((key, file) -> {
-                    parentObj.add(
-                            PaperItemizerOutputTable
-                                    .builder()
-                                    .processedFilePath(file.getAbsolutePath())
-                                    .originId(entity.getOriginId())
-                                    .groupId(entity.getGroupId())
-                                    .templateId(entity.getTemplateId())
-                                    .tenantId(entity.getTenantId())
-                                    .processId(entity.getProcessId())
-                                    .paperNo(Long.valueOf(key))
-                                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                    .stage(PROCESS_NAME)
-                                    .message("Paper Itemize macro completed")
-                                    .createdOn(CreateTimeStamp.currentTimestamp())
-                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                    .rootPipelineId(entity.getRootPipelineId())
-                                    .modelName("APP")
-                                    .modelVersion("1")
-                                    .batchId(entity.getBatchId())
-                                    .request("")
-                                    .response("")
-                                    .endpoint("")
-                                    .build());
-                });
-            }
-            return parentObj;
-        } catch (Exception exception) {
-            parentObj.add(
-                    PaperItemizerOutputTable
-                            .builder()
-                            .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                            .groupId(entity.getGroupId())
-                            .processId(entity.getProcessId())
-                            .templateId(entity.getTemplateId())
-                            .tenantId(entity.getTenantId())
-                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                            .stage(PROCESS_NAME)
-                            .message(exception.getMessage())
-                            .createdOn(entity.getCreatedOn())
-                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .rootPipelineId(entity.getRootPipelineId())
-                            .batchId(entity.getBatchId())
-                            .request("")
-                            .response("Error In getting Response from copro")
-                            .endpoint("")
-                            .build());
-            HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Paper Itemize consumer failed for originId " + entity.getOriginId(), handymanException, action);
-            log.error(aMarker, "The Exception occurred in request {}", exception.getMessage(), exception);
-        }
-        return parentObj;
     }
 
     private static File readFile(String outputDir, Logger log) {
