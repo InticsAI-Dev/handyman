@@ -38,18 +38,6 @@ public class PdfToPaperItemizer {
 
         File targetDir = readFile(outputDir, log);
 
-        if (targetDir != null) {
-            if (!targetDir.exists() && !targetDir.mkdirs()) {
-                String message = "Failed to create directories for path: " + outputDir;
-                log.error(message);
-                throw new HandymanException(message, new Exception(), action);
-            } else {
-                log.info("Directory is ready at path: {}", outputDir);
-            }
-        } else {
-            log.error("Target directory is null. Directory creation may have failed for path: {}", outputDir);
-        }
-
         // getting file extension
         String fileExtension = getFileExtension(new File(filePath)).toLowerCase();
         log.info("The input file has Origin ID {} and file extension {}", entity.getOriginId(), fileExtension);
