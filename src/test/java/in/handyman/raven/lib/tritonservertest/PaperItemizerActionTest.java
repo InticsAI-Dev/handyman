@@ -54,7 +54,7 @@ class PaperItemizerActionTest {
                         "from preprocess.preprocess_payload_queue_archive a\n" +
                         "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
                         "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.root_pipeline_id in (107234, 107312,107351,107629,108119,109735)")
+                        "where a.root_pipeline_id in (102257,115587,107841,120075)")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -64,7 +64,7 @@ class PaperItemizerActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("paper.itemizer.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
-                Map.entry("ARGON_MODEL_NAME", "ARGON"),
+                Map.entry("paper.itemizer.model.name", "XENON"),
                 Map.entry("actionId", "1"),
                 Map.entry("paper.itemization.using.app", "true"),
                 Map.entry("paper.itemizer.resize.width", "1700"),
