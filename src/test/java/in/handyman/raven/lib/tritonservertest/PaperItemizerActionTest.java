@@ -70,12 +70,10 @@ class PaperItemizerActionTest {
                 Map.entry("paper.itemizer.resize.width", "1700"),
                 Map.entry("paper.itemizer.resize.height", "2200"),
                 Map.entry("read.batch.size", "5"),
-                Map.entry("paper.itemizer.file.dpi", "300"),
-                Map.entry("output.image.extension", ".jpg"),
-                Map.entry("paper.itemizer.output.format", "jpeg"),
-                Map.entry("paper.itemizer.image.type.rgb", "false"),
-                Map.entry("paper.itemization.resize.activator", "true"),
-
+                Map.entry("paper.itemizer.file.dpi", "200"),
+                Map.entry("paper.itemizer.output.format", "png"),
+                Map.entry("paper.itemizer.image.type.rgb", "true"),
+                Map.entry("paper.itemization.resize.activator", "false"),
                 Map.entry("write.batch.size", "5")));
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);

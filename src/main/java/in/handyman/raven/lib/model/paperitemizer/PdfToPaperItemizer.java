@@ -36,7 +36,7 @@ public class PdfToPaperItemizer {
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
 
 
-        File targetDir = readFile(outputDir, log);
+        File targetDir = readDirectory(outputDir, log);
 
         // getting file extension
         String fileExtension = getFileExtension(new File(filePath)).toLowerCase();
@@ -176,7 +176,7 @@ public class PdfToPaperItemizer {
         return resizedImage;
     }
 
-    private static File readFile(String outputDir, Logger log) {
+    private static File readDirectory(String outputDir, Logger log) {
         try {
             Path combinedPath = Paths.get(outputDir, "pdf_to_image");
             File targetDir = combinedPath.toFile();
