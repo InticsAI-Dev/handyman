@@ -176,7 +176,7 @@ public class ScalarAdapterAction implements IActionExecution {
                 String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
                 if (Objects.equals(encryptData, "true")) {
                     if (Objects.equals(result.getIsEncrypted(), "t")) {
-                        result.setInputValue(encryption.decrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+                        result.setInputValue(encryption.decrypt(result.getInputValue(), "AES256", result.getSorItemName()));
                     }
                 }
 
