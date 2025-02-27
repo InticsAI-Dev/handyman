@@ -223,7 +223,7 @@ public class LlmJsonParserAction implements IActionExecution {
                     if (Objects.equals(encryptData, "true")) {
                         if (Objects.equals(meta.getIsEncrypted().toString(), "true")) {
                             response.setAnswer(trimTo255Characters(response.getAnswer(),action));
-                            response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), meta.getEncryptionPolicy(), meta.getSorItemName()));
+                            response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), "AES256", meta.getSorItemName()));
                         } else {
                             response.setAnswer(trimTo255Characters(response.getAnswer(),action));
                             response.setAnswer(response.getAnswer());
@@ -260,7 +260,7 @@ public class LlmJsonParserAction implements IActionExecution {
         if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
             if (Objects.equals(encryptData, "true")) {
                 response.setValue(trimTo255Characters(response.getValue(),action));
-                response.setValue(inticsIntegrity.encrypt(response.getValue(), meta.getEncryptionPolicy(), meta.getSorItemName()));
+                response.setValue(inticsIntegrity.encrypt(response.getValue(), "AES256", meta.getSorItemName()));
             }else{
                 response.setValue(trimTo255Characters(response.getValue(),action));
             }
