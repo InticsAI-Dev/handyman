@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
@@ -7,15 +8,20 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
+import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
 import in.handyman.raven.lambda.process.HRequestResolver;
 import in.handyman.raven.lambda.process.LContext;
 import in.handyman.raven.lib.model.CallProcess;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +67,8 @@ public class CallProcessAction implements IActionExecution {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sql);
                 formattedQuery.forEach(sqlToExecute -> {
                     log.info(aMarker, "Execution query sql#{} on db=#{}", sqlToExecute, dbSrc);
+                    LocalDateTime  startTime = LocalDateTime.now();
+                    StatementExecutionAudit statementAudit = getStatementExecutionAudit(sqlToExecute, startTime);
                     handle.createQuery(sqlToExecute).mapToMap().forEach(stringObjectMap -> {
                         stringObjectMap.forEach((s, o) -> {
                             context.put(s, String.valueOf(o));
@@ -80,7 +88,9 @@ public class CallProcessAction implements IActionExecution {
                                 .build();
                         runContext.add(lContext);
                     });
+                    addExecutionAudit(sqlToExecute,statementAudit,runContext.size(),startTime);
                 });
+
             });
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);
@@ -123,6 +133,27 @@ public class CallProcessAction implements IActionExecution {
         }
 
         log.info(aMarker, "Call Process Action for {} has been Completed", callProcess.getName());
+    }
+
+    @NotNull
+    private StatementExecutionAudit getStatementExecutionAudit(String sqlToExecute, LocalDateTime startTime) {
+        StatementExecutionAudit statementAudit =new StatementExecutionAudit();
+        statementAudit.setRootPipelineId(actionExecutionAudit.getRootPipelineId());
+        statementAudit.setActionId(actionExecutionAudit.getActionId());
+        statementAudit.setStatementContent(sqlToExecute);
+        statementAudit.setCreatedBy(actionExecutionAudit.getCreatedBy());
+        statementAudit.setLastModifiedBy(actionExecutionAudit.getLastModifiedBy());
+        statementAudit.setCreatedDate(startTime);
+        return statementAudit;
+    }
+
+
+    private static void addExecutionAudit(String sqlToExecute, StatementExecutionAudit statementAudit, int rowCount, LocalDateTime startTime) {
+        statementAudit.setRowsProcessed(rowCount);
+        statementAudit.setStatementContent(sqlToExecute);
+        statementAudit.setLastModifiedDate(LocalDateTime.now());
+        statementAudit.setTimeTaken(Duration.between(startTime, LocalDateTime.now()).toMillis() / 1000.0);
+        HandymanActorSystemAccess.insert(statementAudit);
     }
 
     public Jdbi checkJDBIConnection(Jdbi jdbi) {
