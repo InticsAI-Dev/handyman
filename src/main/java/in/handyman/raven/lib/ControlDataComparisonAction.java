@@ -6,6 +6,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.ControlDataComparison;
 import java.lang.Exception;
 import java.lang.Object;
@@ -50,14 +52,6 @@ public class ControlDataComparisonAction implements IActionExecution {
     this.aMarker = MarkerFactory.getMarker(" ControlDataComparison:"+this.controlDataComparison.getName());
   }
 
-  private static final List<String> POSSIBLE_DATE_FORMATS = List.of(
-          "M/d/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "yyyy/MM/dd",
-          "dd/MM/yyyy", "d/M/yyyy", "MMM dd, yyyy", "dd-MMM-yyyy"
-  );
-
-  private static final String THRESHOLD_ONE_TOUCH = "1";
-  private static final String THRESHOLD_LOW_TOUCH = "3";
-  private static final String PIPELINE_DATE_VALIDATION = "yyyy/MM/dd";
   @Override
   public void execute() throws Exception {
     try {
@@ -84,7 +78,8 @@ public class ControlDataComparisonAction implements IActionExecution {
         try {
           doControlDataValidation(controlDataComparisonQueryInput, jdbi, outputTable);
         } catch (JsonProcessingException e) {
-          throw new RuntimeException(e);
+          HandymanException handymanException = new HandymanException(e);
+          HandymanException.insertException("Control data comparison Input table failed {}:", handymanException, action);
         }
       });
 
@@ -92,7 +87,8 @@ public class ControlDataComparisonAction implements IActionExecution {
     } catch (Exception e) {
       action.getContext().put(controlDataComparison.getName() + ".isSuccessful", "false");
       log.error(aMarker, "Error in execute method for Control Data Comparison ", e);
-      throw new HandymanException("Error in execute method for Control Data Comparison", e, action);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Control data comparison failed {}:", handymanException, action);
     }
   }
 
@@ -109,17 +105,38 @@ public class ControlDataComparisonAction implements IActionExecution {
     String actualValue = controlDataComparisonQueryInputTable.getActualValue();
     String allowedAdapters = controlDataComparisonQueryInputTable.getAllowedAdapter();
     String fileName = controlDataComparisonQueryInputTable.getFileName();
+    String sorItemName = controlDataComparisonQueryInputTable.getSorItemName();
+    String encryptionPolicy = controlDataComparisonQueryInputTable.getEncryptionPolicy();
+    String isEncrypted = controlDataComparisonQueryInputTable.getIsEncrypted();
 
+    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+    String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","true");
+    if (Objects.equals(encryptData, "true")) {
+      if (Objects.equals(isEncrypted, "t")) {
+        log.info("Decryption started for the sorItem {}: for Data comparison.", sorItemName);
+        extractedValue = encryption.decrypt(controlDataComparisonQueryInputTable.getExtractedValue(), encryptionPolicy, sorItemName);
+        log.info("Decryption completed for the sorItem {}: for Data comparison.", sorItemName);
+      }
+    }
     //'date','date_reg'
     Long mismatchCount;
     if(allowedAdapters.equals("date")  || allowedAdapters.equals("date_reg")){
       try {
-        mismatchCount = dateValidation(extractedValue, actualValue, PIPELINE_DATE_VALIDATION);
+        String finalDateFormat = action.getContext().get("control.data.date.comparison.format");
+        mismatchCount = dateValidation(extractedValue, actualValue, finalDateFormat);
         String matchStatus = calculateValidationScores(mismatchCount);
+        log.info("Encryption started for the date sorItem {}:", sorItemName);
+        if (Objects.equals(encryptData, "true")) {
+          if (Objects.equals(isEncrypted, "t")) {
+            extractedValue = encryption.encrypt(extractedValue, encryptionPolicy, sorItemName);
+          }
+        }
+        log.info("Encryption completed for the date sorItem {}:", sorItemName);
         log.info("Inserting date type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
       } catch (HandymanException e) {
-        throw new HandymanException("Error while inserting date type data validation", e, action);
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException("Error while inserting date type data validation", handymanException, action);
       }
     }
     //gender
@@ -127,20 +144,36 @@ public class ControlDataComparisonAction implements IActionExecution {
       try {
         mismatchCount = genderValidation(extractedValue, actualValue);
         String matchStatus = calculateValidationScores(mismatchCount);
+        log.info("Encryption started for the gender sorItem {}:", sorItemName);
+        if (Objects.equals(encryptData, "true")) {
+          if (Objects.equals(isEncrypted, "t")) {
+            extractedValue = encryption.encrypt(extractedValue, encryptionPolicy, sorItemName);
+          }
+        }
+        log.info("Encryption completed for the gender sorItem {}:", sorItemName);
         log.info("Inserting gender type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
       } catch (HandymanException e) {
-        throw new HandymanException("Error while inserting gender type data validation.", e ,action);
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException("Error while inserting gender type data validation.", handymanException ,action);
       }
     }
     else {
       try {
         mismatchCount = dataValidation(extractedValue, actualValue);
         String matchStatus = calculateValidationScores(mismatchCount);
+        log.info("Encryption started for the sorItem {}:", sorItemName);
+        if (Objects.equals(encryptData, "true")) {
+          if (Objects.equals(isEncrypted, "t")) {
+            extractedValue = encryption.encrypt(extractedValue, encryptionPolicy, sorItemName);
+          }
+        }
+        log.info("Encryption completed for the sorItem {}:", sorItemName);
         log.info("Inserting string type data validation at {}:", outputTable);
         insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
       } catch (HandymanException e) {
-        throw new HandymanException("Error while inserting gender type data validation.", e, action);
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException("Error while inserting generic type data validation {}:", handymanException, action);
       }
     }
   }
@@ -165,11 +198,13 @@ public class ControlDataComparisonAction implements IActionExecution {
 
   public String calculateValidationScores(Long mismatchCount) {
     String matchStatus;
+    String lowTouch = action.getContext().get("control.data.low.touch.threshold");
+    String oneTouch = action.getContext().get("control.data.one.touch.threshold");
     if (mismatchCount == 0) {
       matchStatus = "NO TOUCH";
-    } else if (mismatchCount <= Long.parseLong(THRESHOLD_ONE_TOUCH)) {
+    } else if (mismatchCount <= Long.parseLong(oneTouch)) {
       matchStatus = "ONE TOUCH";
-    } else if (mismatchCount <= Long.parseLong(THRESHOLD_LOW_TOUCH)) {
+    } else if (mismatchCount <= Long.parseLong(lowTouch)) {
       matchStatus = "LOW TOUCH";
     } else {
       matchStatus = "HIGH TOUCH";
@@ -252,7 +287,9 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   private String parseDateWithFormat(String date, String inputFormat) {
-    for (String format : POSSIBLE_DATE_FORMATS) {
+    List<String>  dateInputFormats = Collections.singletonList(action.getContext().get("date.input.formats"));;
+
+    for (String format : dateInputFormats) {
       try {
         DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern(format);
         LocalDate parsedDate = LocalDate.parse(date, inputFormatter);
@@ -260,6 +297,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
         return parsedDate.format(outputFormatter);
       } catch (DateTimeParseException ignored) {
+        log.error("Error in parsing the date format for input {} to format {}", inputFormat, date);
       }
     }
     return date;
@@ -279,6 +317,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
         return parsedDate.format(outputFormatter);
       } catch (DateTimeParseException | NullPointerException ignored) {
+        log.error("Error in parsing the Eight digit date format for input {} to format {}", inputFormat, date);
       }
     }
     return null;
@@ -296,6 +335,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                 return date.substring(4, 8) + "-" + date.substring(2, 4) + "-" + date.substring(0, 2);
         }
     } catch (Exception ignored) {
+      log.error("Error in reformatting the Eight digit date format for input {} to format {}", format, date);
     }
     return "";
   }

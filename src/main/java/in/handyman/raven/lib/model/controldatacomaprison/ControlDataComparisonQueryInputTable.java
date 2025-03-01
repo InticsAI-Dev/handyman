@@ -27,5 +27,7 @@ public class ControlDataComparisonQueryInputTable {
     private String allowedAdapter;
     private String restrictAdapter;
     private Long charLimit;
-
+    private String sorItemName;
+    private String encryptionPolicy;
+    private String isEncrypted;
 }
