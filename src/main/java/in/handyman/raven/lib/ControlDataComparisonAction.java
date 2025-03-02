@@ -110,7 +110,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     String isEncrypted = controlDataComparisonQueryInputTable.getIsEncrypted();
 
     InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
-    String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","true");
+    String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
     if (Objects.equals(encryptData, "true")) {
       if (Objects.equals(isEncrypted, "t")) {
         log.info("Decryption started for the sorItem {}: for Data comparison.", sorItemName);
