@@ -176,6 +176,7 @@ action:
     |dockerInspect
     |kafkaPublish
     |folderDeleteByProcess
+    |controlDataComparison
     );
 
 
@@ -1354,6 +1355,14 @@ kafkaPublish:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*;
+
+controlDataComparison:
+    'controlDataComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 
 //rules
