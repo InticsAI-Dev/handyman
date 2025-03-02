@@ -16,8 +16,7 @@ import java.io.IOException;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -67,12 +66,17 @@ public class DecryptInticsEncAction implements IActionExecution {
 
     try {
       log.info(aMarker, "Starting decryption API caller: {}", decryptInticsEnc.getName());
+      String headersListStr = action.getContext().get("csv.headers.list");
+
+      List<String> headersList = Arrays.asList(headersListStr.split(","));
 
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(decryptInticsEnc.getSource());
       List<QueryOutput> queryResults = fetchQueryResults(jdbi);
       List<DecryptedCsvData> decryptedData = processDecryption(queryResults);
 
-      writeToCsv(decryptedData, decryptInticsEnc.getOutputPath());
+
+        writeToCsv5(decryptedData, headersList, decryptInticsEnc.getOutputPath());
+
 
     } catch (Exception e) {
       log.error(aMarker, "Error executing DecryptInticsEncAction: {}", e.getMessage(), e);
@@ -146,7 +150,7 @@ public class DecryptInticsEncAction implements IActionExecution {
           ));
 
           nonEncryptedList.forEach(extractedMetaDetail -> {
-            DecryptedCsvData.builder()
+            outputData.add(DecryptedCsvData.builder()
                     .rootPipelineId(queryOutput.getRootPipelineId())
                     .groupId(queryOutput.getGroupId())
                     .tenantId(queryOutput.getTenantId())
@@ -157,7 +161,7 @@ public class DecryptInticsEncAction implements IActionExecution {
                     .sorItemName(extractedMetaDetail.getKey())
                     .extractedValue(extractedMetaDetail.getValue())
                     .policyName(extractedMetaDetail.getPolicy())
-                    .build();
+                    .build());
           });
         }
 
@@ -191,6 +195,208 @@ public class DecryptInticsEncAction implements IActionExecution {
       throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e);
     }
   }
+
+
+  public static void writeCsv(List<Map<String, String>> dataList, String filePath) {
+    if (dataList.isEmpty()) {
+      System.out.println("No data to write!");
+      return;
+    }
+
+    // Extract headers (unique keys from all maps)
+    Set<String> headersSet = new LinkedHashSet<>();
+    for (Map<String, String> data : dataList) {
+      headersSet.addAll(data.keySet()); // Collect all keys
+    }
+    List<String> headers = new ArrayList<>(headersSet); // Convert to ordered list
+
+    try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+      // Write headers
+      writer.writeNext(headers.toArray(new String[0]));
+
+      // Write rows
+      for (Map<String, String> data : dataList) {
+        String[] row = headers.stream()
+                .map(header -> data.getOrDefault(header, "")) // Get value or empty string
+                .toArray(String[]::new);
+        writer.writeNext(row);
+      }
+
+      System.out.println("CSV successfully written to: " + filePath);
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+  private static void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, String filePath) {
+    try {
+      // Step 1: Extract unique sorItemNames (these will be dynamic headers)
+      Set<String> dynamicHeaders = dataList.stream()
+              .map(DecryptedCsvData::getSorItemName)
+              .collect(Collectors.toSet());
+
+      // Step 2: Sort headers for consistency
+      List<String> sortedDynamicHeaders = new ArrayList<>(dynamicHeaders);
+      Collections.sort(sortedDynamicHeaders);
+
+      // Step 3: Define static headers (RootPipelineId, FileName)
+      List<String> csvHeaders = new ArrayList<>();
+      csvHeaders.add("RootPipelineId");
+      csvHeaders.add("FileName");
+      csvHeaders.addAll(sortedDynamicHeaders); // Add dynamic headers
+
+      try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+        // Step 4: Write the header row (first row)
+        writer.writeNext(csvHeaders.toArray(new String[0]));
+
+        // Step 5: Prepare the data row (second row)
+        List<String> row = new ArrayList<>();
+
+        // Assume all records belong to the same RootPipelineId and FileName
+        if (!dataList.isEmpty()) {
+          DecryptedCsvData firstRecord = dataList.get(0);
+          row.add(firstRecord.getRootPipelineId());
+          row.add(firstRecord.getFileName());
+        } else {
+          row.add(""); // Empty RootPipelineId if no data
+          row.add(""); // Empty FileName if no data
+        }
+
+        // Create a map of sorItemName -> extractedValue for quick lookup
+        Map<String, String> valueMap = dataList.stream()
+                .collect(Collectors.toMap(DecryptedCsvData::getSorItemName, DecryptedCsvData::getExtractedValue, (v1, v2) -> v1));
+
+        // Fill the row with extracted values matching the dynamic headers
+        for (String header : sortedDynamicHeaders) {
+          row.add(valueMap.getOrDefault(header, "")); // Fill missing values with empty string
+        }
+
+        // Step 6: Write the single row of data
+        writer.writeNext(row.toArray(new String[0]));
+      }
+    } catch (IOException e) {
+      throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e);
+    }
+  }
+
+  private static void writeToCsv5(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {
+
+    try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+      // Write headers
+      writer.writeNext(headers.toArray(new String[0]));
+
+      // Group data by filename to create one row per file
+      Map<String, Map<String, String>> groupedData = new HashMap<>();
+
+      for (DecryptedCsvData data : dataList) {
+        // Create a unique key for each record
+        String recordKey = data.getFileName();
+
+        // Get or create the map for this record
+        Map<String, String> record = groupedData.computeIfAbsent(recordKey, k -> new HashMap<>());
+
+        // Set the filename field for each record
+        record.put("file_name", data.getFileName());
+
+        // Map the sorItemName directly to the matching header
+        String sorItemName = data.getSorItemName();
+        String extractedValue = data.getExtractedValue();
+
+        // Only set the value if the sorItemName matches one of our headers
+        if (headers.contains(sorItemName)) {
+          record.put(sorItemName, extractedValue);
+        }
+      }
+
+      // Write each record to the CSV
+      for (Map<String, String> record : groupedData.values()) {
+        String[] row = new String[headers.size()];
+
+        // For each header, get the corresponding value from the record map
+        for (int i = 0; i < headers.size(); i++) {
+          String header = headers.get(i);
+          row[i] = record.getOrDefault(header, ""); // Use empty string if value not found
+        }
+
+        writer.writeNext(row);
+      }
+    } catch (IOException e) {
+      throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e);
+    }
+  }
+  public static void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {
+    try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+      // Write headers
+      writer.writeNext(headers.toArray(new String[0]));
+
+      // Create a map of filename -> (sorItemName -> extractedValue)
+      Map<String, Map<String, String>> fileDataMap = dataList.stream()
+              .collect(Collectors.groupingBy(
+                      DecryptedCsvData::getFileName,
+                      Collectors.toMap(DecryptedCsvData::getSorItemName, DecryptedCsvData::getExtractedValue, (v1, v2) -> v1)
+              ));
+
+      // Iterate over fileDataMap and write to CSV
+      for (Map.Entry<String, Map<String, String>> fileEntry : fileDataMap.entrySet()) {
+        String fileName = fileEntry.getKey();
+        Map<String, String> sorItemMap = fileEntry.getValue();
+
+        int headersListSize = headers.size()+1;
+        String[] row = new String[headersListSize];
+        row[0] = fileName; // Set the file name
+
+        // Match headers with sorItemName and fetch values
+        for (int i = 2; i < headersListSize; i++) {
+          row[i] = sorItemMap.getOrDefault(headers.get(i), "");
+        }
+
+        writer.writeNext(row);
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void writeToCsv1(List<DecryptedCsvData> dataList, String filePath) {
+    // Extract unique sorItemNames for headers and include "fileName" as the first column
+    Set<String> sorItemNames = dataList.stream()
+            .map(DecryptedCsvData::getSorItemName)
+            .collect(Collectors.toSet());
+
+    List<String> headers = List.of("fileName");
+    headers.addAll(sorItemNames);
+
+    try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+      // Write headers
+      writer.writeNext(headers.toArray(new String[0]));
+
+      // Group data by fileName
+      Map<String, Map<String, String>> fileDataMap = dataList.stream()
+              .collect(Collectors.groupingBy(
+                      DecryptedCsvData::getFileName,
+                      Collectors.toMap(DecryptedCsvData::getSorItemName, DecryptedCsvData::getExtractedValue, (v1, v2) -> v1)
+              ));
+
+      // Iterate over fileDataMap and write rows
+      for (Map.Entry<String, Map<String, String>> fileEntry : fileDataMap.entrySet()) {
+        String fileName = fileEntry.getKey();
+        Map<String, String> sorItemMap = fileEntry.getValue();
+
+        String[] row = new String[headers.size()];
+        row[0] = fileName; // Set the file name
+
+        // Match headers with sorItemName and fetch values
+        for (int i = 1; i < headers.size(); i++) {
+          row[i] = sorItemMap.getOrDefault(headers.get(i), "");
+        }
+
+        writer.writeNext(row);
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
 
   @Data @Builder @NoArgsConstructor @AllArgsConstructor @JsonIgnoreProperties(ignoreUnknown = true)
   public static class QueryOutput {
