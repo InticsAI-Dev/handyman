@@ -176,6 +176,7 @@ action:
     |dockerInspect
     |kafkaPublish
     |folderDeleteByProcess
+    |decryptInticsEnc
     );
 
 
@@ -1354,6 +1355,15 @@ kafkaPublish:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*;
+
+decryptInticsEnc:
+    'decryptInticsEnc' 'as' name=STRING
+    'source' source = STRING
+    'decrypt-url' endpoint=STRING
+    'output-csv-path' outputPath=STRING
+    'using' '{'
+            querySet=STRING
+  '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
 
 
 //rules

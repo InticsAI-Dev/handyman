@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lib.encryption.InticsDataEncryptionApi;
-import in.handyman.raven.util.PropertyHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,10 +19,16 @@ import java.util.Collections;
 public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProtegrityApiEncryptionImpl.class);
-    private static final String PROTEGRITY_ENC_API_URL = PropertyHandler.get("protegrity.enc.api.url");
-    private static final String PROTEGRITY_DEC_API_URL = PropertyHandler.get("protegrity.dec.api.url");
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final OkHttpClient client = new OkHttpClient();
+    private final String protegrityEncApiUrl;
+    private final String protegrityDecApiUrl;
+
+    public ProtegrityApiEncryptionImpl(String encryptionUrl, String decryptionUrl) {
+        this.protegrityEncApiUrl = encryptionUrl;
+        this.protegrityDecApiUrl = decryptionUrl;
+    }
 
     @Override
     public String encrypt(String inputToken, String encryptionPolicy, String sorItem) throws HandymanException {
@@ -33,7 +38,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         }
 
         LOGGER.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
-        return callProtegrityApi(inputToken, encryptionPolicy, sorItem, PROTEGRITY_ENC_API_URL);
+        return callProtegrityApi(inputToken, encryptionPolicy, sorItem, protegrityEncApiUrl);
     }
 
     @Override
@@ -44,7 +49,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         }
 
         LOGGER.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
-        return callProtegrityApi(encryptedToken, encryptionPolicy, sorItem, PROTEGRITY_DEC_API_URL);
+        return callProtegrityApi(encryptedToken, encryptionPolicy, sorItem, protegrityDecApiUrl);
     }
 
     @Override

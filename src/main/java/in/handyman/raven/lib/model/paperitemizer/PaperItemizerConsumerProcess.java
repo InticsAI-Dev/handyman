@@ -114,7 +114,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with entity {}", endpoint, entity);
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with entity {}", endpoint, entity.getFilePath());
         }
 
         return parentObj;
