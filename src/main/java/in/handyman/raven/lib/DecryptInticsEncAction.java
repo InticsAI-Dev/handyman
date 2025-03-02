@@ -142,6 +142,7 @@ public class DecryptInticsEncAction implements IActionExecution {
                           .sorContainerName(queryOutput.getSorContainerName())
                           .fileName(queryOutput.getFileName())
                           .originId(queryOutput.getOriginId())
+                          .documentId(queryOutput.getDocumentId())
                           .paperNo(queryOutput.getPaperNo())
                           .sorItemName(apiResponse.getKey())
                           .extractedValue(apiResponse.getValue())
@@ -157,6 +158,7 @@ public class DecryptInticsEncAction implements IActionExecution {
                     .sorContainerName(queryOutput.getSorContainerName())
                     .fileName(queryOutput.getFileName())
                     .originId(queryOutput.getOriginId())
+                    .documentId(queryOutput.getDocumentId())
                     .paperNo(queryOutput.getPaperNo())
                     .sorItemName(extractedMetaDetail.getKey())
                     .extractedValue(extractedMetaDetail.getValue())
@@ -297,6 +299,7 @@ public class DecryptInticsEncAction implements IActionExecution {
 
         // Set the filename field for each record
         record.put("file_name", data.getFileName());
+        record.put("document_id", data.getDocumentId());
 
         // Map the sorItemName directly to the matching header
         String sorItemName = data.getSorItemName();
@@ -404,6 +407,7 @@ public class DecryptInticsEncAction implements IActionExecution {
     private Integer groupId;
     private Integer tenantId;
     private String sorContainerName;
+    private String documentId;
     private String fileName;
     private String originId;
     private Integer paperNo;
@@ -420,6 +424,7 @@ public class DecryptInticsEncAction implements IActionExecution {
     private String originId;
     private Integer paperNo;
     private String sorItemName;
+    private String documentId;
     private String extractedValue;
     private String policyName;
   }
