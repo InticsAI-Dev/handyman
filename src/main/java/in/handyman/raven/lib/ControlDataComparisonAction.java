@@ -215,36 +215,31 @@ public class ControlDataComparisonAction implements IActionExecution {
   public Long dataValidation(String extractedData, String actualData) {
     if (extractedData == null || extractedData.isEmpty()) {
       log.error("Invalid input for extractedData={}", extractedData);
-      return (long) actualData.length();
+      return actualData == null ? 0L : (long) actualData.length();
     }
     if (actualData == null || actualData.isEmpty()){
       log.error("Invalid input for actualData={}", actualData);
       return (long) extractedData.length();
     }
 
-    // Normalize by removing spaces and special characters
     String normalizedExtracted = extractedData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     String normalizedActual = actualData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
 
-    // Compute Levenshtein Distance
     int distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
 
-    // If exact match (after normalization), return 0
     if (distance == 0) {
       return 0L;
     }
 
-    // Check if actualData (normalized) is fully contained in extractedData (normalized)
     if (normalizedExtracted.contains(normalizedActual)) {
       return 0L;
     }
 
-    // Check if both strings contain the same words in any order (ignoring spaces & special chars)
     Set<String> extractedWords = new HashSet<>(Arrays.asList(extractedData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
     Set<String> actualWords = new HashSet<>(Arrays.asList(actualData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
 
     if (extractedWords.equals(actualWords)) {
-      return 0L; // Words are the same but in a different order
+      return 0L;
     }
 
     return (long) distance;
@@ -253,7 +248,7 @@ public class ControlDataComparisonAction implements IActionExecution {
   public Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
     if (extractedDate == null || extractedDate.isEmpty()) {
       log.error("Invalid input for extractedDate={}", extractedDate);
-      return (long) actualDate.length();
+      return actualDate == null ? 0L : (long) actualDate.length();
     }
     if (actualDate == null || actualDate.isEmpty()){
       log.error("Invalid input for actualDate={}", actualDate);
@@ -341,15 +336,21 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   public Long genderValidation(String extractedGender, String generatedGender) {
+    if (extractedGender == null) {
+      log.error("Invalid input for extractedGender: null");
+      return generatedGender == null ? 0L : (long) generatedGender.length();
+    }
+    if (generatedGender == null) {
+      log.error("Invalid input for generatedGender: null");
+      return (long) extractedGender.length();
+    }
     String formattedExtractedGender = normalizeGender(extractedGender);
     String formattedGeneratedGender = normalizeGender(generatedGender);
 
-    // If either gender is invalid, return -1
     if (formattedExtractedGender.equals("Invalid") || formattedGeneratedGender.equals("Invalid")) {
-      return -1L;
+      return 1L;
     }
 
-    // If gender values do not match, return total character count of extracted gender
     return formattedExtractedGender.equalsIgnoreCase(formattedGeneratedGender)
             ? 0L  // No mismatch
             : (long) formattedExtractedGender.length();
@@ -372,7 +373,6 @@ public class ControlDataComparisonAction implements IActionExecution {
     }
   }
 
-  // Custom method to calculate mismatch count manually
   private Long getMismatchCount(String str1, String str2) {
     int mismatchCount = 0;
     int length = Math.max(str1.length(), str2.length());
