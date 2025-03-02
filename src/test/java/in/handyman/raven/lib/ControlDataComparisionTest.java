@@ -33,7 +33,7 @@ public class ControlDataComparisionTest {
 
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("read.batch.size", "1"),
-                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("outbound.doc.delivery.notify.url", ""),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("agadia.secretKey", ""),
                 Map.entry("outbound.context.condition", "Product"),
@@ -51,7 +51,7 @@ public class ControlDataComparisionTest {
 
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("read.batch.size", "1"),
-                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("outbound.doc.delivery.notify.url", ""),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("agadia.secretKey", ""),
                 Map.entry("outbound.context.condition", "Product"),
@@ -71,7 +71,7 @@ public class ControlDataComparisionTest {
 
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("read.batch.size", "1"),
-                Map.entry("outbound.doc.delivery.notify.url", "https://oxygenfinance.kissflow.com/integration/2/Ac8izeyQlKt7/webhook/YJ81YHEn8NDSqznEsNVezPsZBrpS5c9zvj4i4rSSbt2fHYpi2-ZwIgzbd4lTdRipsmT6FFVz2CrhLQI6xd6g"),
+                Map.entry("outbound.doc.delivery.notify.url", ""),
                 Map.entry("gen_group_id.group_id", "1"),
                 Map.entry("agadia.secretKey", ""),
                 Map.entry("outbound.context.condition", "Product"),
