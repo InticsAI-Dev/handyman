@@ -8,11 +8,12 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class RadonQueryInputTable implements CoproProcessor.Entity{
+public class RadonQueryInputTable implements CoproProcessor.Entity {
 
     private String originId;
     private Integer paperNo;
@@ -25,6 +26,9 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private String inputFilePath;
     private String userPrompt;
     private String systemPrompt;
+    private String kryptonInferenceMode;
+    private String transformationUserPrompts;
+    private String transformationSystemPrompts;
     private String modelRegistry;
     private String batchId;
     private String category;
