@@ -15,6 +15,7 @@ import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -337,24 +338,45 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws IOException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
-
         Long tenantId = entity.getTenantId();
         Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
-        String extractedContent;
+
+        // Parse JSON input
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
+        // Encryption setting
         String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        if (Objects.equals(encryptOutputJsonContent, "true")) {
-            extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
-        } else {
-            extractedContent = modelResponse.getInferResponse();
+        String extractedContent = modelResponse.getInferResponse();
+        String finalResponseJson = "{}";
+
+        if (extractedContent == null || extractedContent.isEmpty()) {
+            throw new IOException("InferResponse is null or empty");
         }
 
+        try {
+            // Parse the entire inferResponse JSON
+            JSONObject inferResponseObj = new JSONObject(extractedContent);
+
+            // Extract `finalResponse` and `visionResponse`
+            if (inferResponseObj.has("finalResponse")) {
+                finalResponseJson = inferResponseObj.getJSONArray("finalResponse").toString();
+            }
+
+        } catch (Exception e) {
+            throw new IOException("Invalid JSON format in inferResponse", e);
+        }
+
+        // Encrypt only finalResponse if encryption is enabled
+        if (Objects.equals(encryptOutputJsonContent, "true")) {
+            finalResponseJson = encryption.encrypt(finalResponseJson, "AES256", "RADON_KVP_JSON");
+        }
+
+        // Add processed data to parentObj
         parentObj.add(RadonQueryOutputTable.builder()
                 .createdOn(CreateTimeStamp.currentTimestamp())
                 .createdUserId(tenantId)
@@ -362,7 +384,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(extractedContent)
+                .totalResponseJson(finalResponseJson) // Stores only "finalResponse"
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
@@ -370,22 +392,19 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .processId(processId)
                 .rootPipelineId(rootPipelineId)
                 .process(entity.getProcess())
-                .batchId(modelResponse.getBatchId())
+                .batchId(modelResponse.getBatchId()) // Ensure correct batch ID
                 .modelRegistry(entity.getModelRegistry())
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(entity.getApiName())
-                .batchId(entity.getBatchId())
                 .category(entity.getCategory())
                 .message("Radon kvp action macro completed")
                 .request(request)
-                .response(response)
+                .response(response) // Stores complete response including vision responses
                 .sorContainerId(entity.getSorContainerId())
-                .endpoint(String.valueOf(endpoint))
-                .build()
-        );
-
-
+                .endpoint(endpoint)
+                .build());
     }
+
 
     private void coproResponseBuider(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
