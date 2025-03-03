@@ -31,7 +31,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
-
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
 
     public final ActionExecutionAudit action;
@@ -161,8 +161,8 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .tenantId(entity.getTenantId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .request(jsonRequest)
-                                .response(response.message())
+                                .request(encryptRequestResponse(jsonRequest))
+                                .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Exception occurred in zero shot classifier API call");
@@ -182,7 +182,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .tenantId(entity.getTenantId())
                             .createdOn(entity.getCreatedOn())
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .request(jsonRequest)
+                            .request(encryptRequestResponse(jsonRequest))
                             .response("Error in Response")
                             .endpoint(String.valueOf(endpoint))
                             .build());
@@ -221,8 +221,8 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .batchId(entity.getBatchId())
                                 .tenantId(entity.getTenantId())
                                 .createdOn(entity.getCreatedOn())
-                                .request(jsonInputRequest)
-                                .response(response.message())
+                                .request(encryptRequestResponse(jsonInputRequest))
+                                .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .build());
@@ -244,7 +244,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .tenantId(entity.getTenantId())
                             .createdOn(entity.getCreatedOn())
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .request(jsonInputRequest)
+                            .request(encryptRequestResponse(jsonInputRequest))
                             .response("Error in Response")
                             .endpoint(String.valueOf(endpoint))
                             .build());
@@ -254,7 +254,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         }
     }
 
-    private static void extractedOutputDataRequest(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
+    private void extractedOutputDataRequest(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
 
         Long rootPipelineId = entity.getRootPipelineId();
 
@@ -284,8 +284,8 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .tenantId(entity.getTenantId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                        .request(request)
-                        .response(response)
+                        .request(encryptRequestResponse(request))
+                        .response(encryptRequestResponse(response))
                         .endpoint(endpoint)
                         .build());
             });
@@ -294,7 +294,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         }
     }
 
-    private static void extractedCoproOutputResponse(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
+    private void extractedCoproOutputResponse(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, String zeroShotClassifierDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
 
         Long rootPipelineId = entity.getRootPipelineId();
 
@@ -324,14 +324,26 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .tenantId(entity.getTenantId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                        .request(request)
-                        .response(response)
+                        .request(encryptRequestResponse(request))
+                        .response(encryptRequestResponse(response))
                         .endpoint(endpoint)
                         .build());
             });
         } catch (JsonProcessingException e) {
             throw new HandymanException("Error processing the response {}", e);
         }
+    }
+
+    public String encryptRequestResponse(String request){
+        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr ;
+        if("true".equals(encryptReqRes)){
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
+            requestStr=encryptedRequest;
+        }else {
+            requestStr=request;
+        }
+        return requestStr;
     }
 }
 

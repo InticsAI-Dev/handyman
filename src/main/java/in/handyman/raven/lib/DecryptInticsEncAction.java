@@ -16,6 +16,9 @@ import java.io.IOException;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -68,6 +71,8 @@ public class DecryptInticsEncAction implements IActionExecution {
       log.info(aMarker, "Starting decryption API caller: {}", decryptInticsEnc.getName());
       String headersListStr = action.getContext().get("csv.headers.list");
 
+      Path outputFilePath = createOutputFilePath();
+
       List<String> headersList = Arrays.asList(headersListStr.split(","));
 
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(decryptInticsEnc.getSource());
@@ -75,12 +80,36 @@ public class DecryptInticsEncAction implements IActionExecution {
       List<DecryptedCsvData> decryptedData = processDecryption(queryResults);
 
 
-        writeToCsv5(decryptedData, headersList, decryptInticsEnc.getOutputPath());
+      writeToCsv5(decryptedData, headersList, outputFilePath.toString());
 
 
     } catch (Exception e) {
       log.error(aMarker, "Error executing DecryptInticsEncAction: {}", e.getMessage(), e);
       throw e;
+    }
+  }
+
+
+  public Path createOutputFilePath() {
+    try {
+      // Get base directory path
+      String targetDirectoryPath = action.getContext().get("target_directory_path");
+
+      // Define the decrypted CSV directory path
+      Path folderPath = Paths.get(targetDirectoryPath, "decrypted-csv");
+
+      // Create directory if it does not exist
+      Files.createDirectories(folderPath);
+
+      // Get the CSV file name from decryptInticsEnc
+      String fileName = decryptInticsEnc.getOutputPath();
+
+      // Combine directory with the CSV file name
+      Path filePath = folderPath.resolve(fileName);
+
+      return filePath; // Return the full file path
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create directory or file path: " + e.getMessage(), e);
     }
   }
 
@@ -201,7 +230,6 @@ public class DecryptInticsEncAction implements IActionExecution {
 
   public static void writeCsv(List<Map<String, String>> dataList, String filePath) {
     if (dataList.isEmpty()) {
-      System.out.println("No data to write!");
       return;
     }
 
@@ -224,13 +252,12 @@ public class DecryptInticsEncAction implements IActionExecution {
         writer.writeNext(row);
       }
 
-      System.out.println("CSV successfully written to: " + filePath);
 
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
-  private static void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, String filePath) {
+  private void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, String filePath) {
     try {
       // Step 1: Extract unique sorItemNames (these will be dynamic headers)
       Set<String> dynamicHeaders = dataList.stream()
@@ -277,13 +304,15 @@ public class DecryptInticsEncAction implements IActionExecution {
         writer.writeNext(row.toArray(new String[0]));
       }
     } catch (IOException e) {
-      throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e);
+      HandymanException handymanException=new HandymanException(e);
+      handymanException.insertException("Error writing to CSV file: " + e.getMessage(), handymanException,this.action);
     }
   }
 
-  private static void writeToCsv5(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {
+  private void writeToCsv5(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {
 
     try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
+      log.info("File will be stored in this path {}",filePath);
       // Write headers
       writer.writeNext(headers.toArray(new String[0]));
 
@@ -324,7 +353,8 @@ public class DecryptInticsEncAction implements IActionExecution {
         writer.writeNext(row);
       }
     } catch (IOException e) {
-      throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e);
+      HandymanException handymanException=new HandymanException(e);
+      handymanException.insertException("Error writing to CSV file: " + e.getMessage(), handymanException,this.action);
     }
   }
   public static void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {

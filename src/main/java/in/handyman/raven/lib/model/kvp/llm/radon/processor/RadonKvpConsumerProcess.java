@@ -41,7 +41,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final OkHttpClient httpclient;
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
-
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
@@ -237,8 +237,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
-                        .request(jsonRequest)
-                        .response(response.message())
+                        .request(encryptRequestResponse(jsonRequest))
+                        .response(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
                         .build());
                 log.info(aMarker, "Error in getting response from triton response {}", response.message());
@@ -368,8 +368,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .batchId(entity.getBatchId())
                 .category(entity.getCategory())
                 .message("Radon kvp action macro completed")
-                .request(request)
-                .response(response)
+                .request(encryptRequestResponse(request))
+                .response(encryptRequestResponse(response))
                 .sorContainerId(entity.getSorContainerId())
                 .endpoint(String.valueOf(endpoint))
                 .build()
@@ -417,8 +417,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .message(response.message())
                         .batchId(entity.getBatchId())
                         .category(entity.getCategory())
-                        .request(jsonInputRequest)
-                        .response(response.message())
+                        .request(encryptRequestResponse(jsonInputRequest))
+                        .response(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
                         .sorContainerId(entity.getSorContainerId())
                         .build());
@@ -482,8 +482,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .batchId(entity.getBatchId())
                 .message("Radon kvp action macro completed")
                 .category(entity.getCategory())
-                .request(request)
-                .response(response)
+                .request(encryptRequestResponse(request))
+                .response(encryptRequestResponse(response))
                 .endpoint(String.valueOf(endpoint))
                 .sorContainerId(entity.getSorContainerId())
                 .build()
@@ -559,5 +559,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         json = json.replace("```json", "").replace("```", "").trim();
         // Deserialize the cleaned JSON string into a Map
         return objectMapper.readValue(json, Map.class);
+    }
+
+    public String encryptRequestResponse(String request){
+        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr ;
+        if("true".equals(encryptReqRes)){
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
+            requestStr=encryptedRequest;
+        }else {
+            requestStr=request;
+        }
+        return requestStr;
     }
 }

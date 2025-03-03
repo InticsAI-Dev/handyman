@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.RadonKvpBbox;
 import in.handyman.raven.lib.model.radonbbox.query.input.RadonBboxInputEntity;
 import in.handyman.raven.lib.model.radonbbox.query.output.RadonBboxOutputEntity;
@@ -58,7 +59,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
-
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     public RadonBboxConsumerProcess(Logger log, Marker aMarker, ActionExecutionAudit action, RadonKvpBbox radonKvpBbox, ObjectMapper objectMapper, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
@@ -241,6 +242,17 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
     }
 
+    public String encryptRequestResponse(String request){
+        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr ;
+        if("true".equals(encryptReqRes)){
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
+            requestStr=encryptedRequest;
+        }else {
+            requestStr=request;
+        }
+        return requestStr;
+    }
 }
 
 

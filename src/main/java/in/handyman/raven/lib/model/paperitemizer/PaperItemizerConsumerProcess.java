@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopro;
 import in.handyman.raven.lib.model.triton.*;
@@ -42,7 +43,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
             .build();
 
     private final String processBase64;
-
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     public PaperItemizerConsumerProcess(Logger log, Marker aMarker, String outputDir, FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action, String processBase64) {
         this.log = log;
         this.aMarker = aMarker;
@@ -154,8 +155,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .batchId(batchId)
-                                .request(jsonInputRequest)
-                                .response(response.message())
+                                .request(encryptRequestResponse(jsonInputRequest))
+                                .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in getting response from copro {}", response.message());
@@ -223,8 +224,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .rootPipelineId(entity.getRootPipelineId())
                                 .batchId(entity.getBatchId())
-                                .request(jsonInputRequest)
-                                .response(response.message())
+                                .request(encryptRequestResponse(jsonInputRequest))
+                                .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.error(aMarker, "Error in getting response from copro {}", response.message());
@@ -246,7 +247,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
-                            .request(jsonInputRequest)
+                            .request(encryptRequestResponse(jsonInputRequest))
                             .response("Error In getting Response from copro")
                             .endpoint(String.valueOf(endpoint))
                             .build());
@@ -295,8 +296,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
                                 .batchId(paperItemizeOutputData.getBatchId())
-                                .request(request)
-                                .response(response)
+                                .request(encryptRequestResponse(request))
+                                .response(encryptRequestResponse(response))
                                 .endpoint(endpoint)
                                 .build());
             }
@@ -317,8 +318,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
-                            .request(request)
-                            .response(response)
+                            .request(encryptRequestResponse(request))
+                            .response(encryptRequestResponse(response))
                             .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
@@ -364,8 +365,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .modelName(modelName)
                                 .modelVersion(modelVersion)
                                 .batchId(entity.getBatchId())
-                                .request(request)
-                                .response(response)
+                                .request(encryptRequestResponse(request))
+                                .response(encryptRequestResponse(response))
                                 .endpoint(endpoint)
                                 .build());
             });
@@ -386,8 +387,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                             .rootPipelineId(entity.getRootPipelineId())
                             .batchId(entity.getBatchId())
-                            .request(request)
-                            .response(response)
+                            .request(encryptRequestResponse(request))
+                            .response(encryptRequestResponse(response))
                             .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
@@ -417,6 +418,18 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         }
 
         return extractedNumber;
+    }
+
+    public String encryptRequestResponse(String request){
+        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr ;
+        if("true".equals(encryptReqRes)){
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
+            requestStr=encryptedRequest;
+        }else {
+            requestStr=request;
+        }
+        return requestStr;
     }
 
 }
