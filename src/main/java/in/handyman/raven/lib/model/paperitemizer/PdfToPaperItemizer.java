@@ -35,7 +35,6 @@ public class PdfToPaperItemizer {
         final String IMAGE_TYPE = action.getContext().get("paper.itemizer.image.type.rgb");
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
 
-
         File targetDir = readDirectory(outputDir, log);
 
         // getting file extension
@@ -67,6 +66,7 @@ public class PdfToPaperItemizer {
                 Integer pageNumber = 0;
                 ImageType imageType = Objects.equals("true", IMAGE_TYPE)? ImageType.RGB: ImageType.GRAY;
 
+                List<PaperItemizerOutputTable> paperItemizerOutputTables = new ArrayList<>();
                 for (int page = 0; page < pageCount; page++) {
                     BufferedImage image = pdfRenderer.renderImageWithDPI(page, dpi, imageType);
                     if (resizeActive) {
@@ -83,33 +83,30 @@ public class PdfToPaperItemizer {
                     pageNumber = page + 1;
                     ImageIO.write(image, fileFormat, outputFile);
                     log.info("Page {} successfully saved for document ID: {}", page, entity.getOriginId());
-
                     try {
-                        parentObj.add(
-                                PaperItemizerOutputTable
-                                        .builder()
-                                        .processedFilePath(String.valueOf(outputFile))
-                                        .originId(entity.getOriginId())
-                                        .groupId(entity.getGroupId())
-                                        .templateId(entity.getTemplateId())
-                                        .tenantId(entity.getTenantId())
-                                        .processId(entity.getProcessId())
-                                        .paperNo(Long.valueOf(pageNumber))
-                                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                        .stage(PROCESS_NAME)
-                                        .message("Paper Itemize macro completed")
-                                        .createdOn(CreateTimeStamp.currentTimestamp())
-                                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                        .rootPipelineId(entity.getRootPipelineId())
-                                        .modelName(MODEL_NAME)
-                                        .modelVersion(VERSION)
-                                        .batchId(entity.getBatchId())
-                                        .request("")
-                                        .response("")
-                                        .endpoint("")
-                                        .build());
-
-                    } catch (Exception exception) {
+                        paperItemizerOutputTables.add(PaperItemizerOutputTable
+                                .builder()
+                                .processedFilePath(String.valueOf(outputFile))
+                                .originId(entity.getOriginId())
+                                .groupId(entity.getGroupId())
+                                .templateId(entity.getTemplateId())
+                                .tenantId(entity.getTenantId())
+                                .processId(entity.getProcessId())
+                                .paperNo(Long.valueOf(pageNumber))
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .stage(PROCESS_NAME)
+                                .message("Paper Itemize macro completed")
+                                .createdOn(CreateTimeStamp.currentTimestamp())
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                .rootPipelineId(entity.getRootPipelineId())
+                                .modelName(MODEL_NAME)
+                                .modelVersion(VERSION)
+                                .batchId(entity.getBatchId())
+                                .request("")
+                                .response("")
+                                .endpoint("")
+                                .build());
+                    }catch (Exception exception) {
                         parentObj.add(
                                 PaperItemizerOutputTable
                                         .builder()
@@ -136,10 +133,8 @@ public class PdfToPaperItemizer {
                     log.info("Itemized papers successfully created in folder: {}", targetDir.getAbsolutePath());
 
                 }
-
-                return parentObj;
-
-
+                document.close();
+                parentObj.addAll(paperItemizerOutputTables);
             } catch (Exception e) {
                 log.error("Error during paper itemization: {}", e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
