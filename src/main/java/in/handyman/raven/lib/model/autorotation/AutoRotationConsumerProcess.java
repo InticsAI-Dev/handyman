@@ -270,14 +270,15 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
             HandymanException.insertException("AutoRotation consumer failed for batch/group " + groupId, handymanException, this.action);
         }
     }
-    public String encryptRequestResponse(String request){
-        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
-        String requestStr ;
-        if("true".equals(encryptReqRes)){
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
-            requestStr=encryptedRequest;
-        }else {
-            requestStr=request;
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
         }
         return requestStr;
     }

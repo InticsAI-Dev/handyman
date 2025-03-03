@@ -44,6 +44,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
     private final String processBase64;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
+
     public PaperItemizerConsumerProcess(Logger log, Marker aMarker, String outputDir, FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action, String processBase64) {
         this.log = log;
         this.aMarker = aMarker;
@@ -134,7 +135,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             if (response.isSuccessful()) {
                 if (log.isInfoEnabled()) {
-                    log.info(aMarker, "successfully received coproProcessor consumer process response for file {} ",entity.getFilePath());
+                    log.info(aMarker, "successfully received coproProcessor consumer process response for file {} ", entity.getFilePath());
                 }
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody, jsonInputRequest, responseBody, endpoint.toString());
@@ -420,14 +421,14 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         return extractedNumber;
     }
 
-    public String encryptRequestResponse(String request){
-        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
-        String requestStr ;
-        if("true".equals(encryptReqRes)){
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
-            requestStr=encryptedRequest;
-        }else {
-            requestStr=request;
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
         }
         return requestStr;
     }

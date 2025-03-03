@@ -8,7 +8,6 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.encryption.SecurityEngine;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
@@ -63,11 +62,11 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String extractedContent;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
 
-        if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.decrypt(pageContent,"AES256","ZSC_TEXT_DATA");
-        }else {
+        if (Objects.equals(encryptSotPageContent, "true")) {
+            extractedContent = encryption.decrypt(pageContent, "AES256", "ZSC_TEXT_DATA");
+        } else {
             extractedContent = pageContent;
         }
 
@@ -119,7 +118,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request,jsonRequest, endpoint);
+            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
         }
 
         return parentObj;
@@ -334,14 +333,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         }
     }
 
-    public String encryptRequestResponse(String request){
-        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
-        String requestStr ;
-        if("true".equals(encryptReqRes)){
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
-            requestStr=encryptedRequest;
-        }else {
-            requestStr=request;
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
         }
         return requestStr;
     }

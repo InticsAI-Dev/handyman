@@ -42,6 +42,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
+
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
@@ -149,7 +150,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
             radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-        }else{
+        } else {
             radonKvpExtractionRequest.setBase64Img("");
         }
 
@@ -285,22 +286,21 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     jsonString = jsonString.replace("\n", "");
                     // Convert the cleaned JSON string to a JsonNode
                     jsonResponse = repairJson(jsonString);
-                    if(!jsonResponse.isEmpty()) {
+                    if (!jsonResponse.isEmpty()) {
                         return objectMapper.readTree(jsonResponse);
-                    }else {
+                    } else {
                         return null;
                     }
-                }else {
+                } else {
                     jsonResponse = repairJson(jsonResponse);
                     return objectMapper.readTree(jsonResponse);
                 }
-            }
-            else if(jsonResponse.contains("{")) {
+            } else if (jsonResponse.contains("{")) {
                 log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
                 jsonResponse = repairJson(jsonResponse);
                 return objectMapper.readTree(jsonResponse);
                 //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
-            }else {
+            } else {
                 log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
                 return null;
             }
@@ -311,14 +311,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     public JsonNode getJsonNodeFromInferResponse(ObjectMapper objectMapper, String jsonString) throws JsonProcessingException {
-        try{
+        try {
 
             jsonString = jsonString.replace("\n", "");
 
             // Convert the cleaned JSON string to a JsonNode
             JsonNode rootNode = objectMapper.readTree(jsonString);
             return rootNode;
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new IllegalArgumentException("Input does not have a json structure .");
         }
 
@@ -337,12 +337,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String extractedContent;
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
-        String encryptOutputJsonContent= action.getContext().get("pipeline.end.to.end.encryption");
+        String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        if(Objects.equals(encryptOutputJsonContent, "true")){
+        if (Objects.equals(encryptOutputJsonContent, "true")) {
             extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
-        }else {
+        } else {
             extractedContent = modelResponse.getInferResponse();
         }
 
@@ -552,6 +552,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     public Map<String, Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
             throws IOException {
         String json = jsonParser.getText();
@@ -561,14 +562,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         return objectMapper.readValue(json, Map.class);
     }
 
-    public String encryptRequestResponse(String request){
-        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
-        String requestStr ;
-        if("true".equals(encryptReqRes)){
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","PI_REQUEST");
-            requestStr=encryptedRequest;
-        }else {
-            requestStr=request;
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
         }
         return requestStr;
     }
