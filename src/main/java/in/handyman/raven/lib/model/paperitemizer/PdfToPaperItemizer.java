@@ -130,7 +130,7 @@ public class PdfToPaperItemizer {
                         HandymanException.insertException("Paper Itemize consumer failed for originId " + entity.getOriginId(), handymanException, action);
                         log.error("The Exception occurred in request {}", exception.getMessage(), exception);
                     }
-                    log.info("Itemized papers successfully created in folder: {}", targetDir.getAbsolutePath());
+                    log.info("Itemized papers successfully created in folder: {} ", targetDir.getAbsolutePath());
 
                 }
                 document.close();
