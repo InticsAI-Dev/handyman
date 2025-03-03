@@ -55,7 +55,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
     @Override
     public List<PaperItemizerOutputTable> process(URL endpoint, PaperItemizerInputTable entity) throws Exception {
-        log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
+        log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {} ", endpoint, entity.getFilePath());
 
 
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
