@@ -132,7 +132,7 @@ public class AzureAuthTokenSession {
         log.info("Entering moveToAuditTable() method");
 
         String moveQuery = "INSERT INTO audit.azure_auth_token_session_audit (session_token, token_created_date, expiration_date, token_created_by) " +
-                "SELECT session_token, token_created_date, token_created_date + INTERVAL '60 minutes', token_created_by FROM azure_auth_token_session";
+                "SELECT session_token, token_created_date, token_created_date + INTERVAL '60 minutes', token_created_by FROM audit.azure_auth_token_session";
 
         try (PreparedStatement ps = dbConnection.prepareStatement(moveQuery)) {
             int rowsAffected = ps.executeUpdate();
