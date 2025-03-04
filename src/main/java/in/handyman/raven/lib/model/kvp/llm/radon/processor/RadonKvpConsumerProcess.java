@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import in.handyman.raven.exception.HandymanException;
@@ -186,7 +187,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON))
                     .build();
-            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
+            coproResponseBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ",
                     TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
@@ -205,17 +206,40 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
      */
     private List<Map<String, Object>> parseJsonToList(String jsonString, String logIdentifier) {
         List<Map<String, Object>> resultList = new ArrayList<>();
-        if (jsonString != null && !jsonString.trim().isEmpty()) {
-            try {
-                resultList = mapper.readValue(jsonString, new TypeReference<>() {
-                });
-                log.info("Successfully parsed {} JSON: {} entries", logIdentifier, resultList.size());
-            } catch (Exception e) {
-                log.error("Error parsing {} JSON: {}", logIdentifier, e.getMessage(), e);
-            }
+        if (jsonString == null || jsonString.trim().isEmpty()) {
+            log.warn("{} JSON string is null or empty", logIdentifier);
+            return resultList;
+        }
+
+        // Try multiple parsing strategies
+        Exception lastException = new Exception();
+        try {
+            // The JSON string might already have escaped quotes (\"foo\":\"bar\")
+            // Try uncapping first, then parsing
+            String unescaped = jsonString
+                    .replace("\\\"", "\"")
+                    .replace("\\\\", "\\");
+
+            resultList = mapper.readValue(unescaped, new TypeReference<>() {
+            });
+            log.info("Successfully parsed {} JSON after unescaping: {} entries", logIdentifier, resultList.size());
+            return resultList;
+        } catch (Exception e) {
+            log.debug("Unescaped parsing failed: {}", e.getMessage());
+        }
+
+        // If we get here, all strategies failed
+        log.error("All parsing strategies failed for {} JSON. Last error: {}", logIdentifier, lastException.getMessage());
+
+        // For debugging, log a small portion of the problematic JSON
+        if (jsonString.length() > 150) {
+            log.debug("First 150 chars of problematic JSON: {}", jsonString.substring(0, 150));
+        } else {
+            log.debug("Problematic JSON: {}", jsonString);
         }
         return resultList;
     }
+
 
     /**
      * Process a prompt with placeholder replacement and base64 encoding if needed
@@ -351,18 +375,23 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        String extractedContent = modelResponse.getInferResponse();
+        JsonNode extractedContent = modelResponse.getInferResponse();
         String finalResponseJson = "{}";
+
+        ObjectMapper objectMapper = new ObjectMapper();
 
         if (extractedContent == null || extractedContent.isEmpty()) {
             throw new IOException("InferResponse is null or empty");
         }
 
         try {
-            // Parse the entire inferResponse JSON
-            JSONObject inferResponseObj = new JSONObject(extractedContent);
+            // Convert JsonNode to String before passing to JSONObject
+            String jsonString = objectMapper.writeValueAsString(extractedContent);
 
-            // Extract `finalResponse` and `visionResponse`
+            // Now create JSONObject from a valid JSON string
+            JSONObject inferResponseObj = new JSONObject(jsonString);
+
+            // Extract `finalResponse`
             if (inferResponseObj.has("finalResponse")) {
                 finalResponseJson = inferResponseObj.getJSONArray("finalResponse").toString();
             }
@@ -406,7 +435,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
 
-    private void coproResponseBuider(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
+    private void coproResponseBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -497,7 +526,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(tenantId)
                 .originId(originId)
                 .paperNo(paperNo)
-                .totalResponseJson(modelResponse.getInferResponse())
+                .totalResponseJson(String.valueOf(modelResponse.getInferResponse()))
                 .groupId(groupId)
                 .inputFilePath(processedFilePaths)
                 .actionId(action.getActionId())
