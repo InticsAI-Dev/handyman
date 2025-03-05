@@ -4,6 +4,9 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 
@@ -155,7 +158,7 @@ public class AzureAuthTokenSession {
         String updateQuery = "UPDATE audit.azure_auth_token_session SET session_token = ?, token_created_date = ?, token_created_by = ?";
 
         try (PreparedStatement updatePs = dbConnection.prepareStatement(updateQuery)) {
-            updatePs.setString(1, token);
+            updatePs.setString(1, encryptToken(token));
             updatePs.setTimestamp(2, Timestamp.from(Instant.now()));
             updatePs.setString(3, createdBy);
 
@@ -163,7 +166,7 @@ public class AzureAuthTokenSession {
             if (rowsUpdated == 0) {
                 String insertQuery = "INSERT INTO audit.azure_auth_token_session (session_token, token_created_date, token_created_by) VALUES (?, ?, ?)";
                 try (PreparedStatement insertPs = dbConnection.prepareStatement(insertQuery)) {
-                    insertPs.setString(1, token);
+                    insertPs.setString(1, encryptToken(token));
                     insertPs.setTimestamp(2, Timestamp.from(Instant.now()));
                     insertPs.setString(3, createdBy);
                     insertPs.executeUpdate();
@@ -179,10 +182,14 @@ public class AzureAuthTokenSession {
         log.info("Exiting storeNewToken() method");
     }
 
+    public String encryptToken(String token){
+        InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
+        String transformValueEncrypted = inticsIntegrity.encrypt(token, "AES256", "SQL_DATA");
+        return transformValueEncrypted;
+    }
     private boolean isTokenExpired(Instant createdTime) {
         return createdTime == null || Instant.now().isAfter(createdTime.plus(TOKEN_EXPIRY_LIMIT));
     }
-
     private AccessToken acquireNewToken() {
         log.info("Entering acquireNewToken() method");
 
