@@ -83,7 +83,7 @@ public class AlchemyAuthTokenAction implements IActionExecution {
                 JsonNode payload = responseNode.get("payload");
                 AlchemyLoginResponse alchemyLoginResponse = mapper.treeToValue(payload, AlchemyLoginResponse.class);
                 String authToken = alchemyLoginResponse.getToken();
-                System.out.println(authToken);
+
                 action.getContext().put(name.concat(".token"), authToken);
                 action.getContext().put(name.concat(".tenantId"), String.valueOf(alchemyLoginResponse.getTenantId()));
 
