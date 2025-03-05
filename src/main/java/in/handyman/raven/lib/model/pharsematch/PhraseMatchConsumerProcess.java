@@ -283,7 +283,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             List<PharseMatchDataItemCopro> phraseMatchOutputData = objectMapper.readValue(phraseMatchDataItem, new TypeReference<>() {
             });
 
-            String phraseMatchDataItemEnc=encryptRequestResponse(phraseMatchDataItem);
+            String phraseMatchDataItemEnc = encryptRequestResponse(phraseMatchDataItem);
 
 
             for (PharseMatchDataItemCopro item : phraseMatchOutputData) {
@@ -322,7 +322,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

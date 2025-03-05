@@ -275,7 +275,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
         String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

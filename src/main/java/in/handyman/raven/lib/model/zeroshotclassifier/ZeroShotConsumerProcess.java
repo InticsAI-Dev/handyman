@@ -262,7 +262,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try {
             ZeroShotClassifierDataItem zeroShotClassifierOutputData = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItem.class);
-            String zeroShotClassifierDataItemEnc=encryptRequestResponse(zeroShotClassifierDataItem);
+            String zeroShotClassifierDataItemEnc = encryptRequestResponse(zeroShotClassifierDataItem);
             zeroShotClassifierOutputData.getEntityConfidenceScore().forEach(score -> {
                 String truthEntity = score.getTruthEntity();
                 String key = score.getKey();
@@ -304,7 +304,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try {
             ZeroShotClassifierDataItemCopro zeroShotClassifierDataItemCopro = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItemCopro.class);
-            String zeroShotClassifierDataItemEnc=encryptRequestResponse(zeroShotClassifierDataItem);
+            String zeroShotClassifierDataItemEnc = encryptRequestResponse(zeroShotClassifierDataItem);
             zeroShotClassifierDataItemCopro.getEntityConfidenceScore().forEach(score -> {
                 String truthEntity = score.getTruthEntity();
                 String key = score.getKey();
@@ -344,7 +344,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "PI_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;
