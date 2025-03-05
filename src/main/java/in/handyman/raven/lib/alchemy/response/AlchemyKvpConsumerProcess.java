@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AlchemyKvpResponseAction;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpInputEntity;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpOutputEntity;
 import in.handyman.raven.util.ExceptionUtil;
@@ -36,7 +37,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private final int timeOut;
     private final String authToken;
-
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     public AlchemyKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AlchemyKvpResponseAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
@@ -89,7 +90,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                                         .processId(entity.getProcessId())
                                         .tenantId(tenantId)
                                         .groupId(entity.getGroupId())
-                                        .kvpResponse(String.valueOf(alchemyApiPayload.getPayload()))
+                                        .kvpResponse(encryptRequestResponse(String.valueOf(alchemyApiPayload.getPayload())))
                                         .alchemyOriginId(entity.getAlchemyOriginId())
                                         .pipelineOriginId(entity.getPipelineOriginId())
                                         .rootPipelineId(rootPipelineId)
@@ -122,5 +123,17 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         return parentObj;
+    }
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
+        }
+        return requestStr;
     }
 }

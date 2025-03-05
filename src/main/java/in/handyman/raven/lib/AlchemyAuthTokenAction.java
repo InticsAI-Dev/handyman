@@ -69,7 +69,7 @@ public class AlchemyAuthTokenAction implements IActionExecution {
                 .post(RequestBody.create(objectNode.toString(), MediaTypeJSON)).build();
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "The Request Details url {} , appID {} ", URI, user);
+            log.info(aMarker, "The Request Details url {} ", URI);
         }
 
         String name = "alchemyAuth";
@@ -77,7 +77,7 @@ public class AlchemyAuthTokenAction implements IActionExecution {
             assert response.body() != null;
             String responseBody = response.body().string();
             if (response.isSuccessful()) {
-                log.info(aMarker, "The Successful Response for {} --> {}", alchemyAuthToken.getName(), responseBody);
+                log.info(aMarker, "The Successful Response for {}", alchemyAuthToken.getName());
                 mapper.registerModule(new JavaTimeModule());
                 JsonNode responseNode = mapper.readTree(responseBody);
                 JsonNode payload = responseNode.get("payload");

@@ -41,6 +41,11 @@ public class AESEncryptionImpl implements InticsDataEncryptionApi {
             byte[] decodedKey = Base64.getDecoder().decode(secretKeyString);
             LOGGER.info("AES secret key successfully retrieved and decoded.");
 
+            if (decodedKey == null || decodedKey.length == 0) {
+                LOGGER.warn("Decoded AES key is empty after Base64 decoding. Returning an empty key.");
+                return new SecretKeySpec(new byte[32], "AES"); // Return an empty 256-bit key
+            }
+
             if (decodedKey.length != 32) {
                 LOGGER.error("Invalid AES-256 key length: {} bytes (expected: 32 bytes)", decodedKey.length);
                 throw new HandymanException("Invalid AES-256 key length. Expected 32 bytes (256 bits).");
