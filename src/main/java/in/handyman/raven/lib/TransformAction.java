@@ -100,7 +100,7 @@ public class TransformAction implements IActionExecution {
                             if (log.isDebugEnabled()) {
                                 log.debug(aMarker, "{}.count-{}", encryptedSqlToExecute, rowCount);
                                 log.debug(aMarker, "{}.stmtCount - {}", encryptedSqlToExecute, stmt.getUpdateCount());
-                                log.debug(aMarker, "{}.warnings - {}", encryptedSqlToExecute, warnings);
+//                                log.debug(aMarker, "{}.warnings - {}", encryptedSqlToExecute, warnings);
                                 log.info(aMarker, "Transform id# {}, executed script {} rows returned {}", statementId, encryptedSqlToExecute, rowCount);
                             }
 
