@@ -97,10 +97,13 @@ public class TransformAction implements IActionExecution {
                             var rowCount = stmt.executeUpdate(sqlToExecute);
                             var warnings = ExceptionUtil.completeSQLWarning(stmt.getWarnings());
                             addExecutionAudit(encryptedSqlToExecute, statementAudit, rowCount, startTime);
-                            log.debug(aMarker, "{}.count-{}", encryptedSqlToExecute, rowCount);
-                            log.debug(aMarker, "{}.stmtCount - {}", encryptedSqlToExecute, stmt.getUpdateCount());
-                            log.debug(aMarker, "{}.warnings - {}", encryptedSqlToExecute, warnings);
-                            log.info(aMarker, "Transform id# {}, executed script {} rows returned {}", statementId, encryptedSqlToExecute, rowCount);
+                            if (log.isDebugEnabled()) {
+                                log.debug(aMarker, "{}.count-{}", encryptedSqlToExecute, rowCount);
+                                log.debug(aMarker, "{}.stmtCount - {}", encryptedSqlToExecute, stmt.getUpdateCount());
+                                log.debug(aMarker, "{}.warnings - {}", encryptedSqlToExecute, warnings);
+                                log.info(aMarker, "Transform id# {}, executed script {} rows returned {}", statementId, encryptedSqlToExecute, rowCount);
+                            }
+
                             stmt.clearWarnings();
                         } catch (SQLSyntaxErrorException ex) {
                             log.error(aMarker, "Stopping execution, General Error executing sql for {} with for {}", encryptedSqlToExecute, ExceptionUtil.toString(ex));

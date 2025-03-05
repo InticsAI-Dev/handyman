@@ -353,7 +353,10 @@ public class LambdaEngine {
         logger.debug("actionContext Execution class {} instance created", macroName);
         CommandProxy.setTarget(actionContext, child, actionExecutionAudit.getContext());
         actionExecutionAudit.setActionName(actionContext.getName());
-        logger.debug("actionContext Execution context {}", actionContext);
+        if (logger.isDebugEnabled()) {
+            logger.debug("actionContext Execution context {}", actionContext.getName());
+//            logger.debug("actionContext Execution context {}", actionContext);
+        }
         actionExecutionAudit.setInput(MAPPER.convertValue(actionContext, JsonNode.class));
         HandymanActorSystemAccess.update(actionExecutionAudit);
 
