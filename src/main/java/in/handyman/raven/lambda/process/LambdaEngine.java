@@ -54,7 +54,7 @@ public class LambdaEngine {
      */
     public static PipelineExecutionAudit start(final LContext lContext) throws HandymanException {
 
-        log.info("the given request  => " + lContext);
+//        log.info("the given request  => " + lContext);
         final String hostName;
         try {
             hostName = InetAddress.getLocalHost().getHostAddress();
