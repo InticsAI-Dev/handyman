@@ -7,7 +7,8 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
-import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.Transform;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -58,11 +59,11 @@ public class TransformAction implements IActionExecution {
         log.info(aMarker, "Transform Action for {} has been started", transform.getName());
         final String dbSrc = transform.getOn();
         log.info(aMarker, "Transform action input variables id: {}, name: {}, source-database: {} ", actionExecutionAudit.getActionId(), transform.getName(), dbSrc);
-
-        boolean transfromSQLEncrypter = Boolean.parseBoolean(actionExecutionAudit.getContext().get("tranform.sql.encrypt.activator"));
+        InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
+        boolean transformSqlEncrypter = Boolean.parseBoolean(actionExecutionAudit.getContext().get("transform.sql.encrypt.activator"));
         List<String> transformValue = transform.getValue();
-        if (transfromSQLEncrypter) {
-            String transformValueEncrypted = SecurityEngine.getInticsIntegrityMethod(actionExecutionAudit).encrypt(transformValue.toString(), "AES256", "SQL_DATA");
+        if (transformSqlEncrypter) {
+            String transformValueEncrypted = inticsIntegrity.encrypt(transformValue.toString(), "AES256", "SQL_DATA");
             log.debug(aMarker, "Sql input post parameter ingestion \n {}", transformValueEncrypted);
         } else {
             log.debug(aMarker, "Sql input post parameter ingestion \n {}", transformValue);
@@ -78,14 +79,14 @@ public class TransformAction implements IActionExecution {
                     var sqlList = Boolean.TRUE.equals(transform.getFormat()) ? CommonQueryUtil.getFormattedQuery(givenQuery) : Collections.singletonList(givenQuery);
                     for (var sqlToExecute : sqlList) {
                         String encryptedSqlToExecute;
-                        if (transfromSQLEncrypter) {
-                            encryptedSqlToExecute = SecurityEngine.getInticsIntegrityMethod(actionExecutionAudit).encrypt(sqlToExecute, "AES256", "SQL_DATA");
+                        if (transformSqlEncrypter) {
+                            encryptedSqlToExecute = inticsIntegrity.encrypt(transformValue.toString(), "AES256", "SQL_DATA");
                         } else {
                             encryptedSqlToExecute = sqlToExecute;
                         }
 
                         LocalDateTime startTime = LocalDateTime.now();
-                        StatementExecutionAudit statementAudit = getStatementExecutionAudit(sqlToExecute, startTime);
+                        StatementExecutionAudit statementAudit = getStatementExecutionAudit(encryptedSqlToExecute, startTime);
 
                         if (sqlToExecute.startsWith("--")) {
                             log.error(aMarker, "Transform with id:{}, Skipping comment {}", actionExecutionAudit.getActionId(), encryptedSqlToExecute);
@@ -95,7 +96,7 @@ public class TransformAction implements IActionExecution {
                         try (final Statement stmt = connection.createStatement()) {
                             var rowCount = stmt.executeUpdate(sqlToExecute);
                             var warnings = ExceptionUtil.completeSQLWarning(stmt.getWarnings());
-                            addExecutionAudit(sqlToExecute, statementAudit, rowCount, startTime);
+                            addExecutionAudit(encryptedSqlToExecute, statementAudit, rowCount, startTime);
                             log.debug(aMarker, "{}.count-{}", encryptedSqlToExecute, rowCount);
                             log.debug(aMarker, "{}.stmtCount - {}", encryptedSqlToExecute, stmt.getUpdateCount());
                             log.debug(aMarker, "{}.warnings - {}", encryptedSqlToExecute, warnings);
