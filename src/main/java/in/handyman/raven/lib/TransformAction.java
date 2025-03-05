@@ -60,7 +60,7 @@ public class TransformAction implements IActionExecution {
         final String dbSrc = transform.getOn();
         log.info(aMarker, "Transform action input variables id: {}, name: {}, source-database: {} ", actionExecutionAudit.getActionId(), transform.getName(), dbSrc);
         InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
-        boolean transformSqlEncrypter = Boolean.parseBoolean(actionExecutionAudit.getContext().get("transform.sql.encrypt.activator"));
+        boolean transformSqlEncrypter = Boolean.parseBoolean(actionExecutionAudit.getContext().get("transform.sql.encryption.activator"));
         List<String> transformValue = transform.getValue();
         if (transformSqlEncrypter) {
             String transformValueEncrypted = inticsIntegrity.encrypt(transformValue.toString(), "AES256", "SQL_DATA");
@@ -116,8 +116,7 @@ public class TransformAction implements IActionExecution {
                     }
                     connection.commit();
 
-                    log.debug(aMarker, "Completed Transform id#{}, name#{}, dbSrc#{}, sqlList#{}", actionExecutionAudit.getActionId(), transform.getName()
-                            , dbSrc, sqlList);
+                    log.debug(aMarker, "Completed Transform id#{}, name#{}, dbSrc#{}", actionExecutionAudit.getActionId(), transform.getName(), dbSrc);
                 }
 
                 log.info(aMarker, "Transform Action for {} has been completed", transform.getName());
