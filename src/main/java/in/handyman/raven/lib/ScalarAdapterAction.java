@@ -183,7 +183,7 @@ public class ScalarAdapterAction implements IActionExecution {
 
                 if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
 
-                    log.info(aMarker, "Build 19- scalar executing  validator {}", result);
+                    log.info(aMarker, "Build 19- scalar executing  validator {} and item {} ", result.getOriginId(),result.getSorItemName());
 
 //                String inputValue = result.getInputValue();
                     Validator scrubbingInput = Validator.builder()
@@ -246,7 +246,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     }
 
                     resultQueue.add(result);
-                    log.info(aMarker, "executed  validator {}", result);
+                    log.info(aMarker, "executed  validator {} and {} ",result.getOriginId() ,result.getSorItemName());
 
                     if (resultQueue.size() == this.writeBatchSize) {
                         log.info(aMarker, "executing  batch {}", resultQueue.size());
@@ -332,7 +332,7 @@ public class ScalarAdapterAction implements IActionExecution {
                                 bindBean.execute();
                             } catch (Exception t) {
                                 insertSummaryAudit(jdbi, 0, 0, 1);
-                                log.error(aMarker, "error inserting result {}", resultQueue, t);
+                                log.error(aMarker, "error inserting result {} and  {}",insert.getOriginId() , insert.getSorItemName(), t);
                                 HandymanException handymanException = new HandymanException(t);
                                 HandymanException.insertException("Exception occurred in Scalar Computation consumer batch insert into adapter result for groupId" + insert.groupId, handymanException, action);
                             }

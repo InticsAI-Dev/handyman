@@ -169,7 +169,7 @@ public class KafkaPublishAction implements IActionExecution {
             try {
                 log.info("the kafka input data binding");
 
-                if (PropertyHandler.get("kafka.authentication.sasl.ssl.include").equals("certs")) {
+                if (ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.authentication.sasl.ssl.include")).equals("certs")) {
                     setAuthenticationPropertiesWithCerts(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
 
                 } else {
@@ -249,7 +249,7 @@ public class KafkaPublishAction implements IActionExecution {
 
     }
 
-    private static void setAuthenticationPropertiesWithCerts(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
+    private void setAuthenticationPropertiesWithCerts(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
         if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
             properties.put("security.protocol", SASL_SSL);
             if (saslMechanism.equalsIgnoreCase(PLAIN_SASL)) {
@@ -257,19 +257,19 @@ public class KafkaPublishAction implements IActionExecution {
 
                 String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
                 properties.put("sasl.jaas.config", jaasConfig);
-                properties.put("ssl.truststore.type", PropertyHandler.get("kafka.ssl.truststore.type"));
-                properties.put("ssl.keystore.type", PropertyHandler.get("kafka.ssl.keystore.type"));
-                properties.put("ssl.truststore.location", PropertyHandler.get("kafka.ssl.truststore.location"));
-                properties.put("ssl.truststore.password", PropertyHandler.get("kafka.ssl.truststore.password"));
-                properties.put("ssl.keystore.location", PropertyHandler.get("kafka.ssl.keystore.location"));
-                properties.put("ssl.keystore.password", PropertyHandler.get("kafka.ssl.keystore.password"));
-                properties.put("ssl.key.password", PropertyHandler.get("kafka.ssl.key.password"));
-                properties.put("ssl.endpoint.identification.algorithm", PropertyHandler.get("kafka.ssl.endpoint.identification.algorithm"));
-                properties.put(ProducerConfig.ACKS_CONFIG, PropertyHandler.get("kafka.ssl.acks"));
-                properties.put(ProducerConfig.RETRIES_CONFIG, PropertyHandler.get("kafka.ssl.api.retries"));
-                properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, PropertyHandler.get("kafka.ssl.request.timeout.ms"));
-                properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, PropertyHandler.get("kafka.ssl.delivery.timeout.ms"));  // 5 minutes
-                properties.put(ProducerConfig.LINGER_MS_CONFIG, PropertyHandler.get("kafka.ssl.linger.ms"));
+                properties.put("ssl.truststore.type", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.truststore.type")));
+                properties.put("ssl.keystore.type", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.keystore.type")));
+                properties.put("ssl.truststore.location", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.truststore.location")));
+                properties.put("ssl.truststore.password", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.truststore.password")));
+                properties.put("ssl.keystore.location", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.keystore.location")));
+                properties.put("ssl.keystore.password", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.keystore.password")));
+                properties.put("ssl.key.password", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.key.password")));
+                properties.put("ssl.endpoint.identification.algorithm", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.endpoint.identification.algorithm")));
+                properties.put(ProducerConfig.ACKS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.acks")));
+                properties.put(ProducerConfig.RETRIES_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.api.retries")));
+                properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.request.timeout.ms")));
+                properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.delivery.timeout.ms")));  // 5 minutes
+                properties.put(ProducerConfig.LINGER_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.linger.ms")));
             } else {
                 if (saslMechanism.equalsIgnoreCase(SCRAM_SHA_256)) {
                     properties.put(SASL_MECHANISM, SCRAM_SHA_256);
