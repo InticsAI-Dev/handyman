@@ -243,7 +243,7 @@ public class LambdaEngine {
         String actionName = actionExecutionAudit.getActionName();
         Long actionId = actionExecutionAudit.getActionId();
         try {
-            logger.info("Given name {} with id {}, context {}", actionName, actionId, actionExecutionAudit.getContext());
+            logger.info("Given name {} with id {}", actionName, actionId);
             final IActionExecution execution = load(actionContext, actionExecutionAudit);
             logger.info("Action execution has been started for action name {} with id {}", actionName, actionId);
             execute(execution, actionExecutionAudit);

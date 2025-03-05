@@ -114,11 +114,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
+            String jsonInputRequestEnc = encryptRequestResponse(jsonInputRequest);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequestEnc, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
+
+            String jsonRequestEnc = encryptRequestResponse(jsonRequest);
+            tritonRequestBuilder(entity, parentObj, request, jsonRequestEnc, endpoint);
         }
 
         return parentObj;
@@ -160,7 +163,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .tenantId(entity.getTenantId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .request(encryptRequestResponse(jsonRequest))
+                                .request(jsonRequest)
                                 .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
@@ -181,8 +184,8 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                             .tenantId(entity.getTenantId())
                             .createdOn(entity.getCreatedOn())
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .request(encryptRequestResponse(jsonRequest))
-                            .response("Error in Response")
+                            .request(jsonRequest)
+                            .response(encryptRequestResponse(exception.getMessage()))
                             .endpoint(String.valueOf(endpoint))
                             .build());
             log.error(aMarker, "Exception occurred in the zero shot classifier paper filter action {}", ExceptionUtil.toString(exception));
@@ -220,7 +223,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                                 .batchId(entity.getBatchId())
                                 .tenantId(entity.getTenantId())
                                 .createdOn(entity.getCreatedOn())
-                                .request(encryptRequestResponse(jsonInputRequest))
+                                .request(jsonInputRequest)
                                 .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
@@ -259,6 +262,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try {
             ZeroShotClassifierDataItem zeroShotClassifierOutputData = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItem.class);
+            String zeroShotClassifierDataItemEnc=encryptRequestResponse(zeroShotClassifierDataItem);
             zeroShotClassifierOutputData.getEntityConfidenceScore().forEach(score -> {
                 String truthEntity = score.getTruthEntity();
                 String key = score.getKey();
@@ -283,13 +287,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .tenantId(entity.getTenantId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                        .request(encryptRequestResponse(request))
-                        .response(encryptRequestResponse(response))
+                        .request(request)
+                        .response(zeroShotClassifierDataItemEnc)
                         .endpoint(endpoint)
                         .build());
             });
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Zero shot classifier paper filter action failed in response json processing - ", handymanException, action);
         }
     }
 
@@ -299,6 +304,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         try {
             ZeroShotClassifierDataItemCopro zeroShotClassifierDataItemCopro = objectMapper.readValue(zeroShotClassifierDataItem, ZeroShotClassifierDataItemCopro.class);
+            String zeroShotClassifierDataItemEnc=encryptRequestResponse(zeroShotClassifierDataItem);
             zeroShotClassifierDataItemCopro.getEntityConfidenceScore().forEach(score -> {
                 String truthEntity = score.getTruthEntity();
                 String key = score.getKey();
@@ -323,13 +329,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
                         .tenantId(entity.getTenantId())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                        .request(encryptRequestResponse(request))
-                        .response(encryptRequestResponse(response))
+                        .request(request)
+                        .response(zeroShotClassifierDataItemEnc)
                         .endpoint(endpoint)
                         .build());
             });
         } catch (JsonProcessingException e) {
-            throw new HandymanException("Error processing the response {}", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Zero shot classifier paper filter action failed in response json processing - ", handymanException, action);
         }
     }
 

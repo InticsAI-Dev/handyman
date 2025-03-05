@@ -104,11 +104,14 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
+
+            String jsonInputRequestEnc = encryptRequestResponse(jsonInputRequest);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequestEnc, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
+            String jsonInputRequestEnc = encryptRequestResponse(jsonRequest);
+            tritonRequestBuilder(entity, parentObj, request, jsonInputRequestEnc, endpoint);
         }
 
         return parentObj;
@@ -138,7 +141,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .request(encryptRequestResponse(jsonInputRequest))
+                                .request(jsonInputRequest)
                                 .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
@@ -179,6 +182,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
+
             if (response.isSuccessful()) {
                 ObjectMapper objectMapper = new ObjectMapper();
                 PharseMatchResponse modelResponse = objectMapper.readValue(responseBody, PharseMatchResponse.class);
@@ -194,12 +198,12 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .tenantId(tenantId)
                                     .paperNo(paperNo)
                                     .stage(PROCESS_NAME)
-                                    .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
+                                    .message(encryptRequestResponse(response.message()))
                                     .rootPipelineId(rootPipelineId)
                                     .batchId(entity.getBatchId())
                                     .createdOn(entity.getCreatedOn())
                                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                    .request(encryptRequestResponse(jsonRequest))
+                                    .request(jsonRequest)
                                     .response(encryptRequestResponse(response.message()))
                                     .endpoint(String.valueOf(endpoint))
                                     .build());
@@ -230,14 +234,15 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
+    private void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
         try {
-            List<PharseMatchDataItem> phraseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
+            List<PharseMatchDataItem> phraseMatchOutputData = objectMapper.readValue(phraseMatchDataItem, new TypeReference<>() {
 
             });
+            String phraseMatchDataItemEnc = encryptRequestResponse(phraseMatchDataItem);
 
             for (PharseMatchDataItem item : phraseMatchOutputData) {
                 parentObj.add(
@@ -259,8 +264,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(item.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .request(encryptRequestResponse(request))
-                                .response(encryptRequestResponse(response))
+                                .request(request)
+                                .response(phraseMatchDataItemEnc)
                                 .endpoint(endpoint)
                                 .build());
             }
@@ -277,6 +282,9 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         try {
             List<PharseMatchDataItemCopro> phraseMatchOutputData = objectMapper.readValue(phraseMatchDataItem, new TypeReference<>() {
             });
+
+            String phraseMatchDataItemEnc=encryptRequestResponse(phraseMatchDataItem);
+
 
             for (PharseMatchDataItemCopro item : phraseMatchOutputData) {
 
@@ -299,8 +307,8 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .response(encryptRequestResponse(response))
-                                .request(encryptRequestResponse(request))
+                                .response(phraseMatchDataItemEnc)
+                                .request(request)
                                 .endpoint(endpoint)
                                 .build());
             }
