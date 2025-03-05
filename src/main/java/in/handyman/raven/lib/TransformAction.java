@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.Transform;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -23,7 +24,6 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,52 +53,63 @@ public class TransformAction implements IActionExecution {
 
     @Override
     public void execute() {
-        List<StatementExecutionAudit> statementExecutionAudits=new ArrayList<>();
+        List<StatementExecutionAudit> statementExecutionAudits = new ArrayList<>();
 
-        log.info(aMarker, "Transform Action for {} has been started" , transform.getName());
+        log.info(aMarker, "Transform Action for {} has been started", transform.getName());
         final String dbSrc = transform.getOn();
         log.info(aMarker, "Transform action input variables id: {}, name: {}, source-database: {} ", actionExecutionAudit.getActionId(), transform.getName(), dbSrc);
-        log.debug(aMarker, "Sql input post parameter ingestion \n {}", transform.getValue());
+
+        boolean transfromSQLEncrypter = Boolean.parseBoolean(actionExecutionAudit.getContext().get("tranform.sql.encrypt.activator"));
+        List<String> transformValue = transform.getValue();
+        if (transfromSQLEncrypter) {
+            String transformValueEncrypted = SecurityEngine.getInticsIntegrityMethod(actionExecutionAudit).encrypt(transformValue.toString(), "AES256", "SQL_DATA");
+            log.debug(aMarker, "Sql input post parameter ingestion \n {}", transformValueEncrypted);
+        } else {
+            log.debug(aMarker, "Sql input post parameter ingestion \n {}", transformValue);
+        }
+
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbSrc);
         jdbi.useTransaction(handle -> {
             try {
                 final Connection connection = handle.getConnection();
                 connection.setAutoCommit(false);
-                for (String givenQuery : transform.getValue()) {
+                for (String givenQuery : transformValue) {
 
-                    var sqlList = transform.getFormat() ? CommonQueryUtil.getFormattedQuery(givenQuery) : Collections.singletonList(givenQuery);
+                    var sqlList = Boolean.TRUE.equals(transform.getFormat()) ? CommonQueryUtil.getFormattedQuery(givenQuery) : Collections.singletonList(givenQuery);
                     for (var sqlToExecute : sqlList) {
-                        LocalDateTime  startTime = LocalDateTime.now();
+                        String encryptedSqlToExecute;
+                        if (transfromSQLEncrypter) {
+                            encryptedSqlToExecute = SecurityEngine.getInticsIntegrityMethod(actionExecutionAudit).encrypt(sqlToExecute, "AES256", "SQL_DATA");
+                        } else {
+                            encryptedSqlToExecute = sqlToExecute;
+                        }
+
+                        LocalDateTime startTime = LocalDateTime.now();
                         StatementExecutionAudit statementAudit = getStatementExecutionAudit(sqlToExecute, startTime);
 
-                        if(sqlToExecute.startsWith("--")){
-                            log.error(aMarker, "Transform with id:{}, Skipping comment {}", actionExecutionAudit.getActionId(), sqlToExecute);
-
+                        if (sqlToExecute.startsWith("--")) {
+                            log.error(aMarker, "Transform with id:{}, Skipping comment {}", actionExecutionAudit.getActionId(), encryptedSqlToExecute);
                         }
-                        log.info(aMarker, "Transform with id:{}, executing script {}", actionExecutionAudit.getActionId(), sqlToExecute);
+                        log.info(aMarker, "Transform with id:{}, executing script {}", actionExecutionAudit.getActionId(), encryptedSqlToExecute);
                         final Long statementId = UniqueID.getId();
-                        //TODO
                         try (final Statement stmt = connection.createStatement()) {
                             var rowCount = stmt.executeUpdate(sqlToExecute);
                             var warnings = ExceptionUtil.completeSQLWarning(stmt.getWarnings());
                             addExecutionAudit(sqlToExecute, statementAudit, rowCount, startTime);
-                            log.debug(aMarker, sqlToExecute + ".count", rowCount);
-                            log.debug(aMarker, sqlToExecute + ".stmtCount", stmt.getUpdateCount());
-                            log.debug(aMarker, sqlToExecute + ".warnings", warnings);
-                            log.info(aMarker, "Transform id# {}, executed script {} rows returned {}", statementId, sqlToExecute, rowCount);
+                            log.debug(aMarker, "{}.count-{}", encryptedSqlToExecute, rowCount);
+                            log.debug(aMarker, "{}.stmtCount - {}", encryptedSqlToExecute, stmt.getUpdateCount());
+                            log.debug(aMarker, "{}.warnings - {}", encryptedSqlToExecute, warnings);
+                            log.info(aMarker, "Transform id# {}, executed script {} rows returned {}", statementId, encryptedSqlToExecute, rowCount);
                             stmt.clearWarnings();
                         } catch (SQLSyntaxErrorException ex) {
-                            log.error(aMarker, "Stopping execution, General Error executing sql for {} with for {}", sqlToExecute, ExceptionUtil.toString(ex));
-                            //log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
-                            throw new HandymanException("Transform failed for statement "+statementId, ex, actionExecutionAudit);
+                            log.error(aMarker, "Stopping execution, General Error executing sql for {} with for {}", encryptedSqlToExecute, ExceptionUtil.toString(ex));
+                            throw new HandymanException("Transform failed for statement " + statementId, ex, actionExecutionAudit);
                         } catch (SQLException ex) {
-                            log.error(aMarker, "Continuing to execute, even though SQL Error executing sql for {} ", sqlToExecute, ex);
-                           // log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
-                            throw new HandymanException("Transform failed for statement "+statementId, ex, actionExecutionAudit);
+                            log.error(aMarker, "Continuing to execute, even though SQL Error executing sql for {} ", encryptedSqlToExecute, ex);
+                            throw new HandymanException("Transform failed for statement " + statementId, ex, actionExecutionAudit);
                         } catch (Exception ex) {
-                            log.error(aMarker, "Stopping execution, General Error executing sql for {} with for {}", sqlToExecute, ExceptionUtil.toString(ex));
-                            //log.error(aMarker, sqlToExecute + ".exception", ExceptionUtil.toString(ex));
-                            throw new HandymanException("Transform failed for statement "+statementId, ex, actionExecutionAudit);
+                            log.error(aMarker, "Stopping execution, General Error executing sql for {} with for {}", encryptedSqlToExecute, ExceptionUtil.toString(ex));
+                            throw new HandymanException("Transform failed for statement " + statementId, ex, actionExecutionAudit);
                         }
                         statementExecutionAudits.add(statementAudit);
                     }
@@ -108,11 +119,10 @@ public class TransformAction implements IActionExecution {
                             , dbSrc, sqlList);
                 }
 
-                log.info(aMarker, "Transform Action for {} has been completed" , transform.getName());
+                log.info(aMarker, "Transform Action for {} has been completed", transform.getName());
             } catch (SQLException ex) {
                 log.error(aMarker, "Stopping execution, Fetching connection failed", ex);
-                //log.error(aMarker, "connection.exception {}", ExceptionUtil.toString(ex));
-                throw new HandymanException("Transform failed for action "+actionExecutionAudit.getActionId(), ex, actionExecutionAudit);
+                throw new HandymanException("Transform failed for action " + actionExecutionAudit.getActionId(), ex, actionExecutionAudit);
             }
         });
         insertCompletionIntoStatementAudit(statementExecutionAudits);
@@ -130,7 +140,7 @@ public class TransformAction implements IActionExecution {
 
     @NotNull
     private StatementExecutionAudit getStatementExecutionAudit(String sqlToExecute, LocalDateTime startTime) {
-        StatementExecutionAudit statementAudit =new StatementExecutionAudit();
+        StatementExecutionAudit statementAudit = new StatementExecutionAudit();
         statementAudit.setRootPipelineId(actionExecutionAudit.getRootPipelineId());
         statementAudit.setActionId(actionExecutionAudit.getActionId());
         statementAudit.setStatementContent(sqlToExecute);
@@ -141,7 +151,7 @@ public class TransformAction implements IActionExecution {
     }
 
     private void insertCompletionIntoStatementAudit(List<StatementExecutionAudit> statementExecutionAudits) {
-        statementExecutionAudits.forEach(statementExecutionAudit -> HandymanActorSystemAccess.insert(statementExecutionAudit));
+        statementExecutionAudits.forEach(HandymanActorSystemAccess::insert);
     }
 
 
