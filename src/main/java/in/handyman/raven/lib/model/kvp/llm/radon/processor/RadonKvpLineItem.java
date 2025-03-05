@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,11 +16,8 @@ import java.util.Map;
 @Builder
 public class RadonKvpLineItem {
     private String model;
-    @JsonProperty("infer_response")
-    private String inferResponse;
-    @JsonProperty("confidence_score")
-    private Integer confidenceScore;
-    private String bboxes;
+    @JsonProperty("inferResponse")
+    private JsonNode inferResponse;
     private String originId;
     private Integer paperNo;
     private Long processId;
