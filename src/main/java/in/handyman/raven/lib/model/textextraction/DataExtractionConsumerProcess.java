@@ -302,7 +302,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateId = entity.getTemplateId();
         parentObj.add(DataExtractionOutputTable.builder()
                 .filePath(entity.getFilePath())
-                .extractedText(encryptRequestResponse(extractedContent))
+                .extractedText(extractedContent)
                 .originId(dataExtractionDataItem.getOriginId())
                 .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
                 .paperNo(dataExtractionDataItem.getPaperNo())

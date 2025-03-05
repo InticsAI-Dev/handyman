@@ -55,15 +55,15 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String pageContent = String.valueOf(entity.getPageContent());
         String batchId = entity.getBatchId();
 
-        String extractedContent;
+        String decryptedContent;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
 
         if (Objects.equals(encryptSotPageContent, "true")) {
-            extractedContent = encryption.decrypt(pageContent, "AES256", "PM_TEXT_INPUT");
+            decryptedContent = encryption.decrypt(pageContent, "AES256", "PM_TEXT_INPUT");
         } else {
-            extractedContent = pageContent;
+            decryptedContent = pageContent;
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -78,7 +78,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setOriginId(originId);
         data.setPaperNo(Long.valueOf(paperNo));
         data.setGroupId(groupId);
-        data.setPageContent(extractedContent);
+        data.setPageContent(decryptedContent);
         data.setKeysToFilter(keysToFilterObject);
         data.setProcess(PROCESS_NAME);
         data.setBatchId(batchId);
