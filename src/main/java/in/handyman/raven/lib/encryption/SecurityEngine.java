@@ -12,13 +12,11 @@ import org.slf4j.LoggerFactory;
 public class SecurityEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecurityEngine.class);
-    private static final String PROTEGRITY_ENC_API_URL = PropertyHandler.get("protegrity.enc.api.url");
-    private static final String PROTEGRITY_DEC_API_URL = PropertyHandler.get("protegrity.dec.api.url");
 
     public static InticsIntegrity getInticsIntegrityMethod(final ActionExecutionAudit action) {
         String methodName = action.getContext().getOrDefault("pipeline.encryption.default.holder", "");
-        String encryptionUrl = action.getContext().getOrDefault("protegrity.enc.api.url", PROTEGRITY_ENC_API_URL);
-        String decryptionUrl = action.getContext().getOrDefault("protegrity.dec.api.url", PROTEGRITY_DEC_API_URL);
+        String encryptionUrl = action.getContext().get("protegrity.enc.api.url");
+        String decryptionUrl = action.getContext().get("protegrity.dec.api.url");
 
         LOGGER.info("Initializing encryption method: {}", methodName);
 
