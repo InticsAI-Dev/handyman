@@ -7,11 +7,13 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.model.PaperItemizer;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopro;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
+import in.handyman.raven.lib.model.paperitemizer.PdfToPaperItemizer;
 import okhttp3.*;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -26,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProcess<PaperItemizerInputTable, PaperItemizerOutputTable> {
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String modelRegistry = "paper.itemizer.model.name";
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
     public static final String PAPER_ITERATOR_START = "PAPER ITERATOR START";
     private final Logger log;
@@ -45,7 +48,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     private final String processBase64;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
-    public PaperItemizerConsumerProcess(Logger log, Marker aMarker, String outputDir, FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action, String processBase64) {
+    private final PaperItemizer paperItemizer;
+
+    public PaperItemizerConsumerProcess(Logger log, Marker aMarker, String outputDir, FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action, String processBase64, PaperItemizer paperItemizer) {
         this.log = log;
         this.aMarker = aMarker;
         this.outputDir = outputDir;
@@ -53,67 +58,20 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         this.action = action;
 
         this.processBase64 = processBase64;
+        this.paperItemizer = paperItemizer;
     }
 
     @Override
     public List<PaperItemizerOutputTable> process(URL endpoint, PaperItemizerInputTable entity) throws Exception {
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
 
-
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
-        String inputFilePath = entity.getFilePath();
-        Long rootPipelineId = entity.getRootPipelineId();
-        Long actionId = action.getActionId();
-        String originId = entity.getOriginId();
-        Integer groupId = entity.getGroupId();
-        String batchId = entity.getBatchId();
-        String processId = String.valueOf(entity.getProcessId());
-        Long tenantId = entity.getTenantId();
-        ObjectMapper objectMapper = new ObjectMapper();
-//payload
-        PaperItemizerData paperitemizerData = new PaperItemizerData();
-        paperitemizerData.setOriginId(originId);
-        paperitemizerData.setGroupId(groupId);
-        paperitemizerData.setProcessId(Long.valueOf(processId));
-        paperitemizerData.setTenantId(tenantId);
-        paperitemizerData.setRootPipelineId(rootPipelineId);
-        paperitemizerData.setProcess(PROCESS_NAME);
-        paperitemizerData.setInputFilePath(inputFilePath);
-        paperitemizerData.setOutputDir(this.outputDir);
-        paperitemizerData.setActionId(actionId);
-        paperitemizerData.setBatchId(batchId);
 
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
-
-        if (Objects.equals("false", tritonRequestActivator)) {
-            String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
-            coproRequestBuilder(entity, request, objectMapper, parentObj, jsonInputRequest, endpoint);
-        } else {
-            if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-                paperitemizerData.setBase64Img(fileProcessingUtils.convertFileToBase64(inputFilePath));
-
-            }
-            String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
-
-            TritonRequest requestBody = new TritonRequest();
-            requestBody.setName(PAPER_ITERATOR_START);
-            requestBody.setShape(List.of(1, 1));
-            requestBody.setDatatype(TritonDataTypes.BYTES.name());
-            requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-            TritonInputRequest tritonInputRequest = new TritonInputRequest();
-            tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
-
-            String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
-
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
-            tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
+        if (Objects.equals(action.getContext().get(modelRegistry), ModelRegistry.ARGON.name())) {
+            parentObj = paperItemizationCoproApi(entity, action, endpoint, paperItemizer.getOutputDir());
+        }else if(Objects.equals(action.getContext().get(modelRegistry), ModelRegistry.XENON.name())){
+            parentObj= PdfToPaperItemizer.paperItemizer(entity.getFilePath(),paperItemizer.getOutputDir() , action, log, entity);
         }
-
 
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with entity {}", endpoint, entity.getFilePath());
@@ -130,8 +88,8 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         Long tenantId = entity.getTenantId();
         Long processId = entity.getProcessId();
         String batchId = entity.getBatchId();
-        try (Response response = httpclient.newCall(request).execute()) {
 
+        try (Response response = httpclient.newCall(request).execute()) {
 
             if (response.isSuccessful()) {
                 if (log.isInfoEnabled()) {
@@ -432,5 +390,63 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         }
         return requestStr;
     }
+
+    private List<PaperItemizerOutputTable> paperItemizationCoproApi(PaperItemizerInputTable entity, ActionExecutionAudit action,URL endpoint, String outputDir) throws IOException {
+        List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
+        String inputFilePath = entity.getFilePath();
+        Long rootPipelineId = entity.getRootPipelineId();
+        Long actionId = action.getActionId();
+        String originId = entity.getOriginId();
+        Integer groupId = entity.getGroupId();
+        String batchId = entity.getBatchId();
+        String processId = String.valueOf(entity.getProcessId());
+        Long tenantId = entity.getTenantId();
+        ObjectMapper objectMapper = new ObjectMapper();
+//payload
+        PaperItemizerData paperitemizerData = new PaperItemizerData();
+        paperitemizerData.setOriginId(originId);
+        paperitemizerData.setGroupId(groupId);
+        paperitemizerData.setProcessId(Long.valueOf(processId));
+        paperitemizerData.setTenantId(tenantId);
+        paperitemizerData.setRootPipelineId(rootPipelineId);
+        paperitemizerData.setProcess(PROCESS_NAME);
+        paperitemizerData.setInputFilePath(inputFilePath);
+        paperitemizerData.setOutputDir(outputDir);
+        paperitemizerData.setActionId(actionId);
+        paperitemizerData.setBatchId(batchId);
+
+        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
+
+        if (Objects.equals("false", tritonRequestActivator)) {
+            String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
+            Request request = new Request.Builder().url(endpoint)
+                    .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
+            coproRequestBuilder(entity, request, objectMapper, parentObj, jsonInputRequest, endpoint);
+        } else {
+            if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+                paperitemizerData.setBase64Img(fileProcessingUtils.convertFileToBase64(inputFilePath));
+
+            }
+            String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
+
+            TritonRequest requestBody = new TritonRequest();
+            requestBody.setName(PAPER_ITERATOR_START);
+            requestBody.setShape(List.of(1, 1));
+            requestBody.setDatatype(TritonDataTypes.BYTES.name());
+            requestBody.setData(Collections.singletonList(jsonInputRequest));
+
+            TritonInputRequest tritonInputRequest = new TritonInputRequest();
+            tritonInputRequest.setInputs(Collections.singletonList(requestBody));
+
+
+            String jsonRequest = objectMapper.writeValueAsString(tritonInputRequest);
+
+            Request request = new Request.Builder().url(endpoint)
+                    .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
+            tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
+        }
+            return parentObj;
+    }
+
 
 }

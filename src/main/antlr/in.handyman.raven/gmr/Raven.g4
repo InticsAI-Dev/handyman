@@ -177,6 +177,7 @@ action:
     |kafkaPublish
     |folderDeleteByProcess
     |decryptInticsEnc
+    |controlDataComparison
     );
 
 
@@ -1364,6 +1365,14 @@ decryptInticsEnc:
     'using' '{'
             querySet=STRING
   '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
+
+controlDataComparison:
+    'controlDataComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 
 //rules
