@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.AssetInfo;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -57,6 +58,7 @@ public class AssetInfoAction implements IActionExecution {
     private final Marker aMarker;
 
     private final Integer writeBatchSize = 1000;
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
     public AssetInfoAction(final ActionExecutionAudit action, final Logger log,
                            final Object assetInfo) {
@@ -202,7 +204,7 @@ public class AssetInfoAction implements IActionExecution {
                     .fileSize(String.valueOf(fileSize))
                     .rootPipelineId(Long.valueOf(action.getContext().get("pipeline-id")))
                     .processId(Long.valueOf(action.getContext().get("process-id")))
-                    .encode(base64ForPathValue)
+                    .encode(encryptRequestResponse(base64ForPathValue))
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
@@ -265,6 +267,19 @@ public class AssetInfoAction implements IActionExecution {
             HandymanException.insertException("error inserting into batch insert audit", handymanException, action);
 
         }
+    }
+
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
+        }
+        return requestStr;
     }
 
     public String getBase64ForPath(String imagePath, String fileExtension) throws IOException {
