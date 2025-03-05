@@ -175,6 +175,8 @@ action:
     |radonKvpBbox
     |dockerInspect
     |kafkaPublish
+    |folderDeleteByProcess
+    |controlDataComparison
     );
 
 
@@ -1119,6 +1121,14 @@ multipartFolderDelete:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+folderDeleteByProcess:
+    'folderDeleteByProcess' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'cleanup-process-name' cleanupProcessName=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
 systemkeyTable:
     'systemkeyTable' 'as' name=STRING
     'resoruce-conn' resourceConn=STRING
@@ -1345,6 +1355,14 @@ kafkaPublish:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*;
+
+controlDataComparison:
+    'controlDataComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 
 //rules

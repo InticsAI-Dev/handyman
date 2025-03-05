@@ -1,20 +1,27 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
+import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
+import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
 import in.handyman.raven.lambda.process.HRequestResolver;
 import in.handyman.raven.lambda.process.LContext;
 import in.handyman.raven.lib.model.CallProcess;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,21 +51,24 @@ public class CallProcessAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "Call Process Action for {} has been started" , callProcess.getName());
+        log.info(aMarker, "Call Process Action for {} has been started", callProcess.getName());
         final String fileRelativePath = callProcess.getSource();
         var targetProcess = callProcess.getTarget();
         var dbSrc = callProcess.getDatasource();
         var sql = callProcess.getValue().replaceAll("\"", "");
         log.info(aMarker, " id#{}, name#{}, calledProcess#{}, calledFile#{}, db=#{}", actionExecutionAudit.getActionId(), callProcess.getName(), targetProcess, fileRelativePath, dbSrc);
 
-        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbSrc);
+        Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbSrc);
         var runContext = new ArrayList<LContext>();
         final Map<String, String> context = actionExecutionAudit.getContext();
         try {
+            jdbi = checkJDBIConnection(jdbi);
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sql);
                 formattedQuery.forEach(sqlToExecute -> {
                     log.info(aMarker, "Execution query sql#{} on db=#{}", sqlToExecute, dbSrc);
+                    LocalDateTime  startTime = LocalDateTime.now();
+                    StatementExecutionAudit statementAudit = getStatementExecutionAudit(sqlToExecute, startTime);
                     handle.createQuery(sqlToExecute).mapToMap().forEach(stringObjectMap -> {
                         stringObjectMap.forEach((s, o) -> {
                             context.put(s, String.valueOf(o));
@@ -78,11 +88,13 @@ public class CallProcessAction implements IActionExecution {
                                 .build();
                         runContext.add(lContext);
                     });
+                    addExecutionAudit(sqlToExecute,statementAudit,runContext.size(),startTime);
                 });
+
             });
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute call process action for call process "+ callProcess.getName(), e, actionExecutionAudit);
+            throw new HandymanException("Failed to execute call process action for call process " + callProcess.getName(), e, actionExecutionAudit);
         }
 
         log.info(aMarker, "Completed name#{}, calledProcess#{}, calledFile#{}, db=#{}", callProcess.getName(), targetProcess, fileRelativePath, dbSrc);
@@ -120,7 +132,40 @@ public class CallProcessAction implements IActionExecution {
             throw new HandymanException("Failed to execute", e, actionExecutionAudit);
         }
 
-        log.info(aMarker, "Call Process Action for {} has been Completed" , callProcess.getName());
+        log.info(aMarker, "Call Process Action for {} has been Completed", callProcess.getName());
+    }
+
+    @NotNull
+    private StatementExecutionAudit getStatementExecutionAudit(String sqlToExecute, LocalDateTime startTime) {
+        StatementExecutionAudit statementAudit =new StatementExecutionAudit();
+        statementAudit.setRootPipelineId(actionExecutionAudit.getRootPipelineId());
+        statementAudit.setActionId(actionExecutionAudit.getActionId());
+        statementAudit.setStatementContent(sqlToExecute);
+        statementAudit.setCreatedBy(actionExecutionAudit.getCreatedBy());
+        statementAudit.setLastModifiedBy(actionExecutionAudit.getLastModifiedBy());
+        statementAudit.setCreatedDate(startTime);
+        return statementAudit;
+    }
+
+
+    private static void addExecutionAudit(String sqlToExecute, StatementExecutionAudit statementAudit, int rowCount, LocalDateTime startTime) {
+        statementAudit.setRowsProcessed(rowCount);
+        statementAudit.setStatementContent(sqlToExecute);
+        statementAudit.setLastModifiedDate(LocalDateTime.now());
+        statementAudit.setTimeTaken(Duration.between(startTime, LocalDateTime.now()).toMillis() / 1000.0);
+        HandymanActorSystemAccess.insert(statementAudit);
+    }
+
+    public Jdbi checkJDBIConnection(Jdbi jdbi) {
+        try (var ignored = jdbi.open()) {
+            log.info("Jdbi connection is open, initiating the transaction");
+            return jdbi;
+        } catch (Exception e) {
+            log.error("Jdbi connection is closed, recreating the connection");
+            jdbi = HandymanRepoImpl.getDatabaseConnectionByConnectionType();
+            log.info("Recreated the connection");
+            return jdbi;
+        }
     }
 
 

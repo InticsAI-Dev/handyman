@@ -105,7 +105,7 @@ public class PaperItemizerAction implements IActionExecution {
             coproProcessor.startProducer(paperItemizer.getQuerySet(), readBatchSize);
             log.info(aMarker, "paper itemizer copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new PaperItemizerConsumerProcess(log, aMarker, outputDir, fileProcessingUtils, action, processBase64));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new PaperItemizerConsumerProcess(log, aMarker, outputDir, fileProcessingUtils, action, processBase64, paperItemizer));
             log.info(aMarker, "paper itemizer copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
 
         } catch (Exception ex) {

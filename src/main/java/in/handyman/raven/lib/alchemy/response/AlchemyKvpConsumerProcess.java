@@ -57,7 +57,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
     public List<AlchemyKvpOutputEntity> process(URL endpoint, AlchemyKvpInputEntity entity) throws Exception {
 
 
-        log.info(aMarker, " Alchemy cosumer process Started for origin id {}", entity.getAlchemyOriginId());
+         log.info(aMarker, " Alchemy consumer process Started for origin id {}", entity.getAlchemyOriginId());
 
         List<AlchemyKvpOutputEntity> parentObj = new ArrayList<>();
         String originId = entity.getAlchemyOriginId();

@@ -9,7 +9,6 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.process.HRequestResolver;
 import in.handyman.raven.lib.model.KafkaPublish;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.EncryptDecrypt;
@@ -21,7 +20,6 @@ import lombok.NoArgsConstructor;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -53,6 +51,13 @@ public class KafkaPublishAction implements IActionExecution {
 
     private final Marker aMarker;
     private ObjectMapper objectMapper;
+    private static final String SASL_MECHANISM = "sasl.mechanism";
+    private static final String SASL_SSL = "SASL_SSL";
+    private static final String SCRAM_SHA_256 = "SCRAM-SHA-256";
+    private static final String OAUTH_BEARER = "OAUTHBEARER";
+    private static final String PLAIN_SASL = "PLAIN";
+    private static final String AES_ENCRYPTION = "AES";
+    private static final String FAILED_STATUS = "FAILED";
 
     public KafkaPublishAction(final ActionExecutionAudit action, final Logger log,
                               final Object kafkaPublish) {
@@ -62,13 +67,6 @@ public class KafkaPublishAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" KafkaPublish:" + this.kafkaPublish.getName());
     }
 
-    private static final String SASL_MECHANISM = "sasl.mechanism";
-    private static final String SASL_SSL = "SASL_SSL";
-    private static final String SCRAM_SHA_256 = "SCRAM-SHA-256";
-    private static final String OAUTH_BEARER = "OAUTHBEARER";
-    private static final String PLAIN_SASL = "PLAIN";
-    private static final String AES_ENCRYPTION = "AES";
-    private static final String FAILED_STATUS = "FAILED";
 
     @Override
     public void execute() throws Exception {
@@ -79,7 +77,7 @@ public class KafkaPublishAction implements IActionExecution {
             final List<KafkaPublishQueryInput> kafkaPublishQueryInputs = new ArrayList<>();
 
             String outputTable = kafkaPublish.getOutputTable();
-            jdbi.useTransaction(handle -> handle.execute("create table if not exists product_outbound." + outputTable + " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
+            jdbi.useTransaction(handle -> handle.execute("create table if not exists " + outputTable + " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaPublish.getQuerySet());
@@ -139,15 +137,9 @@ public class KafkaPublishAction implements IActionExecution {
             try {
 
 
-                ObjectNode objectNode = objectMapper.createObjectNode();
-                objectNode.put("documentId", documentId);
-                objectNode.put("checksum", fileChecksum);
-                objectNode.put("transactionId", transactionId);
-                objectNode.set("extractionResponse", productJson);
-
                 String messageNode;
                 try {
-                    messageNode = objectMapper.writeValueAsString(objectNode);
+                    messageNode = objectMapper.writeValueAsString(productJson);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
                     insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
@@ -188,7 +180,13 @@ public class KafkaPublishAction implements IActionExecution {
                 String encryptionType = kafkaPublishQueryInput.getEncryptionType();
                 String encryptionKey = kafkaPublishQueryInput.getEncryptionKey();
 
-                setAuthenticationProperties(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+                if(PropertyHandler.get("kafka.authentication.sasl.ssl.include").equals("certs")){
+                    setAuthenticationPropertiesWithCerts(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+
+                }else {
+                    setAuthenticationProperties(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
+
+                }
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
                 log.info( "creating the kafka instance");
 
@@ -196,15 +194,9 @@ public class KafkaPublishAction implements IActionExecution {
 //                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
 //            }
 
-                ObjectNode objectNode = objectMapper.createObjectNode();
-                objectNode.put("documentId", documentId);
-                objectNode.put("checksum", fileChecksum);
-                objectNode.put("transactionId", transactionId);
-                objectNode.set("extractionResponse", productJson);
-
                 String messageNode;
                 try {
-                    messageNode = objectMapper.writeValueAsString(objectNode);
+                    messageNode = objectMapper.writeValueAsString(productJson);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
                     insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, e.getMessage(), -1, FAILED_STATUS, transactionId);
@@ -214,7 +206,7 @@ public class KafkaPublishAction implements IActionExecution {
 
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
-                log.info( "sending the topic and outputjson");
+                log.info( "sending the topic and output json");
 
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
@@ -244,7 +236,7 @@ public class KafkaPublishAction implements IActionExecution {
                                      String batchId, String topicName, String endpoint, String authSecurityProtocol,
                                      String saslMechanism, String response, int partition, String executionStatus, String transactionId) {
 
-        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO product_outbound." + outputTable + "(document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
+        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + "(document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
                         "VALUES(:documentId, :checksum, :tenantId, :originId, :batchId, :topicName, :endpoint, :authSecurityProtocol, :saslMechanism, :response, :partition, :execStatus, :transactionId);")
                 .bind("documentId", documentId)
                 .bind("checksum", checksum)
@@ -268,6 +260,54 @@ public class KafkaPublishAction implements IActionExecution {
         return message;
 
     }
+
+    private static void setAuthenticationPropertiesWithCerts(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
+        if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
+            properties.put("security.protocol", SASL_SSL);
+            if (saslMechanism.equalsIgnoreCase(PLAIN_SASL)) {
+                properties.put(SASL_MECHANISM, PLAIN_SASL);
+
+                String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
+                properties.put("sasl.jaas.config", jaasConfig);
+                properties.put("ssl.truststore.type", PropertyHandler.get("kafka.ssl.truststore.type"));
+                properties.put("ssl.keystore.type", PropertyHandler.get("kafka.ssl.keystore.type"));
+                properties.put("ssl.truststore.location", PropertyHandler.get("kafka.ssl.truststore.location"));
+                properties.put("ssl.truststore.password", PropertyHandler.get("kafka.ssl.truststore.password"));
+                properties.put("ssl.keystore.location", PropertyHandler.get("kafka.ssl.keystore.location"));
+                properties.put("ssl.keystore.password", PropertyHandler.get("kafka.ssl.keystore.password"));
+                properties.put("ssl.key.password", PropertyHandler.get("kafka.ssl.key.password"));
+                properties.put("ssl.endpoint.identification.algorithm",PropertyHandler.get("kafka.ssl.endpoint.identification.algorithm"));
+                properties.put(ProducerConfig.ACKS_CONFIG, PropertyHandler.get("kafka.ssl.acks"));
+                properties.put(ProducerConfig.RETRIES_CONFIG, PropertyHandler.get("kafka.ssl.api.retries"));
+                properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, PropertyHandler.get("kafka.ssl.request.timeout.ms"));
+                properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, PropertyHandler.get("kafka.ssl.delivery.timeout.ms"));  // 5 minutes
+                properties.put(ProducerConfig.LINGER_MS_CONFIG, PropertyHandler.get("kafka.ssl.linger.ms"));
+            } else {
+                if (saslMechanism.equalsIgnoreCase(SCRAM_SHA_256)) {
+                    properties.put(SASL_MECHANISM, SCRAM_SHA_256);
+                    String jaasConfig = String.format("org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";", userName, password);
+                    properties.put("sasl.jaas.config", jaasConfig);
+                } else {
+                    if (saslMechanism.equalsIgnoreCase(OAUTH_BEARER)) {
+                        properties.put(SASL_MECHANISM, OAUTH_BEARER);
+                        properties.put("sasl.login.callback.handler.class", "your.oauth.LoginCallbackHandler");
+                    }
+                }
+            }
+        } else if (authSecurityProtocol.equalsIgnoreCase("SASL_PLAINTEXT")) {
+            properties.put("security.protocol", "SASL_PLAINTEXT");
+            properties.put(SASL_MECHANISM, PLAIN_SASL);
+            String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
+            properties.put("sasl.jaas.config", jaasConfig);
+//            properties.put("sasl.jaas.config",
+//                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+//                            "username=\"" + userName + "\" " +
+//                            "password=\"" + password + "\";");
+
+        }
+    }
+
+
 
     private static void setAuthenticationProperties(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
         if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
