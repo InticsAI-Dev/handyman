@@ -8,9 +8,9 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
 import in.handyman.raven.lib.alchemy.common.BoundingBox;
 import in.handyman.raven.lib.alchemy.common.Feature;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.AlchemyResponse;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -18,11 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -37,7 +33,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -57,6 +55,7 @@ public class AlchemyResponseAction implements IActionExecution {
     private final AlchemyResponse alchemyResponse;
 
     private final Marker aMarker;
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
     public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log,
                                  final Object alchemyResponse) {
@@ -91,8 +90,7 @@ public class AlchemyResponseAction implements IActionExecution {
 
             List<AlchemyResponseInputTable> tableInfos = getDataFromSelectQuery(jdbi);
 
-            process(url,tableInfos, tenantId,authToken, mapper, mediaTypeJSON, httpclient,jdbi);
-
+            process(url, tableInfos, tenantId, authToken, mapper, mediaTypeJSON, httpclient, jdbi);
 
 
         } catch (Exception t) {
@@ -107,7 +105,7 @@ public class AlchemyResponseAction implements IActionExecution {
     }
 
     private List<AlchemyResponseInputTable> getDataFromSelectQuery(Jdbi jdbi) {
-        List<AlchemyResponseInputTable> tableInfos =new ArrayList<>();
+        List<AlchemyResponseInputTable> tableInfos = new ArrayList<>();
         jdbi.useTransaction(handle -> {
             final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(alchemyResponse.getQuerySet());
             AtomicInteger i = new AtomicInteger(0);
@@ -130,7 +128,7 @@ public class AlchemyResponseAction implements IActionExecution {
 
     @NotNull
     private URL getOriginValuationUrl() throws MalformedURLException {
-        URL url=new URL(action.getContext().get("alchemy.origin.valuation.url"));
+        URL url = new URL(action.getContext().get("alchemy.origin.valuation.url"));
         return url;
     }
 
@@ -173,13 +171,14 @@ public class AlchemyResponseAction implements IActionExecution {
             for (AlchemyResponseInputTable input : inputTables) {
                 requestData.add(buildAlchemyRequest(input, objectMapper));
             }
-            AlchemyResponseOutputTable alchemyResponseOutputTable=new AlchemyResponseOutputTable();
+            AlchemyResponseOutputTable alchemyResponseOutputTable = new AlchemyResponseOutputTable();
             executeAlchemyPredictionApi(endpoint, originId, tenantId, authToken, requestData, objectMapper, mediaType, httpClient, alchemyResponseOutputTable);
-            consumerBatch(jdbi,alchemyResponseOutputTable);
+            consumerBatch(jdbi, alchemyResponseOutputTable);
         }
 
         return parentObj;
     }
+
     private AlchemyRequestBody buildAlchemyRequest(AlchemyResponseInputTable input, ObjectMapper objectMapper) {
         AlchemyRequestBody request = AlchemyRequestBody.builder()
                 .paperNo(input.getPaperNo())
@@ -279,7 +278,7 @@ public class AlchemyResponseAction implements IActionExecution {
             String url = endpoint + "/" + originId + "/?tenantId=" + tenantId;
             String requestBodyStr = objectMapper.writeValueAsString(requestData);
             RequestBody body = RequestBody.create(requestBodyStr, mediaType);
-            alchemyResponseOutputTable.setRequest(requestBodyStr);
+            alchemyResponseOutputTable.setRequest(encryptRequestResponse(requestBodyStr));
             alchemyResponseOutputTable.setCreatedOn(LocalDateTime.now());
             Request request = new Request.Builder()
                     .url(url)
@@ -298,13 +297,13 @@ public class AlchemyResponseAction implements IActionExecution {
                     alchemyResponseOutputTable.setStatus("COMPLETED");
                     alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
                     alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
-                    alchemyResponseOutputTable.setResponse(response.body().string());
+                    alchemyResponseOutputTable.setResponse(encryptRequestResponse(response.body().string()));
                     log.info("Response code: {}, Headers: {}", response.code(), response.headers());
                 } else {
                     alchemyResponseOutputTable.setStatus("FAILED");
                     alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
                     alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
-                    alchemyResponseOutputTable.setResponse(response.message());
+                    alchemyResponseOutputTable.setResponse(encryptRequestResponse(response.message()));
                     log.error("Request failed with status: {}", response.code());
                 }
             }
@@ -314,7 +313,7 @@ public class AlchemyResponseAction implements IActionExecution {
             alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
             alchemyResponseOutputTable.setStatus("FAILED");
             alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
-            alchemyResponseOutputTable.setResponse(e.getMessage());
+            alchemyResponseOutputTable.setResponse(encryptRequestResponse(e.getMessage()));
             HandymanException.insertException("Error in Alchemy request for originId - " + originId, handymanException, this.action);
         }
 
@@ -331,7 +330,7 @@ public class AlchemyResponseAction implements IActionExecution {
         try {
             jdbi.useTransaction(handle -> {
                 try {
-                    handle.createUpdate("INSERT INTO "+outputTableName+
+                    handle.createUpdate("INSERT INTO " + outputTableName +
                                     "(origin_id, root_pipeline_id, tenant_id, group_id, request, response, endpoint, status, stage, created_on, completed_on) " +
                                     "VALUES (:originId, :rootPipelineId, :tenantId, :groupId, :request, :response, :endpoint, :status, :stage, :createdOn, :completedOn);")
                             .bindBean(resultQueue)
@@ -365,7 +364,7 @@ public class AlchemyResponseAction implements IActionExecution {
     @NoArgsConstructor
     @Data
     @Builder
-    public static class AlchemyResponseOutputTable{
+    public static class AlchemyResponseOutputTable {
         private String originId;
         private Long rootPipelineId;
         private Long tenantId;
@@ -422,15 +421,17 @@ public class AlchemyResponseAction implements IActionExecution {
             return null;
         }
     }
+
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
     @Builder
-    public static class AlchemyCurrencyResponse{
+    public static class AlchemyCurrencyResponse {
         private String detectedValue;
         private String detectedAsciiValue;
         private String confidenceScore;
     }
+
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
@@ -462,5 +463,17 @@ public class AlchemyResponseAction implements IActionExecution {
 
     }
 
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
+        }
+        return requestStr;
+    }
 
 }

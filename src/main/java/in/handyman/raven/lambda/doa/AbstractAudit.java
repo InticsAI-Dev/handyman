@@ -47,20 +47,4 @@ public abstract class AbstractAudit extends Auditable {
     @JsonIgnore
     private String contextNode;
 
-    public void setPipelineName(final String pipelineName) {
-        this.pipelineName = pipelineName;
-    }
-
-    public void setContext(final Map<String, String> context) {
-        this.context = context;
-        this.contextNode = Optional.ofNullable(context).map(x -> {
-            try {
-                return MAPPER.writeValueAsString(context);
-            } catch (JsonProcessingException e) {
-                throw new HandymanException("Failed to convert", e);
-            }
-        }).orElse(null);
-    }
-
-
 }
