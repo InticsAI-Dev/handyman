@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String ZSC_START = "ZSC START";
+    public static final String FILTER_ZSC_PAGE_CONTENT_LOWER = "filter.zsc.page.content.lower";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -78,12 +79,14 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            keysToFilterObject.replaceAll((key, valueList) ->
+                    valueList.stream()
+                            .map(String::toLowerCase)
+                            .collect(Collectors.toList())
+            );
+        }
 
-        keysToFilterObject.replaceAll((key, valueList) ->
-                valueList.stream()
-                        .map(String::toLowerCase)
-                        .collect(Collectors.toList())
-        );
 
         //payload
         String decryptedPageContentLower = normalizeCaseToLower(decryptedContent);
@@ -136,7 +139,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
     @NotNull
     private String normalizeCaseToLower(String pageContent) {
-        if("true".equals(action.getContext().get("filter.zsc.page.content.lower"))){
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
             pageContent = pageContent.toLowerCase();
             log.info("Converted the input string content into lower");
             return pageContent;
