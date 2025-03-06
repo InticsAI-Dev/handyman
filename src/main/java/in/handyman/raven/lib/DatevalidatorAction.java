@@ -65,6 +65,7 @@ public class DatevalidatorAction implements IActionExecution {
         String dateStr = adapter.getInputValue();
 
         String dateInputFormats = action.getContext().get("date.input.formats");
+         String yearCenturyDeduct = action.getContext().get("scalar.data.formats.deduct.century");
         List<DateTimeFormatter> allowedFormats = Optional.of(dateInputFormats)
                 .map(s -> Arrays.stream(s.split(";"))
                         .map(DateTimeFormatter::ofPattern)
@@ -74,6 +75,13 @@ public class DatevalidatorAction implements IActionExecution {
         for (DateTimeFormatter inputFormatter : allowedFormats) {
             try {
                 LocalDate parsedDate = LocalDate.parse(dateStr, inputFormatter);
+                int currentYear = LocalDate.now().getYear();
+
+                if ("true".equals(yearCenturyDeduct) && parsedDate.getYear() > currentYear) {
+                    parsedDate = parsedDate.minusYears(100);
+                }
+
+
                 DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(currentFormat);
                 String convertedFormat = parsedDate.format(outputFormatter);
                 adapter.setInputValue(convertedFormat);

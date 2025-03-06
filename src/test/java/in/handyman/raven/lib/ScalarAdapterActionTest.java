@@ -218,6 +218,7 @@ class ScalarAdapterActionTest {
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
         action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put("scalar.data.formats.deduct.century","true");
         action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
         action.getContext().put("validaiton.char-limit-count", "1");
@@ -230,11 +231,11 @@ class ScalarAdapterActionTest {
                 .thresholdValue("")
                 .inputValue("")
                 .build();
-        Validator validator= Validator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/2025").build();
+        Validator validator= Validator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/25").build();
         DatevalidatorAction datevalidatorAction=new DatevalidatorAction(action,log,datevalidator);
-        System.out.println(validator.getInputValue());
-        datevalidatorAction.formatDate(validator);
-        System.out.println(validator.getInputValue());
+        Validator formatedValidator = datevalidatorAction.formatDate(validator);
+        System.out.println(formatedValidator.getInputValue());
+      log.info("Validator special character {} and validator input value {} output formatted value {}",validator.getAllowedSpecialChar(),validator.getInputValue(),formatedValidator.getInputValue());
     }
 
     @Test
