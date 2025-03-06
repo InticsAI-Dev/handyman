@@ -177,7 +177,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                                             }
                                             preparedBatch.add();
 
-                                            logger.info("prepared batch insert query input entity size \n {} ", processedEntity.size());
+                                            logger.info("prepared batch insert query input entity size {} ", processedEntity.size());
                                         }
 
                                         try {
