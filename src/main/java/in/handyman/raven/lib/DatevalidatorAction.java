@@ -7,7 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.DateAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Datevalidator;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -43,7 +43,7 @@ public class DatevalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Datevalidator:" + this.datevalidator.getName());
     }
 
-    public int getDateScore(Validator adapter) {
+    public int getDateScore(FieldValidator adapter) {
         try {
             int currentYear = Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date()));
             int comparableYear;
@@ -59,7 +59,7 @@ public class DatevalidatorAction implements IActionExecution {
         }
     }
 
-    public Validator formatDate(Validator adapter) {
+    public FieldValidator formatDate(FieldValidator adapter) {
 
         String currentFormat = adapter.getAllowedSpecialChar();
         String dateStr = adapter.getInputValue();
@@ -88,7 +88,7 @@ public class DatevalidatorAction implements IActionExecution {
                 log.info("Converted the input date to format {}", currentFormat);
                 return adapter;
             } catch (DateTimeParseException e) {
-                log.error("Error in parsing the date format for input {} to format {}", dateStr, currentFormat);
+                log.error("Error in parsing input format {}", currentFormat);
             }
         }
         return adapter;

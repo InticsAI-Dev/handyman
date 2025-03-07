@@ -8,7 +8,7 @@ import in.handyman.raven.lib.adapters.AlphaAdapter;
 import in.handyman.raven.lib.adapters.NameAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Nervalidator;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -46,7 +46,7 @@ public class NervalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Nervalidator:" + this.nervalidator.getName());
     }
 
-    public int getNerScore(Validator adapter, String uri) {
+    public int getNerScore(FieldValidator adapter, String uri) {
         int confidenceScore = 0;
         try {
             boolean alphaValidator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);

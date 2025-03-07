@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class Validator {
+public class FieldValidator {
 
     private String inputValue;
     private String adapter;
