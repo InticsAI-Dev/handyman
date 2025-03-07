@@ -108,13 +108,13 @@ public class AzureAuthTokenSession {
         try (Connection dbConnection = DriverManager.getConnection(jdbcUrl, dbUser, newToken)) {
 
             // **Step 3: Move existing token to audit table before updating**
-            moveToAuditTable(dbConnection);
+//            moveToAuditTable(dbConnection);
 
             // **Step 4: Store or update the new token in the active session table**
             sessionToken = newToken;
             tokenCreatedDate = Instant.now();
             tokenCreatedBy = getCallerMethod();
-            storeNewToken(dbConnection, sessionToken, tokenCreatedBy);
+//            storeNewToken(dbConnection, sessionToken, tokenCreatedBy);
 
             log.info("Token successfully updated by: {}", tokenCreatedBy);
 
@@ -131,56 +131,56 @@ public class AzureAuthTokenSession {
      * Moves the old token from `azure_auth_token_session` to `azure_auth_token_session_audit`
      * before acquiring a new one.
      */
-    private void moveToAuditTable(Connection dbConnection) {
-        log.info("Entering moveToAuditTable() method");
-
-        String moveQuery = "INSERT INTO audit.azure_auth_token_session_audit (session_token, token_created_date, expiration_date, token_created_by) " +
-                "SELECT session_token, token_created_date, token_created_date + INTERVAL '60 minutes', token_created_by FROM audit.azure_auth_token_session";
-
-        try (PreparedStatement ps = dbConnection.prepareStatement(moveQuery)) {
-            int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                log.info("Old token moved to audit table.");
-            }
-        } catch (SQLException e) {
-            log.error("Failed to move token to audit table.", e);
-        }
-
-        log.info("Exiting moveToAuditTable() method");
-    }
+//    private void moveToAuditTable(Connection dbConnection) {
+//        log.info("Entering moveToAuditTable() method");
+//
+//        String moveQuery = "INSERT INTO audit.azure_auth_token_session_audit (session_token, token_created_date, expiration_date, token_created_by) " +
+//                "SELECT session_token, token_created_date, token_created_date + INTERVAL '60 minutes', token_created_by FROM audit.azure_auth_token_session";
+//
+//        try (PreparedStatement ps = dbConnection.prepareStatement(moveQuery)) {
+//            int rowsAffected = ps.executeUpdate();
+//            if (rowsAffected > 0) {
+//                log.info("Old token moved to audit table.");
+//            }
+//        } catch (SQLException e) {
+//            log.error("Failed to move token to audit table.", e);
+//        }
+//
+//        log.info("Exiting moveToAuditTable() method");
+//    }
 
     /**
      * Stores a new token in `azure_auth_token_session`. Ensures only one row exists.
      */
-    private void storeNewToken(Connection dbConnection, String token, String createdBy) {
-        log.info("Entering storeNewToken() method");
-
-        String updateQuery = "UPDATE audit.azure_auth_token_session SET session_token = ?, token_created_date = ?, token_created_by = ?";
-
-        try (PreparedStatement updatePs = dbConnection.prepareStatement(updateQuery)) {
-            updatePs.setString(1, encryptToken(token));
-            updatePs.setTimestamp(2, Timestamp.from(Instant.now()));
-            updatePs.setString(3, createdBy);
-
-            int rowsUpdated = updatePs.executeUpdate();
-            if (rowsUpdated == 0) {
-                String insertQuery = "INSERT INTO audit.azure_auth_token_session (session_token, token_created_date, token_created_by) VALUES (?, ?, ?)";
-                try (PreparedStatement insertPs = dbConnection.prepareStatement(insertQuery)) {
-                    insertPs.setString(1, encryptToken(token));
-                    insertPs.setTimestamp(2, Timestamp.from(Instant.now()));
-                    insertPs.setString(3, createdBy);
-                    insertPs.executeUpdate();
-                }
-            }
-
-            log.info("New token stored in database.");
-
-        } catch (SQLException e) {
-            log.error("Failed to store new Azure token.", e);
-        }
-
-        log.info("Exiting storeNewToken() method");
-    }
+//    private void storeNewToken(Connection dbConnection, String token, String createdBy) {
+//        log.info("Entering storeNewToken() method");
+//
+//        String updateQuery = "UPDATE audit.azure_auth_token_session SET session_token = ?, token_created_date = ?, token_created_by = ?";
+//
+//        try (PreparedStatement updatePs = dbConnection.prepareStatement(updateQuery)) {
+//            updatePs.setString(1, encryptToken(token));
+//            updatePs.setTimestamp(2, Timestamp.from(Instant.now()));
+//            updatePs.setString(3, createdBy);
+//
+//            int rowsUpdated = updatePs.executeUpdate();
+//            if (rowsUpdated == 0) {
+//                String insertQuery = "INSERT INTO audit.azure_auth_token_session (session_token, token_created_date, token_created_by) VALUES (?, ?, ?)";
+//                try (PreparedStatement insertPs = dbConnection.prepareStatement(insertQuery)) {
+//                    insertPs.setString(1, encryptToken(token));
+//                    insertPs.setTimestamp(2, Timestamp.from(Instant.now()));
+//                    insertPs.setString(3, createdBy);
+//                    insertPs.executeUpdate();
+//                }
+//            }
+//
+//            log.info("New token stored in database.");
+//
+//        } catch (SQLException e) {
+//            log.error("Failed to store new Azure token.", e);
+//        }
+//
+//        log.info("Exiting storeNewToken() method");
+//    }
 
     public String encryptToken(String token){
         InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
