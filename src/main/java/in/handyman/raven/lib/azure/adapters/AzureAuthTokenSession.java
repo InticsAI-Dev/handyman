@@ -114,7 +114,7 @@ public class AzureAuthTokenSession {
             sessionToken = newToken;
             tokenCreatedDate = Instant.now();
             tokenCreatedBy = getCallerMethod();
-            storeNewToken(dbConnection, sessionToken, tokenCreatedBy);
+            storeNewToken(dbConnection, tokenCreatedBy);
 
             log.info("Token successfully updated by: {}", tokenCreatedBy);
 
@@ -152,7 +152,7 @@ public class AzureAuthTokenSession {
     /**
      * Stores a new token in `azure_auth_token_session`. Ensures only one row exists.
      */
-    private void storeNewToken(Connection dbConnection, String token, String createdBy) {
+    private void storeNewToken(Connection dbConnection, String createdBy) {
         log.info("Entering storeNewToken() method");
 
         String updateQuery = "UPDATE audit.azure_auth_token_session SET session_token = ?, token_created_date = ?, token_created_by = ?";
