@@ -85,7 +85,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                     HandymanException.insertException("Protegrity API error: " + response.message(), exception, actionExecutionAudit);
                 }
 
-                String responseBody = String.valueOf(response.body());
+                String responseBody = response.body().string();
 
 
                 JsonNode jsonResponse = objectMapper.readTree(responseBody);
