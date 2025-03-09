@@ -72,7 +72,7 @@ public class ProductResponseAction implements IActionExecution {
                             return new URL(s1);
                         } catch (MalformedURLException e) {
                             log.error("Error in processing the URL ", e);
-                            throw new HandymanException("Malformed URL: " + s1, e);
+                            throw new HandymanException("Malformed URL: " + s1, e, action);
                         }
                     }).collect(Collectors.toList()))
                     .orElse(Collections.emptyList());
