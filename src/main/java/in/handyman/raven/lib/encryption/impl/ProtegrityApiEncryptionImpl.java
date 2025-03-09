@@ -96,10 +96,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
         } catch (IOException e) {
             LOGGER.error("Error calling Protegrity API for key {}: {}", key, e.getMessage(), e);
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Error calling Protegrity API: " + e.getMessage(), handymanException, actionExecutionAudit);
+            throw new HandymanException("Error calling Protegrity API: " + e.getMessage(), e, actionExecutionAudit);
         }
-        return "";
     }
 
     //TODO to increase performance call this method
