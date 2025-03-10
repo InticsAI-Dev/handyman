@@ -40,8 +40,9 @@ public class RadonKvpAcionTest {
         ac.getContext().put("pipeline.copro.api.process.file.format", "BASE64");
         ac.getContext().put("pipeline.encryption.default.holder", "");
         ac.getContext().put("pipeline.text.extraction.encryption", "true");
-        ac.getContext().put("bbox.radon_bbox_activator", "true");
+        ac.getContext().put("bbox.radon_bbox_activator", "false");
         ac.getContext().put("pipeline.end.to.end.encryption", "false");
+        ac.getContext().put("kvp.double.pass.batch.size", "2");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
 
 

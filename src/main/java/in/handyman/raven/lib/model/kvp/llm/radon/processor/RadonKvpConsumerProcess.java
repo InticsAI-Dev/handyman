@@ -49,7 +49,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
     }
 
-
     @Override
     public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
         List<RadonQueryOutputTable> parentObj = new ArrayList<>();
@@ -133,52 +132,127 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             log.info("BBox activator is disabled or process is not RADON_KVP_ACTION. Using original prompts.");
         }
 
-        // Prepare the request payload
-        RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
-        radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
-        radonKvpExtractionRequest.setActionId(actionId);
-        radonKvpExtractionRequest.setProcess(entity.getProcess());
-        radonKvpExtractionRequest.setInputFilePath(filePath);
-        radonKvpExtractionRequest.setGroupId(groupId);
-        radonKvpExtractionRequest.setUserPrompt(userPrompt);
-        radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
-        radonKvpExtractionRequest.setProcessId(processId);
-        radonKvpExtractionRequest.setPaperNo(paperNo);
-        radonKvpExtractionRequest.setTenantId(tenantId);
-        radonKvpExtractionRequest.setOriginId(originId);
-        radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+        // Check if KRYPTON_DOUBLE_PASS_MODE is enabled
+        if ("KRYPTON_DOUBLE_PASS_MODE".equals(kryptonInferenceMode) && !transformationUserPromptsList.isEmpty()) {
+            log.info("KRYPTON_DOUBLE_PASS_MODE detected. Processing in batches.");
 
-        // Set the transformed lists into the request object
-        radonKvpExtractionRequest.setKryptonInferenceMode(kryptonInferenceMode);
-        radonKvpExtractionRequest.setTransformationUserPrompts(transformationUserPromptsList);
-        radonKvpExtractionRequest.setTransformationSystemPrompts(transformationSystemPromptsList);
+            // Get batch size from context or use default
+            int batchSize = Integer.parseInt(action.getContext().get("kvp.double.pass.batch.size"));
 
-        // Set base64 image if needed
-        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-            radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+            // Validate lists have the same size
+            if (transformationUserPromptsList.size() != transformationSystemPromptsList.size()) {
+                log.warn("User prompts list size ({}) doesn't match system prompts list size ({}). Using minimum size.",
+                        transformationUserPromptsList.size(), transformationSystemPromptsList.size());
+            }
+
+            int minSize = Math.min(transformationUserPromptsList.size(), transformationSystemPromptsList.size());
+
+            // Split both lists into batches
+            List<List<Map<String, Object>>> userPromptBatches = new ArrayList<>();
+            List<List<Map<String, Object>>> systemPromptBatches = new ArrayList<>();
+
+            for (int i = 0; i < minSize; i += batchSize) {
+                int endIndex = Math.min(i + batchSize, minSize);
+
+                userPromptBatches.add(new ArrayList<>(transformationUserPromptsList.subList(i, endIndex)));
+                systemPromptBatches.add(new ArrayList<>(transformationSystemPromptsList.subList(i, endIndex)));
+            }
+
+            log.info("Split prompts into {} batches", userPromptBatches.size());
+
+            // Process each batch separately
+            for (int batchIndex = 0; batchIndex < userPromptBatches.size(); batchIndex++) {
+                List<Map<String, Object>> batchUserPrompts = userPromptBatches.get(batchIndex);
+                List<Map<String, Object>> batchSystemPrompts = systemPromptBatches.get(batchIndex);
+
+                log.info("Processing batch {} of {} with {} user prompts and {} system prompts",
+                        batchIndex + 1, userPromptBatches.size(),
+                        batchUserPrompts.size(), batchSystemPrompts.size());
+
+                // Create a copy of the request for this batch
+                RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
+                radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
+                radonKvpExtractionRequest.setActionId(actionId);
+                radonKvpExtractionRequest.setProcess(entity.getProcess());
+                radonKvpExtractionRequest.setInputFilePath(filePath);
+                radonKvpExtractionRequest.setGroupId(groupId);
+                radonKvpExtractionRequest.setUserPrompt(userPrompt);
+                radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
+                radonKvpExtractionRequest.setProcessId(processId);
+                radonKvpExtractionRequest.setPaperNo(paperNo);
+                radonKvpExtractionRequest.setTenantId(tenantId);
+                radonKvpExtractionRequest.setOriginId(originId);
+                radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+                radonKvpExtractionRequest.setKryptonInferenceMode(kryptonInferenceMode);
+
+                // Set the batch-specific transformation prompts
+                radonKvpExtractionRequest.setTransformationUserPrompts(batchUserPrompts);
+                radonKvpExtractionRequest.setTransformationSystemPrompts(batchSystemPrompts);
+
+                // Set base64 image if needed
+                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+                    radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+                } else {
+                    radonKvpExtractionRequest.setBase64Img("");
+                }
+
+                // Process the batch request
+                sendRequest(endpoint, entity, parentObj, radonKvpExtractionRequest);
+            }
+
+            return parentObj;
         } else {
-            radonKvpExtractionRequest.setBase64Img("");
-        }
+            // Original non-batch processing approach
+            log.info("Standard processing mode (non-batched)");
 
+            // Prepare the request payload
+            RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
+            radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
+            radonKvpExtractionRequest.setActionId(actionId);
+            radonKvpExtractionRequest.setProcess(entity.getProcess());
+            radonKvpExtractionRequest.setInputFilePath(filePath);
+            radonKvpExtractionRequest.setGroupId(groupId);
+            radonKvpExtractionRequest.setUserPrompt(userPrompt);
+            radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
+            radonKvpExtractionRequest.setProcessId(processId);
+            radonKvpExtractionRequest.setPaperNo(paperNo);
+            radonKvpExtractionRequest.setTenantId(tenantId);
+            radonKvpExtractionRequest.setOriginId(originId);
+            radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+
+            // Set the transformed lists into the request object
+            radonKvpExtractionRequest.setKryptonInferenceMode(kryptonInferenceMode);
+            radonKvpExtractionRequest.setTransformationUserPrompts(transformationUserPromptsList);
+            radonKvpExtractionRequest.setTransformationSystemPrompts(transformationSystemPromptsList);
+
+            // Set base64 image if needed
+            if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+                radonKvpExtractionRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+            } else {
+                radonKvpExtractionRequest.setBase64Img("");
+            }
+
+            // Process the single request
+            sendRequest(endpoint, entity, parentObj, radonKvpExtractionRequest);
+
+            return parentObj;
+        }
+    }
+
+    /**
+     * Send request to endpoint and process response
+     *
+     * @param endpoint                  The API endpoint
+     * @param entity                    The input entity
+     * @param parentObj                 The output table list
+     * @param radonKvpExtractionRequest The request payload
+     * @throws Exception If any error occurs
+     */
+    private void sendRequest(URL endpoint, RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj,
+                             RadonKvpExtractionRequest radonKvpExtractionRequest) throws Exception {
         // Prepare the request
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
-        TritonRequest requestBody = new TritonRequest();
-        requestBody.setName(entity.getApiName());
-        requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype(TritonDataTypes.BYTES.name());
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
 
-        TritonInputRequest tritonInputRequest = new TritonInputRequest();
-        tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-        String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
-        log.info(aMarker, " Input variables id : {}", action.getActionId());
-
-        if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {}, userPrompt {} and systemPrompt {}",
-                    endpoint, filePath, userPrompt, systemPrompt);
-        }
-
-        // Handle the request based on triton activator
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode ",
@@ -191,14 +265,29 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ",
                     TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
+
+            TritonRequest requestBody = new TritonRequest();
+            requestBody.setName(entity.getApiName());
+            requestBody.setShape(List.of(1, 1));
+            requestBody.setDatatype(TritonDataTypes.BYTES.name());
+            requestBody.setData(Collections.singletonList(jsonInputRequest));
+
+            TritonInputRequest tritonInputRequest = new TritonInputRequest();
+            tritonInputRequest.setInputs(Collections.singletonList(requestBody));
+            String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
+            log.info(aMarker, " Input variables id : {}", action.getActionId());
+
+            if (log.isInfoEnabled()) {
+                log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {}",
+                        endpoint, radonKvpExtractionRequest.getInputFilePath());
+            }
+
             Request request = new Request.Builder()
                     .url(endpoint)
                     .post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON))
                     .build();
             tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
-
-        return parentObj;
     }
 
     /**
