@@ -178,6 +178,7 @@ action:
     |folderDeleteByProcess
     |decryptInticsEnc
     |controlDataComparison
+    |agenticFilterDataDecryption
     );
 
 
@@ -1368,6 +1369,14 @@ decryptInticsEnc:
 
 controlDataComparison:
     'controlDataComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+agenticFilterDataDecryption:
+    'agenticFilterDataDecryption' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING
