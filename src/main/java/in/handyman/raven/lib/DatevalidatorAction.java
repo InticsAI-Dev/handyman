@@ -77,6 +77,7 @@ public class DatevalidatorAction implements IActionExecution {
                 LocalDate parsedDate = LocalDate.parse(dateStr, inputFormatter);
                 int currentYear = LocalDate.now().getYear();
 
+                log.info("scalar.data.formats.deduct.century is {}", yearCenturyDeduct);
                 if ("true".equals(yearCenturyDeduct) && parsedDate.getYear() > currentYear) {
                     parsedDate = parsedDate.minusYears(100);
                 }

@@ -3,17 +3,20 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
 import in.handyman.raven.lib.alchemy.common.BoundingBox;
 import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.AlchemyResponse;
 import in.handyman.raven.util.CommonQueryUtil;
-import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,9 +36,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -57,6 +58,14 @@ public class AlchemyResponseAction implements IActionExecution {
     private final Marker aMarker;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
+    private static final String DEFAULT_BATCH_SIZE = "50";
+
+    final OkHttpClient httpclient = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(10, TimeUnit.MINUTES)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .build();
+
     public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log,
                                  final Object alchemyResponse) {
         this.alchemyResponse = (AlchemyResponse) alchemyResponse;
@@ -70,7 +79,7 @@ public class AlchemyResponseAction implements IActionExecution {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(alchemyResponse.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-            Long consumerApiCount = getConsumerApiCount();
+            int consumerApiCount = getConsumerApiCount();
             Long tenantId = getTenantId();
             URL url = getOriginValuationUrl();
             String authToken = getAlchemyAuthToken();
@@ -79,28 +88,25 @@ public class AlchemyResponseAction implements IActionExecution {
                     .parse("application/json; charset=utf-8");
 
 
-            final OkHttpClient httpclient = new OkHttpClient.Builder()
-                    .connectTimeout(10, TimeUnit.MINUTES)
-                    .writeTimeout(10, TimeUnit.MINUTES)
-                    .readTimeout(10, TimeUnit.MINUTES)
-                    .build();
-
-
             log.info(aMarker, "Alchemy Response Action for {} has been started", alchemyResponse.getName());
 
             List<AlchemyResponseInputTable> tableInfos = getDataFromSelectQuery(jdbi);
 
-            process(url, tableInfos, tenantId, authToken, mapper, mediaTypeJSON, httpclient, jdbi);
-
+            Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = getOriginBasedPredictions(tableInfos);
+            for (Map.Entry<String, List<AlchemyResponseInputTable>> entry : groupedByOriginId.entrySet()) {
+                String originId = entry.getKey();
+                processInBatches(url, tableInfos, tenantId, authToken, mapper, mediaTypeJSON, jdbi, consumerApiCount, originId);
+            }
 
         } catch (Exception t) {
             handleExecutionError(t);
         }
     }
 
+
     private void handleExecutionError(Exception e) {
         action.getContext().put(alchemyResponse.getName() + ".isSuccessful", "false");
-        log.error(aMarker, "Error in AlchemyResponse execution: {}", ExceptionUtil.toString(e));
+        log.error(aMarker, "Error in AlchemyResponse execution", e);
         throw new HandymanException("Error in AlchemyResponse execution", e, action);
     }
 
@@ -123,24 +129,28 @@ public class AlchemyResponseAction implements IActionExecution {
 
     private String getAlchemyAuthToken() {
         String authToken = action.getContext().get("alchemyAuth.token");
+        log.info("Getting the auth token from context");
         return authToken;
     }
 
     @NotNull
     private URL getOriginValuationUrl() throws MalformedURLException {
         URL url = new URL(action.getContext().get("alchemy.origin.valuation.url"));
+        log.info("Getting valuation URL for prediction list insert - {}", url);
         return url;
     }
 
     @NotNull
     private Long getTenantId() {
         Long tenantId = Long.valueOf(action.getContext().get("alchemyAuth.tenantId"));
+        log.info("Getting Tenant Id: {} for the user", tenantId);
         return tenantId;
     }
 
-    private Long getConsumerApiCount() {
-        String consumerApiCountStr = action.getContext().get("alchemy.response.consumer.API.count");
-        Long consumerApiCount = Long.valueOf(consumerApiCountStr);
+    private int getConsumerApiCount() {
+        String consumerApiCountStr = action.getContext().getOrDefault("alchemy.response.consumer.API.count", DEFAULT_BATCH_SIZE);
+        int consumerApiCount = Integer.parseInt(consumerApiCountStr);
+        log.info("alchemy.response.consumer.API.count is {}", consumerApiCount);
         return consumerApiCount;
     }
 
@@ -149,35 +159,49 @@ public class AlchemyResponseAction implements IActionExecution {
         return alchemyResponse.getCondition();
     }
 
-    public List<AlchemyResponseOutputTable> process(
-            URL endpoint,
-            List<AlchemyResponseInputTable> entities,
-            Long tenantId,
-            String authToken,
-            ObjectMapper objectMapper,
-            MediaType mediaType,
-            OkHttpClient httpClient,
-            Jdbi jdbi
-    ) throws Exception {
+    public void processInBatches(URL endpoint,
+                                 List<AlchemyResponseInputTable> inputTables,
+                                 Long tenantId,
+                                 String authToken,
+                                 ObjectMapper objectMapper,
+                                 MediaType mediaType,
+                                 Jdbi jdbi, int batchSize, String originId) {
 
-        List<AlchemyResponseOutputTable> parentObj = new ArrayList<>();
-        Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = getOriginBasedPredictions(entities);
 
-        for (Map.Entry<String, List<AlchemyResponseInputTable>> entry : groupedByOriginId.entrySet()) {
-            String originId = entry.getKey();
-            List<AlchemyResponseInputTable> inputTables = entry.getValue();
-            List<AlchemyRequestBody> requestData = new ArrayList<>();
+        // Calculate the number of batches
+        int totalSize = inputTables.size();
+        int totalBatches = (int) Math.ceil((double) totalSize / batchSize);
+        log.info("Total batches for prediction insert for originId: {} is: {}", originId, totalBatches);
 
-            for (AlchemyResponseInputTable input : inputTables) {
-                requestData.add(buildAlchemyRequest(input, objectMapper));
+        for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            try {
+                // Calculate start and end indices for the current batch
+                int start = batchIndex * batchSize;
+                int end = Math.min(start + batchSize, totalSize);
+
+                List<AlchemyResponseInputTable> batch = inputTables.subList(start, end);
+                List<AlchemyRequestBody> requestData = new ArrayList<>();
+
+                for (AlchemyResponseInputTable input : batch) {
+                    requestData.add(buildAlchemyRequest(input, objectMapper));
+                }
+                int batchNumber = batchIndex + 1;
+                log.info("Processing batch {}/{} with size: {}", batchNumber, totalBatches, requestData.size());
+                AlchemyResponseOutputTable alchemyResponseOutputTable = new AlchemyResponseOutputTable();
+
+                // Execute the prediction API with the current batch
+                executeAlchemyPredictionApi(endpoint, originId, tenantId, authToken, requestData, objectMapper,
+                        mediaType, httpclient, alchemyResponseOutputTable);
+
+                consumerBatch(jdbi, alchemyResponseOutputTable);
+            } catch (Exception e) {
+                log.error("Error processing batch {} for originId: {}", batchIndex + 1, originId, e);
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Error processing prediction insert request for alchemy for batch {} for originId: {}", handymanException, this.action);
             }
-            AlchemyResponseOutputTable alchemyResponseOutputTable = new AlchemyResponseOutputTable();
-            executeAlchemyPredictionApi(endpoint, originId, tenantId, authToken, requestData, objectMapper, mediaType, httpClient, alchemyResponseOutputTable);
-            consumerBatch(jdbi, alchemyResponseOutputTable);
         }
-
-        return parentObj;
     }
+
 
     private AlchemyRequestBody buildAlchemyRequest(AlchemyResponseInputTable input, ObjectMapper objectMapper) {
         AlchemyRequestBody request = AlchemyRequestBody.builder()
@@ -240,7 +264,7 @@ public class AlchemyResponseAction implements IActionExecution {
                     break;
             }
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error processing JSON for feature: " + input.getFeature(), e);
+            throw new HandymanException("Error processing JSON for feature: " + input.getFeature(), e, action);
         }
 
         return request;
@@ -277,6 +301,8 @@ public class AlchemyResponseAction implements IActionExecution {
 
             String url = endpoint + "/" + originId + "/?tenantId=" + tenantId;
             String requestBodyStr = objectMapper.writeValueAsString(requestData);
+            int predictionSize = requestData.size();
+            log.info("Current batch size of predictions for originId: {}, is: {}", originId, predictionSize);
             RequestBody body = RequestBody.create(requestBodyStr, mediaType);
             alchemyResponseOutputTable.setRequest(encryptRequestResponse(requestBodyStr));
             alchemyResponseOutputTable.setCreatedOn(LocalDateTime.now());
@@ -297,8 +323,25 @@ public class AlchemyResponseAction implements IActionExecution {
                     alchemyResponseOutputTable.setStatus("COMPLETED");
                     alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
                     alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
-                    alchemyResponseOutputTable.setResponse(encryptRequestResponse(response.body().string()));
+                    String responseBody = Objects.requireNonNull(response.body()).string();
+
+                    final ObjectMapper mapper = JsonMapper.builder()
+                            .configure(SerializationFeature.INDENT_OUTPUT, true)
+                            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                            .build().registerModule(new JavaTimeModule());
+
+                    AlchemyApiPayload alchemyApiPayload = mapper.readValue(responseBody, AlchemyApiPayload.class);
+                    JsonNode payload = alchemyApiPayload.getPayload();
+
+                    JsonNode predictionLogNode = payload.get("predictionLog");
+                    if (predictionLogNode != null && predictionLogNode.isArray()) {
+                        List<String> responseLog = mapper.convertValue(predictionLogNode, List.class);
+                        String combinedLogs = String.join("\n", responseLog);
+                        log.info("Logs from Alchemy for Prediction save: \n{}", combinedLogs);
+                    }
+                    alchemyResponseOutputTable.setResponse(encryptRequestResponse(String.valueOf(payload.get("predictions"))));
                     log.info("Response code: {}, Headers: {}", response.code(), response.headers());
+                    log.info("Successful in saving the predictions of size {}, for originId: {}", predictionSize, originId);
                 } else {
                     alchemyResponseOutputTable.setStatus("FAILED");
                     alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
@@ -350,13 +393,15 @@ public class AlchemyResponseAction implements IActionExecution {
 
     private String getOutputTableName() {
         String outputTableName = action.getContext().get("alchemy.response.output.table");
+        log.info("Getting output table for alchemy prediction response - {}", outputTableName);
         return outputTableName;
     }
 
     @NotNull
-    private static Map<String, List<AlchemyResponseInputTable>> getOriginBasedPredictions(List<AlchemyResponseInputTable> entities) {
+    private Map<String, List<AlchemyResponseInputTable>> getOriginBasedPredictions(List<AlchemyResponseInputTable> entities) {
         Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = entities.stream()
                 .collect(Collectors.groupingBy(AlchemyResponseInputTable::getOriginId));
+        log.info("Getting the predictions list grouped by origin");
         return groupedByOriginId;
     }
 
@@ -418,7 +463,7 @@ public class AlchemyResponseAction implements IActionExecution {
 
         @Override
         public List<Object> getRowData() {
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -459,8 +504,6 @@ public class AlchemyResponseAction implements IActionExecution {
         private String paragraphSection;
         private JsonNode paragraphPoints;
         private String encode;
-
-
     }
 
 

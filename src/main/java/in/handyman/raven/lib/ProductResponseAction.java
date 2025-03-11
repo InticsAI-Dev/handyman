@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -142,14 +143,14 @@ public class ProductResponseAction implements IActionExecution {
                     String responseBody = Objects.requireNonNull(response.body()).string();
                     AlchemyApiPayload alchemyApiPayload = mapper.readValue(responseBody, AlchemyApiPayload.class);
 
-                    if (!alchemyApiPayload.getPayload().isEmpty() && !alchemyApiPayload.getPayload().isNull() && alchemyApiPayload.isSuccess()) {
+                    JsonNode payload = alchemyApiPayload.getPayload();
+                    if (!payload.isEmpty() && !payload.isNull() && alchemyApiPayload.isSuccess()) {
 
-                        parentObj.add(ProductResponseOutputTable
+                        ProductResponseOutputTable productResponseOutputTable = ProductResponseOutputTable
                                 .builder()
                                 .processId(entity.getProcessId())
                                 .tenantId(tenantId)
                                 .groupId(entity.getGroupId())
-                                .productResponse(String.valueOf(alchemyApiPayload.getPayload()))
                                 .originId(originId)
                                 .rootPipelineId(rootPipelineId)
                                 .stage("PRODUCT_OUTBOUND")
@@ -159,7 +160,19 @@ public class ProductResponseAction implements IActionExecution {
                                 .message("alchemy product response completed for origin_id - " + originId)
                                 .batchId(entity.getBatchId())
                                 .inboundTransactionId(entity.getTransactionId())
-                                .build());
+                                .build();
+                        if (Objects.equals(entity.getFeature(), "Product")) {
+                            JsonNode predictionLogNode = payload.get("logs");
+                            if (predictionLogNode != null && predictionLogNode.isArray()) {
+                                List<String> responseLog = mapper.convertValue(predictionLogNode, List.class);
+                                String combinedLogs = String.join("\n", responseLog);
+                                log.info("Logs from Alchemy for Response Generation: \n{}", combinedLogs);
+                            }
+                            productResponseOutputTable.setProductResponse(String.valueOf(payload.get("responseInfo")));
+                        } else {
+                            productResponseOutputTable.setProductResponse(String.valueOf(payload));
+                        }
+                        parentObj.add(productResponseOutputTable);
                     }
                 } else {
                     parentObj.add(ProductResponseOutputTable
@@ -187,7 +200,7 @@ public class ProductResponseAction implements IActionExecution {
         }
 
         @NotNull
-        public Request getUrlFromFeature(URL baseUrl,@NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody) throws MalformedURLException {
+        public Request getUrlFromFeature(URL baseUrl, @NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody) throws MalformedURLException {
             Request request;
             if (Objects.equals(feature, "Product")) {
 
@@ -203,9 +216,9 @@ public class ProductResponseAction implements IActionExecution {
                 return request;
 
 
-            }  else if (Objects.equals(feature, "OUTBOUND_ASIS")){
+            } else if (Objects.equals(feature, "OUTBOUND_ASIS")) {
 
-                URL url = new URL(baseUrl +"paginationOutbound/"+ transactionId + "/outbound-file-index"+ "?tenantId=" + tenantId);
+                URL url = new URL(baseUrl + "paginationOutbound/" + transactionId + "/outbound-file-index" + "?tenantId=" + tenantId);
                 log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
                 request = new Request.Builder().url(url)
                         .addHeader("accept", "*/*")
@@ -214,7 +227,7 @@ public class ProductResponseAction implements IActionExecution {
                         .post(requestBody)
                         .build();
 
-            }else {
+            } else {
                 URL url = new URL(baseUrl + "response/featureResponse/" + transactionId + "/" + originId + "/" + feature + "?tenantId=" + tenantId);
                 log.info(aMarker, "Feature based {} api called with the url {}", feature, url);
                 request = new Request.Builder().url(url)
@@ -243,6 +256,7 @@ public class ProductResponseAction implements IActionExecution {
         private String baseUrl;
         private String feature;
         private String batchId;
+
         @Override
         public List<Object> getRowData() {
             return null;
@@ -271,7 +285,7 @@ public class ProductResponseAction implements IActionExecution {
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl,this.batchId, this.inboundTransactionId).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl, this.batchId, this.inboundTransactionId).collect(Collectors.toList());
         }
     }
 }
