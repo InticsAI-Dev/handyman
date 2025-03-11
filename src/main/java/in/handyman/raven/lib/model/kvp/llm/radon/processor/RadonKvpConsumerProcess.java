@@ -471,10 +471,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         ObjectMapper objectMapper = new ObjectMapper();
 
-        if (extractedContent == null || extractedContent.isEmpty()) {
-            throw new IOException("InferResponse is null or empty");
-        }
-
         try {
             // Convert JsonNode to String before passing to JSONObject
             String jsonString = objectMapper.writeValueAsString(extractedContent);
@@ -488,7 +484,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             }
 
         } catch (Exception e) {
-            throw new IOException("Invalid JSON format in inferResponse", e);
+            String invalidJsonException = "Invalid JSON format in inferResponse";
+            HandymanException handymanException = new HandymanException(invalidJsonException);
+            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+            throw new HandymanException(invalidJsonException);
         }
 
         // Encrypt only finalResponse if encryption is enabled
