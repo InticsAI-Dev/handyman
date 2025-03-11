@@ -20,6 +20,7 @@ import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -191,7 +192,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
                     dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
 
-                }else {
+                } else {
                     dataExtractionPayload.setBase64Img("");
                 }
                 String dataExtractionPayloadString = mapper.writeValueAsString(dataExtractionPayload);
@@ -207,7 +208,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
                     kryptonRequestPayloadFromQuery.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
 
-                }else {
+                } else {
                     kryptonRequestPayloadFromQuery.setBase64Img("");
                 }
                 String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
@@ -288,15 +289,37 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String extractedContent;
 
-        final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+        JsonNode inferResponse = dataExtractionDataItem.getInferResponse();
 
-        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String finalResponseJson = "";
+        try {
+            // Convert JsonNode to String before passing to JSONObject
+            String jsonString = objectMapper.writeValueAsString(inferResponse);
+
+            // Now create JSONObject from a valid JSON string
+            JSONObject inferResponseObj = new JSONObject(jsonString);
+
+            // Extract `finalResponse`
+            if (inferResponseObj.has("finalResponse")) {
+                finalResponseJson = inferResponseObj.getJSONArray("finalResponse").toString();
+            }
+
+        } catch (Exception e) {
+            String invalidJsonException = "Invalid JSON format in inferResponse";
+            throw new HandymanException(invalidJsonException);
+        }
+
+        final String flag = (finalResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+
+        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(),"AES256", "TEXT_DATA");
-        }else {
-            extractedContent = dataExtractionDataItem.getInferResponse();
+        if (Objects.equals(encryptSotPageContent, "true")) {
+            extractedContent = encryption.encrypt(finalResponseJson, "AES256", "TEXT_DATA");
+        } else {
+            extractedContent = finalResponseJson;
         }
 
         String templateId = entity.getTemplateId();
@@ -332,12 +355,12 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String extractedContent;
-        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.encrypt(contentString,"AES256", "TEXT_DATA");
-        }else {
+        if (Objects.equals(encryptSotPageContent, "true")) {
+            extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
+        } else {
             extractedContent = contentString;
         }
 
@@ -590,22 +613,21 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     jsonString = jsonString.replace("\n", "");
                     // Convert the cleaned JSON string to a JsonNode
 
-                    if(!jsonResponse.isEmpty()) {
+                    if (!jsonResponse.isEmpty()) {
                         return objectMapper.readTree(jsonResponse);
-                    }else {
+                    } else {
                         return null;
                     }
-                }else {
+                } else {
 
                     return objectMapper.readTree(jsonResponse);
                 }
-            }
-            else if(jsonResponse.contains("{")) {
+            } else if (jsonResponse.contains("{")) {
                 log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
 
                 return objectMapper.readTree(jsonResponse);
                 //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
-            }else {
+            } else {
                 log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
                 return null;
             }
