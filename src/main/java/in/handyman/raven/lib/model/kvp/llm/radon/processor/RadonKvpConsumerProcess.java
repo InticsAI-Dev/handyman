@@ -205,7 +205,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         } else {
             // Original non-batch processing approach
-            log.info("Standard processing mode (non-batched)");
+            log.info("Standard processing mode (non-batcsetTransformationUserPromptshed)");
 
             // Prepare the request payload
             RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
