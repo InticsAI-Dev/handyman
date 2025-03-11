@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<RadonQueryInputTable, RadonQueryOutputTable> {
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
+    public static final String INFERENCE_MODE = "kvp.double.pass.mode";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
     private final Logger log;
     private final Marker aMarker;
@@ -133,7 +134,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
 
         // Check if KRYPTON_DOUBLE_PASS_MODE is enabled
-        if ("KRYPTON_DOUBLE_PASS_MODE".equals(kryptonInferenceMode) && !transformationUserPromptsList.isEmpty()) {
+        String actionKvpInferenceMode = action.getContext().get(INFERENCE_MODE);
+        System.out.println(actionKvpInferenceMode);
+        if (actionKvpInferenceMode.equalsIgnoreCase(kryptonInferenceMode) && !transformationUserPromptsList.isEmpty()) {
             log.info("KRYPTON_DOUBLE_PASS_MODE detected. Processing in batches.");
 
             // Get batch size from context or use default
@@ -200,7 +203,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 sendRequest(endpoint, entity, parentObj, radonKvpExtractionRequest);
             }
 
-            return parentObj;
         } else {
             // Original non-batch processing approach
             log.info("Standard processing mode (non-batched)");
@@ -235,8 +237,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             // Process the single request
             sendRequest(endpoint, entity, parentObj, radonKvpExtractionRequest);
 
-            return parentObj;
         }
+        return parentObj;
     }
 
     /**

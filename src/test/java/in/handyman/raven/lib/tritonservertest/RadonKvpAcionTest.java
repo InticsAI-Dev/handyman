@@ -43,6 +43,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("bbox.radon_bbox_activator", "false");
         ac.getContext().put("pipeline.end.to.end.encryption", "false");
         ac.getContext().put("kvp.double.pass.batch.size", "2");
+        ac.getContext().put("kvp.double.pass.mode", "KRYPTON_DOUBLE_PASS_MODE");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
 
 
