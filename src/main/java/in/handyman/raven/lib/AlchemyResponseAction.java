@@ -3,11 +3,15 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
 import in.handyman.raven.lib.alchemy.common.BoundingBox;
 import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.lib.encryption.SecurityEngine;
@@ -36,6 +40,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -277,6 +282,8 @@ public class AlchemyResponseAction implements IActionExecution {
 
             String url = endpoint + "/" + originId + "/?tenantId=" + tenantId;
             String requestBodyStr = objectMapper.writeValueAsString(requestData);
+            int predictionSize = requestData.size();
+            log.info("Total size of predictions for originId: {}, is: {}", originId, predictionSize);
             RequestBody body = RequestBody.create(requestBodyStr, mediaType);
             alchemyResponseOutputTable.setRequest(encryptRequestResponse(requestBodyStr));
             alchemyResponseOutputTable.setCreatedOn(LocalDateTime.now());
@@ -297,8 +304,25 @@ public class AlchemyResponseAction implements IActionExecution {
                     alchemyResponseOutputTable.setStatus("COMPLETED");
                     alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
                     alchemyResponseOutputTable.setCompletedOn(LocalDateTime.now());
-                    alchemyResponseOutputTable.setResponse(encryptRequestResponse(response.body().string()));
+                    String responseBody = Objects.requireNonNull(response.body()).string();
+
+                    final ObjectMapper mapper = JsonMapper.builder()
+                            .configure(SerializationFeature.INDENT_OUTPUT, true)
+                            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                            .build().registerModule(new JavaTimeModule());
+
+                    AlchemyApiPayload alchemyApiPayload = mapper.readValue(responseBody, AlchemyApiPayload.class);
+                    JsonNode payload = alchemyApiPayload.getPayload();
+
+                    JsonNode predictionLogNode = payload.get("predictionLog");
+                    if (predictionLogNode != null && predictionLogNode.isArray()) {
+                        List<String> responseLog = mapper.convertValue(predictionLogNode, List.class);
+                        String combinedLogs = String.join("\n", responseLog);
+                        log.info("Logs from Alchemy for Prediction save: \n{}", combinedLogs);
+                    }
+                    alchemyResponseOutputTable.setResponse(encryptRequestResponse(String.valueOf(payload.get("predictions"))));
                     log.info("Response code: {}, Headers: {}", response.code(), response.headers());
+                    log.info("Successful in saving the predictions of size {}, for originId: {}", predictionSize, originId);
                 } else {
                     alchemyResponseOutputTable.setStatus("FAILED");
                     alchemyResponseOutputTable.setStage(ALCHEMY_TRANSFORM);
