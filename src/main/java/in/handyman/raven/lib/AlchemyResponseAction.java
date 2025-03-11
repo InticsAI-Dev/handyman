@@ -37,6 +37,9 @@ import java.net.URL;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -58,7 +61,9 @@ public class AlchemyResponseAction implements IActionExecution {
     private final Marker aMarker;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
-    private static final String DEFAULT_BATCH_SIZE = "50";
+    private static final int DEFAULT_BATCH_SIZE = 50;
+
+    private static final String DEFAULT_CONSUMER_API_COUNT = "10";
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
@@ -66,8 +71,7 @@ public class AlchemyResponseAction implements IActionExecution {
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
 
-    public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log,
-                                 final Object alchemyResponse) {
+    public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log, final Object alchemyResponse) {
         this.alchemyResponse = (AlchemyResponse) alchemyResponse;
         this.action = action;
         this.log = log;
@@ -84,9 +88,7 @@ public class AlchemyResponseAction implements IActionExecution {
             URL url = getOriginValuationUrl();
             String authToken = getAlchemyAuthToken();
             ObjectMapper mapper = new ObjectMapper();
-            MediaType mediaTypeJSON = MediaType
-                    .parse("application/json; charset=utf-8");
-
+            MediaType mediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
 
             log.info(aMarker, "Alchemy Response Action for {} has been started", alchemyResponse.getName());
 
@@ -95,7 +97,7 @@ public class AlchemyResponseAction implements IActionExecution {
             Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = getOriginBasedPredictions(tableInfos);
             for (Map.Entry<String, List<AlchemyResponseInputTable>> entry : groupedByOriginId.entrySet()) {
                 String originId = entry.getKey();
-                processInBatches(url, tableInfos, tenantId, authToken, mapper, mediaTypeJSON, jdbi, consumerApiCount, originId);
+                processInBatchesParallel(url, tableInfos, tenantId, authToken, mapper, mediaTypeJSON, jdbi, DEFAULT_BATCH_SIZE, originId, httpclient, consumerApiCount);
             }
 
         } catch (Exception t) {
@@ -148,7 +150,7 @@ public class AlchemyResponseAction implements IActionExecution {
     }
 
     private int getConsumerApiCount() {
-        String consumerApiCountStr = action.getContext().getOrDefault("alchemy.response.consumer.API.count", DEFAULT_BATCH_SIZE);
+        String consumerApiCountStr = action.getContext().getOrDefault("alchemy.response.consumer.API.count", DEFAULT_CONSUMER_API_COUNT);
         int consumerApiCount = Integer.parseInt(consumerApiCountStr);
         log.info("alchemy.response.consumer.API.count is {}", consumerApiCount);
         return consumerApiCount;
@@ -159,45 +161,74 @@ public class AlchemyResponseAction implements IActionExecution {
         return alchemyResponse.getCondition();
     }
 
-    public void processInBatches(URL endpoint,
-                                 List<AlchemyResponseInputTable> inputTables,
-                                 Long tenantId,
-                                 String authToken,
-                                 ObjectMapper objectMapper,
-                                 MediaType mediaType,
-                                 Jdbi jdbi, int batchSize, String originId) {
+    public void processInBatchesParallel(URL endpoint, List<AlchemyResponseInputTable> inputTables,
+                                         Long tenantId,
+                                         String authToken,
+                                         ObjectMapper objectMapper,
+                                         MediaType mediaType,
+                                         Jdbi jdbi,
+                                         int batchSize,
+                                         String originId,
+                                         OkHttpClient httpClient,
+                                         int maxParallelThreads) {
 
-
-        // Calculate the number of batches
         int totalSize = inputTables.size();
         int totalBatches = (int) Math.ceil((double) totalSize / batchSize);
+        log.info("Batch size is {}", DEFAULT_BATCH_SIZE);
         log.info("Total batches for prediction insert for originId: {} is: {}", originId, totalBatches);
 
+        ExecutorService executor = Executors.newFixedThreadPool(Math.min(maxParallelThreads, totalBatches));
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-            try {
-                // Calculate start and end indices for the current batch
-                int start = batchIndex * batchSize;
-                int end = Math.min(start + batchSize, totalSize);
+            final int start = batchIndex * batchSize;
+            final int end = Math.min(start + batchSize, totalSize);
+            final int batchNumber = batchIndex + 1;
 
-                List<AlchemyResponseInputTable> batch = inputTables.subList(start, end);
-                List<AlchemyRequestBody> requestData = new ArrayList<>();
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    List<AlchemyResponseInputTable> batch = inputTables.subList(start, end);
+                    List<AlchemyRequestBody> requestData = new ArrayList<>(batch.size());
 
-                for (AlchemyResponseInputTable input : batch) {
-                    requestData.add(buildAlchemyRequest(input, objectMapper));
+                    for (AlchemyResponseInputTable input : batch) {
+                        requestData.add(buildAlchemyRequest(input, objectMapper));
+                    }
+                    log.info("Processing batch {}/{} with size: {}", batchNumber, totalBatches, requestData.size());
+
+                    AlchemyResponseOutputTable alchemyResponseOutputTable = new AlchemyResponseOutputTable();
+                    executeAlchemyPredictionApi(endpoint, originId, tenantId, authToken, requestData, objectMapper, mediaType, httpClient, alchemyResponseOutputTable);
+
+                    consumerBatch(jdbi, alchemyResponseOutputTable);
+
+                } catch (Exception e) {
+                    log.error("Error processing batch {} for originId: {}", batchNumber, originId, e);
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Error processing prediction insert request for alchemy for batch {} for originId: {}", handymanException, this.action);
                 }
-                int batchNumber = batchIndex + 1;
-                log.info("Processing batch {}/{} with size: {}", batchNumber, totalBatches, requestData.size());
-                AlchemyResponseOutputTable alchemyResponseOutputTable = new AlchemyResponseOutputTable();
+            }, executor);
 
-                // Execute the prediction API with the current batch
-                executeAlchemyPredictionApi(endpoint, originId, tenantId, authToken, requestData, objectMapper,
-                        mediaType, httpclient, alchemyResponseOutputTable);
+            futures.add(future);
+        }
 
-                consumerBatch(jdbi, alchemyResponseOutputTable);
-            } catch (Exception e) {
-                log.error("Error processing batch {} for originId: {}", batchIndex + 1, originId, e);
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error processing prediction insert request for alchemy for batch {} for originId: {}", handymanException, this.action);
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+            for (CompletableFuture<?> future : futures) {
+                future.get();
+            }
+        } catch (Exception e) {
+            log.error("Batch processing failed for originId: {}", originId, e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Batch processing failed for processing prediction insert request for alchemy for batch {} for originId: {}", handymanException, this.action);
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
         }
     }
