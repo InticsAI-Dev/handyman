@@ -46,7 +46,6 @@ public class DecryptInticsEncAction implements IActionExecution {
 
     private final DecryptInticsEnc decryptInticsEnc;
     private static final OkHttpClient HTTP_CLIENT = new OkHttpClient();
-    private static final String CSV_HEADER[] = {"RootPipelineId", "GroupId", "TenantId", "SorContainerName", "FileName", "OriginId", "PaperNo", "SorItemName", "ExtractedValue", "PolicyName"};
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final Marker aMarker;
@@ -239,107 +238,6 @@ public class DecryptInticsEncAction implements IActionExecution {
         return outputData;
     }
 
-    private static void writeToCsv(List<DecryptedCsvData> dataList, String filePath) {
-        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
-            writer.writeNext(CSV_HEADER);
-            dataList.forEach(data -> writer.writeNext(new String[]{
-                    data.getRootPipelineId(),
-                    data.getGroupId() != null ? data.getGroupId().toString() : "",
-                    data.getTenantId() != null ? data.getTenantId().toString() : "",
-                    data.getSorContainerName(),
-                    data.getFileName(),
-                    data.getOriginId(),
-                    data.getPaperNo() != null ? data.getPaperNo().toString() : "",
-                    data.getSorItemName(),
-                    data.getExtractedValue(),
-                    data.getPolicyName()
-            }));
-        } catch (IOException e) {
-            throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e);
-        }
-    }
-
-
-    public static void writeCsv(List<Map<String, String>> dataList, String filePath) {
-        if (dataList.isEmpty()) {
-            return;
-        }
-
-        // Extract headers (unique keys from all maps)
-        Set<String> headersSet = new LinkedHashSet<>();
-        for (Map<String, String> data : dataList) {
-            headersSet.addAll(data.keySet()); // Collect all keys
-        }
-        List<String> headers = new ArrayList<>(headersSet); // Convert to ordered list
-
-        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
-            // Write headers
-            writer.writeNext(headers.toArray(new String[0]));
-
-            // Write rows
-            for (Map<String, String> data : dataList) {
-                String[] row = headers.stream()
-                        .map(header -> data.getOrDefault(header, "")) // Get value or empty string
-                        .toArray(String[]::new);
-                writer.writeNext(row);
-            }
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, String filePath) {
-        try {
-            // Step 1: Extract unique sorItemNames (these will be dynamic headers)
-            Set<String> dynamicHeaders = dataList.stream()
-                    .map(DecryptedCsvData::getSorItemName)
-                    .collect(Collectors.toSet());
-
-            // Step 2: Sort headers for consistency
-            List<String> sortedDynamicHeaders = new ArrayList<>(dynamicHeaders);
-            Collections.sort(sortedDynamicHeaders);
-
-            // Step 3: Define static headers (RootPipelineId, FileName)
-            List<String> csvHeaders = new ArrayList<>();
-            csvHeaders.add("RootPipelineId");
-            csvHeaders.add("FileName");
-            csvHeaders.addAll(sortedDynamicHeaders); // Add dynamic headers
-
-            try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
-                // Step 4: Write the header row (first row)
-                writer.writeNext(csvHeaders.toArray(new String[0]));
-
-                // Step 5: Prepare the data row (second row)
-                List<String> row = new ArrayList<>();
-
-                // Assume all records belong to the same RootPipelineId and FileName
-                if (!dataList.isEmpty()) {
-                    DecryptedCsvData firstRecord = dataList.get(0);
-                    row.add(firstRecord.getRootPipelineId());
-                    row.add(firstRecord.getFileName());
-                } else {
-                    row.add(""); // Empty RootPipelineId if no data
-                    row.add(""); // Empty FileName if no data
-                }
-
-                // Create a map of sorItemName -> extractedValue for quick lookup
-                Map<String, String> valueMap = dataList.stream()
-                        .collect(Collectors.toMap(DecryptedCsvData::getSorItemName, DecryptedCsvData::getExtractedValue, (v1, v2) -> v1));
-
-                // Fill the row with extracted values matching the dynamic headers
-                for (String header : sortedDynamicHeaders) {
-                    row.add(valueMap.getOrDefault(header, "")); // Fill missing values with empty string
-                }
-
-                // Step 6: Write the single row of data
-                writer.writeNext(row.toArray(new String[0]));
-            }
-        } catch (IOException e) {
-            throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e, this.action);
-        }
-    }
 
     private void writeToCsv5(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {
 
@@ -386,79 +284,6 @@ public class DecryptInticsEncAction implements IActionExecution {
             }
         } catch (IOException e) {
             throw new HandymanException("Error writing to CSV file: " + e.getMessage(), e, this.action);
-        }
-    }
-
-    public static void writeToCsvWithHeaders(List<DecryptedCsvData> dataList, List<String> headers, String filePath) {
-        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
-            // Write headers
-            writer.writeNext(headers.toArray(new String[0]));
-
-            // Create a map of filename -> (sorItemName -> extractedValue)
-            Map<String, Map<String, String>> fileDataMap = dataList.stream()
-                    .collect(Collectors.groupingBy(
-                            DecryptedCsvData::getFileName,
-                            Collectors.toMap(DecryptedCsvData::getSorItemName, DecryptedCsvData::getExtractedValue, (v1, v2) -> v1)
-                    ));
-
-            // Iterate over fileDataMap and write to CSV
-            for (Map.Entry<String, Map<String, String>> fileEntry : fileDataMap.entrySet()) {
-                String fileName = fileEntry.getKey();
-                Map<String, String> sorItemMap = fileEntry.getValue();
-
-                int headersListSize = headers.size() + 1;
-                String[] row = new String[headersListSize];
-                row[0] = fileName; // Set the file name
-
-                // Match headers with sorItemName and fetch values
-                for (int i = 2; i < headersListSize; i++) {
-                    row[i] = sorItemMap.getOrDefault(headers.get(i), "");
-                }
-
-                writer.writeNext(row);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void writeToCsv1(List<DecryptedCsvData> dataList, String filePath) {
-        // Extract unique sorItemNames for headers and include "fileName" as the first column
-        Set<String> sorItemNames = dataList.stream()
-                .map(DecryptedCsvData::getSorItemName)
-                .collect(Collectors.toSet());
-
-        List<String> headers = List.of("fileName");
-        headers.addAll(sorItemNames);
-
-        try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
-            // Write headers
-            writer.writeNext(headers.toArray(new String[0]));
-
-            // Group data by fileName
-            Map<String, Map<String, String>> fileDataMap = dataList.stream()
-                    .collect(Collectors.groupingBy(
-                            DecryptedCsvData::getFileName,
-                            Collectors.toMap(DecryptedCsvData::getSorItemName, DecryptedCsvData::getExtractedValue, (v1, v2) -> v1)
-                    ));
-
-            // Iterate over fileDataMap and write rows
-            for (Map.Entry<String, Map<String, String>> fileEntry : fileDataMap.entrySet()) {
-                String fileName = fileEntry.getKey();
-                Map<String, String> sorItemMap = fileEntry.getValue();
-
-                String[] row = new String[headers.size()];
-                row[0] = fileName; // Set the file name
-
-                // Match headers with sorItemName and fetch values
-                for (int i = 1; i < headers.size(); i++) {
-                    row[i] = sorItemMap.getOrDefault(headers.get(i), "");
-                }
-
-                writer.writeNext(row);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
