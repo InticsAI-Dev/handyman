@@ -101,9 +101,8 @@ public class LlmJsonParserAction implements IActionExecution {
 
                                 List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
                                 for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
-                                    String extractValue = parsedResponse.getAnswer();
 
-                                    getInsertIntoArgonResultTable(handle, inputTable, parsedResponse, insertQueryXenon, extractValue);
+                                    getInsertIntoXenonResultTable(handle, inputTable, parsedResponse, insertQueryXenon);
 
                                     log.info("\n insert processing for process {} :\n", inputTable.getProcess());
 
@@ -271,7 +270,7 @@ public class LlmJsonParserAction implements IActionExecution {
         return response;
     }
 
-    private static void getInsertIntoArgonResultTable(Handle handle, LlmJsonQueryInputTable inputTable, LlmJsonParsedResponse parsedResponse, String insertQueryXenon, String encryptedValue) {
+    private static void getInsertIntoXenonResultTable(Handle handle, LlmJsonQueryInputTable inputTable, LlmJsonParsedResponse parsedResponse, String insertQueryXenon) {
 
         handle.createUpdate(insertQueryXenon)
                 .bind(0, inputTable.getCreatedOn())
@@ -280,7 +279,7 @@ public class LlmJsonParserAction implements IActionExecution {
                 .bind(3, inputTable.getTenantId())
                 .bind(4, parsedResponse.getSorContainerName())
                 .bind(5, parsedResponse.getSorItemName())
-                .bind(6, encryptedValue)
+                .bind(6, parsedResponse.getAnswer())
                 .bind(7, inputTable.getPaperNo())
                 .bind(8, inputTable.getOriginId())
                 .bind(9, inputTable.getGroupId())
