@@ -97,7 +97,7 @@ public class AlchemyResponseAction implements IActionExecution {
             Map<String, List<AlchemyResponseInputTable>> groupedByOriginId = getOriginBasedPredictions(tableInfos);
             for (Map.Entry<String, List<AlchemyResponseInputTable>> entry : groupedByOriginId.entrySet()) {
                 String originId = entry.getKey();
-                processInBatchesParallel(url, tableInfos, tenantId, authToken, mapper, mediaTypeJSON, jdbi, DEFAULT_BATCH_SIZE, originId, httpclient, consumerApiCount);
+                processInBatchesParallel(url, entry.getValue(), tenantId, authToken, mapper, mediaTypeJSON, jdbi, DEFAULT_BATCH_SIZE, originId, httpclient, consumerApiCount);
             }
 
         } catch (Exception t) {
