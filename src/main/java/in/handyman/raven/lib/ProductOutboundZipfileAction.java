@@ -176,8 +176,6 @@ public class ProductOutboundZipfileAction implements IActionExecution {
                 log.info("File copied from {} to {}", inputFilePath, outputDirectory);
             } catch (IOException e) {
                 log.error("File copy failed for {} to {}", inputFilePath, outputDirectory);
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("failed in copying the file", handymanException, action);
                 throw new HandymanException("Error in execute method for copying file", e, action);
             }
         } else {

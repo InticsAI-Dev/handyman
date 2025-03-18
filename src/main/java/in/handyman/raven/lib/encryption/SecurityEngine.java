@@ -5,7 +5,6 @@ import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.lib.encryption.impl.ProtegrityApiEncryptionImpl;
 import in.handyman.raven.lib.encryption.impl.ProtegrityEncryptionImpl;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
-import in.handyman.raven.util.PropertyHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +12,9 @@ public class SecurityEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecurityEngine.class);
 
+    private SecurityEngine() {
+        throw new IllegalStateException("Utility class cannot be instantiated");
+    }
     public static InticsIntegrity getInticsIntegrityMethod(final ActionExecutionAudit action) {
         String methodName = action.getContext().getOrDefault("pipeline.encryption.default.holder", "");
         String encryptionUrl = action.getContext().get("protegrity.enc.api.url");
@@ -25,9 +27,9 @@ public class SecurityEngine {
             return new InticsIntegrity(new ProtegrityEncryptionImpl());
         } else if (methodName.equals(EncryptionHandlers.PROTEGRITY_API_ENC.name())) {
             LOGGER.info("Selected encryption handler: PROTEGRITY_API_ENC");
-            return new InticsIntegrity(new ProtegrityApiEncryptionImpl(encryptionUrl,decryptionUrl));
+            return new InticsIntegrity(new ProtegrityApiEncryptionImpl(encryptionUrl, decryptionUrl, action));
         } else {
-            LOGGER.info("Selected encryption handler: INBUILD_AES (default)");
+            LOGGER.info("Selected encryption handler: INBUILT_AES (default)");
             return new InticsIntegrity(new AESEncryptionImpl());
         }
     }

@@ -24,7 +24,6 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -103,7 +102,10 @@ public class ScalarAdapterAction implements IActionExecution {
 
             //Add summary audit - ${process-id}.sanitizer_summary - this should hold row count, correct row count, error_row_count
 //            insertSummaryAudit(jdbi, validatorConfigurationDetails.size(), 0, 0);
-            doCompute(jdbi, validatorConfigurationDetails);
+            performFieldValidation(jdbi, validatorConfigurationDetails);
+
+//            TODO
+//        performRowPostProcess();
             //doProcess(jdbi, validatorConfigurationDetails);
             log.info(aMarker, "scalar has completed" + scalarAdapter.getName());
         } catch (Exception e) {
@@ -167,7 +169,7 @@ public class ScalarAdapterAction implements IActionExecution {
         }
     }*/
 
-    private void doCompute(final Jdbi jdbi, List<ValidatorConfigurationDetail> listOfDetails) {
+    private void performFieldValidation(final Jdbi jdbi, List<ValidatorConfigurationDetail> listOfDetails) {
         try {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
             for (ValidatorConfigurationDetail result : listOfDetails) {
@@ -186,7 +188,7 @@ public class ScalarAdapterAction implements IActionExecution {
                     log.info(aMarker, "Build 19- scalar executing  validator {} and item {} ", result.getOriginId(),result.getSorItemName());
 
 //                String inputValue = result.getInputValue();
-                    Validator scrubbingInput = Validator.builder()
+                    FieldValidator scrubbingInput = FieldValidator.builder()
                             .inputValue(result.getInputValue())
                             .adapter(result.getAllowedAdapter())
                             .allowedSpecialChar(result.getAllowedCharacters())
@@ -347,7 +349,7 @@ public class ScalarAdapterAction implements IActionExecution {
         }
     }
 
-    int computeAdapterScore(Validator inputDetail) {
+    int computeAdapterScore(FieldValidator inputDetail) {
         int confidenceScore = 0;
         try {
             switch (inputDetail.getAdapter()) {
@@ -399,7 +401,7 @@ public class ScalarAdapterAction implements IActionExecution {
     }
 
 
-    Validator computeScrubbingForValue(Validator inputDetail) {
+    FieldValidator computeScrubbingForValue(FieldValidator inputDetail) {
         try {
             switch (inputDetail.getAdapter()) {
                 case "alpha":
@@ -452,13 +454,13 @@ public class ScalarAdapterAction implements IActionExecution {
 
     }
 
-    private int regValidator(Validator validator, String regForm) {
-        String inputValue = validator.getInputValue();
-        inputValue = replaceAllowedChars(validator.getAllowedSpecialChar(), inputValue);
+    private int regValidator(FieldValidator fieldValidator, String regForm) {
+        String inputValue = fieldValidator.getInputValue();
+        inputValue = replaceAllowedChars(fieldValidator.getAllowedSpecialChar(), inputValue);
         Pattern pattern = Pattern.compile(regForm);
         Matcher matcher = pattern.matcher(inputValue);
         boolean matchValue = matcher.matches();
-        return matchValue ? validator.getThreshold() : 0;
+        return matchValue ? fieldValidator.getThreshold() : 0;
     }
 
     private String replaceAllowedChars(final String specialCharacters, String input) {
@@ -472,16 +474,16 @@ public class ScalarAdapterAction implements IActionExecution {
         return input;
     }
 
-    private Validator scrubbingInput(Validator validator, String regix) {
-        if (validator.getInputValue() != null) {
-            String correctedValue = validator.getInputValue().replaceAll(regix, "");
-            validator.setInputValue(correctedValue);
+    private FieldValidator scrubbingInput(FieldValidator fieldValidator, String regix) {
+        if (fieldValidator.getInputValue() != null) {
+            String correctedValue = fieldValidator.getInputValue().replaceAll(regix, "");
+            fieldValidator.setInputValue(correctedValue);
         }
-        return validator;
+        return fieldValidator;
     }
 
-    private Validator removePrefixAndSuffix(Validator validator) {
-        String dateRegValue = validator.getInputValue();
+    private FieldValidator removePrefixAndSuffix(FieldValidator fieldValidator) {
+        String dateRegValue = fieldValidator.getInputValue();
         String correctedValue = dateRegValue;
         if (dateRegValue != null && !dateRegValue.isEmpty()) {
             int startIndex = 0;
@@ -502,18 +504,18 @@ public class ScalarAdapterAction implements IActionExecution {
             }
         }
         assert correctedValue != null;
-        validator.setInputValue(correctedValue.replaceAll("\\s", ""));
-        return validator;
+        fieldValidator.setInputValue(correctedValue.replaceAll("\\s", ""));
+        return fieldValidator;
     }
 
     private static boolean isAlphabetic(char ch) {
         return Character.isLetter(ch);
     }
 
-    private Validator scrubbingDate(Validator validator) {
-        if (validator.getInputValue() != null) {
+    private FieldValidator scrubbingDate(FieldValidator fieldValidator) {
+        if (fieldValidator.getInputValue() != null) {
 
-            int confidenceScore = this.dateAction.getDateScore(validator);
+            int confidenceScore = this.dateAction.getDateScore(fieldValidator);
 
             if (confidenceScore == 0) {
 
@@ -522,7 +524,7 @@ public class ScalarAdapterAction implements IActionExecution {
                 // Create pattern object
                 Pattern pattern = Pattern.compile(dateRegexPattern);
                 // Create matcher object
-                Matcher matcher = pattern.matcher(validator.getInputValue());
+                Matcher matcher = pattern.matcher(fieldValidator.getInputValue());
 
                 if (matcher.find()) {
                     // Extract matched groups (month, separator, day, year)
@@ -536,17 +538,17 @@ public class ScalarAdapterAction implements IActionExecution {
                     if (separator.trim().isEmpty()) {
                         separator = "-";
                         inputValue = inputValue.concat(month + separator + day + separator + year);
-                        validator.setInputValue(inputValue);
+                        fieldValidator.setInputValue(inputValue);
                         log.info("With Formatted date: " + month + separator + day + separator + year);
                     } else {
                         inputValue = inputValue.concat(month + separator + day + separator2 + year);
-                        validator.setInputValue(inputValue);
+                        fieldValidator.setInputValue(inputValue);
                         log.info("Extracted date: " + month + separator + day + separator2 + year);
                     }
                 }
             }
         }
-        return validator;
+        return fieldValidator;
     }
 
     @Override

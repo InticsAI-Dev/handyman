@@ -17,14 +17,17 @@ import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProcess<PhraseMatchInputTable, PhraseMatchOutputTable> {
+    public static final String FILTER_ZSC_PAGE_CONTENT_LOWER = "filter.zsc.page.content.lower";
     private final Logger log;
     private final Marker aMarker;
     private static final MediaType MediaTypeJSON = MediaType
@@ -56,6 +59,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String batchId = entity.getBatchId();
 
         String decryptedContent;
+
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
@@ -69,8 +73,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
-
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            keysToFilterObject.replaceAll((key, valueList) ->
+                    valueList.stream()
+                            .map(String::toLowerCase)
+                            .collect(Collectors.toList())
+            );
+        }
         //payload
+        String decryptedPageContentLower = normalizeCaseToLower(decryptedContent);
+
         PharseMatchData data = new PharseMatchData();
         data.setRootPipelineId(Math.toIntExact(action.getRootPipelineId()));
         data.setActionId(actionId);
@@ -78,7 +90,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setOriginId(originId);
         data.setPaperNo(Long.valueOf(paperNo));
         data.setGroupId(groupId);
-        data.setPageContent(decryptedContent);
+        data.setPageContent(decryptedPageContentLower);
         data.setKeysToFilter(keysToFilterObject);
         data.setProcess(PROCESS_NAME);
         data.setBatchId(batchId);
@@ -328,6 +340,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             requestStr = request;
         }
         return requestStr;
+    }
+
+    @NotNull
+    private String normalizeCaseToLower(String pageContent) {
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            pageContent = pageContent.toLowerCase();
+            log.info("Converted the input string content into lower");
+            return pageContent;
+        }
+        return pageContent;
     }
 }
 

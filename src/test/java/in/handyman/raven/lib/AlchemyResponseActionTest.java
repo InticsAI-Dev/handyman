@@ -13,7 +13,7 @@ class AlchemyResponseActionTest {
 
         AlchemyResponse alchemyResponse = AlchemyResponse.builder()
                 .name("alchemy response action")
-                .token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzQwMzE2MTQ4LCJpYXQiOjE3NDAyMjk3NDksImVtYWlsIjoiYW50aGVtLWVsZXZhbmNlQGludGljcy5haSJ9.sFJcB6k2780TOljx8qk_XAib38X3cFbTowMacoDSHZw")
+                .token("")
                 .tenantId(1L)
                 .querySet("select cr.b_box ,cr.origin_id ,cr.paper_no ,cr.tenant_id ,cr.root_pipeline_id , cr.confidence_score as confidence_score,cr.extracted_value as extracted_value,\n" +
                         "                cr.sor_item_name,cr.synonym_id,cr.question_id ,'KIE' as feature,null as state ,null as table_data, cr.batch_id\n" +
@@ -23,12 +23,12 @@ class AlchemyResponseActionTest {
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.setRootPipelineId(1L);
         actionExecutionAudit.getContext().put("alchemy.origin.valuation.url","http://localhost:8189/alchemy/api/v1/valuation/predictions-list/origin");
-        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzQwMzE2MTQ4LCJpYXQiOjE3NDAyMjk3NDksImVtYWlsIjoiYW50aGVtLWVsZXZhbmNlQGludGljcy5haSJ9.sFJcB6k2780TOljx8qk_XAib38X3cFbTowMacoDSHZw");
+        actionExecutionAudit.getContext().put("alchemyAuth.token","");
         actionExecutionAudit.getContext().put("alchemyAuth.tenantId","1");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
         actionExecutionAudit.getContext().put("group_id","1");
         actionExecutionAudit.getContext().put("write.batch.size","1");
-        actionExecutionAudit.getContext().put("alchemy.response.consumer.API.count","1");
+        actionExecutionAudit.getContext().put("alchemy.response.consumer.API.count","10");
         actionExecutionAudit.getContext().put("read.batch.size","1");
         actionExecutionAudit.getContext().put("alchemy.response.output.table","alchemy_migration.alchemy_transform_output_table");
 

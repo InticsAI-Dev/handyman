@@ -114,7 +114,7 @@ public class AzureAuthTokenSession {
             sessionToken = newToken;
             tokenCreatedDate = Instant.now();
             tokenCreatedBy = getCallerMethod();
-            storeNewToken(dbConnection, sessionToken, tokenCreatedBy);
+            storeNewToken(dbConnection, tokenCreatedBy);
 
             log.info("Token successfully updated by: {}", tokenCreatedBy);
 
@@ -152,13 +152,13 @@ public class AzureAuthTokenSession {
     /**
      * Stores a new token in `azure_auth_token_session`. Ensures only one row exists.
      */
-    private void storeNewToken(Connection dbConnection, String token, String createdBy) {
+    private void storeNewToken(Connection dbConnection, String createdBy) {
         log.info("Entering storeNewToken() method");
 
         String updateQuery = "UPDATE audit.azure_auth_token_session SET session_token = ?, token_created_date = ?, token_created_by = ?";
 
         try (PreparedStatement updatePs = dbConnection.prepareStatement(updateQuery)) {
-            updatePs.setString(1, encryptToken(token));
+            updatePs.setString(1, "");
             updatePs.setTimestamp(2, Timestamp.from(Instant.now()));
             updatePs.setString(3, createdBy);
 
@@ -166,7 +166,7 @@ public class AzureAuthTokenSession {
             if (rowsUpdated == 0) {
                 String insertQuery = "INSERT INTO audit.azure_auth_token_session (session_token, token_created_date, token_created_by) VALUES (?, ?, ?)";
                 try (PreparedStatement insertPs = dbConnection.prepareStatement(insertQuery)) {
-                    insertPs.setString(1, encryptToken(token));
+                    insertPs.setString(1, "");
                     insertPs.setTimestamp(2, Timestamp.from(Instant.now()));
                     insertPs.setString(3, createdBy);
                     insertPs.executeUpdate();
@@ -182,11 +182,6 @@ public class AzureAuthTokenSession {
         log.info("Exiting storeNewToken() method");
     }
 
-    public String encryptToken(String token){
-        InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
-        String transformValueEncrypted = inticsIntegrity.encrypt(token, "AES256", "SQL_DATA");
-        return transformValueEncrypted;
-    }
     private boolean isTokenExpired(Instant createdTime) {
         return createdTime == null || Instant.now().isAfter(createdTime.plus(TOKEN_EXPIRY_LIMIT));
     }

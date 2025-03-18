@@ -2,7 +2,7 @@ package in.handyman.raven.lib.adapters;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 
 public class CharacterCountAdapter implements AdapterInterface {
     @Override
@@ -19,7 +19,7 @@ public class CharacterCountAdapter implements AdapterInterface {
     }
 
     @Override
-    public boolean getNameValidationModel(Validator input, String uri, ActionExecutionAudit audit) throws Exception {
+    public boolean getNameValidationModel(FieldValidator input, String uri, ActionExecutionAudit audit) throws Exception {
         return false;
     }
 

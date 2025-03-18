@@ -2,8 +2,8 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.Datevalidator;
+import in.handyman.raven.lib.model.FieldValidator;
 import in.handyman.raven.lib.model.ScalarAdapter;
-import in.handyman.raven.lib.model.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
@@ -73,11 +73,11 @@ class ScalarAdapterActionTest {
 
     @Test
     public void removePrefixAndSuffix() {
-        Validator validator = Validator.builder()
+        FieldValidator fieldValidator = FieldValidator.builder()
                 .inputValue("1 0/19/2021")
                 .build();
-        if (validator.getInputValue().length() > 2) {
-            String originalString = validator.getInputValue();
+        if (fieldValidator.getInputValue().length() > 2) {
+            String originalString = fieldValidator.getInputValue();
             StringBuilder modifiedString = new StringBuilder(originalString);
             // Remove last alphabet character
 
@@ -88,21 +88,21 @@ class ScalarAdapterActionTest {
             while (Character.isAlphabetic(modifiedString.charAt(0))) {
                 modifiedString.deleteCharAt(0);
             }
-            validator.setInputValue(modifiedString.toString());
+            fieldValidator.setInputValue(modifiedString.toString());
         }
-        System.out.println(validator);
+        System.out.println(fieldValidator);
     }
 
     @Test
     public void testScrubbingDate() {
-        Validator validator = Validator.builder()
+        FieldValidator fieldValidator = FieldValidator.builder()
                 .inputValue("42511974")
                 .build();
-        if (!StringUtils.isNumeric(validator.getInputValue())) {
+        if (!StringUtils.isNumeric(fieldValidator.getInputValue())) {
             System.out.println("yes");
         }
         Pattern pattern = Pattern.compile("(0?[1-9]|1?[0-2])([-./\\s]?)(0?[1-9]|[12]\\d|3[01])([-./\\s]?)(\\d{4}|\\d{2})");
-        Matcher matcher = pattern.matcher(validator.getInputValue());
+        Matcher matcher = pattern.matcher(fieldValidator.getInputValue());
         if (matcher.find()) {
             // Extract matched groups (month, separator, day, year)
             String month = matcher.group(1);
@@ -115,34 +115,34 @@ class ScalarAdapterActionTest {
             if (separator.trim().isEmpty()) {
                 separator = "-";
                 inputValue = inputValue.concat(month + separator + day + separator + year);
-                validator.setInputValue(inputValue);
+                fieldValidator.setInputValue(inputValue);
                 log.info("With Formatted date: " + month + separator + day + separator + year);
             } else {
                 inputValue = inputValue.concat(month + separator + day + separator2 + year);
-                validator.setInputValue(inputValue);
+                fieldValidator.setInputValue(inputValue);
                 log.info("Extracted date: " + month + separator + day + separator2 + year);
             }
         }
-        System.out.println(validator);
+        System.out.println(fieldValidator);
     }
 
 
     @Test
     public void testScrubbingDate1() {
-        Validator validator = Validator.builder()
+        FieldValidator fieldValidator = FieldValidator.builder()
                 .inputValue("20/10/2021")
                 .build();
         Pattern pattern = Pattern.compile("(0?[1-9]|1[0-2])([-./\\s])(0?[1-9]|[12]\\d|3[01])\\2(\\d{4}|\\d{2})");
-        Matcher matcher = pattern.matcher(validator.getInputValue());
+        Matcher matcher = pattern.matcher(fieldValidator.getInputValue());
         if (matcher.find()) {
             String month = matcher.group(1);
             String separator = matcher.group(2);
             String day = matcher.group(3);
             String year = matcher.group(4);
-            validator.setInputValue(month + separator + day + separator + year);
-            System.out.println(validator);
+            fieldValidator.setInputValue(month + separator + day + separator + year);
+            System.out.println(fieldValidator);
         }
-        System.out.println(validator);
+        System.out.println(fieldValidator);
     }
 
 
@@ -185,10 +185,10 @@ class ScalarAdapterActionTest {
 
     @Test
     public void removePrefixAndSuffix1() {
-        Validator validator = Validator.builder()
+        FieldValidator fieldValidator = FieldValidator.builder()
                 .inputValue("NPI")
                 .build();
-        String originalString = validator.getInputValue().trim(); // Trim to remove leading/trailing spaces
+        String originalString = fieldValidator.getInputValue().trim(); // Trim to remove leading/trailing spaces
 
         // Find the index of the first non-digit character
         int startIndex = 0;
@@ -205,9 +205,9 @@ class ScalarAdapterActionTest {
 
         // Extract the substring containing only digits
         String modifiedString = originalString.substring(startIndex, endIndex + 1).trim(); // Trim to remove leading/trailing spaces
-        validator.setInputValue(modifiedString);
+        fieldValidator.setInputValue(modifiedString);
 
-        System.out.println(validator);
+        System.out.println(fieldValidator);
     }
 
     @Test
@@ -218,6 +218,7 @@ class ScalarAdapterActionTest {
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
         action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put("scalar.data.formats.deduct.century","true");
         action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
         action.getContext().put("validaiton.char-limit-count", "1");
@@ -230,11 +231,11 @@ class ScalarAdapterActionTest {
                 .thresholdValue("")
                 .inputValue("")
                 .build();
-        Validator validator= Validator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/2025").build();
+        FieldValidator fieldValidator = FieldValidator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/30").build();
         DatevalidatorAction datevalidatorAction=new DatevalidatorAction(action,log,datevalidator);
-        System.out.println(validator.getInputValue());
-        datevalidatorAction.formatDate(validator);
-        System.out.println(validator.getInputValue());
+        FieldValidator formatedFieldValidator = datevalidatorAction.formatDate(fieldValidator);
+        System.out.println(formatedFieldValidator.getInputValue());
+      log.info("Validator special character {} and validator input value {} output formatted value {}", fieldValidator.getAllowedSpecialChar(), fieldValidator.getInputValue(), formatedFieldValidator.getInputValue());
     }
 
     @Test

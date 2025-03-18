@@ -14,17 +14,20 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.model.zeroshotclassifier.copro.ZeroShotClassifierDataItemCopro;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String ZSC_START = "ZSC START";
+    public static final String FILTER_ZSC_PAGE_CONTENT_LOWER = "filter.zsc.page.content.lower";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -76,10 +79,17 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            keysToFilterObject.replaceAll((key, valueList) ->
+                    valueList.stream()
+                            .map(String::toLowerCase)
+                            .collect(Collectors.toList())
+            );
+        }
 
 
         //payload
-
+        String decryptedPageContentLower = normalizeCaseToLower(decryptedContent);
         ZeroShotClassifierData data = new ZeroShotClassifierData();
         data.setProcess(PROCESS_NAME);
         data.setProcessId(processId);
@@ -89,7 +99,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         data.setOriginId(originId);
         data.setPaperNo(paperNo);
         data.setGroupId(groupId);
-        data.setPageContent(decryptedContent);
+        data.setPageContent(decryptedPageContentLower);
         data.setKeysToFilter(keysToFilterObject);
         data.setBatchId(batchId);
         String jsonInputRequest = objectMapper.writeValueAsString(data);
@@ -125,6 +135,16 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         }
 
         return parentObj;
+    }
+
+    @NotNull
+    private String normalizeCaseToLower(String pageContent) {
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            pageContent = pageContent.toLowerCase();
+            log.info("Converted the input string content into lower");
+            return pageContent;
+        }
+        return pageContent;
     }
 
     private void tritonRequestBuilder(ZeroShotClassifierInputTable entity, List<ZeroShotClassifierOutputTable> parentObj, Request request, String jsonRequest, URL endpoint) {

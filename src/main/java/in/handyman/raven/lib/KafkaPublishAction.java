@@ -91,7 +91,8 @@ public class KafkaPublishAction implements IActionExecution {
                     log.info(aMarker, "executed query from index {}", i.get());
                 });
             });
-
+            int inputQueryObjectSize = kafkaPublishQueryInputs.size();
+            log.info(aMarker, "Input Query output has {} objects present", inputQueryObjectSize);
             kafkaPublishQueryInputs.forEach(kafkaPublishQueryInput -> {
                 try {
                     doKafkaPublish(kafkaPublishQueryInput);

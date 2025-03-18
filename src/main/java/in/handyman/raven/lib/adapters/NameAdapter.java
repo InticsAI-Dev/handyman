@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterDataItem;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterPayload;
 import in.handyman.raven.lib.model.neradaptors.NerAdapterResponse;
@@ -37,7 +37,7 @@ return false;
     }
 
     @Override
-    public boolean getNameValidationModel(Validator input, String uri, ActionExecutionAudit audit) throws Exception {
+    public boolean getNameValidationModel(FieldValidator input, String uri, ActionExecutionAudit audit) throws Exception {
 
         try {
 
