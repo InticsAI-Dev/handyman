@@ -282,11 +282,16 @@ public class ControlDataComparisonAction implements IActionExecution {
   }
 
   private String parseDateWithFormat(String date, String inputFormat) {
-    List<String>  dateInputFormats = Collections.singletonList(action.getContext().get("date.input.formats"));;
+    String allowedFormats = action.getContext().get("date.input.formats");
 
-    for (String format : dateInputFormats) {
+    List<DateTimeFormatter> dateInputFormats = Optional.of(allowedFormats)
+            .map(s -> Arrays.stream(s.split(";"))
+                    .map(DateTimeFormatter::ofPattern)
+                    .collect(Collectors.toList()))
+            .orElse(Collections.emptyList());
+
+    for (DateTimeFormatter inputFormatter : dateInputFormats) {
       try {
-        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern(format);
         LocalDate parsedDate = LocalDate.parse(date, inputFormatter);
 
         DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
