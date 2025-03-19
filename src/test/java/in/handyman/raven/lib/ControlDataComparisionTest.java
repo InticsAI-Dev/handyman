@@ -79,7 +79,7 @@ public class ControlDataComparisionTest {
                 Map.entry("write.batch.size", "1")));
 
         ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build() );
-        Long validationResults = deliveryNotifyAction.dataValidation("Jon D", "John");
+        Long validationResults = deliveryNotifyAction.dataValidation("630 Crest Line Street, Vancouver, WA, 98664", "63o Crest Line Street") ;
         System.out.println(validationResults);
         log.info("Data validation completed");
     }

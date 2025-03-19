@@ -217,7 +217,7 @@ public class ControlDataComparisonAction implements IActionExecution {
       log.error("Invalid input for extractedData={}", extractedData);
       return actualData == null ? 0L : (long) actualData.length();
     }
-    if (actualData == null || actualData.isEmpty()){
+    if (actualData == null || actualData.isEmpty()) {
       log.error("Invalid input for actualData={}", actualData);
       return (long) extractedData.length();
     }
@@ -225,25 +225,87 @@ public class ControlDataComparisonAction implements IActionExecution {
     String normalizedExtracted = extractedData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     String normalizedActual = actualData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
 
-    int distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
+
+    int mismatchCount = 0;
+    int distance;
+
+    distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
 
     if (distance == 0) {
-      return 0L;
+      mismatchCount += distance;
+      return (long) mismatchCount;
+    } else {
+      List<String> extractedWords = Arrays.asList(extractedData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+"));
+      List<String> actualWords = Arrays.asList(actualData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+"));
+
+      // Step 1: Find closest-matches in both directions
+      Map<String, String> matchedPairs = new LinkedHashMap<>();
+      Set<String> usedActualWords = new HashSet<>();
+
+      for (String extractedWord : extractedWords) {
+        String closestMatch = findClosestWord(extractedWord, actualWords, usedActualWords);
+        if (closestMatch != null) {
+          matchedPairs.put(extractedWord, closestMatch);
+          usedActualWords.add(closestMatch); // Mark as used
+        }
+      }
+
+      // Step 2: Find unmatched words in actualData and check for closest match in extractedData
+      Set<String> usedExtractedWords = new HashSet<>(matchedPairs.keySet());
+      for (String actualWord : actualWords) {
+        if (!usedActualWords.contains(actualWord)) { // If not already matched
+          String closestMatch = findClosestWord(actualWord, extractedWords, usedExtractedWords);
+          if (closestMatch != null) {
+            matchedPairs.put(closestMatch, actualWord);
+            usedExtractedWords.add(closestMatch);
+          }
+        }
+      }
+
+      for (Map.Entry<String, String> entry : matchedPairs.entrySet()) {
+        distance = LevenshteinDistance.getDefaultInstance().apply(entry.getKey(), entry.getValue());
+        mismatchCount += distance;
+      }
     }
 
     if (normalizedExtracted.contains(normalizedActual)) {
-      return 0L;
+      for (int i = 0; i < normalizedActual.length(); i++) {
+        if (normalizedExtracted.charAt(i) != normalizedActual.charAt(i)) {
+          mismatchCount++;
+        }
+      }
+      return (long) mismatchCount;
     }
 
-    Set<String> extractedWords = new HashSet<>(Arrays.asList(extractedData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
-    Set<String> actualWords = new HashSet<>(Arrays.asList(actualData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
-
-    if (extractedWords.equals(actualWords)) {
-      return 0L;
+    if (normalizedActual.contains(normalizedExtracted)) {
+      for (int i = 0; i < normalizedExtracted.length(); i++) {
+        if (normalizedActual.charAt(i) != normalizedExtracted.charAt(i)) {
+          mismatchCount++;
+        }
+      }
+      return (long) mismatchCount;
     }
 
-    return (long) distance;
+    return (long) mismatchCount;
   }
+
+  private String findClosestWord(String target, List<String> words, Set<String> usedWords) {
+    int minDistance = Integer.MAX_VALUE;
+    String closestWord = null;
+
+    for (String word : words) {
+      if (usedWords.contains(word)) continue; // Skip already matched words
+
+      int distance = LevenshteinDistance.getDefaultInstance().apply(target, word);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestWord = word;
+      }
+    }
+
+    return closestWord; // Return the closest matching word or null if none found
+  }
+
 
   public Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
     if (extractedDate == null || extractedDate.isEmpty()) {
