@@ -14,13 +14,13 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://192.168.10.241:7800/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("http://192.168.10.248:7800/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
                         "                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name,sor_container_id, " +
-                        "krypton_inference_mode as krypton_inference_mode, transformation_user_prompts as transformation_user_prompts, " +
+                        "'KRYPTON_DOUBLE_PASS_MODE' as krypton_inference_mode, transformation_user_prompts as transformation_user_prompts, " +
                         "transformation_system_prompts as transformation_system_prompts\n" +
-                        "                FROM sor_transaction.radon_kvp_input_audit;")
+                        "                FROM cleanup_schema.radon_kvp_input_3427;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

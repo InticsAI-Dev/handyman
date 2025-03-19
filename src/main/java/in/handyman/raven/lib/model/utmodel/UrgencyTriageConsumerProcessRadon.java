@@ -183,32 +183,32 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
             RadonKvpLineItem modelResponse = objectMapper.readValue(urgencyTriageModelDataItem, RadonKvpLineItem.class);
 
 //            UrgencyTriageModelDataItem urgencyTriageModelDataItem1 = objectMapper.readValue(urgencyTriageModelDataItem, UrgencyTriageModelDataItem.class);
-            JsonNode qrBoundingBox = objectMapper.valueToTree(modelResponse.getBboxes());
-            Float confScore = Float.valueOf(modelResponse.getConfidenceScore() == null ? 0 : modelResponse.getConfidenceScore());
-            String paperType = modelResponse.getInferResponse();
-            parentObj.add(UrgencyTriageOutputTable.builder()
-                    .createdUserId(createdUserId)
-                    .lastUpdatedUserId(createdUserId)
-                    .tenantId(modelResponse.getTenantId())
-                    .processId(modelResponse.getProcessId())
-                    .groupId(modelResponse.getGroupId())
-                    .originId(modelResponse.getOriginId())
-                    .paperNo(modelResponse.getPaperNo())
-                    .templateId(templateId)
-                    .modelId(modelId)
-                    .utResult(paperType)
-                    .confScore(confScore)
-                    .bbox(qrBoundingBox.toString())
-                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                    .stage(URGENCY_TRIAGE_PROCESS_NAME)
-                    .message("Urgency Triage Finished")
-                    .rootPipelineId(entity.getRootPipelineId())
-                    .modelName(modelName)
-                    .modelVersion(modelVersion)
-                    .batchId(entity.getBatchId())
-                    .createdOn(entity.getCreatedOn())
-                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                    .build());
+//            JsonNode qrBoundingBox = objectMapper.valueToTree(modelResponse.getBboxes());
+//            Float confScore = Float.valueOf(modelResponse.getConfidenceScore() == null ? 0 : modelResponse.getConfidenceScore());
+//            String paperType = modelResponse.getInferResponse();
+//            parentObj.add(UrgencyTriageOutputTable.builder()
+//                    .createdUserId(createdUserId)
+//                    .lastUpdatedUserId(createdUserId)
+//                    .tenantId(modelResponse.getTenantId())
+//                    .processId(modelResponse.getProcessId())
+//                    .groupId(modelResponse.getGroupId())
+//                    .originId(modelResponse.getOriginId())
+//                    .paperNo(modelResponse.getPaperNo())
+//                    .templateId(templateId)
+//                    .modelId(modelId)
+//                    .utResult(paperType)
+//                    .confScore(confScore)
+//                    .bbox(qrBoundingBox.toString())
+//                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+//                    .stage(URGENCY_TRIAGE_PROCESS_NAME)
+//                    .message("Urgency Triage Finished")
+//                    .rootPipelineId(entity.getRootPipelineId())
+//                    .modelName(modelName)
+//                    .modelVersion(modelVersion)
+//                    .batchId(entity.getBatchId())
+//                    .createdOn(entity.getCreatedOn())
+//                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+//                    .build());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

@@ -277,7 +277,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
 
         }
     }
@@ -401,7 +401,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
 
         }
     }
@@ -461,7 +461,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred in replicate {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for replicate batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for replicate batch/group " + entity.getGroupId(), handymanException, this.action);
 
         }
     }
@@ -528,7 +528,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred in Copro {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for batch/group " + groupId, handymanException, this.action);
 
         }
     }
@@ -566,7 +566,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for batch/group " + groupId, handymanException, this.action);
 
         }
     }

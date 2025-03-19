@@ -135,7 +135,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         // Check if KRYPTON_DOUBLE_PASS_MODE is enabled
         String actionKvpInferenceMode = action.getContext().get(INFERENCE_MODE);
-        System.out.println(actionKvpInferenceMode);
+
         if (actionKvpInferenceMode.equalsIgnoreCase(kryptonInferenceMode) && !transformationUserPromptsList.isEmpty()) {
             log.info("KRYPTON_DOUBLE_PASS_MODE detected. Processing in batches.");
 
