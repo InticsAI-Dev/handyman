@@ -178,6 +178,7 @@ action:
     |folderDeleteByProcess
     |decryptInticsEnc
     |controlDataComparison
+    |providerContainerParser
     );
 
 
@@ -1374,6 +1375,15 @@ controlDataComparison:
     'using'  '{' querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
 
+providerContainerParser:
+    'provider-container-mapper' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'name-mapping-details' nameMappingDetails=STRING
+    'meta-container-entity-details' metaContainerEntityDetails=STRING
+    'container-item-details' containerItemDetails=STRING
+    'paper-filter-mapper' paperFilterDetails=STRING
+    'using' '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 //rules
 
