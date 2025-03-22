@@ -1,8 +1,11 @@
 package in.handyman.raven.lib;
 
+import bsh.EvalError;
 import bsh.Interpreter;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -11,9 +14,9 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.elv.bsh.ProviderProcessorSpring;
 import in.handyman.raven.lib.elv.dao.*;
+import in.handyman.raven.lib.elv.dto.ProviderJsonQueryOutputTable;
 import in.handyman.raven.lib.model.ProviderContainerParser;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryOutputTable;
 import in.handyman.raven.util.CommonQueryUtil;
 import javassist.NotFoundException;
 import org.jdbi.v3.core.Handle;
@@ -25,10 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -64,7 +65,7 @@ public class ProviderContainerParserAction implements IActionExecution {
 
         List<ContainerItemsDetails> containerItemLists = getDaoFromQuery(jdbi, ContainerItemsDetails.class, providerContainerParser.getContainerItemDetails());
         List<ContainerEntityDetails> containerEntityDetails = getDaoFromQuery(jdbi, ContainerEntityDetails.class, providerContainerParser.getMetaContainerEntityDetails());
-        ProviderProcessorSpring providerProcessor = new ProviderProcessorSpring();
+        ProviderProcessorSpring providerProcessor = new ProviderProcessorSpring(log);
         List<SorItemNameMappingDetails> sorItemNameMappingDetails = getDaoFromQuery(jdbi, SorItemNameMappingDetails.class, providerContainerParser.getNameMappingDetails());
 //    List<PaperFilterEntityDetails> paperFilterEntityDetails = getDaoFromQuery(jdbi, PaperFilterEntityDetails.class, providerContainerParser.getPaperFilterDetails());
         String PROVIDER_BSH_CLASS_NAME = "ProviderContainerParser";
@@ -85,84 +86,147 @@ public class ProviderContainerParserAction implements IActionExecution {
             Interpreter interpreter = new Interpreter();
 
             providerMappingDetail.getResponseMap().forEach((key, value) -> {
+//                extractProviderDetailsFromLocalCode(providerMappingDetail, value, objectMapper, providerProcessor, containerGroupedEntityDetails, containerGroupedItemLists, sorItemNameGroupedMappingDetails, jdbi);
                 try {
-                    List<Map<String, String>> providerList;
-
-                    // Check if value is already a List of Maps
-                    if (value instanceof List) {
-                        providerList = (List<Map<String, String>>) value;
-                    } else {
-                        // Convert the value to JSON and then parse it correctly
-                        String json = objectMapper.writeValueAsString(value);
-                        providerList = objectMapper.readValue(json, new TypeReference<List<Map<String, String>>>() {
-                        });
-                    }
-
-                    List<ProviderProcessorSpring.OutputItem> outputItems = providerProcessor.processProviders(
-                            providerList,
-                            containerGroupedEntityDetails,
-                            containerGroupedItemLists,
-                            sorItemNameGroupedMappingDetails
-                    );
-
-                    String output = objectMapper.writeValueAsString(outputItems);
-                    System.out.println(output);
-                    outputItems.forEach(outputItem -> {
-                        LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                                .createdOn(String.valueOf(providerMappingDetail.getCreatedOn()))
-                                .tenantId(providerMappingDetail.getTenantId())
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .lastUpdatedUserId(providerMappingDetail.getTenantId())
-                                .confidenceScore(outputItem.getConfidence())
-                                .sorItemName(outputItem.getKey())
-                                .answer(outputItem.getValue())
-                                .boundingBox(outputItem.getBoundingBox().toString())
-                                .paperNo(providerMappingDetail.getPaperNo())
-                                .originId(providerMappingDetail.getOriginId())
-                                .groupId(providerMappingDetail.getGroupId())
-                                .rootPipelineId(providerMappingDetail.getRootPipelineId())
-                                .batchId(providerMappingDetail.getBatchId())
-                                .modelRegistry(providerMappingDetail.getModelRegistry())
-                                .extractedImageUnit(providerMappingDetail.getExtractedImageUnit())
-                                .imageDpi(providerMappingDetail.getImageDpi())
-                                .imageHeight(providerMappingDetail.getImageHeight())
-                                .imageWidth(providerMappingDetail.getImageWidth())
-                                .sorContainerId(providerMappingDetail.getSorContainerId())
-                                .build();
-                        jdbi.useTransaction(handle -> {
-                            getInsertIntoKryptonResultTable(handle, buildInsertQueryKrypton(), insertData);
-
-                        });
-                    });
-
-
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException("Error parsing provider list from response map", e);
+                    extractProviderFromBshCode(interpreter, spwBashConfig, value, containerGroupedItemLists, containerGroupedEntityDetails, sorItemNameGroupedMappingDetails,providerMappingDetail,jdbi,objectMapper);
+                } catch (EvalError e) {
+                    throw new RuntimeException(e);
                 }
+
             });
 
-//        try {
-//          interpreter.eval(spwBashConfig.getSourceCode());
-//          String classInstantiation = spwBashConfig.getClassName() + " mapper = new " + spwBashConfig.getClassName() + "();";
-//            interpreter.eval(classInstantiation);
-//            interpreter.set("response", response);
-//            interpreter.set("containerItemLists", containerGroupedItemLists);
-//            interpreter.set("containerEntityDetails", containerGroupedEntityDetails);
-////            interpreter.set("paperFilterEntityDetails", paperFilterGroupedEntityDetails);
-//            interpreter.set("sorItemNameMappingDetails", sorItemNameGroupedMappingDetails);
-//            interpreter.eval("predictionMap = mapper.doCustomPredictionMapping(response,containerItemLists,containerEntityDetails,sorItemNameMappingDetails);");
-//            Object predictionMapObject = interpreter.get("predictionMap");
-//          if (predictionMapObject instanceof Map) {
-//            updatedPredictionKeyMap = (Map<String, String>) predictionMapObject;
-//            log.info("Updated the prediction map with {} entries for class {}", updatedPredictionKeyMap, spwBashConfig.getClassName());
-//          }
-//        } catch (EvalError e) {
-//            throw new HandymanException("Exception in bsh interpreter class instantiation "+spwBashConfig.getClassName(),e,action);
-//        }
 
 
         });
 
+    }
+
+    private void extractProviderFromBshCode(Interpreter interpreter, SpwBashConfig spwBashConfig,Object response, Map<String, List<String>> containerGroupedItemLists, Map<String, List<String>> containerGroupedEntityDetails, Map<String, String> sorItemNameGroupedMappingDetails,ProviderMappingDetails providerMappingDetail, Jdbi jdbi,ObjectMapper objectMapper) throws EvalError {
+        try {
+            List<Map<String, String>> providerList;
+
+            // Check if value is already a List of Maps
+            if (response instanceof List) {
+                providerList = (List<Map<String, String>>) response;
+            } else {
+                // Convert the value to JSON and then parse it correctly
+                String json = objectMapper.writeValueAsString(response);
+                providerList = objectMapper.readValue(json, new TypeReference<List<Map<String, String>>>() {
+                });
+            }
+            interpreter.eval(spwBashConfig.getSourceCode());
+            interpreter.set("response", providerList);
+            interpreter.set("containerItemLists", containerGroupedItemLists);
+            interpreter.set("containerEntityDetails", containerGroupedEntityDetails);
+            interpreter.set("sorItemNameMappingDetails", sorItemNameGroupedMappingDetails);
+            interpreter.eval("predictionMap = processProviders(response,containerEntityDetails,containerItemLists,sorItemNameMappingDetails);");
+            Object predictionMapObject = interpreter.get("predictionMap");
+          if (predictionMapObject instanceof List) {
+            List updatedPredictionKeyMap = (List) predictionMapObject;
+              for (int i = 0; i < updatedPredictionKeyMap.size(); i++) {
+                  Hashtable item = (Hashtable) updatedPredictionKeyMap.get(i);
+                  String key = (String) item.get("key");
+                  String value = (String) item.get("value");
+                  String container = (String) item.get("sorContainerName");
+                  double confidence = ((Double) item.get("confidence")).doubleValue();
+                  Map boundingBox = (Map) item.get("boundingBox");
+                  ProviderJsonQueryOutputTable insertData = ProviderJsonQueryOutputTable.builder()
+                          .createdOn(String.valueOf(providerMappingDetail.getCreatedOn()))
+                          .tenantId(providerMappingDetail.getTenantId())
+                          .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                          .lastUpdatedUserId(providerMappingDetail.getTenantId())
+                          .confidenceScore(confidence)
+                          .sorItemName(key)
+                          .answer(value)
+                          .boundingBox(boundingBox.toString())
+                          .paperNo(providerMappingDetail.getPaperNo())
+                          .originId(providerMappingDetail.getOriginId())
+                          .groupId(providerMappingDetail.getGroupId())
+                          .rootPipelineId(providerMappingDetail.getRootPipelineId())
+                          .batchId(providerMappingDetail.getBatchId())
+                          .modelRegistry(providerMappingDetail.getModelRegistry())
+                          .extractedImageUnit(providerMappingDetail.getExtractedImageUnit())
+                          .imageDpi(providerMappingDetail.getImageDpi())
+                          .imageHeight(providerMappingDetail.getImageHeight())
+                          .imageWidth(providerMappingDetail.getImageWidth())
+                          .sorContainerName(container)
+                          .build();
+                  jdbi.useTransaction(handle -> {
+                      getInsertIntoKryptonResultTable(handle, buildInsertQueryKrypton(), insertData);
+
+                  });
+              }
+
+            log.info("Updated the prediction map with {} entries for class {}", updatedPredictionKeyMap, spwBashConfig.getClassName());
+          }
+        } catch (EvalError e) {
+            throw new HandymanException("Exception in bsh interpreter class instantiation "+ spwBashConfig.getClassName(),e,action);
+        } catch (JsonMappingException e) {
+            throw new RuntimeException(e);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void extractProviderDetailsFromLocalCode(ProviderMappingDetails providerMappingDetail, Object value, ObjectMapper objectMapper, ProviderProcessorSpring providerProcessor, Map<String, List<String>> containerGroupedEntityDetails, Map<String, List<String>> containerGroupedItemLists, Map<String, String> sorItemNameGroupedMappingDetails, Jdbi jdbi) {
+        try {
+            List<Map<String, String>> providerList;
+
+            // Check if value is already a List of Maps
+            if (value instanceof List) {
+                providerList = (List<Map<String, String>>) value;
+            } else {
+                // Convert the value to JSON and then parse it correctly
+                String json = objectMapper.writeValueAsString(value);
+                providerList = objectMapper.readValue(json, new TypeReference<List<Map<String, String>>>() {
+                });
+            }
+
+            List<ProviderProcessorSpring.OutputItem> outputItems = providerProcessor.processProviders(
+                    providerList,
+                    containerGroupedEntityDetails,
+                    containerGroupedItemLists,
+                    sorItemNameGroupedMappingDetails
+            );
+
+            String output = objectMapper.writeValueAsString(outputItems);
+
+            log.info(aMarker, "Provider bsh script execution output entity size {}", outputItems.size());
+
+            outputItems.forEach(outputItem -> {
+                ProviderJsonQueryOutputTable insertData = ProviderJsonQueryOutputTable.builder()
+                        .createdOn(String.valueOf(providerMappingDetail.getCreatedOn()))
+                        .tenantId(providerMappingDetail.getTenantId())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .lastUpdatedUserId(providerMappingDetail.getTenantId())
+                        .confidenceScore(outputItem.getConfidence())
+                        .sorItemName(outputItem.getKey())
+                        .answer(outputItem.getValue())
+                        .boundingBox(outputItem.getBoundingBox().toString())
+                        .paperNo(providerMappingDetail.getPaperNo())
+                        .originId(providerMappingDetail.getOriginId())
+                        .groupId(providerMappingDetail.getGroupId())
+                        .rootPipelineId(providerMappingDetail.getRootPipelineId())
+                        .batchId(providerMappingDetail.getBatchId())
+                        .modelRegistry(providerMappingDetail.getModelRegistry())
+                        .extractedImageUnit(providerMappingDetail.getExtractedImageUnit())
+                        .imageDpi(providerMappingDetail.getImageDpi())
+                        .imageHeight(providerMappingDetail.getImageHeight())
+                        .imageWidth(providerMappingDetail.getImageWidth())
+                        .sorContainerName(outputItem.getSorContainerName())
+                        .build();
+                jdbi.useTransaction(handle -> {
+                    getInsertIntoKryptonResultTable(handle, buildInsertQueryKrypton(), insertData);
+
+                });
+            });
+
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error parsing provider list from response map", e);
+        }
     }
 
     //  public static List<String> extractSorItemMappings(List<SorItemNameMappingDetails> detailsList) {
@@ -215,38 +279,39 @@ public class ProviderContainerParserAction implements IActionExecution {
     private String buildInsertQueryKrypton() {
 //        String tableName = "sor_transaction".concat(".").concat("llm_json_parser_output_").concat("audit");
 
-        String tableName=action.getContext().get("temp_schema_name").concat(".").concat("llm_json_parser_output_").concat(String.valueOf(action.getRootPipelineId()));
+        String tableName = action.getContext().get("gen_output_table.name");
+        log.info(aMarker, "Output table name for Provider bsh executor {}", tableName);
         return "INSERT INTO " + tableName +
                 " (created_on,created_user_id, last_updated_on, last_updated_user_id, confidence, sor_item_name, answer, bbox, paper_no,  \n" +
                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, \n" +
-                "extracted_image_unit, image_dpi, image_height, image_width,sor_container_id) \n" +
+                "extracted_image_unit, image_dpi, image_height, image_width,sor_container_name) \n" +
                 "  VALUES(?::timestamp,?,?,?,?,?,?,?::jsonb,?,?,?,?,?,? ,?,?,?,?,?,?);";
     }
 
 
-    private static int getInsertIntoKryptonResultTable(Handle handle, String insertQueryKrypton, LlmJsonQueryOutputTable llmJsonQueryOutputTable) {
+    private static int getInsertIntoKryptonResultTable(Handle handle, String insertQueryKrypton, ProviderJsonQueryOutputTable providerJsonQueryOutputTable) {
 
         return handle.createUpdate(insertQueryKrypton)
-                .bind(0, llmJsonQueryOutputTable.getCreatedOn())
-                .bind(1, llmJsonQueryOutputTable.getTenantId())
+                .bind(0, providerJsonQueryOutputTable.getCreatedOn())
+                .bind(1, providerJsonQueryOutputTable.getTenantId())
                 .bind(2, CreateTimeStamp.currentTimestamp())
-                .bind(3, llmJsonQueryOutputTable.getTenantId())
-                .bind(4, llmJsonQueryOutputTable.getConfidenceScore())
-                .bind(5, llmJsonQueryOutputTable.getSorItemName())
-                .bind(6, llmJsonQueryOutputTable.getAnswer())
-                .bind(7, llmJsonQueryOutputTable.getBoundingBox())
-                .bind(8, llmJsonQueryOutputTable.getPaperNo())
-                .bind(9, llmJsonQueryOutputTable.getOriginId())
-                .bind(10, llmJsonQueryOutputTable.getGroupId())
-                .bind(11, llmJsonQueryOutputTable.getTenantId())
-                .bind(12, llmJsonQueryOutputTable.getRootPipelineId())
-                .bind(13, llmJsonQueryOutputTable.getBatchId())
-                .bind(14, llmJsonQueryOutputTable.getModelRegistry())
-                .bind(15, llmJsonQueryOutputTable.getExtractedImageUnit())
-                .bind(16, llmJsonQueryOutputTable.getImageDpi())
-                .bind(17, llmJsonQueryOutputTable.getImageHeight())
-                .bind(18, llmJsonQueryOutputTable.getImageWidth())
-                .bind(19, llmJsonQueryOutputTable.getSorContainerId())
+                .bind(3, providerJsonQueryOutputTable.getTenantId())
+                .bind(4, providerJsonQueryOutputTable.getConfidenceScore())
+                .bind(5, providerJsonQueryOutputTable.getSorItemName())
+                .bind(6, providerJsonQueryOutputTable.getAnswer())
+                .bind(7, providerJsonQueryOutputTable.getBoundingBox())
+                .bind(8, providerJsonQueryOutputTable.getPaperNo())
+                .bind(9, providerJsonQueryOutputTable.getOriginId())
+                .bind(10, providerJsonQueryOutputTable.getGroupId())
+                .bind(11, providerJsonQueryOutputTable.getTenantId())
+                .bind(12, providerJsonQueryOutputTable.getRootPipelineId())
+                .bind(13, providerJsonQueryOutputTable.getBatchId())
+                .bind(14, providerJsonQueryOutputTable.getModelRegistry())
+                .bind(15, providerJsonQueryOutputTable.getExtractedImageUnit())
+                .bind(16, providerJsonQueryOutputTable.getImageDpi())
+                .bind(17, providerJsonQueryOutputTable.getImageHeight())
+                .bind(18, providerJsonQueryOutputTable.getImageWidth())
+                .bind(19, providerJsonQueryOutputTable.getSorContainerName())
                 .execute();
     }
 

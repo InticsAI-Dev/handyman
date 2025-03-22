@@ -14,12 +14,12 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://intics.elevance.ngrok.dev/krypton-x/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("https://484527976070.ngrok.app/krypton-x/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
-                        "                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name,sor_container_id\n" +
+                        "                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name,sor_container_id,true::bool as postProcess,'ProviderContainerParser' as postProcessClassName\n" +
                         "                FROM sor_transaction.radon_kvp_input_audit\n" +
-                        "                WHERE id=45;")
+                        "                WHERE id=1087;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -40,13 +40,10 @@ public class RadonKvpAcionTest {
         ac.getContext().put("pipeline.text.extraction.encryption", "true");
         ac.getContext().put("bbox.radon_bbox_activator", "false");
         ac.getContext().put("pipeline.end.to.end.encryption", "true");
+        ac.getContext().put("document_type", "HEALTH_CARE");
+        ac.getContext().put("tenant_id", "1");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
-
-
-
-
-
-
+        ac.getContext().put("ProviderContainerParser", "ProcessProvider");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);

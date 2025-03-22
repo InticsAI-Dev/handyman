@@ -5,11 +5,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.util.*;
 
 public class ProviderProcessorSpring {
-    private static final Logger logger = LoggerFactory.getLogger(ProviderProcessorSpring.class);
+    private final Logger logger;
+    private final Marker aMarker;
+
+    public ProviderProcessorSpring(final Logger log){
+        this.logger=log;
+        this.aMarker = MarkerFactory.getMarker("Provider bsh executor" );
+    }
 
 
     // Class to represent the output structure
@@ -18,12 +26,14 @@ public class ProviderProcessorSpring {
         String value;
         Map<String, Object> boundingBox;
         double confidence;
+        String sorContainerName;
 
-        public OutputItem(String key, String value) {
+        public OutputItem(String key, String value, Map<String,Object> boundingBox, String sorContainerName) {
             this.key = key;
             this.value = value;
-            this.boundingBox = new HashMap<>();
+            this.boundingBox = boundingBox;
             this.confidence = 100.0;
+            this.sorContainerName=sorContainerName;
         }
 
         // Getters and setters
@@ -42,9 +52,13 @@ public class ProviderProcessorSpring {
         public String getValue() {
             return value;
         }
+        public String getSorContainerName() {
+            return sorContainerName;
+        }
+
     }
 
-    public static List<OutputItem> processProviders(
+    public  List<OutputItem> processProviders(
             List<Map<String, String>> providers,
             Map<String, List<String>> metaProviderEntityDetails,
             Map<String, List<String>> itemMappingDetails,
@@ -70,37 +84,37 @@ public class ProviderProcessorSpring {
             for (Map.Entry<String, List<String>> entry : metaProviderEntityDetails.entrySet()) {
 
                 container = entry.getKey();
-                logger.info("length of string : " + (cleanedProviderType.length()) + "\n");
+                logger.info(aMarker,"length of string : " + (cleanedProviderType.length()) + "\n");
 
                 for (String value : entry.getValue()) {
-                    logger.info(providerType.toLowerCase() + " <--------> " + value.toLowerCase());
+                    logger.info(aMarker,providerType.toLowerCase() + " <--------> " + value.toLowerCase());
                     cleanedValue = cleanString(value.toLowerCase());
 
                     double distance1 = calculateJaroWinklerDistance(cleanedProviderType, cleanedValue);
-                    logger.info("Calculated JaroWinklerDistance distance: {}", distance1);
+                    logger.info(aMarker,"Calculated JaroWinklerDistance distance: {}", distance1);
                     double distance2 = calculateLCSLength(cleanedProviderType, cleanedValue);
-                    logger.info("Calculated LCSLength distance:{}", distance2);
+                    logger.info(aMarker,"Calculated LCSLength distance:{}", distance2);
                     double distance = (distance1+distance2)/2;
                     containerDistanceMap.merge(container, distance, Math::max);
-                    logger.info("Calculated average distance:{}", distance);
+                    logger.info(aMarker,"Calculated average distance:{}", distance);
                 }
             }
             if(cleanedProviderType.contains(cleanedValue)){
-                logger.info("Executing exact match");
+                logger.info(aMarker,"Executing exact match");
                 matchedContainer = container;
             }else{
-                logger.info("containerDistanceMap.entrySet()----------------->" + containerDistanceMap.entrySet() + "\n");
+                logger.info(aMarker,"containerDistanceMap.entrySet()----------------->" + containerDistanceMap.entrySet() + "\n");
                 matchedContainer = Collections.max(containerDistanceMap.entrySet(), Map.Entry.comparingByValue()).getKey();
             }
             List<String> sorItemList = itemMappingDetails.getOrDefault(matchedContainer, Collections.emptyList());
 
 
             // Step 3: Iterate through all items in sorItemList
-            logger.info("Matched Container: " + matchedContainer);
+            logger.info(aMarker,"Matched Container: " + matchedContainer);
             for (String item : sorItemList) {
                 // Step 4: Get corresponding mapped key from nameMappingDetails
                 String mappedKey = nameMappingDetails.get(item);
-                logger.info("Item: " + item + " -> Mapped Key Value: " + mappedKey);
+                logger.info(aMarker,"Item: " + item + " -> Mapped Key Value: " + mappedKey);
                 if (mappedKey != null) {
                     // Get the value from providerMap
                     String keyValue = providerMap.get(mappedKey);
@@ -121,15 +135,16 @@ public class ProviderProcessorSpring {
                             } else {
                                 // Ensure an empty value is added as "\"\", \"\""
                                 if (keyValue.trim().isEmpty()) {
-                                    result.add(new OutputItem(item, "\"\""));
+                                    result.add(new OutputItem(item, "\"\"",new HashMap<>(), matchedContainer));
+
                                 } else {
-                                    result.add(new OutputItem(item, "\"" + keyValue + "\""));
+                                    result.add(new OutputItem(item, "\"" + keyValue + "\"",new HashMap<>(), matchedContainer));
                                 }
                             }
 
                         } else {
                             // Create output item
-                            OutputItem output = new OutputItem(item, keyValue);
+                            OutputItem output = new OutputItem(item, keyValue, new HashMap<>(), matchedContainer);
                             result.add(output);
                         }
 
@@ -145,7 +160,7 @@ public class ProviderProcessorSpring {
         return result;
     }
 
-    private static String cleanString(String str) {
+    private  String cleanString(String str) {
         if (str == null) return "";
         String trimmed = str.trim();
         while (trimmed.contains("  ")) {
@@ -154,7 +169,7 @@ public class ProviderProcessorSpring {
         return trimmed.toLowerCase();
     }
 
-    public static double calculateJaroSimilarity(String str1, String str2) {
+    public  double calculateJaroSimilarity(String str1, String str2) {
         if (str1 == null || str2 == null) throw new IllegalArgumentException("Strings must not be null");
         if (str1.isEmpty() && str2.isEmpty()) return 1.0;
         if (str1.isEmpty() || str2.isEmpty()) return 0.0;
@@ -196,7 +211,7 @@ public class ProviderProcessorSpring {
         return (m / len1 + m / len2 + (m - transpositions / 2.0) / m) / 3.0;
     }
 
-    public static double calculateJaroWinklerDistance(String str1, String str2) {
+    public  double calculateJaroWinklerDistance(String str1, String str2) {
         if (str1 == null || str2 == null) throw new IllegalArgumentException("Strings must not be null");
 
         double jaroScore = calculateJaroSimilarity(str1, str2);
@@ -212,15 +227,15 @@ public class ProviderProcessorSpring {
 
 
     // 5. Longest Common Subsequence (LCS) Length
-    public static int calculateLCSLength(String str1, String str2) {
+    public  double calculateLCSLength(String str1, String str2) {
         if (str1 == null || str2 == null) throw new IllegalArgumentException("Strings must not be null");
 
-        int m = str1.length();
-        int n = str2.length();
-        int[][] dp = new int[m + 1][n + 1];
+        int len1 = str1.length();
+        int len2 = str2.length();
+        int[][] dp = new int[len1 + 1][len2 + 1];
 
-        for (int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
+        for (int i = 1; i <= len1; i++) {
+            for (int j = 1; j <= len2; j++) {
                 if (str1.charAt(i - 1) == str2.charAt(j - 1)) {
                     dp[i][j] = dp[i - 1][j - 1] + 1;
                 } else {
@@ -228,11 +243,14 @@ public class ProviderProcessorSpring {
                 }
             }
         }
-        return dp[m][n];
+
+        int lcsLength = dp[len1][len2];
+        int maxLength = Math.max(len1, len2);
+        return maxLength > 0 ? (double) lcsLength / maxLength : 0.0;
     }
 
 
-    public static void main(String[] args) throws JsonProcessingException, JsonProcessingException {
+    public  void main(String[] args) throws JsonProcessingException, JsonProcessingException {
         // Sample data setup
         List<Map<String, String>> providers = new ArrayList<>();
 
@@ -312,16 +330,6 @@ public class ProviderProcessorSpring {
         nameMappingDetails.put("servicing_provider_state", "Provider State");
         nameMappingDetails.put("servicing_provider_zip", "Provider ZIP Code");
 
-        nameMappingDetails.put("referring_provider_name", "Provider Name");
-        nameMappingDetails.put("referring_provider_type", "Provider Type");
-        nameMappingDetails.put("referring_provider_npi", "Provider NPI");
-        nameMappingDetails.put("referring_provider_specialty", "Provider Specialty");
-        nameMappingDetails.put("referring_provider_tin", "Provider Tax ID");
-        nameMappingDetails.put("referring_provider_address", "Provider Address");
-        nameMappingDetails.put("referring_provider_city", "Provider City");
-        nameMappingDetails.put("referring_provider_state", "Provider State");
-        nameMappingDetails.put("referring_provider_zip", "Provider ZIP Code");
-
         nameMappingDetails.put("undefined_provider_name", "Provider Name");
         nameMappingDetails.put("undefined_provider_type", "Provider Type");
         nameMappingDetails.put("undefined_provider_npi", "Provider NPI");
@@ -335,12 +343,12 @@ public class ProviderProcessorSpring {
         List<OutputItem> output = processProviders(providers, metaProviderEntityDetails,
                 itemMappingDetails, nameMappingDetails);
 
-        logger.info("final output----------------------------------------------------\n");
+        logger.info(aMarker,"final output----------------------------------------------------\n");
         // Print results
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT); // Pretty print
         String jsonOutput = objectMapper.writeValueAsString(output);
-        System.out.println(jsonOutput);
+        logger.info(aMarker,jsonOutput);
 
     }
 }

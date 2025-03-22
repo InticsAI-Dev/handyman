@@ -227,6 +227,7 @@ public class providerBSH {
                 for (Object item : rawResult) {
                     if (item != null) {
                         String key = (String) interpreter.eval("((OutputItem)" + item + ").getKey()");
+                        interpreter.eval("((OutputItem)item).getKey()");
                         String value = (String) interpreter.eval("((OutputItem)" + item + ").getValue()");
                         Map boundingBox = (Map) interpreter.eval("((OutputItem)" + item + ").getBoundingBox()");
                         Double confidence = (Double) interpreter.eval("((OutputItem)" + item + ").getConfidence()");

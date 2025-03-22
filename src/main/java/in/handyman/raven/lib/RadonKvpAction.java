@@ -135,7 +135,7 @@ public class RadonKvpAction implements IActionExecution {
 
             final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
             Thread.sleep(threadSleepTime);
-            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils);
+            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils,jdbi);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " llm kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {
