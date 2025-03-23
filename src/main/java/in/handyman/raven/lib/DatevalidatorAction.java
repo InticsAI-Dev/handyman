@@ -89,7 +89,7 @@ public class DatevalidatorAction implements IActionExecution {
                 log.info("Converted the input date to format {}", currentFormat);
                 return adapter;
             } catch (DateTimeParseException e) {
-                log.error("Error in parsing input format {}", currentFormat);
+                log.warn("Unable to parse input format {}", currentFormat);
             }
         }
         return adapter;
