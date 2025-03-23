@@ -2,7 +2,6 @@ package in.handyman.raven.lib;
 
 import bsh.EvalError;
 import bsh.Interpreter;
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -12,9 +11,9 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.elv.bsh.ProviderProcessorSpring;
-import in.handyman.raven.lib.elv.dao.*;
-import in.handyman.raven.lib.elv.dto.ProviderJsonQueryOutputTable;
+import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderProcessorSpring;
+import in.handyman.raven.lib.custom.kvp.post.processing.dao.*;
+import in.handyman.raven.lib.custom.kvp.post.processing.dto.ProviderJsonQueryOutputTable;
 import in.handyman.raven.lib.model.ProviderContainerParser;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.util.CommonQueryUtil;
@@ -157,7 +156,7 @@ public class ProviderContainerParserAction implements IActionExecution {
                   });
               }
 
-            log.info("Updated the prediction map with {} entries for class {}", updatedPredictionKeyMap, spwBashConfig.getClassName());
+            log.info("Updated the prediction map having entries {} entries for class {}", updatedPredictionKeyMap.size(), spwBashConfig.getClassName());
           }
         } catch (EvalError e) {
             throw new HandymanException("Exception in bsh interpreter class instantiation "+ spwBashConfig.getClassName(),e,action);

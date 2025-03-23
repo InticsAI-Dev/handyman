@@ -4,11 +4,13 @@ import bsh.Interpreter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+@Slf4j
 public class ProviderBshLatestOne {
     private static final Logger logger = LoggerFactory.getLogger(ProviderBshLatestOne.class);
 
@@ -21,10 +23,10 @@ public class ProviderBshLatestOne {
                 "import org.slf4j.LoggerFactory;\n" +
                 "\n" +
                 "public class ProcessProvider {\n" +
-                "    private static final Logger logger = LoggerFactory.getLogger(ProcessProvider.class);\n" +
+                "    private Logger logger;\n" +
                 "\n" +
-                "    public ProcessProvider() {\n" +
-                "        // Constructor (if needed)\n" +
+                "    public ProcessProvider(Logger logger) {\n" +
+                "    this.logger = logger;\n" +
                 "    }\n" +
                 "\n" +
                 "    public List processProviders(List providers) {\n" +
@@ -62,7 +64,7 @@ public class ProviderBshLatestOne {
                 "                        exactMatchFound = true;\n" +
                 "                        break;\n" +
                 "                    } else {\n" +
-                "                        logger.info(cleanedProviderType + \" <--------> \" + value.toLowerCase());\n" +
+                "                        logger.info(cleanedProviderType + \" : \" + value.toLowerCase());\n" +
                 "                        cleanedValue = cleanString(value.toLowerCase());\n" +
                 "                        double distance1 = calculateJaroWinklerDistance(cleanedProviderType, cleanedValue);\n" +
                 "                        logger.info(\"Calculated JaroWinklerDistance distance: {}\", distance1);\n" +
@@ -81,13 +83,13 @@ public class ProviderBshLatestOne {
                 "\n" +
                 "            if (!exactMatchFound) {\n" +
                 "                double maxDistance = findMaxValue(containerDistanceMap);\n" +
-                "                logger.info(\"<----------------maxDistance----------------->\" + maxDistance);\n" +
+                "                logger.info(\"maxDistance : \" + maxDistance);\n" +
                 "                if (maxDistance > 0.7) {\n" +
-                "                    logger.info(\"<----------------containerDistanceMap.entrySet()----------------->\" + containerDistanceMap.entrySet());\n" +
+                "                    logger.info(\"containerDistanceMap.entrySet() :\" + containerDistanceMap.entrySet());\n" +
                 "                    matchedContainer = findMaxValueKey(containerDistanceMap);\n" +
                 "                } else {\n" +
                 "                    matchedContainer = \"UNDEFINED_PROVIDER_DETAILS\";\n" +
-                "                    logger.info(\"<----------------matchedContainer----------------->\" + matchedContainer);\n" +
+                "                    logger.info(\"matchedContainer :\" + matchedContainer);\n" +
                 "                }\n" +
                 "            }\n" +
                 "\n" +
@@ -185,19 +187,21 @@ public class ProviderBshLatestOne {
                 "    details.put(\"servicing_provider_npi\", \"Provider NPI\");\n" +
                 "    details.put(\"servicing_provider_specialty\", \"Provider Specialty\");\n" +
                 "    details.put(\"servicing_provider_tin\", \"Provider Tax ID\");\n" +
-                "    details.put(\"servicing_provider_address\", \"Provider Address\");\n" +
+                "    details.put(\"servicing_provider_address_line1\", \"Provider Address\");\n" +
                 "    details.put(\"servicing_provider_city\", \"Provider City\");\n" +
                 "    details.put(\"servicing_provider_state\", \"Provider State\");\n" +
-                "    details.put(\"servicing_provider_zip\", \"Provider ZIP Code\");\n" +
+                "    details.put(\"servicing_provider_zipcode\", \"Provider ZIP Code\");\n" +
+                "\n" +
                 "    details.put(\"referring_provider_name\", \"Provider Name\");\n" +
                 "    details.put(\"referring_provider_type\", \"Provider Type\");\n" +
                 "    details.put(\"referring_provider_npi\", \"Provider NPI\");\n" +
                 "    details.put(\"referring_provider_specialty\", \"Provider Specialty\");\n" +
                 "    details.put(\"referring_provider_tin\", \"Provider Tax ID\");\n" +
-                "    details.put(\"referring_provider_address\", \"Provider Address\");\n" +
+                "    details.put(\"referring_provider_address_line1\", \"Provider Address\");\n" +
                 "    details.put(\"referring_provider_city\", \"Provider City\");\n" +
                 "    details.put(\"referring_provider_state\", \"Provider State\");\n" +
-                "    details.put(\"referring_provider_zip\", \"Provider ZIP Code\");\n" +
+                "    details.put(\"referring_provider_zipcode\", \"Provider ZIP Code\");\n" +
+                "\n" +
                 "    details.put(\"undefined_provider_name\", \"Provider Name\");\n" +
                 "    details.put(\"undefined_provider_type\", \"Provider Type\");\n" +
                 "    details.put(\"undefined_provider_npi\", \"Provider NPI\");\n" +
@@ -390,7 +394,8 @@ public class ProviderBshLatestOne {
 
             // Evaluate the script
             interpreter.eval(sourceCode);
-            String classInstantiation = "ProcessProvider" + " mapper = new " + "ProcessProvider" + "();";
+            interpreter.set("logger",log);
+            String classInstantiation = "ProcessProvider" + " mapper = new " + "ProcessProvider" + "(logger);";
             interpreter.eval(classInstantiation);
             interpreter.set("providers", providers);
             interpreter.eval("providerMap = mapper.processProviders(providers);");
@@ -405,7 +410,7 @@ public class ProviderBshLatestOne {
                 ObjectMapper objectMapper = new ObjectMapper();
                 objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
                 String jsonOutput = objectMapper.writeValueAsString(resultList);
-                logger.info("final output----------------------------------------------------\n" + jsonOutput);
+                logger.info("final output\n" + jsonOutput);
 
                 // Print as JsonNode
                 JsonNode res = objectMapper.readTree(jsonOutput);
