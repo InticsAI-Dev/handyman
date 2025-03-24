@@ -88,6 +88,10 @@ public class ProviderTransformerFinal {
                     } else if (matchedContainer.equals("REFERRING_PROVIDER_DETAILS")) {
                         List<ProviderTransformerOutputItem> providerTransformerOutputItems=transformReferringProviderName(keyValue,matchedContainer);
                         result.addAll(providerTransformerOutputItems);
+                    }else {
+                        if (keyValue != null && !keyValue.trim().isEmpty()) {
+                            result.add(new ProviderTransformerOutputItem(item, keyValue, new HashMap<>(), matchedContainer));
+                        }
                     }
                 }else {
                     if (keyValue != null && !keyValue.trim().isEmpty()) {
@@ -121,8 +125,9 @@ public class ProviderTransformerFinal {
             firstName = parts[0];
         }
 
-        ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("servicing_provider_first_name", firstName, new HashMap<>(), containerName));
-        ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("servicing_provider_last_name", lastName, new HashMap<>(), containerName));
+        ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("referring_provider_first_name", firstName, new HashMap<>(), containerName));
+        ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("referring_provider_last_name", lastName, new HashMap<>(), containerName));
+        ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("referring_provider_full_name", name, new HashMap<>(), containerName));
 
         return ProviderTransformerOutputItems;
     }
@@ -146,6 +151,7 @@ public class ProviderTransformerFinal {
 
         ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("servicing_provider_first_name", firstName, new HashMap<>(), containerName));
         ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("servicing_provider_last_name", lastName, new HashMap<>(), containerName));
+        ProviderTransformerOutputItems.add(new ProviderTransformerOutputItem("servicing_provider_full_name", name, new HashMap<>(), containerName));
 
         return ProviderTransformerOutputItems;
     }
