@@ -220,9 +220,9 @@ public class ProviderTransformerFinal {
     private static Map<String, List<String>> itemMappingDetails() {
         Map<String, List<String>> itemMappingDetails = new HashMap<>();
         itemMappingDetails.put("SERVICING_PROVIDER_DETAILS",
-                Arrays.asList("servicing_provider_name", "servicing_provider_npi", "servicing_provider_specialty",
-                        "servicing_provider_tin", "servicing_provider_address", "servicing_provider_city",
-                        "servicing_provider_state", "servicing_provider_zip"));
+                Arrays.asList("servicing_provider_full_name", "servicing_provider_specialty", "servicing_provider_npi",
+                        "servicing_provider_address_line1", "servicing_provider_address_line2", "servicing_provider_city",
+                        "servicing_provider_state", "servicing_provider_tin","servicing_provider_zipcode"));
         itemMappingDetails.put("SERVICING_FACILITY_DETAILS",
                 Arrays.asList("servicing_facility_last_name", "servicing_facility_npi", "servicing_facility_zipcode",
                         "servicing_facility_address_line1", "servicing_facility_address_line2", "servicing_facility_city",
@@ -230,7 +230,7 @@ public class ProviderTransformerFinal {
 
         // Referring Provider Details
         itemMappingDetails.put("REFERRING_PROVIDER_DETAILS",
-                Arrays.asList("referring_provider_address_line1","referring_provider_first_name", "referring_provider_npi", "referring_provider_last_name",
+                Arrays.asList("referring_provider_address_line1","referring_provider_full_name", "referring_provider_npi",
                         "referring_provider_city", "referring_provider_specialty", "referring_provider_state",
                         "referring_provider_tin", "referring_provider_zipcode","referring_provider_address_line2"));
         return itemMappingDetails;
@@ -246,6 +246,7 @@ public class ProviderTransformerFinal {
         nameMappingDetails.put("referring_provider_address_line1", "Provider Address");
         nameMappingDetails.put("referring_provider_city", "Provider City");
         nameMappingDetails.put("referring_provider_state", "Provider State");
+        nameMappingDetails.put("referring_provider_full_name", "Provider Name");
         nameMappingDetails.put("referring_provider_zipcode", "Provider ZIP Code");
 
         // Service Facility Details
@@ -260,16 +261,15 @@ public class ProviderTransformerFinal {
         nameMappingDetails.put("servicing_facility_zipcode", "Provider ZIP Code");
 
 
-        nameMappingDetails.put("servicing_provider_name", "Provider Name");
+        nameMappingDetails.put("servicing_provider_full_name", "Provider Name");
         nameMappingDetails.put("servicing_provider_type", "Provider Type");
         nameMappingDetails.put("servicing_provider_npi", "Provider NPI");
         nameMappingDetails.put("servicing_provider_specialty", "Provider Specialty");
         nameMappingDetails.put("servicing_provider_tin", "Provider Tax ID");
-        nameMappingDetails.put("servicing_provider_address", "Provider Address");
+        nameMappingDetails.put("servicing_provider_address_line1", "Provider Address");
         nameMappingDetails.put("servicing_provider_city", "Provider City");
         nameMappingDetails.put("servicing_provider_state", "Provider State");
-        nameMappingDetails.put("servicing_provider_zip", "Provider ZIP Code");
-        nameMappingDetails.put("referring_provider_name", "Provider Name");
+        nameMappingDetails.put("servicing_provider_zipcode", "Provider ZIP Code");
 
 
 
@@ -278,7 +278,7 @@ public class ProviderTransformerFinal {
         nameMappingDetails.put("undefined_provider_npi", "Provider NPI");
         nameMappingDetails.put("undefined_provider_specialty", "Provider Specialty");
         nameMappingDetails.put("undefined_provider_tin", "Provider Tax ID");
-        nameMappingDetails.put("undefined_provider_address", "Provider Address");
+        nameMappingDetails.put("undefined_provider_address_line1", "Provider Address");
         nameMappingDetails.put("undefined_provider_city", "Provider City");
         nameMappingDetails.put("undefined_provider_state", "Provider State");
         nameMappingDetails.put("undefined_facility_zipcode", "Provider ZIP Code");
