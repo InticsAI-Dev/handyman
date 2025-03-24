@@ -13,7 +13,7 @@ public class ProviderProcessorSpringAsClass {
     private static final Logger logger = LoggerFactory.getLogger(ProviderProcessorSpring.class);
 
     // Class to represent the output structure
-    static class OutputItem {
+     class OutputItem {
         String key;
         String value;
         Map<String, Object> boundingBox;
@@ -37,122 +37,7 @@ public class ProviderProcessorSpringAsClass {
     }
 
     // New Processor class
-    static class ProviderProcessor {
-        private final List<Map<String, String>> providers;
-        private final Map<String, List<String>> metaProviderEntityDetails;
-        private final Map<String, List<String>> itemMappingDetails;
-        private final Map<String, String> nameMappingDetails;
 
-        public ProviderProcessor(
-                List<Map<String, String>> providers) {
-            this.providers = providers;
-            this.metaProviderEntityDetails = metaProviderEntityDetails();
-            this.itemMappingDetails = itemMappingDetails();
-            this.nameMappingDetails = nameMappingDetails();
-        }
-
-        public List<OutputItem> process() {
-            List<OutputItem> result = new ArrayList<>();
-
-            // Process each provider in the response
-            for (Map<String, String> provider : providers) {
-                Map<String, String> providerMap = new HashMap<>(provider);
-                String providerType = providerMap.get("Provider Type");
-                String cleanedProviderType = cleanString(providerType.toLowerCase());
-
-                String matchedContainer = null;
-                String cleanedValue = "";
-                String container = "";
-                Double maxDistance =0.0;
-                Map<String, Double> containerDistanceMap = new HashMap<>();
-
-                for (Map.Entry<String, List<String>> entry : metaProviderEntityDetails().entrySet()) {
-                    matchedContainer = "";
-                    container = entry.getKey();
-                    logger.info("length of string : " + (cleanedProviderType.length()) + "\n");
-
-                    for (String value : entry.getValue()) {
-
-                        cleanedValue = cleanString(value);
-
-                        boolean checkForContainerMatch = cleanedProviderType.contains(cleanedValue);
-
-                        if (checkForContainerMatch) {
-                            logger.info("Executing exact match");
-                            matchedContainer = container;
-                            break;
-                        } else {
-
-                            logger.info(providerType.toLowerCase() + " <--------> " + value.toLowerCase());
-                            cleanedValue = cleanString(value.toLowerCase());
-                            double distance1 = calculateJaroWinklerDistance(cleanedProviderType, cleanedValue);
-                            logger.info("Calculated JaroWinklerDistance distance: {}", distance1);
-                            double distance2 = calculateLCSLength(cleanedProviderType, cleanedValue);
-                            logger.info("Calculated LCSLength distance:{}", distance2);
-                            double distance = (distance1 + distance2) / 2;
-                            containerDistanceMap.merge(container, distance, Math::max);
-                            logger.info("Calculated average distance:{}", distance);
-                        }
-
-                         maxDistance = Collections.max(containerDistanceMap.values());
-
-
-                    }
-
-                    if (matchedContainer != null && !matchedContainer.isEmpty()) {
-                        break;
-                    }else{
-                        logger.info("<----------------maxDistance----------------->{}", maxDistance + "\n");
-                        if (maxDistance>0.7){
-                            logger.info("<----------------containerDistanceMap.entrySet()----------------->{}", containerDistanceMap.entrySet() + "\n");
-                            matchedContainer = Collections.max(containerDistanceMap.entrySet(), Map.Entry.comparingByValue()).getKey();
-                            break;
-
-                        }else {
-                            matchedContainer = "UNDEFINED_PROVIDER_DETAILS";
-                            logger.info("<----------------matchedContainer----------------->{}", matchedContainer);
-                            break;
-                        }
-                    }
-                }
-
-                List<String> sorItemList = itemMappingDetails().getOrDefault(matchedContainer, Collections.emptyList());
-
-                logger.info("Matched Container: " + matchedContainer);
-                for (String item : sorItemList) {
-                    String mappedKey = nameMappingDetails().get(item);
-                    logger.info("Item: " + item + " -> Mapped Key Value: " + mappedKey);
-                    if (mappedKey != null) {
-                        String keyValue = providerMap.get(mappedKey);
-                        if (keyValue != null) {
-                            if (Objects.equals(matchedContainer, "UNDEFINED_PROVIDER_DETAILS")) {
-                                Optional<OutputItem> existingItem = result.stream()
-                                        .filter(o -> o.getKey().equals(item))
-                                        .findFirst();
-
-                                if (existingItem.isPresent()) {
-                                    if (!existingItem.get().value.isEmpty()) {
-                                        existingItem.get().value += ", ";
-                                    }
-                                    existingItem.get().value += "\"" + keyValue + "\"";
-                                } else {
-                                    if (keyValue.trim().isEmpty()) {
-                                        result.add(new OutputItem(item, "\"\"", new HashMap<>(), matchedContainer));
-                                    } else {
-                                        result.add(new OutputItem(item, "\"" + keyValue + "\"", new HashMap<>(), matchedContainer));
-                                    }
-                                }
-                            } else {
-                                OutputItem output = new OutputItem(item, keyValue, new HashMap<>(), matchedContainer);
-                                result.add(output);
-                            }
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-    }
 
     // Static utility methods remain unchanged
     private static String cleanString(String str) {
@@ -351,16 +236,14 @@ public class ProviderProcessorSpringAsClass {
         providers.add(provider4);
 //
         // Use the new Processor class
-        ProviderProcessor processor = new ProviderProcessor(
-                providers
-        );
-        List<OutputItem> output = processor.process();
 
-        logger.info("final output----------------------------------------------------\n");
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String jsonOutput = objectMapper.writeValueAsString(output);
-        JsonNode res = objectMapper.readTree(jsonOutput);
-        System.out.println(res);
+//        List<OutputItem> output = processor.process();
+//
+//        logger.info("final output----------------------------------------------------\n");
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+//        String jsonOutput = objectMapper.writeValueAsString(output);
+//        JsonNode res = objectMapper.readTree(jsonOutput);
+//        System.out.println(res);
     }
 }

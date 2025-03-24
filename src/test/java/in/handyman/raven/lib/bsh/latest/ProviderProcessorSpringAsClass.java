@@ -4,14 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderProcessorSpring;
+import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 public class ProviderProcessorSpringAsClass {
-    private static final Logger logger = LoggerFactory.getLogger(ProviderProcessorSpring.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProviderProcessorSpringAsClass.class);
 
     // Class to represent the output structure
     static class OutputItem {
@@ -30,11 +30,25 @@ public class ProviderProcessorSpringAsClass {
         }
 
         // Getters and setters
-        public Map<String, Object> getBoundingBox() { return boundingBox; }
-        public double getConfidence() { return confidence; }
-        public String getKey() { return key; }
-        public String getValue() { return value; }
-        public String getSorContainerName() { return sorContainerName; }
+        public Map<String, Object> getBoundingBox() {
+            return boundingBox;
+        }
+
+        public double getConfidence() {
+            return confidence;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public String getSorContainerName() {
+            return sorContainerName;
+        }
     }
 
     // New Processor class
@@ -55,16 +69,18 @@ public class ProviderProcessorSpringAsClass {
         public List<OutputItem> process() {
             List<OutputItem> result = new ArrayList<>();
 
+            List<String> matchedContainerList = new ArrayList<>();
             // Process each provider in the response
             for (Map<String, String> provider : providers) {
                 Map<String, String> providerMap = new HashMap<>(provider);
                 String providerType = providerMap.get("Provider Type");
                 String cleanedProviderType = cleanString(providerType.toLowerCase());
 
+
                 String matchedContainer = null;
                 String cleanedValue = "";
                 String container = "";
-                Double maxDistance =0.0;
+                Double maxDistance = 0.0;
                 Map<String, Double> containerDistanceMap = new HashMap<>();
 
                 for (Map.Entry<String, List<String>> entry : metaProviderEntityDetails().entrySet()) {
@@ -81,6 +97,10 @@ public class ProviderProcessorSpringAsClass {
                         if (checkForContainerMatch) {
                             logger.info("Executing exact match");
                             matchedContainer = container;
+                            if (matchedContainerList.contains(matchedContainer)) {
+                                break;
+                            }
+                            matchedContainerList.add(matchedContainer);
                             break;
                         } else {
 
@@ -95,25 +115,31 @@ public class ProviderProcessorSpringAsClass {
                             logger.info("Calculated average distance:{}", distance);
                         }
 
-                         maxDistance = Collections.max(containerDistanceMap.values());
+                        maxDistance = Collections.max(containerDistanceMap.values());
 
 
                     }
 
                     if (matchedContainer != null && !matchedContainer.isEmpty()) {
                         break;
-                    }else{
-                        logger.info("<----------------maxDistance----------------->{}", maxDistance + "\n");
-                        if (maxDistance>0.7){
-                            logger.info("<----------------containerDistanceMap.entrySet()----------------->{}", containerDistanceMap.entrySet() + "\n");
+                    } else {
+                        logger.info(" maxDistance {}", maxDistance + "\n");
+                        if (maxDistance > 0.7) {
+                            logger.info(" containerDistanceMap.entrySet() {}", containerDistanceMap.entrySet() + "\n");
                             matchedContainer = Collections.max(containerDistanceMap.entrySet(), Map.Entry.comparingByValue()).getKey();
+                            if (matchedContainerList.contains(matchedContainer)) {
+                                break;
+                            }
+                            matchedContainerList.add(matchedContainer);
+
                             break;
 
-                        }else {
-                            matchedContainer = "UNDEFINED_PROVIDER_DETAILS";
-                            logger.info("<----------------matchedContainer----------------->{}", matchedContainer);
-                            break;
                         }
+//                        else {
+//                            matchedContainer = "UNDEFINED_PROVIDER_DETAILS";
+//                            logger.info(" matchedContainer {}", matchedContainer);
+//                            break;
+//                        }
                     }
                 }
 
@@ -243,26 +269,26 @@ public class ProviderProcessorSpringAsClass {
         return maxLength > 0 ? (double) lcsLength / maxLength : 0.0;
     }
 
-    public static Map<String,List<String>> metaProviderEntityDetails(){
+    public static Map<String, List<String>> metaProviderEntityDetails() {
         Map<String, List<String>> metaProviderEntityDetails = new HashMap<>();
-        metaProviderEntityDetails.put("SERVICING_PROVIDER_DETAILS", Arrays.asList("servicing provider","physician","Therapist","Attending physician","Accepting physician","Rendering Provider"));
-        metaProviderEntityDetails.put("REFERRING_PROVIDER_DETAILS", Arrays.asList("Referring Provider","Requesting Provider","Ordering Provider"));
+        metaProviderEntityDetails.put("SERVICING_PROVIDER_DETAILS", Arrays.asList("servicing provider", "physician", "Therapist", "Attending physician", "Accepting physician", "Rendering Provider"));
+        metaProviderEntityDetails.put("REFERRING_PROVIDER_DETAILS", Arrays.asList("Referring Provider", "Requesting Provider", "Ordering Provider"));
         return metaProviderEntityDetails;
     }
 
-    public static Map<String,List<String>> itemMappingDetails(){
+    public static Map<String, List<String>> itemMappingDetails() {
         Map<String, List<String>> itemMappingDetails = new HashMap<>();
         itemMappingDetails.put("SERVICING_PROVIDER_DETAILS",
-                Arrays.asList("servicing_provider_name","servicing_provider_npi","servicing_provider_Specialty","servicing_provider_tin","servicing_provider_address","servicing_provider_city","servicing_provider_state","servicing_provider_zip"));
+                Arrays.asList("servicing_provider_name", "servicing_provider_npi", "servicing_provider_Specialty", "servicing_provider_tin", "servicing_provider_address", "servicing_provider_city", "servicing_provider_state", "servicing_provider_zip"));
         itemMappingDetails.put("UNDEFINED_PROVIDER_DETAILS",
-                Arrays.asList("undefined_provider_name","undefined_provider_npi","undefined_provider_Specialty","undefined_provider_tin","undefined_provider_address","undefined_provider_city","undefined_provider_state","undefined_provider_zip"));
+                Arrays.asList("undefined_provider_name", "undefined_provider_npi", "undefined_provider_Specialty", "undefined_provider_tin", "undefined_provider_address", "undefined_provider_city", "undefined_provider_state", "undefined_provider_zip"));
         itemMappingDetails.put("REFERRING_PROVIDER_DETAILS",
-                Arrays.asList("referring_provider_name","referring_provider_npi","referring_provider_Specialty","referring_provider_tin","referring_provider_address","referring_provider_city","referring_provider_state","referring_provider_zip"));
+                Arrays.asList("referring_provider_name", "referring_provider_npi", "referring_provider_Specialty", "referring_provider_tin", "referring_provider_address", "referring_provider_city", "referring_provider_state", "referring_provider_zip"));
 
         return itemMappingDetails;
     }
 
-    public static Map<String,String> nameMappingDetails() {
+    public static Map<String, String> nameMappingDetails() {
 
         Map<String, String> nameMappingDetails = new HashMap<>();
         nameMappingDetails.put("servicing_provider_name", "Provider Name");
@@ -352,16 +378,15 @@ public class ProviderProcessorSpringAsClass {
         providers.add(provider4);
 //
         // Use the new Processor class
-        ProviderProcessor processor = new ProviderProcessor(
-                providers
-        );
-        List<OutputItem> output = processor.process();
-
-        logger.info("final output----------------------------------------------------\n");
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String jsonOutput = objectMapper.writeValueAsString(output);
-        JsonNode res = objectMapper.readTree(jsonOutput);
-        System.out.println(res);
+//        ProviderTransformer processor = new ProviderTransformer();
+//
+//        List<OutputItem> output = processor.process();
+//
+//        logger.info("final output\n");
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+//        String jsonOutput = objectMapper.writeValueAsString(output);
+//        JsonNode res = objectMapper.readTree(jsonOutput);
+//        System.out.println(res);
     }
 }

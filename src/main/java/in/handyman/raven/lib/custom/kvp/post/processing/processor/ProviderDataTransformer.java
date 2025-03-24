@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderTransformerFinal;
+import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderTransformerOutputItem;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
@@ -40,25 +42,42 @@ public class ProviderDataTransformer {
         this.action = action;
         this.jdbi = jdbi;
         this.encryption = encryption;
+        log.info("ProviderDataTransformer initialized with encryption: {}", encryption != null);
 
     }
 
     public List<RadonQueryOutputTable> processProviderData(
             String sourceCode, String className, String responsePayload,
             RadonQueryInputTable entity, String request, String apiResponse, String endpoint) {
+        log.info("Starting processProviderData for class: {}", className);
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 
         try {
             Interpreter interpreter = new Interpreter();
+            log.info("Beanshell script evaluated successfully.");
+
+
             interpreter.eval(sourceCode);
 
             Map<String, Object> responseMap = parseResponse(responsePayload);
+            if (responseMap.isEmpty()) {
+                log.warn("Parsed response is empty for payload: {}", responsePayload);
+                return outputList;
+            }
             responseMap.forEach((key, value) -> {
                 try {
-                    List<RadonQueryOutputTable> mappedData = processMapping(
-                            interpreter, className, value, entity, request, apiResponse, endpoint);
-                    outputList.addAll(mappedData);
+                    List<Map<String, String>> convertedList = objectMapper.convertValue(value, List.class);
+                    log.debug("Converted response data for key '{}': {}", key, convertedList.size());
+
+//                    List<RadonQueryOutputTable> mappedInterpreterData = processMappingInterpreter(
+//                            interpreter, className, value, entity, request, apiResponse, endpoint);
+
+                    List<RadonQueryOutputTable> mappedJavaData = processMappingJava(
+                            interpreter, className, convertedList, entity, request, apiResponse, endpoint);
+
+                    outputList.addAll(mappedJavaData);
+
                 } catch (EvalError e) {
 
                     throw new HandymanException("Error evaluating Beanshell script", e, action);
@@ -74,7 +93,10 @@ public class ProviderDataTransformer {
     }
 
     private Map<String, Object> parseResponse(String responsePayload) {
+
         if (responsePayload == null) {
+            log.warn("Response payload is null or empty.");
+
             return Map.of();
         }
         try {
@@ -85,7 +107,7 @@ public class ProviderDataTransformer {
         }
     }
 
-    private List<RadonQueryOutputTable> processMapping(
+    private List<RadonQueryOutputTable> processMappingInterpreter(
             Interpreter interpreter, String className, Object response,
             RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError {
 
@@ -96,26 +118,60 @@ public class ProviderDataTransformer {
         interpreter.eval("providerMap = mapper.processProviders(responseMap);");
 
         Object providerMapObject = interpreter.get("providerMap");
+
         return mapOutputTable(providerMapObject, entity, request, apiResponse, endpoint);
     }
+
+    private List<RadonQueryOutputTable> processMappingJava(
+            Interpreter interpreter, String className, List<Map<String, String>> response,
+            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError {
+        log.info("Processing provider data using Java class: {}", className);
+
+        ProviderTransformerFinal processor = new ProviderTransformerFinal(log);
+        List<ProviderTransformerOutputItem> results = processor.processProviders(response);
+
+        return mapOutputTable(results, entity, request, apiResponse, endpoint);
+    }
+
 
     private List<RadonQueryOutputTable> mapOutputTable(
             Object providerMapObject, RadonQueryInputTable entity,
             String request, String apiResponse, String endpoint) {
+        log.info("Mapping provider data to output table.");
+
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 
         if (providerMapObject instanceof List) {
-            List<?> providerDataList = (List<?>) providerMapObject;
+            log.warn("Provider map object is not a list, skipping.");
+
+            List<ProviderTransformerOutputItem> providerDataList = (List<ProviderTransformerOutputItem>) providerMapObject;
             Map<String, List<LlmJsonParserKvpKrypton>> kvpContainers = new HashMap<>();
 
+//            for (int i = 0; i < providerDataList.size(); i++) {
+//
+//                Hashtable item = (Hashtable) providerDataList.get(i);
+//                String container = (String) item.get("sorContainerName");
+//
+//                LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(item);
+//
+//                if (kvpContainers.containsKey(container)) {
+//                    List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = kvpContainers.get(container);
+//                    llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
+//                    kvpContainers.put(container, llmJsonParserKvpKryptonList);
+//                } else {
+//                    List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = new ArrayList<>();
+//                    llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
+//                    kvpContainers.put(container, llmJsonParserKvpKryptonList);
+//                }
+//
+//            }
+
             for (int i = 0; i < providerDataList.size(); i++) {
+                ProviderTransformerOutputItem providerTransformerOutputItem= providerDataList.get(i);
 
-                Hashtable item = (Hashtable) providerDataList.get(i);
-                String container = (String) item.get("sorContainerName");
-
-                LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(item);
-
+                LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(providerTransformerOutputItem);
+                String container= providerTransformerOutputItem.getSorContainerName();
                 if (kvpContainers.containsKey(container)) {
                     List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = kvpContainers.get(container);
                     llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
@@ -142,20 +198,26 @@ public class ProviderDataTransformer {
                 });
             });
         }
+        log.info("Mapping complete with {} output records.", outputList.size());
 
         return outputList;
     }
 
-    private LlmJsonParserKvpKrypton createKvp(Hashtable<?, ?> data) {
+    private LlmJsonParserKvpKrypton createKvp(ProviderTransformerOutputItem data) {
+        log.info("Creating KVP for key: {}", data.getKey());
+
         return new LlmJsonParserKvpKrypton(
-                (String) data.get("key"),
-                (String) data.get("value"),
-                (Double) data.get("confidence"),
-                objectMapper.convertValue(data.get("boundingBox"), JsonNode.class)
+                data.getKey(),
+                data.getValue(),
+                0.0,
+                objectMapper.convertValue(data.getBoundingBox(), JsonNode.class)
+
         );
     }
 
     private Optional<String> getContainerId(String sorContainerName) {
+        log.info("Fetching container ID for {}", sorContainerName);
+
         String query = "SELECT sor_container_id FROM sor_meta.sor_container " +
                 "WHERE sor_container_name = :sorContainerName " +
                 "AND document_type = :documentType " +

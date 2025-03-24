@@ -55,15 +55,14 @@ public class RadonKvpAction implements IActionExecution {
     private static final String DEFAULT_SOCKET_TIMEOUT = "100";
     private static final String THREAD_SLEEP_TIME_DEFAULT = "1000";
     private static final String INSERT_INTO = "INSERT INTO";
-    private static final String VALUE_PLACEHOLDERS = "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-    private static final String COLUMN_LIST = String.join(", ",
-            "created_on", "created_user_id", "last_updated_on", "last_updated_user_id",
-            "input_file_path", "total_response_json", "paper_no", "origin_id",
-            "process_id", "action_id", "process", "group_id", "tenant_id",
-            "root_pipeline_id", "batch_id", "model_registry", "status",
-            "stage", "message", "category", "request", "response",
-            "endpoint", "sor_container_id");
+    public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path," +
+            " total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, " +
+            "root_pipeline_id, batch_id, model_registry, status, stage, message, category,request,response,endpoint,sor_container_id";
+    public static final String VAL_STRING_LIST = "VALUES( ?,?,?,?,?," +
+            "?,?,?,?,?" +
+            ",?,?,?,?,?," +
+            "?,?, ?, ?" +
+            ",?,?,?,?, ?)";
 
     private final ActionExecutionAudit action;
     private final Logger log;
@@ -104,9 +103,9 @@ public class RadonKvpAction implements IActionExecution {
         this.radonKvpUrl = this.radonKvp.getEndpoint();
         this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
 
-        this.insertQuery = INSERT_INTO + " " + targetTableName + " (" + COLUMN_LIST + ") " + VALUE_PLACEHOLDERS;
+        this.insertQuery = INSERT_INTO + " " + targetTableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
 
-        this.providerDataTransformer = new ProviderDataTransformer(log, aMarker, objectMapper, action, jdbi, securityEngine);
+        this.providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, jdbi, securityEngine);
     }
 
     private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
