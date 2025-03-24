@@ -291,6 +291,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
+    public List<ActionExecutionAudit> findAllActionsByPipelineIdAndExecutionStatusId(final Long pipelineId, final Integer executionStatusId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(ActionExecutionAuditRepo.class);
+            return repo.findAllActionsByPipelineIdAndExecutionStatusId(pipelineId, executionStatusId);
+        });
+    }
+
+    @Override
     public void insertStatement(final StatementExecutionAudit audit) {
         checkJDBIConnection();
         audit.setLastModifiedDate(LocalDateTime.now());

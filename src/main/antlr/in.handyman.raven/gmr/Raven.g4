@@ -179,6 +179,7 @@ action:
     |decryptInticsEnc
     |controlDataComparison
     |providerContainerParser
+    |postProcessingExecutor
     );
 
 
@@ -1383,6 +1384,17 @@ providerContainerParser:
     'container-item-details' containerItemDetails=STRING
     'paper-filter-mapper' paperFilterDetails=STRING
     'using' '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+postProcessingExecutor:
+    'postProcessingExecutor' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'group-id' groupId = STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
     ('on-condition' condition=expression)*  ;
 
 //rules
