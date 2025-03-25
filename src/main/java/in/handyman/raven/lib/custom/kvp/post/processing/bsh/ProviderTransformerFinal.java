@@ -219,7 +219,7 @@ public class ProviderTransformerFinal {
         Map<String, List<String>> metaProviderEntityDetails = new HashMap<>();
         metaProviderEntityDetails.put("SERVICING_PROVIDER_DETAILS", Arrays.asList("servicing provider", "physician", "Therapist", "Attending physician", "Accepting physician", "Rendering Provider"));
         metaProviderEntityDetails.put("REFERRING_PROVIDER_DETAILS", Arrays.asList("Referring Provider", "Requesting Provider", "Ordering Provider"));
-        metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList("SERVICING_FACILITY_DETAILS","Service Facility","Facility","facility name"));
+        metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList("SERVICING_FACILITY_DETAILS","Service Facility","Facility","facility name","servicing facility"));
         return metaProviderEntityDetails;
     }
 
