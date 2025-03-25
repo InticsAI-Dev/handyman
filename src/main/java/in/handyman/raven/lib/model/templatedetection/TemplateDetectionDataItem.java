@@ -1,8 +1,6 @@
 package in.handyman.raven.lib.model.templatedetection;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import in.handyman.raven.lib.agadia.xenon.model.XenonResult;
-import in.handyman.raven.lib.model.trinitymodel.TrinityModelDataLineItem;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

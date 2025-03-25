@@ -14,12 +14,15 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://intics.elevance.ngrok.dev/krypton-x/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("https://1829def4977c.ngrok.app/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
-                        "                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name,sor_container_id\n" +
-                        "                FROM sor_transaction.radon_kvp_input_audit\n" +
-                        "                WHERE id=45;")
+                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
+                        "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
+                        "                    WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
+                        "                    WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name\n" +
+                        "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
+                        "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
+                        "                    WHERE a.model_registry = 'RADON'  and id =1388;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -39,14 +42,11 @@ public class RadonKvpAcionTest {
         ac.getContext().put("pipeline.encryption.default.holder", "");
         ac.getContext().put("pipeline.text.extraction.encryption", "true");
         ac.getContext().put("bbox.radon_bbox_activator", "false");
-        ac.getContext().put("pipeline.end.to.end.encryption", "true");
+        ac.getContext().put("pipeline.end.to.end.encryption", "false");
+        ac.getContext().put("document_type", "HEALTH_CARE");
+        ac.getContext().put("tenant_id", "1");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
-
-
-
-
-
-
+        ac.getContext().put("ProviderContainerParser", "ProcessProvider");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);

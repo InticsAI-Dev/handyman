@@ -1,10 +1,14 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.RadonKvp;
 import java.lang.Exception;
 import java.lang.Object;
@@ -48,23 +52,9 @@ import java.util.stream.Collectors;
         actionName = "RadonKvp"
 )
 public class RadonKvpAction implements IActionExecution {
-    private final ActionExecutionAudit action;
-
-    private final Logger log;
-
-    private final RadonKvp radonKvp;
-
-    private final Marker aMarker;
-
-
-    public static final String DEFAULT_SOCKET_TIME_OUT = "100";
-    public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
-    public static final String COPRO_CLIENT_API_SLEEPTIME = "copro.client.api.sleeptime";
-    public static final String CONSUMER_API_COUNT = "Radon.kvp.consumer.API.count";
-    public static final String WRITE_BATCH_SIZE = "write.batch.size";
-    public static final String THREAD_SLEEP_TIME = "1000";
-    public static final String INSERT_INTO = "INSERT INTO";
-
+    private static final String DEFAULT_SOCKET_TIMEOUT = "100";
+    private static final String THREAD_SLEEP_TIME_DEFAULT = "1000";
+    private static final String INSERT_INTO = "INSERT INTO";
     public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path," +
             " total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, " +
             "root_pipeline_id, batch_id, model_registry, status, stage, message, category,request,response,endpoint,sor_container_id";
@@ -74,52 +64,58 @@ public class RadonKvpAction implements IActionExecution {
             "?,?, ?, ?" +
             ",?,?,?,?, ?)";
 
-    public static final String READ_BATCH_SIZE = "read.batch.size";
+    private final ActionExecutionAudit action;
+    private final Logger log;
+    private final RadonKvp radonKvp;
+    private final Marker aMarker;
+    private final ProviderDataTransformer providerDataTransformer;
+    private final ObjectMapper objectMapper;
+    private final Jdbi jdbi;
+    private final InticsIntegrity securityEngine;
+
     private final int threadSleepTime;
-    private final Integer consumerApiCount;
-    private final Integer writeBatchSize;
-    private final String targetTableName;
-    private final String columnList;
-    private final String insertQuery;
-    private final String radonKvpUrl;
-
-    private int timeout;
-
-
+    private final int consumerApiCount;
+    private final int writeBatchSize;
     private final int readBatchSize;
+    private final int timeout;
+
+    private final String targetTableName;
+    private final String radonKvpUrl;
+    private final String insertQuery;
     private final String processBase64;
-    public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
-
-    public RadonKvpAction(final ActionExecutionAudit action, final Logger log,
-                          final Object radonKvp) {
-        this.radonKvp = (RadonKvp) radonKvp;
+    public RadonKvpAction(final ActionExecutionAudit action, final Logger log, final Object radonKvp) {
         this.action = action;
         this.log = log;
-        this.aMarker = MarkerFactory.getMarker(" RadonKvp:" + this.radonKvp.getName());
-        String socketTimeStr = action.getContext().get(COPRO_CLIENT_SOCKET_TIMEOUT);
-        socketTimeStr = socketTimeStr != null && socketTimeStr.trim().length() > 0 ? socketTimeStr : DEFAULT_SOCKET_TIME_OUT;
-        this.timeout = Integer.parseInt(socketTimeStr);
-        String threadSleepTimeStr = action.getContext().get(COPRO_CLIENT_API_SLEEPTIME);
-        threadSleepTimeStr = threadSleepTimeStr != null && threadSleepTimeStr.trim().length() > 0 ? threadSleepTimeStr : THREAD_SLEEP_TIME;
-        this.threadSleepTime = Integer.parseInt(threadSleepTimeStr);
-        String consumerApiCountStr = this.action.getContext().get(CONSUMER_API_COUNT);
-        consumerApiCount = Integer.valueOf(consumerApiCountStr);
-        String writeBatchSizeStr = this.action.getContext().get(WRITE_BATCH_SIZE);
-        this.writeBatchSize = Integer.valueOf(writeBatchSizeStr);
-        this.readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-        this.targetTableName = this.radonKvp.getOutputTable();
-        this.columnList = COLUMN_LIST;
-        this.radonKvpUrl = this.radonKvp.getEndpoint();
-        this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
-        insertQuery = INSERT_INTO + " " + targetTableName + "(" + columnList + ") " + " " + VAL_STRING_LIST;
+        this.radonKvp = (RadonKvp) radonKvp;
+        this.jdbi = ResourceAccess.rdbmsJDBIConn(this.radonKvp.getResourceConn());
+        this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action);
+        this.objectMapper = new ObjectMapper();
+        this.aMarker = MarkerFactory.getMarker("RadonKvp:" + this.radonKvp.getName());
 
+        this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
+        this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
+        this.consumerApiCount = parseContextValue(action, "Radon.kvp.consumer.API.count", "1");
+        this.writeBatchSize = parseContextValue(action, "write.batch.size", "10");
+        this.readBatchSize = parseContextValue(action, "read.batch.size", "10");
+
+        this.targetTableName = this.radonKvp.getOutputTable();
+        this.radonKvpUrl = this.radonKvp.getEndpoint();
+        this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
+
+        this.insertQuery = INSERT_INTO + " " + targetTableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
+
+        this.providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, jdbi, securityEngine);
+    }
+
+    private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
+        String value = action.getContext().getOrDefault(key, defaultValue).trim();
+        return value.isEmpty() ? Integer.parseInt(defaultValue) : Integer.parseInt(value);
     }
 
     @Override
     public void execute() throws Exception {
         try {
-            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(radonKvp.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
@@ -135,7 +131,7 @@ public class RadonKvpAction implements IActionExecution {
 
             final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
             Thread.sleep(threadSleepTime);
-            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils);
+            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils,jdbi,providerDataTransformer);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " llm kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {

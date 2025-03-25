@@ -1,7 +1,10 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
+import bsh.EvalError;
+import bsh.Interpreter;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,14 +12,18 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.triton.*;
+import in.handyman.raven.lib.utils.DatabaseUtility;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -26,6 +33,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static in.handyman.raven.lib.utils.DatabaseUtility.fetchBshResultByClassName;
 
 public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<RadonQueryInputTable, RadonQueryOutputTable> {
 
@@ -43,14 +52,20 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final String processBase64;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
+    public final Jdbi jdbi;
+
+    private final ProviderDataTransformer providerDataTransformer;
+
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, Jdbi jdbi, ProviderDataTransformer providerDataTransformer) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
+        this.providerDataTransformer = providerDataTransformer;
         int timeOut = aAction.getTimeOut();
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
         this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
+        this.jdbi = jdbi;
     }
 
 
@@ -182,14 +197,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         if (Objects.equals("false", tritonRequestActivator)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuider(entity, request, parentObj, jsonInputRequest, endpoint);
+            coproResponseBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
             tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
         }
 
-
+        log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
         return parentObj;
     }
 
@@ -210,7 +225,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
                         try {
                             extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
-                        } catch (IOException e) {
+                        } catch (IOException | EvalError e) {
                             HandymanException handymanException = new HandymanException(e);
                             HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
                             log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
@@ -325,7 +340,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     }
 
-    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws IOException {
+    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String request, String response, String endpoint) throws IOException, EvalError {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -339,46 +354,57 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        log.info(aMarker, "checking provider data found for the given input {}", Boolean.TRUE.equals(entity.getPostProcess()));
+        if (Boolean.TRUE.equals(entity.getPostProcess())) {
+            log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
+            String providerClassName = action.getContext().get(entity.getPostProcessClassName());
+            Optional<String> sourceCode = fetchBshResultByClassName(jdbi, providerClassName);
+            if (sourceCode.isPresent()) {
+                List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, modelResponse.getInferResponse(), entity, request, response, endpoint);
+                parentObj.addAll(providerParentObj);
+            }
 
-        if (Objects.equals(encryptOutputJsonContent, "true")) {
-            extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
         } else {
-            extractedContent = modelResponse.getInferResponse();
-        }
+            if (Objects.equals(encryptOutputJsonContent, "true")) {
+                extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
+            } else {
+                extractedContent = modelResponse.getInferResponse();
+            }
 
-        parentObj.add(RadonQueryOutputTable.builder()
-                .createdOn(CreateTimeStamp.currentTimestamp())
-                .createdUserId(tenantId)
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .lastUpdatedUserId(tenantId)
-                .originId(originId)
-                .paperNo(paperNo)
-                .totalResponseJson(extractedContent)
-                .groupId(groupId)
-                .inputFilePath(processedFilePaths)
-                .actionId(action.getActionId())
-                .tenantId(tenantId)
-                .processId(processId)
-                .rootPipelineId(rootPipelineId)
-                .process(entity.getProcess())
-                .batchId(modelResponse.getBatchId())
-                .modelRegistry(entity.getModelRegistry())
-                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(entity.getApiName())
-                .batchId(entity.getBatchId())
-                .category(entity.getCategory())
-                .message("Radon kvp action macro completed")
-                .request(encryptRequestResponse(request))
-                .response(encryptRequestResponse(response))
-                .sorContainerId(entity.getSorContainerId())
-                .endpoint(String.valueOf(endpoint))
-                .build()
-        );
+            parentObj.add(RadonQueryOutputTable.builder()
+                    .createdOn(CreateTimeStamp.currentTimestamp())
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .lastUpdatedUserId(tenantId)
+                    .originId(originId)
+                    .paperNo(paperNo)
+                    .totalResponseJson(extractedContent)
+                    .groupId(groupId)
+                    .inputFilePath(processedFilePaths)
+                    .actionId(action.getActionId())
+                    .tenantId(tenantId)
+                    .processId(processId)
+                    .rootPipelineId(rootPipelineId)
+                    .process(entity.getProcess())
+                    .batchId(modelResponse.getBatchId())
+                    .modelRegistry(entity.getModelRegistry())
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(entity.getApiName())
+                    .batchId(entity.getBatchId())
+                    .category(entity.getCategory())
+                    .message("Radon kvp action macro completed")
+                    .request(encryptRequestResponse(request))
+                    .response(encryptRequestResponse(response))
+                    .sorContainerId(entity.getSorContainerId())
+                    .endpoint(String.valueOf(endpoint))
+                    .build()
+            );
+        }
 
 
     }
 
-    private void coproResponseBuider(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
+    private void coproResponseBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInputRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -573,4 +599,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
         return requestStr;
     }
+
+
 }
