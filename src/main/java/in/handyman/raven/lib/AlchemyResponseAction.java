@@ -126,6 +126,7 @@ public class AlchemyResponseAction implements IActionExecution {
                 log.info(aMarker, "executed query from index {}", i.get());
             });
         });
+        log.info("Query set executed and returned entities size: {}", tableInfos.size());
         return tableInfos;
     }
 
@@ -496,16 +497,6 @@ public class AlchemyResponseAction implements IActionExecution {
         public List<Object> getRowData() {
             return Collections.emptyList();
         }
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    public static class AlchemyCurrencyResponse {
-        private String detectedValue;
-        private String detectedAsciiValue;
-        private String confidenceScore;
     }
 
     @AllArgsConstructor

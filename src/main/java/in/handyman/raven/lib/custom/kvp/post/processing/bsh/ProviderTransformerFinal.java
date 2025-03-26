@@ -3,6 +3,7 @@ package in.handyman.raven.lib.custom.kvp.post.processing.bsh;
 import org.slf4j.Logger;
 
 import java.util.*;
+
 public class ProviderTransformerFinal {
     private Logger logger;
 
@@ -81,19 +82,19 @@ public class ProviderTransformerFinal {
 
             if (mappedKey != null) {
                 String keyValue = provider.get(mappedKey);
-                if(mappedKey.equals("Provider Name")){
-                    if(matchedContainer.equals("SERVICING_PROVIDER_DETAILS")){
-                        List<ProviderTransformerOutputItem> providerTransformerOutputItems=transformServicingProviderName(keyValue,matchedContainer);
+                if (mappedKey.equals("Provider Name")) {
+                    if (matchedContainer.equals("SERVICING_PROVIDER_DETAILS")) {
+                        List<ProviderTransformerOutputItem> providerTransformerOutputItems = transformServicingProviderName(keyValue, matchedContainer);
                         result.addAll(providerTransformerOutputItems);
                     } else if (matchedContainer.equals("REFERRING_PROVIDER_DETAILS")) {
-                        List<ProviderTransformerOutputItem> providerTransformerOutputItems=transformReferringProviderName(keyValue,matchedContainer);
+                        List<ProviderTransformerOutputItem> providerTransformerOutputItems = transformReferringProviderName(keyValue, matchedContainer);
                         result.addAll(providerTransformerOutputItems);
-                    }else {
+                    } else {
                         if (keyValue != null && !keyValue.trim().isEmpty()) {
                             result.add(new ProviderTransformerOutputItem(item, keyValue, new HashMap<>(), matchedContainer));
                         }
                     }
-                }else {
+                } else {
                     if (keyValue != null && !keyValue.trim().isEmpty()) {
                         result.add(new ProviderTransformerOutputItem(item, keyValue, new HashMap<>(), matchedContainer));
                     }
@@ -108,6 +109,7 @@ public class ProviderTransformerFinal {
         if (str == null) return "";
         return str.trim().replaceAll(" +", " ").toLowerCase();
     }
+
     public List<ProviderTransformerOutputItem> transformReferringProviderName(String name, String containerName) {
         List<ProviderTransformerOutputItem> ProviderTransformerOutputItems = new ArrayList<>();
 
@@ -219,7 +221,7 @@ public class ProviderTransformerFinal {
         Map<String, List<String>> metaProviderEntityDetails = new HashMap<>();
         metaProviderEntityDetails.put("SERVICING_PROVIDER_DETAILS", Arrays.asList("servicing provider", "physician", "Therapist", "Attending physician", "Accepting physician", "Rendering Provider"));
         metaProviderEntityDetails.put("REFERRING_PROVIDER_DETAILS", Arrays.asList("Referring Provider", "Requesting Provider", "Ordering Provider"));
-        metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList("SERVICING_FACILITY_DETAILS","Service Facility","Facility","facility name","servicing facility"));
+        metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList("SERVICING_FACILITY_DETAILS", "Service Facility", "Facility", "facility name", "servicing facility"));
         return metaProviderEntityDetails;
     }
 
@@ -228,17 +230,17 @@ public class ProviderTransformerFinal {
         itemMappingDetails.put("SERVICING_PROVIDER_DETAILS",
                 Arrays.asList("servicing_provider_full_name", "servicing_provider_specialty", "servicing_provider_npi",
                         "servicing_provider_address_line1", "servicing_provider_address_line2", "servicing_provider_city",
-                        "servicing_provider_state", "servicing_provider_tin","servicing_provider_zipcode"));
+                        "servicing_provider_state", "servicing_provider_tin", "servicing_provider_zipcode"));
         itemMappingDetails.put("SERVICING_FACILITY_DETAILS",
                 Arrays.asList("servicing_facility_last_name", "servicing_facility_npi", "servicing_facility_zipcode",
                         "servicing_facility_address_line1", "servicing_facility_address_line2", "servicing_facility_city",
-                        "servicing_facility_state","servicing_facility_tin","servicing_facility_specialty"));
+                        "servicing_facility_state", "servicing_facility_tin", "servicing_facility_specialty"));
 
         // Referring Provider Details
         itemMappingDetails.put("REFERRING_PROVIDER_DETAILS",
-                Arrays.asList("referring_provider_address_line1","referring_provider_full_name", "referring_provider_npi",
+                Arrays.asList("referring_provider_address_line1", "referring_provider_full_name", "referring_provider_npi",
                         "referring_provider_city", "referring_provider_specialty", "referring_provider_state",
-                        "referring_provider_tin", "referring_provider_zipcode","referring_provider_address_line2"));
+                        "referring_provider_tin", "referring_provider_zipcode", "referring_provider_address_line2"));
         return itemMappingDetails;
     }
 
@@ -276,7 +278,6 @@ public class ProviderTransformerFinal {
         nameMappingDetails.put("servicing_provider_city", "Provider City");
         nameMappingDetails.put("servicing_provider_state", "Provider State");
         nameMappingDetails.put("servicing_provider_zipcode", "Provider ZIP Code");
-
 
 
         nameMappingDetails.put("undefined_provider_name", "Provider Name");
