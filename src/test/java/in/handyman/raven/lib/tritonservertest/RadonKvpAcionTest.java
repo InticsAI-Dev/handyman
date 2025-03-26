@@ -14,7 +14,7 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://1829def4977c.ngrok.app/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("https://intics.elevance.ngrok.dev/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
                         "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
@@ -31,7 +31,6 @@ public class RadonKvpAcionTest {
         ac.setProcessId(123L);
         ac.getContext().put("Radon.kvp.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
-        ac.getContext().put("bbox.radon_bbox_activator", "true");
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
@@ -46,12 +45,11 @@ public class RadonKvpAcionTest {
         ac.getContext().put("document_type", "HEALTH_CARE");
         ac.getContext().put("tenant_id", "1");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
-        ac.getContext().put("ProviderContainerParser", "ProcessProvider");
+        ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
 
         radonKvpAction.execute();
-
     }
 }

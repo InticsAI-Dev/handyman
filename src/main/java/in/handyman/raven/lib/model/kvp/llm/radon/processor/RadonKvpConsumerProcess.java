@@ -1,10 +1,8 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import bsh.EvalError;
-import bsh.Interpreter;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,9 +14,7 @@ import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTr
 import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.triton.*;
-import in.handyman.raven.lib.utils.DatabaseUtility;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
@@ -40,7 +36,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
-    public static final String RADON_START = "RADON START";
     private final Logger log;
     private final Marker aMarker;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -78,7 +73,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long groupId = entity.getGroupId();
         String userPrompt = "";
         String systemPrompt = entity.getSystemPrompt();
-        String modelRegistry = entity.getModelRegistry();
         Integer paperNo = entity.getPaperNo();
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
@@ -314,7 +308,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
                 jsonResponse = repairJson(jsonResponse);
                 return objectMapper.readTree(jsonResponse);
-                //throw new IllegalArgumentException("Input does not contain the required ```json``` markers.");
             } else {
                 log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
                 return null;

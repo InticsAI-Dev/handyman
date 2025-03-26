@@ -67,16 +67,14 @@ public class ProviderDataTransformer {
             }
             responseMap.forEach((key, value) -> {
                 try {
-                    List<Map<String, String>> convertedList = objectMapper.convertValue(value, List.class);
-                    log.debug("Converted response data for key '{}': {}", key, convertedList.size());
 
-//                    List<RadonQueryOutputTable> mappedInterpreterData = processMappingInterpreter(
-//                            interpreter, className, value, entity, request, apiResponse, endpoint);
+                    List<RadonQueryOutputTable> mappedInterpreterData = processMappingInterpreter(
+                            interpreter, className, value, entity, request, apiResponse, endpoint);
 
-                    List<RadonQueryOutputTable> mappedJavaData = processMappingJava(
-                            interpreter, className, convertedList, entity, request, apiResponse, endpoint);
+//                    List<RadonQueryOutputTable> mappedJavaData = processMappingJava(
+//                            interpreter, className, convertedList, entity, request, apiResponse, endpoint);
 
-                    outputList.addAll(mappedJavaData);
+                    outputList.addAll(mappedInterpreterData);
 
                 } catch (EvalError e) {
 
@@ -133,45 +131,23 @@ public class ProviderDataTransformer {
         return mapOutputTable(results, entity, request, apiResponse, endpoint);
     }
 
-
     private List<RadonQueryOutputTable> mapOutputTable(
             Object providerMapObject, RadonQueryInputTable entity,
             String request, String apiResponse, String endpoint) {
-        log.info("Mapping provider data to output table.");
-
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 
         if (providerMapObject instanceof List) {
-            log.warn("Provider map object is not a list, skipping.");
-
-            List<ProviderTransformerOutputItem> providerDataList = (List<ProviderTransformerOutputItem>) providerMapObject;
+            List<?> providerDataList = (List<?>) providerMapObject;
             Map<String, List<LlmJsonParserKvpKrypton>> kvpContainers = new HashMap<>();
 
-//            for (int i = 0; i < providerDataList.size(); i++) {
-//
-//                Hashtable item = (Hashtable) providerDataList.get(i);
-//                String container = (String) item.get("sorContainerName");
-//
-//                LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(item);
-//
-//                if (kvpContainers.containsKey(container)) {
-//                    List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = kvpContainers.get(container);
-//                    llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
-//                    kvpContainers.put(container, llmJsonParserKvpKryptonList);
-//                } else {
-//                    List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = new ArrayList<>();
-//                    llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
-//                    kvpContainers.put(container, llmJsonParserKvpKryptonList);
-//                }
-//
-//            }
-
             for (int i = 0; i < providerDataList.size(); i++) {
-                ProviderTransformerOutputItem providerTransformerOutputItem= providerDataList.get(i);
 
-                LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(providerTransformerOutputItem);
-                String container= providerTransformerOutputItem.getSorContainerName();
+                Hashtable item = (Hashtable) providerDataList.get(i);
+                String container = (String) item.get("sorContainerName");
+
+                LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(item);
+
                 if (kvpContainers.containsKey(container)) {
                     List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = kvpContainers.get(container);
                     llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
@@ -198,22 +174,19 @@ public class ProviderDataTransformer {
                 });
             });
         }
-        log.info("Mapping complete with {} output records.", outputList.size());
 
         return outputList;
     }
 
-    private LlmJsonParserKvpKrypton createKvp(ProviderTransformerOutputItem data) {
-        log.info("Creating KVP for key: {}", data.getKey());
-
+    private LlmJsonParserKvpKrypton createKvp(Hashtable<?, ?> data) {
         return new LlmJsonParserKvpKrypton(
-                data.getKey(),
-                data.getValue(),
-                0.0,
-                objectMapper.convertValue(data.getBoundingBox(), JsonNode.class)
-
+                (String) data.get("key"),
+                (String) data.get("value"),
+                (Double) data.get("confidence"),
+                objectMapper.convertValue(data.get("boundingBox"), JsonNode.class)
         );
     }
+
 
     private Optional<String> getContainerId(String sorContainerName) {
         log.info("Fetching container ID for {}", sorContainerName);

@@ -32,11 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -90,6 +86,7 @@ public class AssetInfoAction implements IActionExecution {
                     log.info(aMarker, "executed query from index {}", i.get());
                 });
             });
+            log.info("Query set executed and returned entities size: {}", tableInfos.size());
             List<Path> pathList = new ArrayList<>();
             List<FileInfo> fileInfos = new ArrayList<>();
             tableInfos.forEach(tableInfo -> {
@@ -227,7 +224,7 @@ public class AssetInfoAction implements IActionExecution {
                                 handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi, batch_id)" +
                                                 "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi, :batchId);")
                                         .bindBean(insert).execute();
-                                log.info(aMarker, "inserted {} into source of origin ",insert.filePath);
+                                log.info(aMarker, "inserted {} into source of origin ", insert.filePath);
                             } catch (Throwable t) {
                                 insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(), tenantId);
                                 log.error(aMarker, "error inserting result {}", insert.getFilePath(), t);
@@ -245,7 +242,7 @@ public class AssetInfoAction implements IActionExecution {
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments, Long tenantId) {
         try {
-            String batchId=action.getContext().get("batch_id");
+            String batchId = action.getContext().get("batch_id");
             SanitarySummary summary = new SanitarySummary().builder()
                     .rowCount(rowCount)
                     .correctRowCount(executeCount)
