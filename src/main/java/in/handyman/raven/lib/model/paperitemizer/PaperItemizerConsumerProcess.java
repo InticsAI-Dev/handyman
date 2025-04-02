@@ -13,7 +13,7 @@ import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopr
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
-import in.handyman.raven.lib.model.paperitemizer.PdfToPaperItemizer;
+import javassist.NotFoundException;
 import okhttp3.*;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -66,11 +66,16 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
 
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
+        String selectedModelName = action.getContext().get(modelRegistry);
 
-        if (Objects.equals(action.getContext().get(modelRegistry), ModelRegistry.ARGON.name())) {
+
+        if (ModelRegistry.ARGON.name().equals(selectedModelName)) {
             parentObj = paperItemizationCoproApi(entity, action, endpoint, paperItemizer.getOutputDir());
-        }else if(Objects.equals(action.getContext().get(modelRegistry), ModelRegistry.XENON.name())){
-            parentObj= PdfToPaperItemizer.paperItemizer(entity.getFilePath(),paperItemizer.getOutputDir() , action, log, entity);
+        } else if (ModelRegistry.XENON.name().equals(selectedModelName)) {
+            parentObj = PdfToPaperItemizer.paperItemizer(entity.getFilePath(), paperItemizer.getOutputDir(), action, log, entity);
+        } else {
+            String errorMessage = "Invalid model selected for paper itemizer: " + modelRegistry;
+            throw new HandymanException(errorMessage, new NotFoundException(errorMessage), action);
         }
 
         if (log.isInfoEnabled()) {
@@ -391,7 +396,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         return requestStr;
     }
 
-    private List<PaperItemizerOutputTable> paperItemizationCoproApi(PaperItemizerInputTable entity, ActionExecutionAudit action,URL endpoint, String outputDir) throws IOException {
+    private List<PaperItemizerOutputTable> paperItemizationCoproApi(PaperItemizerInputTable entity, ActionExecutionAudit action, URL endpoint, String outputDir) throws IOException {
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
         String inputFilePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
@@ -445,7 +450,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                     .post(RequestBody.create(jsonRequest, mediaTypeJson)).build();
             tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequest, endpoint);
         }
-            return parentObj;
+        return parentObj;
     }
 
 
