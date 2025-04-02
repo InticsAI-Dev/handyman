@@ -30,6 +30,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -163,6 +165,7 @@ public class AssetInfoAction implements IActionExecution {
             var fileSize = file.length() / 1024;
             String fileExtension = FilenameUtils.getExtension(file.getName());
             String fileAbsolutePath = file.getAbsolutePath();
+            String decodedFileName =  decodeFileName(file.getName());
             String base64ForPathValue = getBase64ForPath(fileAbsolutePath, fileExtension);
             float pageWidth = 0f;
             float pageHeight = 0f;
@@ -197,6 +200,7 @@ public class AssetInfoAction implements IActionExecution {
                     .fileChecksum(sha1Hex)
                     .fileExtension(fileExtension)
                     .fileName(FilenameUtils.removeExtension(file.getName()))
+                    .decodedFileName(FilenameUtils.removeExtension(decodedFileName))
                     .filePath(fileAbsolutePath)
                     .fileSize(String.valueOf(fileSize))
                     .rootPipelineId(Long.valueOf(action.getContext().get("pipeline-id")))
@@ -221,8 +225,8 @@ public class AssetInfoAction implements IActionExecution {
             resultQueue.forEach(insert -> {
                         jdbi.useTransaction(handle -> {
                             try {
-                                handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi, batch_id)" +
-                                                "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi, :batchId);")
+                                handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, decoded_file_name, file_path, file_size,encode,tenant_id, height, width, dpi, batch_id)" +
+                                                "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :decodedFileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi, :batchId);")
                                         .bindBean(insert).execute();
                                 log.info(aMarker, "inserted {} into source of origin ", insert.filePath);
                             } catch (Throwable t) {
@@ -301,6 +305,14 @@ public class AssetInfoAction implements IActionExecution {
         return base64Image;
     }
 
+    public static String decodeFileName(String fileName) {
+        try {
+            return URLDecoder.decode(fileName, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return fileName;
+        }
+    }
+
 
     @Override
     public boolean executeIf() throws Exception {
@@ -320,6 +332,7 @@ public class AssetInfoAction implements IActionExecution {
         private String fileChecksum;
         private String fileExtension;
         private String fileName;
+        private String decodedFileName;
         private String filePath;
         private String fileSize;
         private String encode;
