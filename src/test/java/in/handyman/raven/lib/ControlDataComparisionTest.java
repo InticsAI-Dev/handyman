@@ -59,7 +59,7 @@ public class ControlDataComparisionTest {
                 Map.entry("write.batch.size", "1")));
 
         ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build() );
-        Long validationResults = deliveryNotifyAction.dateValidation("20000217", "17/02/2000", "yyyy/MM/dd");
+        Long validationResults = deliveryNotifyAction.dateValidation("1955-08-24", "08/24/1955", "yyyy/MM/dd");
         System.out.println(validationResults);
         log.info("Date validation completed");
     }

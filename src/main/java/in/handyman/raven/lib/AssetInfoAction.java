@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.AssetInfo;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -31,11 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -57,6 +54,7 @@ public class AssetInfoAction implements IActionExecution {
     private final Marker aMarker;
 
     private final Integer writeBatchSize = 1000;
+    public static final String PIPELINE_PAGE_ENCODE_ENCRYPT = "pipeline.text.extraction.encryption";
 
     public AssetInfoAction(final ActionExecutionAudit action, final Logger log,
                            final Object assetInfo) {
@@ -74,7 +72,7 @@ public class AssetInfoAction implements IActionExecution {
             log.info(aMarker, "Asset Info Action for {} has been started", assetInfo.getName());
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(assetInfo.getResourceConn());
-            final List<inputResult> tableInfos = new ArrayList<>();
+            final List<InputQueryResult> tableInfos = new ArrayList<>();
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(assetInfo.getValues());
@@ -82,17 +80,18 @@ public class AssetInfoAction implements IActionExecution {
                 formattedQuery.forEach(sqlToExecute -> {
                     log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
                     Query query = handle.createQuery(sqlToExecute);
-                    ResultIterable<inputResult> resultIterable = query.mapToBean(inputResult.class);
-                    List<inputResult> detailList = resultIterable.stream().collect(Collectors.toList());
+                    ResultIterable<InputQueryResult> resultIterable = query.mapToBean(InputQueryResult.class);
+                    List<InputQueryResult> detailList = resultIterable.stream().collect(Collectors.toList());
                     tableInfos.addAll(detailList);
                     log.info(aMarker, "executed query from index {}", i.get());
                 });
             });
+            log.info("Query set executed and returned entities size: {}", tableInfos.size());
             List<Path> pathList = new ArrayList<>();
             List<FileInfo> fileInfos = new ArrayList<>();
             tableInfos.forEach(tableInfo -> {
                 try {
-                    log.info(aMarker, "executing  for the file {}", tableInfo);
+                    log.info(aMarker, "executing  for the file {}", tableInfo.getFilePath());
                     final String filePathString = Optional.ofNullable(tableInfo.getFilePath()).map(String::valueOf).orElse("[]");
                     final String batchId = Optional.ofNullable(tableInfo.getBatchId()).map(String::valueOf).orElse("[]");
                     log.info(aMarker, "file path string {}", filePathString);
@@ -127,9 +126,9 @@ public class AssetInfoAction implements IActionExecution {
                         log.info(aMarker, "cleared batch {}", fileInfos.size());
                     }
                 } catch (Exception e) {
-                    log.error(aMarker, "Error in file info for {}", tableInfo, e);
+                    log.error(aMarker, "Error in file info for {}", tableInfo.getFilePath(), e);
                     HandymanException handymanException = new HandymanException(e);
-                    HandymanException.insertException("Error in file info for " + tableInfo, handymanException, action);
+                    HandymanException.insertException("Error in file info for " + tableInfo.getFilePath(), handymanException, action);
                 }
             });
             if (!fileInfos.isEmpty()) {
@@ -202,7 +201,7 @@ public class AssetInfoAction implements IActionExecution {
                     .fileSize(String.valueOf(fileSize))
                     .rootPipelineId(Long.valueOf(action.getContext().get("pipeline-id")))
                     .processId(Long.valueOf(action.getContext().get("process-id")))
-                    .encode(base64ForPathValue)
+                    .encode(encryptRequestResponse(base64ForPathValue))
                     .width(pageWidth)
                     .height(pageHeight)
                     .dpi(dpi)
@@ -225,25 +224,25 @@ public class AssetInfoAction implements IActionExecution {
                                 handle.createUpdate("INSERT INTO " + assetInfo.getAssetTable() + "(file_id,process_id,root_pipeline_id, file_checksum, file_extension, file_name, file_path, file_size,encode,tenant_id, height, width, dpi, batch_id)" +
                                                 "VALUES(:fileId,:processId, :rootPipelineId, :fileChecksum, :fileExtension, :fileName, :filePath, :fileSize,:encode,:tenantId, :height, :width, :dpi, :batchId);")
                                         .bindBean(insert).execute();
-                                log.info(aMarker, "inserted {} into source of origin ",insert.filePath);
+                                log.info(aMarker, "inserted {} into source of origin ", insert.filePath);
                             } catch (Throwable t) {
                                 insertSummaryAudit(jdbi, 0, 0, 1, "failed in batch for " + insert.getFileName(), tenantId);
-                                log.error(aMarker, "error inserting result {}", resultQueue, t);
+                                log.error(aMarker, "error inserting result {}", insert.getFilePath(), t);
                             }
                         });
                     }
             );
         } catch (Exception e) {
             insertSummaryAudit(jdbi, 0, 0, resultQueue.size(), "failed in batch insert", tenantId);
-            log.error(aMarker, "error inserting result {}", resultQueue, e);
+            log.error(aMarker, "error inserting result ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("error inserting result" + resultQueue, handymanException, action);
+            HandymanException.insertException("error inserting result ", handymanException, action);
         }
     }
 
     void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments, Long tenantId) {
         try {
-            String batchId=action.getContext().get("batch_id");
+            String batchId = action.getContext().get("batch_id");
             SanitarySummary summary = new SanitarySummary().builder()
                     .rowCount(rowCount)
                     .correctRowCount(executeCount)
@@ -265,6 +264,19 @@ public class AssetInfoAction implements IActionExecution {
             HandymanException.insertException("error inserting into batch insert audit", handymanException, action);
 
         }
+    }
+
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_PAGE_ENCODE_ENCRYPT);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
+        }
+        return requestStr;
     }
 
     public String getBase64ForPath(String imagePath, String fileExtension) throws IOException {
@@ -337,7 +349,7 @@ public class AssetInfoAction implements IActionExecution {
     @Data
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class inputResult {
+    public static class InputQueryResult {
         private int inboundId;
         private String createdOn;
         private String createdUserId;

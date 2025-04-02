@@ -137,7 +137,7 @@ public class FileMergerAction implements IActionExecution {
     try {
       action.getContext().put(name, mapper.readTree(responseBody).toString());
     } catch (JsonProcessingException e) {
-      throw new HandymanException("Error in the the response body binding into the output context name " + name, e);
+      throw new HandymanException("Error in the the response body binding into the output context name " + name, e,action);
     }
     action.getContext().put(name.concat(".success"), "true");
     log.info(aMarker, "The Successful Response  {} {}", name, responseBody);

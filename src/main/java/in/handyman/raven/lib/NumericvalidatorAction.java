@@ -7,7 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.NumericAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Numericvalidator;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -39,7 +39,7 @@ public class NumericvalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Numericvalidator:" + this.numericvalidator.getName());
     }
 
-    public int getNumericScore(Validator adapter) {
+    public int getNumericScore(FieldValidator adapter) {
         try {
             boolean validator = numericAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;

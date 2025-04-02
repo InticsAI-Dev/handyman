@@ -7,7 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.DateAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Datevalidator;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -43,7 +43,7 @@ public class DatevalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Datevalidator:" + this.datevalidator.getName());
     }
 
-    public int getDateScore(Validator adapter) {
+    public int getDateScore(FieldValidator adapter) {
         try {
             int currentYear = Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date()));
             int comparableYear;
@@ -59,12 +59,13 @@ public class DatevalidatorAction implements IActionExecution {
         }
     }
 
-    public Validator formatDate(Validator adapter) {
+    public FieldValidator formatDate(FieldValidator adapter) {
 
         String currentFormat = adapter.getAllowedSpecialChar();
         String dateStr = adapter.getInputValue();
 
         String dateInputFormats = action.getContext().get("date.input.formats");
+         String yearCenturyDeduct = action.getContext().get("scalar.data.formats.deduct.century");
         List<DateTimeFormatter> allowedFormats = Optional.of(dateInputFormats)
                 .map(s -> Arrays.stream(s.split(";"))
                         .map(DateTimeFormatter::ofPattern)
@@ -74,13 +75,21 @@ public class DatevalidatorAction implements IActionExecution {
         for (DateTimeFormatter inputFormatter : allowedFormats) {
             try {
                 LocalDate parsedDate = LocalDate.parse(dateStr, inputFormatter);
+                int currentYear = LocalDate.now().getYear();
+
+                log.info("scalar.data.formats.deduct.century is {}", yearCenturyDeduct);
+                if ("true".equals(yearCenturyDeduct) && parsedDate.getYear() > currentYear) {
+                    parsedDate = parsedDate.minusYears(100);
+                }
+
+
                 DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(currentFormat);
                 String convertedFormat = parsedDate.format(outputFormatter);
                 adapter.setInputValue(convertedFormat);
                 log.info("Converted the input date to format {}", currentFormat);
                 return adapter;
             } catch (DateTimeParseException e) {
-                log.error("Error in parsing the date format for input {} to format {}", dateStr, currentFormat);
+                log.warn("Unable to parse input format {}", currentFormat);
             }
         }
         return adapter;

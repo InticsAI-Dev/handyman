@@ -48,4 +48,8 @@ public interface ActionExecutionAuditRepo {
     @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + " where action_id= :actionId ; ")
     @RegisterBeanMapper(value = ActionExecutionAudit.class)
     ActionExecutionAudit findActionByActionId(Long actionId);
+
+    @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + " where pipeline_id= :pipelineId and execution_status_id= :executionStatusId ; ")
+    @RegisterBeanMapper(value = ActionExecutionAudit.class)
+    List<ActionExecutionAudit> findAllActionsByPipelineIdAndExecutionStatusId(Long pipelineId, Integer executionStatusId);
 }

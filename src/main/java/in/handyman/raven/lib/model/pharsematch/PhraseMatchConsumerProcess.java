@@ -8,7 +8,6 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.encryption.SecurityEngine;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.pharsematch.copro.PharseMatchDataItemCopro;
@@ -18,14 +17,17 @@ import in.handyman.raven.lib.model.triton.TritonInputRequest;
 import in.handyman.raven.lib.model.triton.TritonRequest;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProcess<PhraseMatchInputTable, PhraseMatchOutputTable> {
+    public static final String FILTER_ZSC_PAGE_CONTENT_LOWER = "filter.zsc.page.content.lower";
     private final Logger log;
     private final Marker aMarker;
     private static final MediaType MediaTypeJSON = MediaType
@@ -38,6 +40,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             .writeTimeout(10, TimeUnit.MINUTES)
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
+    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
     public PhraseMatchConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
@@ -55,22 +58,31 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String pageContent = String.valueOf(entity.getPageContent());
         String batchId = entity.getBatchId();
 
-        String extractedContent;
+        String decryptedContent;
+
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        String encryptSotPageContent= action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
 
-        if(Objects.equals(encryptSotPageContent, "true")){
-            extractedContent = encryption.decrypt(pageContent,"AES256","PM_TEXT_INPUT");
-        }else {
-            extractedContent = pageContent;
+        if (Objects.equals(encryptSotPageContent, "true")) {
+            decryptedContent = encryption.decrypt(pageContent, "AES256", "PM_TEXT_INPUT");
+        } else {
+            decryptedContent = pageContent;
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
-
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            keysToFilterObject.replaceAll((key, valueList) ->
+                    valueList.stream()
+                            .map(String::toLowerCase)
+                            .collect(Collectors.toList())
+            );
+        }
         //payload
+        String decryptedPageContentLower = normalizeCaseToLower(decryptedContent);
+
         PharseMatchData data = new PharseMatchData();
         data.setRootPipelineId(Math.toIntExact(action.getRootPipelineId()));
         data.setActionId(actionId);
@@ -78,7 +90,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         data.setOriginId(originId);
         data.setPaperNo(Long.valueOf(paperNo));
         data.setGroupId(groupId);
-        data.setPageContent(extractedContent);
+        data.setPageContent(decryptedPageContentLower);
         data.setKeysToFilter(keysToFilterObject);
         data.setProcess(PROCESS_NAME);
         data.setBatchId(batchId);
@@ -104,11 +116,14 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         if (Objects.equals("false", tritonRequestActivator)) {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
-            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequest, endpoint);
+
+            String jsonInputRequestEnc = encryptRequestResponse(jsonInputRequest);
+            coproRequestBuilder(entity, parentObj, request, objectMapper, jsonInputRequestEnc, endpoint);
         } else {
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
-            tritonRequestBuilder(entity, parentObj, request, jsonRequest, endpoint);
+            String jsonInputRequestEnc = encryptRequestResponse(jsonRequest);
+            tritonRequestBuilder(entity, parentObj, request, jsonInputRequestEnc, endpoint);
         }
 
         return parentObj;
@@ -139,7 +154,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .request(jsonInputRequest)
-                                .response(response.message())
+                                .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
                 log.info(aMarker, "The Exception occurred in Phrase match API call");
@@ -160,7 +175,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .batchId(entity.getBatchId())
                             .createdOn(entity.getCreatedOn())
                             .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .request(jsonInputRequest)
+                            .request(encryptRequestResponse(jsonInputRequest))
                             .response("Error in response")
                             .endpoint(String.valueOf(endpoint))
                             .build());
@@ -179,6 +194,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
+
             if (response.isSuccessful()) {
                 ObjectMapper objectMapper = new ObjectMapper();
                 PharseMatchResponse modelResponse = objectMapper.readValue(responseBody, PharseMatchResponse.class);
@@ -194,13 +210,13 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                     .tenantId(tenantId)
                                     .paperNo(paperNo)
                                     .stage(PROCESS_NAME)
-                                    .message(Optional.of(responseBody).map(String::valueOf).orElse(null))
+                                    .message(encryptRequestResponse(response.message()))
                                     .rootPipelineId(rootPipelineId)
                                     .batchId(entity.getBatchId())
                                     .createdOn(entity.getCreatedOn())
                                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                     .request(jsonRequest)
-                                    .response(response.message())
+                                    .response(encryptRequestResponse(response.message()))
                                     .endpoint(String.valueOf(endpoint))
                                     .build());
                     log.info(aMarker, "The Exception occurred in Phrase match API call");
@@ -219,7 +235,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .message(exception.getMessage())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
-                            .request(jsonRequest)
+                            .request(encryptRequestResponse(jsonRequest))
                             .response("Error In Response")
                             .endpoint(String.valueOf(endpoint))
                             .build());
@@ -230,14 +246,15 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private static void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String pharseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
+    private void extractedOutputDataRequest(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
         try {
-            List<PharseMatchDataItem> phraseMatchOutputData = objectMapper.readValue(pharseMatchDataItem, new TypeReference<>() {
+            List<PharseMatchDataItem> phraseMatchOutputData = objectMapper.readValue(phraseMatchDataItem, new TypeReference<>() {
 
             });
+            String phraseMatchDataItemEnc = encryptRequestResponse(phraseMatchDataItem);
 
             for (PharseMatchDataItem item : phraseMatchOutputData) {
                 parentObj.add(
@@ -249,7 +266,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .tenantId(tenantId)
                                 .stage(PROCESS_NAME)
-                                .message("Completed API call zero shot classifier")
+                                .message("Completed API call phrase match")
                                 .rootPipelineId(rootPipelineId)
                                 .modelName(modelName)
                                 .truthEntity(item.getTruthEntity())
@@ -260,7 +277,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .request(request)
-                                .response(response)
+                                .response(phraseMatchDataItemEnc)
                                 .endpoint(endpoint)
                                 .build());
             }
@@ -270,13 +287,16 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         }
     }
 
-    private static void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
+    private void extractedCoproOutputResponse(PhraseMatchInputTable entity, List<PhraseMatchOutputTable> parentObj, String phraseMatchDataItem, ObjectMapper objectMapper, String modelName, String modelVersion, String request, String response, String endpoint) {
         Long tenantId = entity.getTenantId();
 
         Long rootPipelineId = entity.getRootPipelineId();
         try {
             List<PharseMatchDataItemCopro> phraseMatchOutputData = objectMapper.readValue(phraseMatchDataItem, new TypeReference<>() {
             });
+
+            String phraseMatchDataItemEnc = encryptRequestResponse(phraseMatchDataItem);
+
 
             for (PharseMatchDataItemCopro item : phraseMatchOutputData) {
 
@@ -289,7 +309,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                                 .tenantId(tenantId)
                                 .stage(PROCESS_NAME)
-                                .message("Completed API call zero shot classifier")
+                                .message("Completed API call phrase match")
                                 .rootPipelineId(rootPipelineId)
                                 .modelName(modelName)
                                 .truthEntity(item.getTruthEntity())
@@ -299,7 +319,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                                 .batchId(entity.getBatchId())
                                 .createdOn(entity.getCreatedOn())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .response(response)
+                                .response(phraseMatchDataItemEnc)
                                 .request(request)
                                 .endpoint(endpoint)
                                 .build());
@@ -308,6 +328,28 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
+        }
+        return requestStr;
+    }
+
+    @NotNull
+    private String normalizeCaseToLower(String pageContent) {
+        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+            pageContent = pageContent.toLowerCase();
+            log.info("Converted the input string content into lower");
+            return pageContent;
+        }
+        return pageContent;
     }
 }
 

@@ -14,6 +14,8 @@ import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
 import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
@@ -289,6 +291,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
+    public List<ActionExecutionAudit> findAllActionsByPipelineIdAndExecutionStatusId(final Long pipelineId, final Integer executionStatusId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(ActionExecutionAuditRepo.class);
+            return repo.findAllActionsByPipelineIdAndExecutionStatusId(pipelineId, executionStatusId);
+        });
+    }
+
+    @Override
     public void insertStatement(final StatementExecutionAudit audit) {
         checkJDBIConnection();
         audit.setLastModifiedDate(LocalDateTime.now());
@@ -523,6 +534,13 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             return repo.findAll();
         });
     }
+
+    public String encryptString(String message){
+        InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
+
+        String messageEncrypted = inticsIntegrity.encrypt(message, "AES256", "SQL_DATA");
+        return messageEncrypted;
+    }
     public void insertExceptionLog(ActionExecutionAudit actionExecutionAudit, Throwable exception, String message) {
         checkJDBIConnection();
         HandymanExceptionAuditDetails exceptionAuditDetails = HandymanExceptionAuditDetails.builder()
@@ -532,8 +550,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                 .pipelineName(actionExecutionAudit.getPipelineName())
                 .actionId(actionExecutionAudit.getActionId())
                 .actionName(actionExecutionAudit.getActionName())
-                .exceptionInfo(ExceptionUtil.toString(exception))
-                .message(message)
+                .exceptionInfo(encryptString(ExceptionUtil.toString(exception)))
+                .message(encryptString(message))
                 .processId(actionExecutionAudit.getProcessId())
                 .createdBy(actionExecutionAudit.getCreatedBy())
                 .createdDate(actionExecutionAudit.getCreatedDate())
@@ -545,6 +563,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         log.info("inserting exception audit details has been completed");
 
     }
+
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor

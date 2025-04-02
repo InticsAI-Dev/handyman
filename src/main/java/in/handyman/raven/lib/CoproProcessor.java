@@ -2,22 +2,20 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
+import in.handyman.raven.lib.interfaces.coproprocessor.InboundBatchDataConsumer;
 import in.handyman.raven.util.CommonQueryUtil;
-import in.handyman.raven.util.ExceptionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.PreparedBatch;
 import org.slf4j.Logger;
 
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -34,7 +32,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     private final Class<O> outputTargetClass;
     private final Class<I> inputTargetClass;
-    private Jdbi jdbi;
+    private final Jdbi jdbi;
 
     private final Logger logger;
 
@@ -85,10 +83,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     public void startProducer(final String sqlQuery, final Integer readBatchSize) {
-
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
-     jdbi = checkJDBIConnection(jdbi);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
@@ -113,7 +109,6 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                     logger.info("Added stopping seed to the queue");
                 }
             });
-
         })));
     }
 
@@ -144,75 +139,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
         for (int consumer = 0; consumer < consumerCount; consumer++) {
-            executorService.submit(() -> {
-                final List<O> processedEntity = new ArrayList<>();
-                try {
-                    while (true) {
-                        try {
-                            final I take = queue.take();
-                            if (tPredicate.test(take)) {
-                                final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
-                                final List<O> results = new ArrayList<>();
-                                try {
-                                    int nodesSize = nodes.size();
-                                    logger.info("Nodes size {} and index value {}", nodesSize, index);
-                                    if (nodesSize != index) {
-                                        final List<O> list = callable.process(nodes.get(index), take);
-                                        results.addAll(list);
-                                    }
-                                } catch (Exception e) {
-                                    logger.error("Error in callable process in consumer", e);
-                                }
-                                processedEntity.addAll(results);
-                                if (nodeCount.get() % writeBatchSize == 0) {
-
-                                    jdbi = checkJDBIConnection(jdbi);
-                                    jdbi.useTransaction(handle -> {
-                                        final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
-                                        for (final O output : processedEntity) {
-                                            final List<Object> rowData = output.getRowData();
-                                            for (int i = 0; i < rowData.size(); i++) {
-                                                preparedBatch.bind(i, rowData.get(i));
-
-                                            }
-                                            preparedBatch.add();
-
-                                            logger.info("prepared batch insert query input entity size \n {}  and \n {} ", take, processedEntity.size());
-                                        }
-
-                                        try {
-                                            int[] execute = preparedBatch.execute();
-//                                            preparedBatch.close();
-                                            logger.info("Consumer persisted {}", execute);
-                                        } catch (Exception e) {
-                                            logger.error("exception in prepared batch {}", e);
-                                        }
-
-                                    });
-                                    insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
-                                    processedEntity.clear();
-                                }
-                            } else {
-                                logger.info("Breaking the consumer");
-                                queue.add(take);
-                                break;
-                            }
-                        } catch (InterruptedException e) {
-                            logger.error("Error at Consumer thread", e);
-                            throw new HandymanException("Error at Consumer thread", e, actionExecutionAudit);
-                        } catch (Exception e) {
-                            logger.error("Error at Consumer Process", e);
-                            throw new HandymanException("Error at Consumer Process", e, actionExecutionAudit);
-                        }
-                    }
-                    checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime);
-                } catch (Exception e) {
-                    logger.error("Final persistence failed", e);
-                } finally {
-                    logger.info("Consumer {} completed the process and persisted {} rows", countDownLatch.getCount(), nodeCount.get());
-                    countDownLatch.countDown();
-                }
-            });
+            executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
+                    startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbi, logger));
 
             logger.info("Consumer {} submitted the process", consumer);
         }
@@ -223,78 +151,11 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         }
     }
 
-    private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
-        if (!processedEntity.isEmpty()) {
-
-            jdbi = checkJDBIConnection(jdbi);
-            jdbi.useTransaction(handle -> {
-                int rowCount = 0;
-                final Connection connection = handle.getConnection();
-//                            connection.setAutoCommit(false);
-                try {
-                    try (PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
-                        for (final O output : processedEntity) {
-                            final List<Object> rowData = output.getRowData();
-                            for (int i = 1; i <= rowData.size(); i++) {
-                                preparedStatement.setObject(i, rowData.get(i - 1));
-                            }
-                            preparedStatement.addBatch();
-                        }
-                        int[] array = preparedStatement.executeBatch();
-                        rowCount = (int) Arrays.stream(array).count();
-//                        preparedStatement.close();
-                        insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
-                    }
-                } catch (Exception e) {
-                    logger.error("Error in executing prepared statement {}", ExceptionUtil.toString(e));
-                    handle.rollback();
-                    throw new HandymanException("Error in executing prepared statement ", e, actionExecutionAudit);
-                } finally {
-                    if (handle.isInTransaction()) {
-//                                    handle.commit();
-                    }
-//                                handle.commit();
-                }
-                logger.info("Consumer persisted {}", rowCount);
-            });
-
-        }
-    }
-
-    private void insertRowsProcessedIntoStatementAudit(LocalDateTime startTime, List<O> processedEntity) {
-        final StatementExecutionAudit audit = StatementExecutionAudit.builder()
-                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-                .actionId(actionExecutionAudit.getActionId())
-                .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
-                .rowsProcessed(processedEntity.size())
-                .statementContent("CoproProcessor consumer for " + actionExecutionAudit.getActionName())
-                .build();
-        addAudit(audit, startTime);
-    }
-
-
     public interface ConsumerProcess<I, O extends Entity> {
-
         List<O> process(final URL endpoint, final I entity) throws Exception;
-
     }
 
     public interface Entity {
-
         List<Object> getRowData();
-
     }
-
-    public Jdbi checkJDBIConnection(Jdbi jdbi) {
-        try (var ignored = jdbi.open()) {
-            log.info("Jdbi connection is open, initiating the transaction");
-            return jdbi;
-        } catch (Exception e) {
-            log.error("Jdbi connection is closed, recreating the connection");
-            jdbi = HandymanRepoImpl.getDatabaseConnectionByConnectionType();
-            logger.info("Recreated the connection");
-            return jdbi;
-        }
-    }
-
 }

@@ -14,13 +14,15 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://192.168.10.248:7800/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("https://intics.elevance.ngrok.dev/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,\n" +
-                        "                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name,sor_container_id, " +
-                        "'KRYPTON_DOUBLE_PASS_MODE' as krypton_inference_mode, transformation_user_prompts as transformation_user_prompts, " +
-                        "transformation_system_prompts as transformation_system_prompts\n" +
-                        "                FROM cleanup_schema.radon_kvp_input_3427;")
+                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
+                        "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
+                        "                    WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
+                        "                    WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name\n" +
+                        "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
+                        "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
+                        "                    WHERE a.model_registry = 'RADON'  and id =1388;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -29,11 +31,9 @@ public class RadonKvpAcionTest {
         ac.setProcessId(123L);
         ac.getContext().put("Radon.kvp.consumer.API.count", "1");
         ac.getContext().put("write.batch.size", "1");
-        ac.getContext().put("legacy.resource.connection.type", "LEGACY");
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
-        ac.getContext().put("sor.transaction.prompt.base64.activator", "false");
         ac.getContext().put("prompt.base64.activator", "false");
         ac.getContext().put("copro.client.socket.timeout", "10");
         ac.getContext().put("copro.client.api.sleeptime", "10");
@@ -42,14 +42,14 @@ public class RadonKvpAcionTest {
         ac.getContext().put("pipeline.text.extraction.encryption", "true");
         ac.getContext().put("bbox.radon_bbox_activator", "false");
         ac.getContext().put("pipeline.end.to.end.encryption", "false");
-        ac.getContext().put("kvp.double.pass.batch.size", "2");
-        ac.getContext().put("kvp.double.pass.mode", "KRYPTON_DOUBLE_PASS_MODE");
+        ac.getContext().put("document_type", "HEALTH_CARE");
+        ac.getContext().put("tenant_id", "1");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
+        ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
 
         radonKvpAction.execute();
-
     }
 }

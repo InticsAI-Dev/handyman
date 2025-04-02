@@ -176,7 +176,10 @@ action:
     |dockerInspect
     |kafkaPublish
     |folderDeleteByProcess
+    |decryptInticsEnc
     |controlDataComparison
+    |providerContainerParser
+    |postProcessingExecutor
     );
 
 
@@ -1356,6 +1359,15 @@ kafkaPublish:
     '}'
     ('on-condition' condition=expression)*;
 
+decryptInticsEnc:
+    'decryptInticsEnc' 'as' name=STRING
+    'source' source = STRING
+    'decrypt-url' endpoint=STRING
+    'output-csv-path' outputPath=STRING
+    'using' '{'
+            querySet=STRING
+  '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
+
 controlDataComparison:
     'controlDataComparison' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
@@ -1364,6 +1376,26 @@ controlDataComparison:
     'using'  '{' querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
 
+providerContainerParser:
+    'provider-container-mapper' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'name-mapping-details' nameMappingDetails=STRING
+    'meta-container-entity-details' metaContainerEntityDetails=STRING
+    'container-item-details' containerItemDetails=STRING
+    'paper-filter-mapper' paperFilterDetails=STRING
+    'using' '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+postProcessingExecutor:
+    'postProcessingExecutor' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'group-id' groupId = STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
 
 //rules
 

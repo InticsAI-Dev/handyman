@@ -123,7 +123,7 @@ public class CallProcessAction implements IActionExecution {
                         final PipelineExecutionAudit start = lambdaCallable.call();
                         context.putAll(start.getContext());
                     } catch (Exception e) {
-                        log.error(aMarker, "Failed process {}", lContext, e);
+                        log.error(aMarker, "Failed process for root pipeline id {} and called file {}", lContext.getRootPipelineId(),lContext.getRelativePath(), e);
                     }
                 });
             }

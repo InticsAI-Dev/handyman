@@ -94,7 +94,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
                 result.getWordLimit(), result.getWordThreshold());
         int charScore = CharactercountAction.getCharCount(inputValue,
                 result.getCharLimit(), result.getCharThreshold());
-        Validator configurationDetails = Validator.builder()
+        FieldValidator configurationDetails = FieldValidator.builder()
                 .inputValue(inputValue)
                 .adapter(result.getAllowedAdapter())
                 .allowedSpecialChar(result.getAllowedCharacters())
@@ -228,7 +228,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         return parentObj;
     }
 
-    int computeAdapterScore(Validator inputDetail) {
+    int computeAdapterScore(FieldValidator inputDetail) {
         int confidenceScore = 0;
         try {
 
@@ -285,12 +285,12 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
         }
     }
 
-    private int regValidator(Validator validator, String regForm) {
-        String inputValue = validator.getInputValue();
-        inputValue = replaceSplChars(validator.getAllowedSpecialChar(), inputValue);
+    private int regValidator(FieldValidator fieldValidator, String regForm) {
+        String inputValue = fieldValidator.getInputValue();
+        inputValue = replaceSplChars(fieldValidator.getAllowedSpecialChar(), inputValue);
         Pattern pattern = Pattern.compile(regForm);
         Matcher matcher = pattern.matcher(inputValue);
-        return matcher.matches() ? validator.getThreshold() : 0;
+        return matcher.matches() ? fieldValidator.getThreshold() : 0;
     }
 
     private String replaceSplChars(final String specialCharacters, String input) {

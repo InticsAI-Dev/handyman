@@ -7,7 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.AlphaAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Alphavalidator;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -37,7 +37,7 @@ public class AlphavalidatorAction implements IActionExecution {
         this.alphaAdapter = new AlphaAdapter();
     }
 
-    public int getAlphaScore(Validator adapter) {
+    public int getAlphaScore(FieldValidator adapter) {
         try {
             boolean validator = alphaAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;
