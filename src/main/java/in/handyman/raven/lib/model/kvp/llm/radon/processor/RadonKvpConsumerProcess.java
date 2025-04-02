@@ -18,8 +18,10 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.SorTransactionKvpDoublePass;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -66,6 +68,21 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     @Override
     public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
+
+            if(Objects.equals(entity.getKryptonInferenceMode(),"KRYPTON_DOUBLE_PASS_MODE")){
+
+                SorTransactionKvpDoublePass SorTransactionKvpDoublePass = new SorTransactionKvpDoublePass(log, jdbi, aMarker, action);
+            return SorTransactionKvpDoublePass.getDoublePassQueryOutputTables(endpoint, action, entity, ProcessFileFormatE.valueOf(processBase64));
+        }else {
+            return getRadonQueryOutputTables(endpoint, entity);
+
+        }
+    }
+
+
+
+    @NotNull
+    private List<RadonQueryOutputTable> getRadonQueryOutputTables(URL endpoint, RadonQueryInputTable entity) throws IOException {
         List<RadonQueryOutputTable> parentObj = new ArrayList<>();
         String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         String filePath = String.valueOf(entity.getInputFilePath());
