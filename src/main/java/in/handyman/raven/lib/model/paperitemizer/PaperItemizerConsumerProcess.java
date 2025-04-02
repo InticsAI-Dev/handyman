@@ -123,7 +123,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
-                log.error(aMarker, "Error in getting response from copro {}", response.message());
+                log.error(aMarker, "Error in processing response from copro API {}", response.message());
             }
 
         } catch (Exception exception) {
@@ -145,7 +145,6 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .build());
             HandymanException handymanException = new HandymanException(exception);
             HandymanException.insertException("The Exception occurred in execute request for originId " + originId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in execute request {}", request, exception);
         }
     }
 
@@ -287,7 +286,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Paper Itemize  consumer failed for originId " + originId, handymanException, this.action);
+            HandymanException.insertException("Paper Itemize consumer failed for originId " + originId, handymanException, this.action);
             log.error(aMarker, "The Exception occurred in processing json into object {}", e.toString());
         } catch (IOException e) {
             HandymanException handymanException = new HandymanException(e);
@@ -356,7 +355,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .endpoint(endpoint)
                             .build());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Paper Itemize  consumer failed for originId " + originId, handymanException, this.action);
+            HandymanException.insertException("Paper Itemize consumer failed for originId " + originId, handymanException, this.action);
             log.error(aMarker, "The Exception occurred in request {}", e.toString());
         }
     }
@@ -422,7 +421,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-        if (Objects.equals("false", tritonRequestActivator)) {
+        if ("false".equals(tritonRequestActivator)) {
             String jsonInputRequest = objectMapper.writeValueAsString(paperitemizerData);
             Request request = new Request.Builder().url(endpoint)
                     .post(RequestBody.create(jsonInputRequest, mediaTypeJson)).build();
