@@ -24,7 +24,8 @@ public class RadonKvpAcionTest {
                         "transformation_user_prompts as transformation_user_prompts,       \n" +
                         "transformation_system_prompts as transformation_system_prompts       \n" +
                         "FROM clean_up_schema.radon_kvp_input_125518   \n" +
-                        "WHERE model_registry = 'RADON'  and group_id ='842' and tenant_id='1' and batch_id ='BATCH-842_0' and krypton_inference_mode = 'KRYPTON_DOUBLE_PASS_MODE';")
+                        "WHERE model_registry = 'RADON'  and group_id ='842' and tenant_id='1' and batch_id ='BATCH-842_0' and krypton_inference_mode = 'KRYPTON_DOUBLE_PASS_MODE'" +
+                        " limit 1;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

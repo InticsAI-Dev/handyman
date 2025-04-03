@@ -25,6 +25,7 @@ import okhttp3.*;
 
 import org.jdbi.v3.core.Jdbi;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.encryption.SecurityEngine;
@@ -534,26 +535,51 @@ public class SorTransactionKvpDoublePass {
         Long rootPipelineId = entity.getRootPipelineId();
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
-        String extractedContent;
+        String finalResponseJson = "{}";
+
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
+        String jsonString = modelResponse.getInferResponse();
 
         String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
         log.info(aMarker, "checking provider data found for the given input {}", Boolean.TRUE.equals(entity.getPostProcess()));
+
+        JSONObject inferResponseObj = new JSONObject(jsonString);
+        // Extract `finalResponse`
+        if (inferResponseObj.has("finalResponse")) {
+            finalResponseJson = inferResponseObj.getJSONArray("finalResponse").toString();
+        }
+
+        // Encrypt only finalResponse if encryption is enabled
+        if (Objects.equals(encryptOutputJsonContent, "true")) {
+            finalResponseJson = encryption.encrypt(finalResponseJson, "AES256", "RADON_KVP_JSON");
+        }
+
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
-            log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
-            String providerClassName = action.getContext().get(entity.getPostProcessClassName());
-            Optional<String> sourceCode = fetchBshResultByClassName(jdbi, providerClassName);
-            if (sourceCode.isPresent()) {
-                List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, String.valueOf(modelResponse.getInferResponse()), entity, request, response, endpoint);
-                parentObj.addAll(providerParentObj);
+
+            try {
+                // Convert JsonNode to String before passing to JSONObject
+                // Now create JSONObject from a valid JSON string
+                log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
+                String providerClassName = action.getContext().get(entity.getPostProcessClassName());
+                Optional<String> sourceCode = fetchBshResultByClassName(jdbi, providerClassName);
+                if (sourceCode.isPresent()) {
+                    List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, String.valueOf(modelResponse.getInferResponse()), entity, request, response, endpoint);
+                    parentObj.addAll(providerParentObj);
+                }
+
+            } catch (Exception e) {
+                String invalidJsonException = "Invalid JSON format in inferResponse";
+                HandymanException handymanException = new HandymanException(invalidJsonException);
+                HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, action);
+                throw new HandymanException(invalidJsonException);
             }
 
         } else {
             if (Objects.equals(encryptOutputJsonContent, "true")) {
-                extractedContent = encryption.encrypt(String.valueOf(modelResponse.getInferResponse()), "AES256", "RADON_KVP_JSON");
+                finalResponseJson = encryption.encrypt(finalResponseJson, "AES256", "RADON_KVP_JSON");
             } else {
-                extractedContent = String.valueOf(modelResponse.getInferResponse());
+                finalResponseJson = String.valueOf(finalResponseJson);
             }
 
             parentObj.add(RadonQueryOutputTable.builder()
@@ -563,7 +589,7 @@ public class SorTransactionKvpDoublePass {
                     .lastUpdatedUserId(tenantId)
                     .originId(originId)
                     .paperNo(paperNo)
-                    .totalResponseJson(extractedContent)
+                    .totalResponseJson(finalResponseJson)
                     .groupId(groupId)
                     .inputFilePath(processedFilePaths)
                     .actionId(action.getActionId())
