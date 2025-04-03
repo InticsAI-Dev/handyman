@@ -41,6 +41,7 @@ import static in.handyman.raven.lib.utils.DatabaseUtility.fetchBshResultByClassN
 public class SorTransactionKvpDoublePass {
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
     private static final String INFERENCE_MODE = "kvp.inference.mode";
+    private static final String KVP_DOUBLE_PASS_BATCH_SIZE = "kvp.double.pass.batch.size";
     private static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     private static final String DEFAULT_SOCKET_TIMEOUT = "100";
@@ -166,7 +167,7 @@ public class SorTransactionKvpDoublePass {
             log.info("KRYPTON_DOUBLE_PASS_MODE detected. Processing in batches.");
 
             // Get batch size from context or use default
-            int batchSize = Integer.parseInt(action.getContext().get("kvp.double.pass.batch.size"));
+            int batchSize = Integer.parseInt(action.getContext().get(KVP_DOUBLE_PASS_BATCH_SIZE));
 
             // Validate lists have the same size
             if (transformationUserPromptsList.size() != transformationSystemPromptsList.size()) {
@@ -505,6 +506,7 @@ public class SorTransactionKvpDoublePass {
                     .lastUpdatedUserId(tenantId)
                     .category(entity.getCategory())
                     .build());
+
 
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, action);

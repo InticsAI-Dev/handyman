@@ -38,23 +38,34 @@ class DataExtractionActionTest {
         DataExtraction dataExtraction = DataExtraction.builder()
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
-                .endPoint("https://intics.elevance.ngrok.dev/text-extractor/v2/models/text-extractor-service/versions/1/infer")
+                .endPoint("https://agentic.intics.ai/krypton-x/v2/models/krypton-x-service/versions/1/infer")
                 .condition(true)
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,b.root_pipeline_id,c.template_name, b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt\n" +
-                        " FROM info.auto_rotation a\n" +
-                        " left join info.template_detection_result c on c.origin_id=a.origin_id and a.tenant_id=c.tenant_id\n" +
-                        " left join sor_meta.radon_prompt_table r on r.tenant_id=a.tenant_id\n" +
-                        " join preprocess.preprocess_payload_error_queue b on a.origin_id=b.origin_id and c.tenant_id=b.tenant_id\n" +
-                        " where  a.root_pipeline_id =3928;")
+                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,1299 as root_pipeline_id,c.template_name, b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt              \n" +
+                        "FROM info.auto_rotation a               \n" +
+                        "left join info.template_detection_result c on c.origin_id=a.origin_id and a.tenant_id=c.tenant_id         \n" +
+                        "left join sor_meta.radon_prompt_table r on r.tenant_id=a.tenant_id          \n" +
+                        "join preprocess.preprocess_payload_error_queue b on a.origin_id=b.origin_id and c.tenant_id=b.tenant_id     \n" +
+                        "where a.group_id=827 and a.tenant_id = 1 and b.batch_id ='BATCH-827_0'       \n" +
+                        "and r.process='AGENTIC_PAPER_FILTER' and r.use_case='PAPER_FILTER' and r.document_type='HEALTH_CARE';")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.248:8300/v2/models/text-extractor-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://127.0.0.1:5000/v1/predictions");
         actionExecutionAudit.setProcessId(138980079308730208L);
+        actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
+                Map.entry("replicate.request.api.token", "API_TOKEN"),
+                Map.entry("replicate.text.extraction.version", "1"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
+                Map.entry("copro.request.activator.handler.name", "TRITON"),
+                Map.entry("triton.request.activator", "true"),
+                Map.entry("text.extraction.model.name", "ARGON"),
+                Map.entry("copro.request.text.extraction.handler.name", "TRITON"),
+                Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("preprocess.text.extraction.model.name", "KRYPTON"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
                 Map.entry("write.batch.size", "5")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);
         dataExtractionAction.execute();
