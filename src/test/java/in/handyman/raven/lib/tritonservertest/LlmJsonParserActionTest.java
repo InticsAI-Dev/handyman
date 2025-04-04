@@ -11,24 +11,22 @@ import org.junit.jupiter.api.Test;
 @Slf4j
 public class LlmJsonParserActionTest {
     @Test
-    public void tritonTest() throws Exception {
+    public void tritonTest() {
         LlmJsonParser llmJsonParser = LlmJsonParser.builder()
                 .name("llm json parser")
                 .condition(true)
-                .resourceConn("intics_zio_db_conn_test")
+                .resourceConn("intics_zio_db_conn")
                 .outputTable("sor_transaction.llm_json_parser_output_audit")
-                .querySet("SELECT\n" +
-                        "                   b.total_response_json as response, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
-                        "                  b.model_registry, b.category, a.created_on, si.sor_container_id,\n" +
-                        "                                     jsonb_agg(jsonb_build_object('sorItemName',si.sor_item_name,'isEncrypted',si.is_encrypted,'encryptionPolicy',ep.encryption_policy))::varchar as sor_meta_detail\n" +
-                        "                from sor_transaction.sor_transaction_payload_queue_archive a\n" +
-                        "                left join sor_transaction.radon_kvp_output_audit b\n" +
-                        "                    on a.origin_id = b.origin_id and a.batch_id = b.batch_id and a.tenant_id =b.tenant_id\n" +
-                        "                left join sor_meta.sor_item si on si.sor_container_id =b.sor_container_id\n" +
-                        "                join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
-                        "                WHERE a.tenant_id = 140 and a.group_id ='6174' and a.batch_id ='BATCH-6174_0'\n" +
-                        "                group by b.total_response_json, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
-                        "                                b.model_registry, b.category, a.created_on,si.sor_container_id")
+                .querySet("SELECT b.total_response_json as response, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,                  b.model_registry, b.category, a.created_on, si.sor_container_id,  \n" +
+                        "jsonb_agg(jsonb_build_object('sorItemName',si.sor_item_name,'isEncrypted',si.is_encrypted,'encryptionPolicy',ep.encryption_policy))::varchar as sor_meta_detail    \n" +
+                        "from sor_transaction.sor_transaction_payload_queue_archive a          \n" +
+                        "left join clean_up_schema.radon_kvp_output_126013 b      \n" +
+                        "on a.origin_id = b.origin_id and a.batch_id = b.batch_id and a.tenant_id =b.tenant_id        \n" +
+                        "left join sor_meta.sor_item si on si.sor_container_id =b.sor_container_id         \n" +
+                        "join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id        \n" +
+                        "WHERE a.tenant_id = 1 and a.group_id ='855' and a.batch_id ='BATCH-855_0'    \n" +
+                        "group by b.total_response_json, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,    \n" +
+                        "b.model_registry, b.category, a.created_on,si.sor_container_id;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

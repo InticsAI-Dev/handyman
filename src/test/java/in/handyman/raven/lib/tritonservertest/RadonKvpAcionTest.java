@@ -16,16 +16,14 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("http://192.168.10.248:7800/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, system_prompt,   \n" +
-                        "batch_id, model_registry, category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'    \n" +
-                        "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'       \n" +
-                        "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name, sor_container_id,   \n" +
-                        "krypton_inference_mode as krypton_inference_mode,        \n" +
-                        "transformation_user_prompts as transformation_user_prompts,       \n" +
-                        "transformation_system_prompts as transformation_system_prompts       \n" +
-                        "FROM clean_up_schema.radon_kvp_input_125518   \n" +
-                        "WHERE model_registry = 'RADON'  and group_id ='842' and tenant_id='1' and batch_id ='BATCH-842_0' and krypton_inference_mode = 'KRYPTON_DOUBLE_PASS_MODE'" +
-                        " limit 1;")
+                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,       \n" +
+                        " a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'   \n" +
+                        "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'  WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,\n" +
+                        "a.sor_container_id,a.krypton_inference_mode as krypton_inference_mode, true as post_processing, sc.post_process_class_name \n" +
+                        "FROM clean_up_schema.radon_kvp_input_125518 a    \n" +
+                        "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
+                        "WHERE a.model_registry = 'RADON' and a.tenant_id='1' and \n" +
+                        "a.krypton_inference_mode = 'KRYPTON_DOUBLE_PASS_MODE';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -49,17 +47,11 @@ public class RadonKvpAcionTest {
         ac.getContext().put("tenant_id", "1");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
-        ac.getContext().put("kvp.inference.mode", "KRYPTON_DOUBLE_PASS_MODE");
+        ac.getContext().put("kvp.inference.mode", "KVP_SINGLE_PASS_MODE");
         ac.getContext().put("triton.request.activator", "true");
         ac.getContext().put("sor.transaction.prompt.base64.activator", "false");
         ac.getContext().put("kvp.double.pass.batch.size", "1");
-
-
-
-
-
-
-
+        ac.getContext().put("kvp.double.pass.activator", "true");
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
 

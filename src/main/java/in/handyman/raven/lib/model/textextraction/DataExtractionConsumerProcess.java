@@ -19,6 +19,7 @@ import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -292,17 +293,37 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        String finalResponseJson = "{}";
 
-        if (Objects.equals(encryptSotPageContent, "true")) {
-            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(), "AES256", "TEXT_DATA");
-        } else {
-            extractedContent = dataExtractionDataItem.getInferResponse();
+        extractedContent = dataExtractionDataItem.getInferResponse();
+
+        try {
+            // Now create JSONObject from a valid JSON string
+            JSONObject inferResponseObj = new JSONObject(extractedContent);
+
+            // Extract `finalResponse`
+            if (inferResponseObj.has("finalResponse")) {
+                finalResponseJson = inferResponseObj.getJSONArray("finalResponse").get(0).toString();
+            }else {
+                log.error("Json has no key named finalResponse");
+            }
+
+            if (Objects.equals(encryptSotPageContent, "true")) {
+                log.info("Encryption for data Extraction result");
+                finalResponseJson = encryption.encrypt(finalResponseJson, "AES256", "TEXT_DATA");
+            }
+
+        } catch (Exception e) {
+            String invalidJsonException = "Invalid JSON format in inferResponse";
+            HandymanException handymanException = new HandymanException(invalidJsonException);
+            HandymanException.insertException("radon kvp consumer failed for batch/group " + dataExtractionDataItem.getGroupId(), handymanException, this.action);
+            throw new HandymanException(invalidJsonException);
         }
 
         String templateId = entity.getTemplateId();
         parentObj.add(DataExtractionOutputTable.builder()
                 .filePath(entity.getFilePath())
-                .extractedText(extractedContent)
+                .extractedText(finalResponseJson)
                 .originId(dataExtractionDataItem.getOriginId())
                 .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
                 .paperNo(dataExtractionDataItem.getPaperNo())

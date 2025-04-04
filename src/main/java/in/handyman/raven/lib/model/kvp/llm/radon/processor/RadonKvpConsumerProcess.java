@@ -18,7 +18,6 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
-import in.handyman.raven.lib.model.kvp.llm.radon.processor.SorTransactionKvpDoublePass;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jetbrains.annotations.NotNull;
@@ -69,14 +68,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     @Override
     public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
 
-            if(Objects.equals(entity.getKryptonInferenceMode(),"KRYPTON_DOUBLE_PASS_MODE")){
+        boolean doublePass = Objects.equals("true",action.getContext().get("kvp.double.pass.activator"));
 
-                SorTransactionKvpDoublePass SorTransactionKvpDoublePass = new SorTransactionKvpDoublePass(log, jdbi, aMarker, action);
-            return SorTransactionKvpDoublePass.getDoublePassQueryOutputTables(endpoint, action, entity, ProcessFileFormatE.valueOf(processBase64));
-        }else {
+        if (doublePass) {
+            SorTransactionKvpDoublePass doublePassQuery = new SorTransactionKvpDoublePass(log, jdbi, aMarker, action);
+            log.info("Executing SOR Transaction with Double pass");
+            return doublePassQuery.getDoublePassQueryOutputTables(endpoint, action, entity, processBase64, fileProcessingUtils);
+        } else {
+            log.info("Executing SOR Transaction with Single pass");
             return getRadonQueryOutputTables(endpoint, entity);
-
         }
+
     }
 
 
@@ -423,6 +425,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
+                assert response.body() != null;
                 String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
