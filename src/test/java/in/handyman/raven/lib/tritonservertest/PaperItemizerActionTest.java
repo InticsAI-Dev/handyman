@@ -47,14 +47,11 @@ class PaperItemizerActionTest {
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .processId("138980184199100180")
-                .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
+                .endpoint("")
                 .resultTable("info.paper_itemizer")
                 .outputDir("/data/tenant/PI")
-                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/taulia/Sample 6 620762476-facture-galaxy-z-fold.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
-                        "from preprocess.preprocess_payload_queue_archive a\n" +
-                        "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
-                        "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.root_pipeline_id in (102257,115587,107841,120075)")
+                .querySet(" SELECT 'ORIIN-1' as origin_id, '1' as group_id ,'/data/input/BUILD-16-BATCH-May25/4samples/SYNT_166730399_c3_.pdf' as file_path,'1' as tenant_id,'1' as process_id, 1110 as root_pipeline_id, 'BATCH-1' as batch_id, now() as created_on;"
+                )
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

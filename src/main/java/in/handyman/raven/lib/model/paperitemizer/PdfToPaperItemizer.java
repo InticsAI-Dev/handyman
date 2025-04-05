@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.lib.model.triton.PipelineName;
+import in.handyman.raven.lib.utils.FileProcessingUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -13,16 +14,21 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Marker;
 import org.slf4j.Logger;
+import org.slf4j.MarkerFactory;
 
 public class PdfToPaperItemizer {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
     private static ActionExecutionAudit action;
+    private static Marker aMarker = MarkerFactory.getMarker("HANDYMAN_ACTION");
 
     public static List<PaperItemizerOutputTable> paperItemizer(String filePath, String outputDir, ActionExecutionAudit action, Logger log, PaperItemizerInputTable entity) {
 
@@ -82,11 +88,14 @@ public class PdfToPaperItemizer {
                     outputFile = new File(targetDir, pageFileName);
                     pageNumber = page + 1;
                     ImageIO.write(image, fileFormat, outputFile);
-                    log.info("Page {} successfully saved for document ID: {}", page, entity.getOriginId());
+
+                    String croppedImagePath = getCroppedImage(action, log, outputFile, fileFormat);
+
+                    log.info("Page {} successfully saved in {} for document ID: {}", page,croppedImagePath, entity.getOriginId());
                     try {
                         paperItemizerOutputTables.add(PaperItemizerOutputTable
                                 .builder()
-                                .processedFilePath(String.valueOf(outputFile))
+                                .processedFilePath(croppedImagePath)
                                 .originId(entity.getOriginId())
                                 .groupId(entity.getGroupId())
                                 .templateId(entity.getTemplateId())
@@ -145,6 +154,18 @@ public class PdfToPaperItemizer {
             new HandymanException("Unsupported file type: " + fileExtension);
         }
         return parentObj;
+    }
+
+    @NotNull
+    private static String getCroppedImage(ActionExecutionAudit action, Logger log, File outputFile, String fileFormat) throws IOException, InterruptedException {
+        FileProcessingUtils fileUtils = new FileProcessingUtils(log, aMarker, action);
+        String base64 = fileUtils.convertFileToBase64(outputFile.getAbsolutePath());
+
+        String croppedBase64 = fileUtils.callCropImageApi(base64);
+
+        String croppedImagePath = outputFile.getAbsolutePath().replace("." + fileFormat, "_cropped." + fileFormat);
+        fileUtils.convertBase64ToFile(croppedBase64, croppedImagePath);
+        return croppedImagePath;
     }
 
     private static String removeExtension(final String fileName) {
