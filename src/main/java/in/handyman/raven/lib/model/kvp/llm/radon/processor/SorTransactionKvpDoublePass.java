@@ -443,6 +443,7 @@ public class SorTransactionKvpDoublePass {
                 .response(encryptRequestResponse(response))
                 .endpoint(String.valueOf(endpoint))
                 .sorContainerId(entity.getSorContainerId())
+                .kryptonInferenceMode(entity.getKryptonInferenceMode())
                 .build()
         );
     }
@@ -520,6 +521,7 @@ public class SorTransactionKvpDoublePass {
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)
                     .category(entity.getCategory())
+                    .kryptonInferenceMode(entity.getKryptonInferenceMode())
                     .build());
 
 
@@ -622,6 +624,7 @@ public class SorTransactionKvpDoublePass {
                     .response(encryptRequestResponse(response))
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
+                    .kryptonInferenceMode(entity.getKryptonInferenceMode())
                     .build()
             );
         }
