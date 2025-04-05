@@ -14,8 +14,8 @@ public class KryptonTransformerFinalBsh {
     }
 
     public static List processKryptonJson1(Map kryptonJson) {
-        Map metaItemAndKeyDetails = metaItemAndKeyDetails();
-        Map containerMapping = metaContainerItemDetails();
+        Map metaItemAndKeyDetails = getMetaItemAndKeyDetails();
+        Map containerMapping = getMetaContainerItemDetails();
         List outputJson = new ArrayList();
 
         Iterator it = metaItemAndKeyDetails.entrySet().iterator();
@@ -86,60 +86,70 @@ public class KryptonTransformerFinalBsh {
 
 
     public static Map processKryptonJson(Map kryptonJson) {
-        Map metaContainerEntityDetails = metaContainerEntityDetails();
-        Map metaContainerItemDetails = metaContainerItemDetails();
-        Map metaItemAndKeyDetails = metaItemAndKeyDetails();
-        Map outputJson=new HashMap();
-
+        Map metaContainerEntityDetails = getMetaContainerEntityDetails();
+        Map metaContainerItemDetails = getMetaContainerItemDetails();
+        Map metaItemAndKeyDetails = getMetaItemAndKeyDetails();
+        Map outputJson = new HashMap();
 
         JSONObject jsonObject = new JSONObject(kryptonJson);
         Iterator keys = jsonObject.keys();
+
         while (keys.hasNext()) {
-            String key = (String) keys.next();
-            Iterator metaKeys = metaContainerEntityDetails.keySet().iterator();
-
-            while (metaKeys.hasNext()) {
-
-                String metaContainerKey = (String) metaKeys.next();
-                List values = (List) metaContainerEntityDetails.get(metaContainerKey);
-
-                if (values.contains(key)) {
-                    Object jsonValue = jsonObject.opt(key);
-                    if (jsonValue instanceof JSONArray) {
-                        JSONArray jsonArray = (JSONArray) jsonValue;
-                        for (int i = 0; i < jsonArray.length(); i++) {
-                            JSONObject item = jsonArray.optJSONObject(i);
-                            if (item != null) {
-//                                System.out.println("\nmetaContainerKey : " + metaContainerKey + "\nitems: " + item);
-                                List outputJsonFromArray = matchMetaContainerWithKeys(metaContainerKey, item, metaContainerItemDetails,metaItemAndKeyDetails);
-                                if(outputJson.containsKey(metaContainerKey)){
-                                    List existMetaList= (List)outputJson.get(metaContainerKey);
-                                    existMetaList.add(outputJsonFromArray);
-                                    outputJson.put(metaContainerKey,existMetaList);
-
-                                }else {
-                                    outputJson.put(metaContainerKey,outputJsonFromArray);
-                                }
-
-                            }
-                        }
-                    } else if (jsonValue instanceof JSONObject) {
-//                        System.out.println("\nmetaContainerKey : " + metaContainerKey + "\nitems: " + jsonValue);
-                        List outputJsonFromArray= matchMetaContainerWithKeys(metaContainerKey, (JSONObject) jsonValue, metaContainerItemDetails,metaItemAndKeyDetails);
-                        outputJson.put(metaContainerKey,outputJsonFromArray);
-                    }
-
-                }
-            }
+            String jsonKey = (String) keys.next();
+            processKey(jsonKey, jsonObject, outputJson, metaContainerEntityDetails, metaContainerItemDetails, metaItemAndKeyDetails);
         }
+
         return outputJson;
     }
 
-    private static List matchMetaContainerWithKeys(String metaContainerKey, JSONObject jsonObject, Map itemMapping, Map metaItemAndKeyDetails) {
+    private static void processKey(String jsonKey, JSONObject jsonObject, Map outputJson,
+                                   Map metaContainerEntityDetails, Map metaContainerItemDetails, Map metaItemAndKeyDetails) {
+
+        Iterator metaKeys = metaContainerEntityDetails.keySet().iterator();
+        while (metaKeys.hasNext()) {
+            String metaContainerKey = (String) metaKeys.next();
+            List values = (List) metaContainerEntityDetails.get(metaContainerKey);
+
+            if (values.contains(jsonKey)) {
+                Object jsonValue = jsonObject.opt(jsonKey);
+                handleJsonValue(metaContainerKey, jsonValue, outputJson, metaContainerItemDetails, metaItemAndKeyDetails);
+            }
+        }
+    }
+
+    private static void handleJsonValue(String metaContainerKey, Object jsonValue, Map outputJson,
+                                        Map metaContainerItemDetails, Map metaItemAndKeyDetails) {
+
+        if (jsonValue instanceof JSONArray) {
+            JSONArray jsonArray = (JSONArray) jsonValue;
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject item = jsonArray.optJSONObject(i);
+                if (item != null) {
+                    List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
+                    appendToOutput(metaContainerKey, outputList, outputJson);
+                }
+            }
+        } else if (jsonValue instanceof JSONObject) {
+            List outputList = buildOutputList(metaContainerKey, (JSONObject) jsonValue, metaContainerItemDetails, metaItemAndKeyDetails);
+            outputJson.put(metaContainerKey, outputList);
+        }
+    }
+
+    private static void appendToOutput(String key, List newData, Map outputJson) {
+        if (outputJson.containsKey(key)) {
+            List existing = (List) outputJson.get(key);
+            existing.add(newData);
+            outputJson.put(key, existing);
+        } else {
+            outputJson.put(key, newData);
+        }
+    }
+
+    private static List buildOutputList(String metaContainerKey, JSONObject jsonObject,
+                                        Map itemMapping, Map metaItemAndKeyDetails) {
         List outputJson = new ArrayList();
-
-
         Iterator metaKeyIterator = metaItemAndKeyDetails.keySet().iterator();
+
         while (metaKeyIterator.hasNext()) {
             String metaKey = (String) metaKeyIterator.next();
             String jsonKey = (String) metaItemAndKeyDetails.get(metaKey);
@@ -149,15 +159,16 @@ public class KryptonTransformerFinalBsh {
                 outputObject.put("value", jsonObject.optString(jsonKey) != null ? jsonObject.optString(jsonKey) : "");
                 outputObject.put("confidence", new Integer(100));
                 outputObject.put("boundingBox", new HashMap());
-//                System.out.println("  Mapped Key: " + metaKey + " -> " + jsonKey + " : " + jsonObject.optString(jsonKey));
                 outputJson.add(outputObject);
             }
         }
+
         return outputJson;
     }
 
 
-    private static Map metaContainerEntityDetails() {
+
+    private static Map getMetaContainerEntityDetails() {
         Map metaContainerEntityDetails = new HashMap();
 
         List memberDetails = new ArrayList();
@@ -192,7 +203,7 @@ public class KryptonTransformerFinalBsh {
         return metaContainerEntityDetails;
     }
 
-    private static Map metaContainerItemDetails() {
+    private static Map getMetaContainerItemDetails() {
         Map metaContainerItemDetails = new HashMap();
 
         List memberDetails = new ArrayList();
@@ -270,7 +281,7 @@ public class KryptonTransformerFinalBsh {
         return metaContainerItemDetails;
     }
 
-    static Map metaItemAndKeyDetails() {
+    static Map getMetaItemAndKeyDetails() {
         Map metaContainerEntityDetails = new HashMap();
 
         // Member Information
@@ -290,15 +301,15 @@ public class KryptonTransformerFinalBsh {
         metaContainerEntityDetails.put("member_phone", "memberPhone");
 
         // Facility Information
-        metaContainerEntityDetails.put("facility_provider_type", "providerType");
-        metaContainerEntityDetails.put("facility_provider_name", "providerName");
-        metaContainerEntityDetails.put("facility_provider_npi", "providerNPI");
-        metaContainerEntityDetails.put("facility_provider_tax_id", "providerTaxId");
-        metaContainerEntityDetails.put("facility_provider_address", "providerAddress");
-        metaContainerEntityDetails.put("facility_provider_city", "providerCity");
-        metaContainerEntityDetails.put("facility_provider_state", "providerState");
-        metaContainerEntityDetails.put("facility_provider_zip", "providerZip");
-        metaContainerEntityDetails.put("facility_provider_specialty", "providerSpecialty");
+        metaContainerEntityDetails.put("servicing_facility_type", "providerFacilityType");
+        metaContainerEntityDetails.put("servicing_facility_name", "providerFacilityName");
+        metaContainerEntityDetails.put("servicing_facility_npi", "providerFacilityNPI");
+        metaContainerEntityDetails.put("servicing_facility_tax_id", "providerFacilityTaxId");
+        metaContainerEntityDetails.put("servicing_facility_address", "providerFacilityAddress");
+        metaContainerEntityDetails.put("servicing_facility_city", "providerFacilityCity");
+        metaContainerEntityDetails.put("servicing_facility_state", "providerFacilityState");
+        metaContainerEntityDetails.put("servicing_facility_zip", "providerFacilityZip");
+        metaContainerEntityDetails.put("servicing_facility_specialty", "providerFacilitySpecialty");
 
         // Servicing Provider Information
         metaContainerEntityDetails.put("servicing_provider_type", "providerType");

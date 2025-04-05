@@ -18,7 +18,7 @@ public class KryptonTransformerFinalBshTest {
     void processKryptonJsonBsh() throws IOException, EvalError {
         Path filePath = Paths.get("/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-master/handyman/src/main/java/in/handyman/raven/lib/custom/krypton/post/processing/bsh/KryptonTransformerFinalBsh.java");
         String fileContent = new String(Files.readAllBytes(filePath));
-        Map inputJson = inputKryptonJson1();
+        Map inputJson = inputKryptonJson2();
 
         Interpreter interpreter = new Interpreter();
         log.info("Beanshell script evaluated successfully.");
@@ -102,15 +102,15 @@ public class KryptonTransformerFinalBshTest {
 
 
         Map<String, Object> facilityInfo = new HashMap<>();
-        facilityInfo.put("providerType", "Hospital");
-        facilityInfo.put("providerName", "Cedars-Sinai Medical Center");
-        facilityInfo.put("providerNPI", "1122334455");
-        facilityInfo.put("providerTaxId", "99-8765432");
-        facilityInfo.put("providerAddress", "8700 Beverly Blvd");
-        facilityInfo.put("providerCity", "Los Angeles");
-        facilityInfo.put("providerState", "CA");
-        facilityInfo.put("providerZip", "90048");
-        facilityInfo.put("providerSpecialty", "General Medicine");
+        facilityInfo.put("providerFacilityType", "Hospital");
+        facilityInfo.put("providerFacilityName", "Cedars-Sinai Medical Center");
+        facilityInfo.put("providerFacilityNPI", "1122334455");
+        facilityInfo.put("providerFacilityTaxId", "99-8765432");
+        facilityInfo.put("providerFacilityAddress", "8700 Beverly Blvd");
+        facilityInfo.put("providerFacilityCity", "Los Angeles");
+        facilityInfo.put("providerFacilityState", "CA");
+        facilityInfo.put("providerFacilityZip", "90048");
+        facilityInfo.put("providerFacilitySpecialty", "General Medicine");
 
         Map<String, Object> servicingProvider = new HashMap<>();
         servicingProvider.put("providerType", "Attending Physician");
