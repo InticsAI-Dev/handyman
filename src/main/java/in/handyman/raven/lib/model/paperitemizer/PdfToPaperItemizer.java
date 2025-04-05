@@ -161,7 +161,7 @@ public class PdfToPaperItemizer {
         FileProcessingUtils fileUtils = new FileProcessingUtils(log, aMarker, action);
         String base64 = fileUtils.convertFileToBase64(outputFile.getAbsolutePath());
 
-        String croppedBase64 = fileUtils.callCropImageApi(base64);
+        String croppedBase64 = fileUtils.callCropImageApiWithOkHttp(base64);
 
         String croppedImagePath = outputFile.getAbsolutePath().replace("." + fileFormat, "_cropped." + fileFormat);
         fileUtils.convertBase64ToFile(croppedBase64, croppedImagePath);

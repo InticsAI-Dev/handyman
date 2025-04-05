@@ -2,9 +2,11 @@ package in.handyman.raven.lib.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.util.ExceptionUtil;
+import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -53,28 +55,47 @@ public class FileProcessingUtils {
         }
 
         return base64Image;
+
     }
 
-    public String callCropImageApi(String base64Image) throws IOException, InterruptedException {
-        String jsonPayload = String.format("{\"base64Img\": \"%s\"}", base64Image);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8000/crop-image"))  // 🔁 Update URL as needed
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
-                .build();
+    public String callCropImageApiWithOkHttp(String base64Image) {
+        ObjectMapper mapper = new ObjectMapper();
+        OkHttpClient client = new OkHttpClient();
+        MediaType mediaTypeJson = MediaType.parse("application/json");
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        try {
+            // Build JSON input from JsonNode
+            ObjectNode jsonNode = mapper.createObjectNode();
+            jsonNode.put("base64Img", base64Image);
 
-        // Parse JSON response
-        JsonNode jsonNode = objectMapper.readTree(response.body());
+            String jsonInputRequest = mapper.writeValueAsString(jsonNode);
 
-        if (jsonNode.has("croppedBase64Img")) {
-            String croppedBase64 = jsonNode.get("croppedBase64Img").asText();
-            log.info(aMarker, "Cropped image received.");
-            return croppedBase64;
-        } else {
-            throw new HandymanException("Cropped base64 image not found in response: " + response.body(),new HandymanException("Error in calling copro api for cropped image"),action);
+            // Build OkHttp request
+            Request request = new Request.Builder()
+                    .url("http://localhost:8000/crop-image")
+                    .post(RequestBody.create(jsonInputRequest, mediaTypeJson))
+                    .build();
+
+            // Execute request
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    throw new IOException("Unexpected code " + response);
+                }
+
+                String responseBody = response.body().string();
+                JsonNode jsonResponse = mapper.readTree(responseBody);
+
+                if (jsonResponse.has("croppedBase64Img")) {
+                    return jsonResponse.get("croppedBase64Img").asText();
+                } else {
+                    throw new RuntimeException("Cropped base64 image not found in response: " + responseBody);
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error during API call", e);
         }
     }
 
@@ -119,4 +140,5 @@ public class FileProcessingUtils {
             throw new HandymanException("Error occurred while converting Base64 to file", e, action);
         }
     }
+
 }
