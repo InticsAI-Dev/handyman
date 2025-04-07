@@ -102,7 +102,7 @@ public class SorTransactionKvpDoublePass {
         boolean isBBoxActivated = Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
                 && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION");
 
-        String inputResponseJson = null;
+        String inputResponseJson;
         userPrompt = getUserPrompt(action, entity, isBBoxActivated, userPrompt, transformationUserPromptsList, transformationSystemPromptsList);
 
         // Check if KRYPTON_DOUBLE_PASS_MODE is enabled
