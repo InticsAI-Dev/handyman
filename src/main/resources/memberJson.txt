@@ -1,165 +1,137 @@
 {
   "MemberInformation": [
     {
-      "memberType": "Patient",
-      "memberName": "Alice Brown",
-      "memberId": "M123456",
-      "memberGroupId": "G654321",
-      "memberDOB": "1985-11-22",
-      "memberAddress": "1234 Maple Street",
-      "memberCity": "New York",
-      "memberState": "NY",
-      "memberZipcode": "10001",
-      "memberPhone": "555-1234",
-      "medicaidId": "MD654321",
-      "memberGender": "Female",
-      "isActive": true,
-      "subscriptionAmount": 100.50,
-      "lastUpdate": "2025-04-07T14:30:00Z",
-      "history": [
-        "Checkup on 2025-03-15",
-        "Follow-up on 2025-03-25"
-      ],
-      "insuranceDetails": {
-        "planName": "Silver Plan",
-        "coveragePercentage": 80,
-        "isPrimary": true
-      }
-    },
-    {
+      "memberName": "Roytlauf Joanne",
+      "memberId": "884449114",
+      "memberGroupId": null,
       "memberType": "Subscriber",
-      "memberName": "John Smith",
-      "memberId": "M789123",
-      "memberGroupId": "G321987",
-      "memberDOB": "1992-02-15",
-      "memberAddress": "5678 Oak Avenue",
-      "memberCity": "Los Angeles",
-      "memberState": "CA",
-      "memberZipcode": "90001",
-      "memberPhone": "555-6789",
+      "memberDOB": null,
+      "memberAddress": null,
+      "memberCity": null,
+      "memberState": null,
+      "memberZipcode": null,
+      "memberPhone": null,
       "medicaidId": null,
-      "memberGender": "Male",
-      "isActive": false,
-      "subscriptionAmount": 150.75,
-      "lastUpdate": "2025-04-01T10:00:00Z",
-      "history": [
-        "Checkup on 2025-03-10",
-        "Consultation on 2025-03-20"
-      ],
-      "insuranceDetails": {
-        "planName": "Gold Plan",
-        "coveragePercentage": 90,
-        "isPrimary": false
-      }
+      "memberGender": "null"
     },
     {
-      "memberType": "Dependent",
-      "memberName": "Sophia Johnson",
-      "memberId": "D112233",
-      "memberGroupId": "G987654",
-      "memberDOB": "2018-07-05",
-      "memberAddress": "5678 Oak Avenue",
-      "memberCity": "Los Angeles",
-      "memberState": "CA",
-      "memberZipcode": "90001",
-      "memberPhone": "555-3344",
-      "medicaidId": "MD998877",
-      "memberGender": "Female",
-      "isActive": true,
-      "subscriptionAmount": 0.00,
-      "lastUpdate": "2025-04-06T09:45:00Z",
-      "history": [],
-      "insuranceDetails": {
-        "planName": "Family Plan",
-        "coveragePercentage": 100,
-        "isPrimary": false
-      }
-    },
-    {
-      "memberType": "Provider",
-      "memberName": "Dr. Emily White",
-      "memberId": "P567890",
-      "memberGroupId": "G123987",
-      "memberDOB": "1978-03-22",
-      "memberAddress": "100 Health Blvd",
-      "memberCity": "Chicago",
-      "memberState": "IL",
-      "memberZipcode": "60601",
-      "memberPhone": "555-4321",
+      "memberName": "Hoff Nadine",
+      "memberId": null,
+      "memberGroupId": null,
+      "memberType": "Patient",
+      "memberDOB": "02/01/2006",
+      "memberAddress": null,
+      "memberCity": null,
+      "memberState": null,
+      "memberZipcode": null,
+      "memberPhone": null,
       "medicaidId": null,
-      "memberGender": "Female",
-      "isActive": true,
-      "subscriptionAmount": 0.00,
-      "lastUpdate": "2025-03-31T10:00:00Z",
-      "history": [
-        "Initial consultation",
-        "Follow-up"
-      ],
-      "insuranceDetails": {
-        "planName": "Healthcare Provider Plan",
-        "coveragePercentage": 100,
-        "isPrimary": true
-      },
-      "specialty": "Cardiology"
-    },
-    {
-      "memberType": "Administrator",
-      "memberName": "Robert Green",
-      "memberId": "A987654",
-      "memberGroupId": "G321654",
-      "memberDOB": "1982-01-10",
-      "memberAddress": "123 Main St",
-      "memberCity": "Chicago",
-      "memberState": "IL",
-      "memberZipcode": "60601",
-      "memberPhone": "555-5566",
-      "medicaidId": null,
-      "memberGender": "Male",
-      "isActive": true,
-      "subscriptionAmount": 0.00,
-      "lastUpdate": "2025-04-05T12:30:00Z",
-      "history": [],
-      "insuranceDetails": {
-        "planName": "Administrator Plan",
-        "coveragePercentage": 100,
-        "isPrimary": true
-      },
-      "role": "System Administrator"
+      "memberGender": "Female"
     }
   ],
-  "facilityInfo": {
-    "facilityName": "General Medical Center",
-    "facilityAddress": "1000 Health Blvd",
-    "facilityCity": "Chicago",
-    "facilityState": "IL",
-    "facilityZipcode": "60601",
-    "facilityPhone": "555-7890",
-    "isOpen24Hours": true,
-    "servicesOffered": [
-      "Emergency Room",
-      "Cardiology",
-      "Orthopedics"
+  "FacilityInformation": [
+
+  ],
+  "ServicingProviderInformation": [
+    {
+      "providerType": "Heart specialist",
+      "providerName": "Timothy Talbert",
+      "providerNPI": null,
+      "providerTaxId": null,
+      "providerAddress": "935 Spring Creek Rd Ste 100, CHATTANOOGA,TN,37412-3994",
+      "providerCity": "CHATTANOOGA",
+      "providerState": "TN",
+      "providerZip": "37412-3994",
+      "providerSpecialty": null
+    },
+    {
+      "providerType": "Lung specialist",
+      "providerName": null,
+      "providerNPI": null,
+      "providerTaxId": null,
+      "providerAddress": null,
+      "providerCity": null,
+      "providerState": null,
+      "providerZip": null,
+      "providerSpecialty": null
+    },
+    {
+      "providerType": "Blood or cancer specialist",
+      "providerName": null,
+      "providerNPI": null,
+      "providerTaxId": null,
+      "providerAddress": null,
+      "providerCity": null,
+      "providerState": null,
+      "providerZip": null,
+      "providerSpecialty": null
+    },
+    {
+      "providerType": "Neurologist",
+      "providerName": null,
+      "providerNPI": null,
+      "providerTaxId": null,
+      "providerAddress": null,
+      "providerCity": null,
+      "providerState": null,
+      "providerZip": null,
+      "providerSpecialty": null
+    },
+    {
+      "providerType": "Infectious disease specialist",
+      "providerName": null,
+      "providerNPI": null,
+      "providerTaxId": null,
+      "providerAddress": null,
+      "providerCity": null,
+      "providerState": null,
+      "providerZip": null,
+      "providerSpecialty": null
+    },
+    {
+      "providerType": "Kidney specialist",
+      "providerName": null,
+      "providerNPI": null,
+      "providerTaxId": null,
+      "providerAddress": null,
+      "providerCity": null,
+      "providerState": null,
+      "providerZip": null,
+      "providerSpecialty": null
+    }
+  ],
+  "ReferringProviderInformation": [
+
+  ],
+  "UndefinedProviderInformation": [
+    {
+      "providerType": "undefined",
+      "providerName": "Theodore Richards",
+      "providerNPI": "1891784518",
+      "providerTaxId": "672140448",
+      "providerAddress": null,
+      "providerCity": null,
+      "providerState": null,
+      "providerZip": null,
+      "providerSpecialty": null
+    }
+  ],
+  "ServiceDetails": {
+    "cptCodes": [
+
     ],
-    "rating": 4.5,
-    "numberOfBeds": 250,
-    "specialties": ["Surgery", "Pediatrics", "Neurology"]
-  },
-  "servicingProvider": {
-    "providerId": "SP56789",
-    "providerName": "Dr. Emily White",
-    "providerSpecialty": "Cardiology",
-    "providerPhone": "555-4321",
-    "providerEmail": "emily.white@healthcare.com",
-    "isAvailable": true,
-    "yearsOfExperience": 12
-  },
-  "serviceDetails": {
-    "serviceType": "Annual Physical Exam",
-    "serviceDate": "2025-05-01",
-    "serviceCost": 200.00,
-    "serviceDescription": "A complete annual checkup to assess overall health",
-    "isCoveredByInsurance": true,
-    "serviceStatus": "Scheduled",
-    "notes": null
+    "diagnosisCodes": [
+      "F30.99",
+      "F38.88"
+    ],
+    "diagnosisDescription": null,
+    "authorizationID": "UM99999",
+    "levelOfService": "RUSH",
+    "levelOfCare": "PSYCHIATRIC RESIDENTIAL TREATMENT FACILITY",
+    "serviceStartDate": "02/01/2015",
+    "serviceEndDate": "02/15/2015",
+    "admitDate": null,
+    "dischargeDate": null,
+    "voluntaryInvoluntaryStatus": null
   }
 }

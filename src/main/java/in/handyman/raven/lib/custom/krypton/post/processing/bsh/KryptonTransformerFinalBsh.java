@@ -13,77 +13,6 @@ public class KryptonTransformerFinalBsh {
         this.logger = logger;
     }
 
-    public static List processKryptonJson1(Map kryptonJson) {
-        Map metaItemAndKeyDetails = getMetaItemAndKeyDetails();
-        Map containerMapping = getMetaContainerItemDetails();
-        List outputJson = new ArrayList();
-
-        Iterator it = metaItemAndKeyDetails.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry entry = (Map.Entry) it.next();
-            String outputKey = (String) entry.getKey();
-            String kryptonKey = (String) entry.getValue();
-
-            Object value = findValueInKryptonJson(kryptonJson, kryptonKey);
-
-            // Check if key already exists in outputJson
-            boolean found = false;
-            Iterator outputIterator = outputJson.iterator();
-            while (outputIterator.hasNext()) {
-                Map jsonObject = (Map) outputIterator.next();
-                if (jsonObject.get("key").equals(outputKey)) {
-                    // If key exists, append value with comma if necessary
-                    String existingValue = (String) jsonObject.get("value");
-                    if (existingValue.length() > 0) {
-                        existingValue += ", " + (value != null ? value : "");
-                    } else {
-                        existingValue = (value != null ? value.toString() : "");
-                    }
-                    jsonObject.put("value", existingValue);
-                    found = true;
-                    break;
-                }
-            }
-
-            // If not found, add new entry
-            if (!found) {
-                Map jsonObject = new HashMap();
-                jsonObject.put("key", outputKey);
-                jsonObject.put("value", value != null ? value : "");
-                jsonObject.put("confidence", new Integer(100));
-                jsonObject.put("boundingBox", new HashMap());
-
-                outputJson.add(jsonObject);
-            }
-        }
-        return outputJson;
-    }
-
-    private static Object findValueInKryptonJson(Map kryptonJson, String kryptonKey) {
-        Iterator iterator = kryptonJson.entrySet().iterator();
-
-        while (iterator.hasNext()) {
-            Map.Entry entry = (Map.Entry) iterator.next();
-            Object value = entry.getValue();
-
-            if (value instanceof List) {
-                List list = (List) value;
-                if (!list.isEmpty() && list.get(0) instanceof Map) {
-                    Map map = (Map) list.get(0);
-                    if (map.containsKey(kryptonKey)) {
-                        return map.get(kryptonKey);
-                    }
-                }
-            } else if (value instanceof Map) {
-                Map map = (Map) value;
-                if (map.containsKey(kryptonKey)) {
-                    return map.get(kryptonKey);
-                }
-            }
-        }
-        return null;
-    }
-
 
     public static Map processKryptonJson(Map kryptonJson) {
         Map metaContainerEntityDetails = getMetaContainerEntityDetails();
@@ -122,12 +51,30 @@ public class KryptonTransformerFinalBsh {
 
         if (jsonValue instanceof JSONArray) {
             JSONArray jsonArray = (JSONArray) jsonValue;
+            Integer infoNodeLen = jsonArray.length();
+            if(infoNodeLen<2){
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject item = jsonArray.optJSONObject(i);
                 if (item != null) {
                     List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
                     appendToOutput(metaContainerKey, outputList, outputJson);
                 }
+            }
+            }else{
+                if(metaContainerKey.equals("MEMBER_DETAILS")){
+                    System.out.println(jsonArray+"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+                    List outputList = mapToMemberDetails(jsonArray);
+                    appendToOutput(metaContainerKey, outputList, outputJson);
+                }else {
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject item = jsonArray.optJSONObject(i);
+                        if (item != null) {
+                            List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
+                            appendToOutput(metaContainerKey, outputList, outputJson);
+                        }
+                    }
+                }
+
             }
         } else if (jsonValue instanceof JSONObject) {
             List outputList = buildOutputList(metaContainerKey, (JSONObject) jsonValue, metaContainerItemDetails, metaItemAndKeyDetails);
@@ -185,14 +132,19 @@ public class KryptonTransformerFinalBsh {
         servicingDetails.add("ServicingDetails");
         servicingDetails.add("ServiceDetails");
         servicingDetails.add("SERVICING_DETAILS");
+        servicingDetails.add("serviceDetails");
+
+
 
         List servicingFacilityDetails = new ArrayList();
         servicingFacilityDetails.add("SERVICING_FACILITY_DETAILS");
         servicingFacilityDetails.add("FacilityInformation");
+        servicingFacilityDetails.add("facilityInfo");
 
         List servicingProviderDetails = new ArrayList();
         servicingProviderDetails.add("ServicingProviderInformation");
         servicingProviderDetails.add("SERVICING_PROVIDER_DETAILS");
+        servicingProviderDetails.add("servicingProvider");
 
         metaContainerEntityDetails.put("MEMBER_DETAILS", memberDetails);
         metaContainerEntityDetails.put("REFERRING_PROVIDER_DETAILS", referringProviderDetails);
@@ -302,7 +254,7 @@ public class KryptonTransformerFinalBsh {
 
         // Facility Information
         metaContainerEntityDetails.put("servicing_facility_type", "providerFacilityType");
-        metaContainerEntityDetails.put("servicing_facility_name", "providerFacilityName");
+        metaContainerEntityDetails.put("servicing_facility_name", "facilityName");
         metaContainerEntityDetails.put("servicing_facility_npi", "providerFacilityNPI");
         metaContainerEntityDetails.put("servicing_facility_tax_id", "providerFacilityTaxId");
         metaContainerEntityDetails.put("servicing_facility_address", "providerFacilityAddress");
@@ -372,33 +324,17 @@ public class KryptonTransformerFinalBsh {
         return inputJson;
     }
 
-    public static List mapToMemberDetails(Map inputJson) {
+    public static List mapToMemberDetails(JSONArray memberInformations) {
         // Define priority checklist for member types
         List memberChecklist = new ArrayList();
         memberChecklist.add("member");
         memberChecklist.add("patient");
         memberChecklist.add("subscriber");
         memberChecklist.add("Enrollee");
-        memberChecklist.add("Subscriber");
 
-        // Extract MemberInformation list from inputJson
-        List memberInformation = extractMemberInformation(inputJson);
-
-        // Initialize the final result list
-        List finalResult = new ArrayList();
-
-        // Handle case when memberInformation is null or empty
-        if (memberInformation == null) {
-            return finalResult;
-        }
-
-        // Handle case with 0 or 1 members
-        if (memberInformation.size() < 2) {
-            return handleSingleOrNoMember(memberInformation, finalResult);
-        }
 
         // Handle case with multiple members
-        List allMembers = extractAllMemberTypes(memberInformation);
+        List allMembers = extractAllMemberTypes(memberInformations);
 
         // Calculate ranks for each member type
         Map memberTypeRanks = calculateMemberTypeRanks(allMembers, memberChecklist);
@@ -410,57 +346,26 @@ public class KryptonTransformerFinalBsh {
         int indexOfMinRankMember = findIndexOfMinRankMember(allMembers, memberTypeWithMinRank);
 
         // Create the final result by adding member information of the member with the minimum rank
-        if (indexOfMinRankMember >= 0 && indexOfMinRankMember < memberInformation.size()) {
-            addMemberInfoToFinalResult(memberInformation, indexOfMinRankMember, finalResult);
+        List finalResult = new ArrayList();
+        if (indexOfMinRankMember >= 0 && indexOfMinRankMember < memberInformations.length()) {
+            finalResult = addMemberInfoToFinalResult(memberInformations, indexOfMinRankMember,finalResult);
         }
 
         return finalResult;
     }
 
-    // Method to extract the MemberInformation list from inputJson
-    private static List extractMemberInformation(Map inputJson) {
-        List memberInformation = null;
-        if (inputJson.containsKey("MemberInformation")) {
-            Object memberInfoObj = inputJson.get("MemberInformation");
-            if (memberInfoObj instanceof List) {
-                memberInformation = (List) memberInfoObj;
-            }
-        }
-        return memberInformation;
-    }
-
-    // Handle case when there is only one or no member
-    private static List handleSingleOrNoMember(List memberInformation, List finalResult) {
-        if (memberInformation.size() == 1) {
-            Map inputJsonObjectMap = (Map) memberInformation.get(0);
-            Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
-
-            while (entryIterator.hasNext()) {
-
-                Map.Entry entry = (Map.Entry) entryIterator.next();
-                Map memberInfo = new HashMap();
-                if (entry.getKey() != "memberType") {
-                    memberInfo.put("key", entry.getKey());
-                    memberInfo.put("value", entry.getValue() != null ? entry.getValue() : "");
-                    memberInfo.put("confidence", new Integer(0));  // Changed from 0.0 to match original class
-                    memberInfo.put("boundingBox", new HashMap());
-                    finalResult.add(memberInfo);
-            }
-            }
-        }
-        return finalResult;
-    }
-
-    // Method to extract all member types from memberInformation
-    private static List extractAllMemberTypes(List memberInformation) {
+    // Method to extract all member types from memberInformations
+    private static List extractAllMemberTypes(JSONArray memberInformations) {
         List allMembers = new ArrayList();
-        Iterator iterator = memberInformation.iterator();
+        Iterator iterator = memberInformations.iterator();
         while (iterator.hasNext()) {
             Object item = iterator.next();
-            if (item instanceof Map) {
-                Map memberMap = (Map) item;
-                if (memberMap.containsKey("memberType")) {
-                    Object memberTypeObj = memberMap.get("memberType");
+
+            if (item instanceof JSONObject) {
+
+                JSONObject memberMap = (JSONObject) item; // Cast to JSONObject instead of Map
+                if (memberMap.has("memberType")) {
+                    Object memberTypeObj = memberMap.opt("memberType");
                     String memberTypeValue = "";
                     if (memberTypeObj != null) {
                         memberTypeValue = memberTypeObj.toString();
@@ -525,21 +430,23 @@ public class KryptonTransformerFinalBsh {
     }
 
     // Method to add the selected member's information to the final result
-    private static void addMemberInfoToFinalResult(List memberInformation, int indexOfMinRankMember, List finalResult) {
-        Map inputJsonObjectMap = (Map) memberInformation.get(indexOfMinRankMember);
-        Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
-
+    private static List addMemberInfoToFinalResult(JSONArray memberInformation, int indexOfMinRankMember, List finalResult) {
+        JSONObject inputJsonObject = memberInformation.optJSONObject(indexOfMinRankMember); // Get JSONObject instead of Map        Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
+        if (inputJsonObject != null) {
+            Iterator entryIterator = inputJsonObject.keys();
         while (entryIterator.hasNext()) {
-            Map.Entry entry = (Map.Entry) entryIterator.next();
-            Map memberInfo = new HashMap();
-            if (entry.getKey() != "memberType") {
-                memberInfo.put("key", entry.getKey());
-                memberInfo.put("value", entry.getValue() != null ? entry.getValue() : "");
-                memberInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
-                memberInfo.put("boundingBox", new HashMap());
-                finalResult.add(memberInfo);
+            String key = (String) entryIterator.next(); // Get key as String            Map memberInfo = new HashMap();
+            if (!key.equals("memberType")) {
+                    Map memberInfo = new HashMap();
+                    memberInfo.put("key", key);
+                    memberInfo.put("value", inputJsonObject.optString(key) != null ? inputJsonObject.optString(key) : "");
+                    memberInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
+                    memberInfo.put("boundingBox", new HashMap());
+                    finalResult.add(memberInfo);
+              }
+         }
         }
-        }
+        return finalResult;
     }
 
 

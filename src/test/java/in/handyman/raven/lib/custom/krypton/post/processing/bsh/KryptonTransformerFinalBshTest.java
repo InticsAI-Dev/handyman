@@ -20,6 +20,9 @@ public class KryptonTransformerFinalBshTest {
     void processKryptonJsonBsh() throws IOException, EvalError {
         Path filePath = Paths.get("/home/christopher.paulraj@zucisystems.com/Desktop/pipeline/handyman/src/main/java/in/handyman/raven/lib/custom/krypton/post/processing/bsh/KryptonTransformerFinalBsh.java");
         String fileContent = new String(Files.readAllBytes(filePath));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/containerJson.txt"), Map.class);
+
         Map inputJson = inputKryptonJson2();
 
         Interpreter interpreter = new Interpreter();
@@ -29,7 +32,7 @@ public class KryptonTransformerFinalBshTest {
         interpreter.set("logger", log);
         String classInstantiation = "KryptonTransformerFinalBsh mapper = new KryptonTransformerFinalBsh(logger);";
         interpreter.eval(classInstantiation);
-        interpreter.set("responseMap", inputJson);
+        interpreter.set("responseMap", jsonMap);
 
         interpreter.eval("outputJsonMap = mapper.processKryptonJson(responseMap);");
 
@@ -163,19 +166,19 @@ public class KryptonTransformerFinalBshTest {
         return inputJson;
     }
 
-    @Test
-    void mapToMemberDetails() throws IOException {
-
-
-        ObjectMapper objectMapper = new ObjectMapper();
-//        Map<String, Object> inputJson = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
-
-        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
-
-        List<Map<String, Object>> memberDetails = KryptonTransformerFinalBsh.mapToMemberDetails(jsonMap);
-
-        System.out.println(memberDetails.toString());
-    }
+//    @Test
+//    void mapToMemberDetails() throws IOException {
+//
+//
+//        ObjectMapper objectMapper = new ObjectMapper();
+////        Map<String, Object> inputJson = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
+//
+//        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
+//        List vals = (List) jsonMap.get("MemberInformation");
+//        List<Map<String, Object>> memberDetails = KryptonTransformerFinalBsh.mapToMemberDetails(vals);
+//
+//        System.out.println(memberDetails.toString());
+//    }
 
 
 }
