@@ -1,0 +1,19 @@
+{
+  "MemberInformation": [
+  ],
+  "facilityInfo": {
+
+  },
+  "servicingProvider": {
+
+  },
+  "serviceDetails": {
+    "serviceType": "Annual Physical Exam",
+    "serviceDate": "2025-05-01",
+    "serviceCost": 200.00,
+    "serviceDescription": "A complete annual checkup to assess overall health",
+    "isCoveredByInsurance": true,
+    "serviceStatus": "Scheduled",
+    "notes": null
+  }
+}

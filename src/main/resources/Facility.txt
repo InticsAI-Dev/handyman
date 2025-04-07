@@ -1,0 +1,26 @@
+{
+  "MemberInformation": [
+
+  ],
+  "facilityInfo": {
+    "facilityName": "General Medical Center",
+    "facilityAddress": "1000 Health Blvd",
+    "facilityCity": "Chicago",
+    "facilityState": "IL",
+    "facilityZipcode": "60601",
+    "facilityPhone": "555-7890",
+    "isOpen24Hours": true,
+    "servicesOffered": [
+      "Emergency Room",
+      "Cardiology",
+      "Orthopedics"
+    ],
+
+  },
+  "servicingProvider": {
+
+  },
+  "serviceDetails": {
+  }
+
+}

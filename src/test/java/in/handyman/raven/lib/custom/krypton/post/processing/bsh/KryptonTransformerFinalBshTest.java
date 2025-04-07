@@ -2,9 +2,11 @@ package in.handyman.raven.lib.custom.krypton.post.processing.bsh;
 
 import bsh.EvalError;
 import bsh.Interpreter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +18,7 @@ public class KryptonTransformerFinalBshTest {
 
     @Test
     void processKryptonJsonBsh() throws IOException, EvalError {
-        Path filePath = Paths.get("/home/anandh.andrews@zucisystems.com/intics-workspace/pipeline-master/handyman/src/main/java/in/handyman/raven/lib/custom/krypton/post/processing/bsh/KryptonTransformerFinalBsh.java");
+        Path filePath = Paths.get("/home/christopher.paulraj@zucisystems.com/Desktop/pipeline/handyman/src/main/java/in/handyman/raven/lib/custom/krypton/post/processing/bsh/KryptonTransformerFinalBsh.java");
         String fileContent = new String(Files.readAllBytes(filePath));
         Map inputJson = inputKryptonJson2();
 
@@ -100,6 +102,20 @@ public class KryptonTransformerFinalBshTest {
         memberInfo.put("medicaidId", "MD567890");
         memberInfo.put("memberGender", "Male");
 
+        Map<String, Object> memberInfo1 = new HashMap<>();
+        memberInfo1.put("memberType", "Member");
+        memberInfo1.put("memberName", "John Doe");
+        memberInfo1.put("memberId", "M123456");
+        memberInfo1.put("memberGroupId", "G987654");
+        memberInfo1.put("memberDOB", "1985-06-15");
+        memberInfo1.put("memberAddress", "1234 Elm Street");
+        memberInfo1.put("memberCity", "Los Angeles");
+        memberInfo1.put("memberState", "CA");
+        memberInfo1.put("memberZipcode", "90001");
+        memberInfo1.put("memberPhone", "123-456-7890");
+        memberInfo1.put("medicaidId", "MD567890");
+        memberInfo1.put("memberGender", "Male");
+
 
         Map<String, Object> facilityInfo = new HashMap<>();
         facilityInfo.put("providerFacilityType", "Hospital");
@@ -136,7 +152,8 @@ public class KryptonTransformerFinalBshTest {
         serviceDetails.put("voluntaryInvoluntaryStatus", "Voluntary");
 
         Map<String, Object> inputJson = new HashMap<>();
-        inputJson.put("MemberInformation", List.of(memberInfo));
+//        inputJson.put("MemberInformation", List.of(memberInfo,memberInfo1));
+        inputJson.put("MemberInformation", List.of(memberInfo1,memberInfo,memberInfo1,memberInfo1));
         inputJson.put("FacilityInformation", List.of(facilityInfo));
         inputJson.put("ServicingProviderInformation", List.of(servicingProvider));
         inputJson.put("ReferringProviderInformation", new ArrayList<>()); // Empty List
@@ -144,6 +161,20 @@ public class KryptonTransformerFinalBshTest {
         inputJson.put("ServiceDetails", serviceDetails);
 
         return inputJson;
+    }
+
+    @Test
+    void mapToMemberDetails() throws IOException {
+
+
+        ObjectMapper objectMapper = new ObjectMapper();
+//        Map<String, Object> inputJson = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
+
+        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
+
+        List<Map<String, Object>> memberDetails = KryptonTransformerFinalBsh.mapToMemberDetails(jsonMap);
+
+        System.out.println(memberDetails.toString());
     }
 
 

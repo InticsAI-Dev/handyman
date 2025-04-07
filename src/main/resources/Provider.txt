@@ -1,0 +1,19 @@
+{
+  "MemberInformation": [
+
+  ],
+  "facilityInfo": {
+     },
+  "servicingProvider": {
+    "providerId": "SP56789",
+    "providerName": "Dr. Emily White",
+    "providerSpecialty": "Cardiology",
+    "providerPhone": "555-4321",
+    "providerEmail": "emily.white@healthcare.com",
+    "isAvailable": true,
+    "yearsOfExperience": 12
+  },
+  "serviceDetails": {
+
+  }
+}

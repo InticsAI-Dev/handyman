@@ -372,6 +372,176 @@ public class KryptonTransformerFinalBsh {
         return inputJson;
     }
 
+    public static List mapToMemberDetails(Map inputJson) {
+        // Define priority checklist for member types
+        List memberChecklist = new ArrayList();
+        memberChecklist.add("member");
+        memberChecklist.add("patient");
+        memberChecklist.add("subscriber");
+        memberChecklist.add("Enrollee");
+        memberChecklist.add("Subscriber");
+
+        // Extract MemberInformation list from inputJson
+        List memberInformation = extractMemberInformation(inputJson);
+
+        // Initialize the final result list
+        List finalResult = new ArrayList();
+
+        // Handle case when memberInformation is null or empty
+        if (memberInformation == null) {
+            return finalResult;
+        }
+
+        // Handle case with 0 or 1 members
+        if (memberInformation.size() < 2) {
+            return handleSingleOrNoMember(memberInformation, finalResult);
+        }
+
+        // Handle case with multiple members
+        List allMembers = extractAllMemberTypes(memberInformation);
+
+        // Calculate ranks for each member type
+        Map memberTypeRanks = calculateMemberTypeRanks(allMembers, memberChecklist);
+
+        // Find member type with minimum rank
+        String memberTypeWithMinRank = findMemberTypeWithMinRank(memberTypeRanks);
+
+        // Find index of this member type in the memberInformation list
+        int indexOfMinRankMember = findIndexOfMinRankMember(allMembers, memberTypeWithMinRank);
+
+        // Create the final result by adding member information of the member with the minimum rank
+        if (indexOfMinRankMember >= 0 && indexOfMinRankMember < memberInformation.size()) {
+            addMemberInfoToFinalResult(memberInformation, indexOfMinRankMember, finalResult);
+        }
+
+        return finalResult;
+    }
+
+    // Method to extract the MemberInformation list from inputJson
+    private static List extractMemberInformation(Map inputJson) {
+        List memberInformation = null;
+        if (inputJson.containsKey("MemberInformation")) {
+            Object memberInfoObj = inputJson.get("MemberInformation");
+            if (memberInfoObj instanceof List) {
+                memberInformation = (List) memberInfoObj;
+            }
+        }
+        return memberInformation;
+    }
+
+    // Handle case when there is only one or no member
+    private static List handleSingleOrNoMember(List memberInformation, List finalResult) {
+        if (memberInformation.size() == 1) {
+            Map inputJsonObjectMap = (Map) memberInformation.get(0);
+            Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
+
+            while (entryIterator.hasNext()) {
+
+                Map.Entry entry = (Map.Entry) entryIterator.next();
+                Map memberInfo = new HashMap();
+                if (entry.getKey() != "memberType") {
+                    memberInfo.put("key", entry.getKey());
+                    memberInfo.put("value", entry.getValue() != null ? entry.getValue() : "");
+                    memberInfo.put("confidence", new Integer(0));  // Changed from 0.0 to match original class
+                    memberInfo.put("boundingBox", new HashMap());
+                    finalResult.add(memberInfo);
+            }
+            }
+        }
+        return finalResult;
+    }
+
+    // Method to extract all member types from memberInformation
+    private static List extractAllMemberTypes(List memberInformation) {
+        List allMembers = new ArrayList();
+        Iterator iterator = memberInformation.iterator();
+        while (iterator.hasNext()) {
+            Object item = iterator.next();
+            if (item instanceof Map) {
+                Map memberMap = (Map) item;
+                if (memberMap.containsKey("memberType")) {
+                    Object memberTypeObj = memberMap.get("memberType");
+                    String memberTypeValue = "";
+                    if (memberTypeObj != null) {
+                        memberTypeValue = memberTypeObj.toString();
+                    }
+
+                    if (memberTypeValue != null &&
+                            memberTypeValue.trim().length() > 0 &&
+                            !memberTypeValue.equals("null")) {
+                        allMembers.add(memberTypeValue);
+                    } else {
+                        allMembers.add("");
+                    }
+                }
+            }
+        }
+        return allMembers;
+    }
+
+    // Method to calculate ranks for each member type based on the checklist
+    private static Map calculateMemberTypeRanks(List allMembers, List memberChecklist) {
+        Map memberTypeRanks = new HashMap();
+        Iterator membersIterator = allMembers.iterator();
+        while (membersIterator.hasNext()) {
+            String memberType = (String) membersIterator.next();
+            int rank = memberChecklist.indexOf(memberType.toLowerCase()) + 1;
+            if (rank == 0) {
+                rank = Integer.MAX_VALUE;
+            }
+            memberTypeRanks.put(memberType, new Integer(rank));
+        }
+        return memberTypeRanks;
+    }
+
+    // Method to find the member type with the minimum rank
+    private static String findMemberTypeWithMinRank(Map memberTypeRanks) {
+        String memberTypeWithMinRank = null;
+        int minRank = Integer.MAX_VALUE;
+
+        Iterator rankEntryIterator = memberTypeRanks.entrySet().iterator();
+        while (rankEntryIterator.hasNext()) {
+            Map.Entry entry = (Map.Entry) rankEntryIterator.next();
+            Integer rankValue = (Integer) entry.getValue();
+            if (rankValue.intValue() < minRank) {
+                minRank = rankValue.intValue();
+                memberTypeWithMinRank = (String) entry.getKey();
+            }
+        }
+        return memberTypeWithMinRank;
+    }
+
+    // Method to find the index of the member type with minimum rank in allMembers list
+    private static int findIndexOfMinRankMember(List allMembers, String memberTypeWithMinRank) {
+        int indexOfMinRankMember = -1;
+        for (int i = 0; i < allMembers.size(); i++) {
+            String member = (String) allMembers.get(i);
+            if (member.equals(memberTypeWithMinRank)) {
+                indexOfMinRankMember = i;
+                break;
+            }
+        }
+        return indexOfMinRankMember;
+    }
+
+    // Method to add the selected member's information to the final result
+    private static void addMemberInfoToFinalResult(List memberInformation, int indexOfMinRankMember, List finalResult) {
+        Map inputJsonObjectMap = (Map) memberInformation.get(indexOfMinRankMember);
+        Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
+
+        while (entryIterator.hasNext()) {
+            Map.Entry entry = (Map.Entry) entryIterator.next();
+            Map memberInfo = new HashMap();
+            if (entry.getKey() != "memberType") {
+                memberInfo.put("key", entry.getKey());
+                memberInfo.put("value", entry.getValue() != null ? entry.getValue() : "");
+                memberInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
+                memberInfo.put("boundingBox", new HashMap());
+                finalResult.add(memberInfo);
+        }
+        }
+    }
+
 
 }
 
