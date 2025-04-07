@@ -62,7 +62,6 @@ public class KryptonTransformerFinalBsh {
             }
             }else{
                 if(metaContainerKey.equals("MEMBER_DETAILS")){
-                    System.out.println(jsonArray+"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
                     List outputList = mapToMemberDetails(jsonArray);
                     appendToOutput(metaContainerKey, outputList, outputJson);
                 }else {
