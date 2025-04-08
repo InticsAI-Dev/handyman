@@ -27,15 +27,16 @@ public class DatabaseUtility {
         });
     }
 
-    public static Optional<String> fetchBshResultByClassName(Jdbi jdbi,String className) {
+    public static Optional<String> fetchBshResultByClassName(Jdbi jdbi,String className, Long tenantId) {
         String sqlQuery = "SELECT source_code\n" +
                 "FROM config.spw_bsh_config\n" +
-                "where class_name = :className;";
+                "where class_name = :className and tenant_id=:tenantId;";
         return jdbi.withHandle(handle -> {
 
             // Bind parameters dynamically
             Query dbQuery = handle.createQuery(sqlQuery)
-                    .bind("className", className);
+                    .bind("className", className)
+                    .bind("tenantId", tenantId);
 
             return dbQuery.mapTo(String.class).findOne();
         });

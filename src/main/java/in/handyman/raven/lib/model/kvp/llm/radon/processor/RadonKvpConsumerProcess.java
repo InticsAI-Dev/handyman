@@ -10,6 +10,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.custom.krypton.post.processing.bsh.KryptonJsonDataTransformer;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
@@ -51,11 +52,16 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     private final ProviderDataTransformer providerDataTransformer;
 
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, Jdbi jdbi, ProviderDataTransformer providerDataTransformer) {
+    private final KryptonJsonDataTransformer kryptonJsonDataTransformer;
+
+
+
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, Jdbi jdbi, ProviderDataTransformer providerDataTransformer,KryptonJsonDataTransformer kryptonJsonDataTransformer) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.providerDataTransformer = providerDataTransformer;
+        this.kryptonJsonDataTransformer=kryptonJsonDataTransformer;
         int timeOut = aAction.getTimeOut();
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
@@ -347,14 +353,15 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
-        log.info(aMarker, "checking provider data found for the given input {}", Boolean.TRUE.equals(entity.getPostProcess()));
-        if (Boolean.TRUE.equals(entity.getPostProcess())) {
-            log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
-            String providerClassName = action.getContext().get(entity.getPostProcessClassName());
-            Optional<String> sourceCode = fetchBshResultByClassName(jdbi, providerClassName);
+        boolean isPostProcessEnabled = Boolean.TRUE.equals(entity.getPostProcess());
+        log.info(aMarker, "Checking post processing data found for the given input {}", isPostProcessEnabled);
+        if (isPostProcessEnabled) {
+            log.info(aMarker, "Post processing data found for the given input started the post process with value {}", entity.getPostProcess());
+            String postProcessClassName = action.getContext().get(entity.getPostProcessClassName());
+            Optional<String> sourceCode = fetchBshResultByClassName(jdbi, postProcessClassName, entity.getTenantId());
             if (sourceCode.isPresent()) {
-                List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, modelResponse.getInferResponse(), entity, request, response, endpoint);
-                parentObj.addAll(providerParentObj);
+                List<RadonQueryOutputTable> radonQueryOutputTableList = kryptonJsonDataTransformer.processKryptonJsonData(postProcessClassName, modelResponse.getInferResponse(), entity, request, response, endpoint);
+                parentObj.addAll(radonQueryOutputTableList);
             }
 
         } else {

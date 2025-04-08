@@ -14,7 +14,7 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://intics.elevance.ngrok.dev/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("https://localhost/krypton-x-server/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
                         "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
@@ -22,14 +22,14 @@ public class RadonKvpAcionTest {
                         "                    WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name\n" +
                         "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
                         "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
-                        "                    WHERE a.model_registry = 'RADON'  and id =1388;")
+                        "                    WHERE a.model_registry = 'RADON' and a.root_pipeline_id in (9391);")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
         ac.setRootPipelineId(1234L);
         ac.setActionId(1234L);
         ac.setProcessId(123L);
-        ac.getContext().put("Radon.kvp.consumer.API.count", "1");
+        ac.getContext().put("Radon.kvp.consumer.API.count", "10");
         ac.getContext().put("write.batch.size", "1");
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
@@ -46,6 +46,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("tenant_id", "1");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
+        ac.getContext().put("KryptonTransformerFinalBsh", "KryptonTransformerFinalBsh");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
