@@ -88,7 +88,10 @@ class KryptonJsonDataTransformerTest {
                 instanceVariableName, kryptonJson, entity, dummyJson, dummyJson, "endpoint"
         );
 
-        System.out.println(result.toString());
+         result.forEach(radonQueryOutputTable -> {
+            System.out.println(radonQueryOutputTable.getSorContainerId());
+            System.out.println(radonQueryOutputTable.getTotalResponseJson());
+        });
     }
 
 }

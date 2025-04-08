@@ -20,6 +20,7 @@ public class KryptonTransformerFinalBsh {
         Map metaContainerItemAliasDetails = getMetaContainerItemAliasDetails();
         Map outputJson = new HashMap();
 
+        System.out.println(kryptonJson);
         JSONObject jsonObject = new JSONObject(kryptonJson);
         Iterator keys = jsonObject.keys();
 
