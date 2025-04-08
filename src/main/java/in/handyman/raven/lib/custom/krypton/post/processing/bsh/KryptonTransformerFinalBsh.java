@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.custom.krypton.post.processing.bsh;
 
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -17,7 +18,7 @@ public class KryptonTransformerFinalBsh {
     public static Map processKryptonJson(Map kryptonJson) {
         Map metaContainerEntityDetails = getMetaContainerEntityDetails();
         Map metaContainerItemDetails = getMetaContainerItemDetails();
-        Map metaItemAndKeyDetails = getMetaItemAndKeyDetails();
+        Map metaContainerItemAliasDetails = getMetaContainerItemAliasDetails();
         Map outputJson = new HashMap();
 
         JSONObject jsonObject = new JSONObject(kryptonJson);
@@ -25,24 +26,28 @@ public class KryptonTransformerFinalBsh {
 
         while (keys.hasNext()) {
             String jsonKey = (String) keys.next();
-            processKey(jsonKey, jsonObject, outputJson, metaContainerEntityDetails, metaContainerItemDetails, metaItemAndKeyDetails);
+            processKey(jsonKey, jsonObject, outputJson, metaContainerEntityDetails, metaContainerItemDetails, metaContainerItemAliasDetails);
         }
 
         return outputJson;
     }
 
     private static void processKey(String jsonKey, JSONObject jsonObject, Map outputJson,
-                                   Map metaContainerEntityDetails, Map metaContainerItemDetails, Map metaItemAndKeyDetails) {
+                                   Map metaContainerEntityDetails, Map metaContainerItemDetails, Map metaContainerItemAliasDetails) {
 
         Iterator metaKeys = metaContainerEntityDetails.keySet().iterator();
         while (metaKeys.hasNext()) {
             String metaContainerKey = (String) metaKeys.next();
             List values = (List) metaContainerEntityDetails.get(metaContainerKey);
+            if(metaContainerItemAliasDetails.containsKey(metaContainerKey)){
+                Map metaItemAndKeyDetails=(Map) metaContainerItemAliasDetails.get(metaContainerKey);
 
-            if (values.contains(jsonKey)) {
-                Object jsonValue = jsonObject.opt(jsonKey);
-                handleJsonValue(metaContainerKey, jsonValue, outputJson, metaContainerItemDetails, metaItemAndKeyDetails);
+                if (values.contains(jsonKey)) {
+                    Object jsonValue = jsonObject.opt(jsonKey);
+                    handleJsonValue(metaContainerKey, jsonValue, outputJson, metaContainerItemDetails, metaItemAndKeyDetails);
+                }
             }
+
         }
     }
 
@@ -61,18 +66,19 @@ public class KryptonTransformerFinalBsh {
                 }
             }
             }else{
-                if(metaContainerKey.equals("MEMBER_DETAILS")){
-                    List outputList = mapToMemberDetails(jsonArray);
+//                if(metaContainerKey.equals("MEMBER_DETAILS")){
+                    List outputList = mapToMemberDetails(metaContainerKey, jsonArray);
                     appendToOutput(metaContainerKey, outputList, outputJson);
-                }else {
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject item = jsonArray.optJSONObject(i);
-                        if (item != null) {
-                            List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
-                            appendToOutput(metaContainerKey, outputList, outputJson);
-                        }
-                    }
-                }
+//                }
+//                else {
+//                    for (int i = 0; i < jsonArray.length(); i++) {
+//                        JSONObject item = jsonArray.optJSONObject(i);
+//                        if (item != null) {
+//                            List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
+//                            appendToOutput(metaContainerKey, outputList, outputJson);
+//                        }
+//                    }
+//                }
 
             }
         } else if (jsonValue instanceof JSONObject) {
@@ -150,6 +156,7 @@ public class KryptonTransformerFinalBsh {
         metaContainerEntityDetails.put("SERVICING_DETAILS", servicingDetails);
         metaContainerEntityDetails.put("SERVICING_FACILITY_DETAILS", servicingFacilityDetails);
         metaContainerEntityDetails.put("SERVICING_PROVIDER_DETAILS", servicingProviderDetails);
+        metaContainerEntityDetails.put("UNDEFINED_PROVIDER_DETAILS", servicingProviderDetails);
 
         return metaContainerEntityDetails;
     }
@@ -232,61 +239,73 @@ public class KryptonTransformerFinalBsh {
         return metaContainerItemDetails;
     }
 
-    static Map getMetaItemAndKeyDetails() {
-        Map metaContainerEntityDetails = new HashMap();
+    static Map getMetaContainerItemAliasDetails() {
+        Map metaContainerItemAliasDetails = new HashMap();
+        Map memberContainerEntityDetails = new HashMap();
 
         // Member Information
-        metaContainerEntityDetails.put("member_zipcode", "memberZipcode");
-        metaContainerEntityDetails.put("member_last_name", "memberName");
-        metaContainerEntityDetails.put("member_id", "memberId");
-        metaContainerEntityDetails.put("member_date_of_birth", "memberDOB");
-        metaContainerEntityDetails.put("member_gender", "memberGender");
-        metaContainerEntityDetails.put("member_state", "memberState");
-        metaContainerEntityDetails.put("member_first_name", "memberName");
-        metaContainerEntityDetails.put("member_full_name", "memberName");
-        metaContainerEntityDetails.put("medicaid_id", "medicaidId");
-        metaContainerEntityDetails.put("member_city", "memberCity");
-        metaContainerEntityDetails.put("member_address_line1", "memberAddress");
-        metaContainerEntityDetails.put("member_group_id", "memberGroupId");
-        metaContainerEntityDetails.put("member_type", "memberType");
-        metaContainerEntityDetails.put("member_phone", "memberPhone");
+        memberContainerEntityDetails.put("member_zipcode", "memberZipcode");
+        memberContainerEntityDetails.put("member_last_name", "memberName");
+        memberContainerEntityDetails.put("member_id", "memberId");
+        memberContainerEntityDetails.put("member_date_of_birth", "memberDOB");
+        memberContainerEntityDetails.put("member_gender", "memberGender");
+        memberContainerEntityDetails.put("member_state", "memberState");
+        memberContainerEntityDetails.put("member_first_name", "memberName");
+        memberContainerEntityDetails.put("member_full_name", "memberName");
+        memberContainerEntityDetails.put("medicaid_id", "medicaidId");
+        memberContainerEntityDetails.put("member_city", "memberCity");
+        memberContainerEntityDetails.put("member_address_line1", "memberAddress");
+        memberContainerEntityDetails.put("member_group_id", "memberGroupId");
+        memberContainerEntityDetails.put("member_type", "memberType");
+        memberContainerEntityDetails.put("member_phone", "memberPhone");
+        metaContainerItemAliasDetails.put("MEMBER_DETAILS",memberContainerEntityDetails);
+
+        Map facilityContainerEntityDetails = new HashMap();
 
         // Facility Information
-        metaContainerEntityDetails.put("servicing_facility_type", "providerFacilityType");
-        metaContainerEntityDetails.put("servicing_facility_name", "facilityName");
-        metaContainerEntityDetails.put("servicing_facility_npi", "providerFacilityNPI");
-        metaContainerEntityDetails.put("servicing_facility_tax_id", "providerFacilityTaxId");
-        metaContainerEntityDetails.put("servicing_facility_address", "providerFacilityAddress");
-        metaContainerEntityDetails.put("servicing_facility_city", "providerFacilityCity");
-        metaContainerEntityDetails.put("servicing_facility_state", "providerFacilityState");
-        metaContainerEntityDetails.put("servicing_facility_zip", "providerFacilityZip");
-        metaContainerEntityDetails.put("servicing_facility_specialty", "providerFacilitySpecialty");
+        facilityContainerEntityDetails.put("servicing_facility_type", "providerFacilityType");
+        facilityContainerEntityDetails.put("servicing_facility_name", "facilityName");
+        facilityContainerEntityDetails.put("servicing_facility_npi", "providerFacilityNPI");
+        facilityContainerEntityDetails.put("servicing_facility_tax_id", "providerFacilityTaxId");
+        facilityContainerEntityDetails.put("servicing_facility_address", "providerFacilityAddress");
+        facilityContainerEntityDetails.put("servicing_facility_city", "providerFacilityCity");
+        facilityContainerEntityDetails.put("servicing_facility_state", "providerFacilityState");
+        facilityContainerEntityDetails.put("servicing_facility_zip", "providerFacilityZip");
+        facilityContainerEntityDetails.put("servicing_facility_specialty", "providerFacilitySpecialty");
+        metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS",facilityContainerEntityDetails);
+
+        Map servicingProviderContainerEntityDetails = new HashMap();
 
         // Servicing Provider Information
-        metaContainerEntityDetails.put("servicing_provider_type", "providerType");
-        metaContainerEntityDetails.put("servicing_provider_name", "providerName");
-        metaContainerEntityDetails.put("servicing_provider_npi", "providerNPI");
-        metaContainerEntityDetails.put("servicing_provider_tax_id", "providerTaxId");
-        metaContainerEntityDetails.put("servicing_provider_address", "providerAddress");
-        metaContainerEntityDetails.put("servicing_provider_city", "providerCity");
-        metaContainerEntityDetails.put("servicing_provider_state", "providerState");
-        metaContainerEntityDetails.put("servicing_provider_zip", "providerZip");
-        metaContainerEntityDetails.put("servicing_provider_specialty", "providerSpecialty");
+        servicingProviderContainerEntityDetails.put("servicing_provider_type", "providerType");
+        servicingProviderContainerEntityDetails.put("servicing_provider_name", "providerName");
+        servicingProviderContainerEntityDetails.put("servicing_provider_npi", "providerNPI");
+        servicingProviderContainerEntityDetails.put("servicing_provider_tax_id", "providerTaxId");
+        servicingProviderContainerEntityDetails.put("servicing_provider_address", "providerAddress");
+        servicingProviderContainerEntityDetails.put("servicing_provider_city", "providerCity");
+        servicingProviderContainerEntityDetails.put("servicing_provider_state", "providerState");
+        servicingProviderContainerEntityDetails.put("servicing_provider_zip", "providerZip");
+        servicingProviderContainerEntityDetails.put("servicing_provider_specialty", "providerSpecialty");
+        metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS",facilityContainerEntityDetails);
 
         // Service Details
-        metaContainerEntityDetails.put("service_cpt_codes", "cptCodes");
-        metaContainerEntityDetails.put("service_diagnosis_codes", "diagnosisCodes");
-        metaContainerEntityDetails.put("service_authorization_id", "authorizationID");
-        metaContainerEntityDetails.put("service_level_of_service", "levelOfService");
-        metaContainerEntityDetails.put("service_level_of_care", "levelOfCare");
-        metaContainerEntityDetails.put("service_start_date", "serviceStartDate");
-        metaContainerEntityDetails.put("service_end_date", "serviceEndDate");
-        metaContainerEntityDetails.put("service_admit_date", "admitDate");
-        metaContainerEntityDetails.put("service_discharge_date", "dischargeDate");
-        metaContainerEntityDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
+        Map serviceDetailsContainerEntityDetails = new HashMap();
+        serviceDetailsContainerEntityDetails.put("service_cpt_codes", "cptCodes");
+        serviceDetailsContainerEntityDetails.put("service_diagnosis_codes", "diagnosisCodes");
+        serviceDetailsContainerEntityDetails.put("diagnosis_description", "diagnosisDescription");
+        serviceDetailsContainerEntityDetails.put("service_authorization_id", "authorizationID");
+        serviceDetailsContainerEntityDetails.put("service_level_of_service", "levelOfService");
+        serviceDetailsContainerEntityDetails.put("service_level_of_care", "levelOfCare");
+        serviceDetailsContainerEntityDetails.put("service_start_date", "serviceStartDate");
+        serviceDetailsContainerEntityDetails.put("service_end_date", "serviceEndDate");
+        serviceDetailsContainerEntityDetails.put("service_admit_date", "admitDate");
+        serviceDetailsContainerEntityDetails.put("service_discharge_date", "dischargeDate");
+        serviceDetailsContainerEntityDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
+        metaContainerItemAliasDetails.put("SERVICING_DETAILS",facilityContainerEntityDetails);
 
-        return metaContainerEntityDetails;
+        return metaContainerItemAliasDetails;
     }
+
 
 
     Map inputKryptonJson() {
@@ -323,20 +342,14 @@ public class KryptonTransformerFinalBsh {
         return inputJson;
     }
 
-    public static List mapToMemberDetails(JSONArray memberInformations) {
+    public static List mapToMemberDetails(String metaContainerKey, JSONArray memberInformations) {
         // Define priority checklist for member types
-        List memberChecklist = new ArrayList();
-        memberChecklist.add("member");
-        memberChecklist.add("patient");
-        memberChecklist.add("subscriber");
-        memberChecklist.add("Enrollee");
-
-
-        // Handle case with multiple members
+        Map containerCheckList = getStringListMap();
+        List checkListValues = (List) containerCheckList.get(metaContainerKey);        // Handle case with multiple members
         List allMembers = extractAllMemberTypes(memberInformations);
 
         // Calculate ranks for each member type
-        Map memberTypeRanks = calculateMemberTypeRanks(allMembers, memberChecklist);
+        Map memberTypeRanks = calculateMemberTypeRanks(allMembers, checkListValues);
 
         // Find member type with minimum rank
         String memberTypeWithMinRank = findMemberTypeWithMinRank(memberTypeRanks);
@@ -353,9 +366,13 @@ public class KryptonTransformerFinalBsh {
         return finalResult;
     }
 
+
     // Method to extract all member types from memberInformations
     private static List extractAllMemberTypes(JSONArray memberInformations) {
         List allMembers = new ArrayList();
+
+        List containerTypeKeys = getList();
+
         Iterator iterator = memberInformations.iterator();
         while (iterator.hasNext()) {
             Object item = iterator.next();
@@ -363,24 +380,34 @@ public class KryptonTransformerFinalBsh {
             if (item instanceof JSONObject) {
 
                 JSONObject memberMap = (JSONObject) item; // Cast to JSONObject instead of Map
-                if (memberMap.has("memberType")) {
-                    Object memberTypeObj = memberMap.opt("memberType");
-                    String memberTypeValue = "";
-                    if (memberTypeObj != null) {
-                        memberTypeValue = memberTypeObj.toString();
-                    }
+                for ( Object containerTypeKey : containerTypeKeys) {
+                    if (memberMap.has(containerTypeKey.toString())) {
+                        Object memberTypeObj = memberMap.opt(containerTypeKey.toString());
+                        String memberTypeValue = "";
+                        if (memberTypeObj != null) {
+                            memberTypeValue = memberTypeObj.toString();
+                        }
 
-                    if (memberTypeValue != null &&
-                            memberTypeValue.trim().length() > 0 &&
-                            !memberTypeValue.equals("null")) {
-                        allMembers.add(memberTypeValue);
-                    } else {
-                        allMembers.add("");
+                        if (memberTypeValue != null &&
+                                memberTypeValue.trim().length() > 0 &&
+                                !memberTypeValue.equals("null")) {
+                            allMembers.add(memberTypeValue);
+                        } else {
+                            allMembers.add("");
+                        }
                     }
                 }
             }
         }
         return allMembers;
+    }
+
+
+    private static List getList() {
+        List containerTypeKeys = new ArrayList();
+        containerTypeKeys.add("memberType");
+        containerTypeKeys.add("providerType");
+        return containerTypeKeys;
     }
 
     // Method to calculate ranks for each member type based on the checklist
@@ -435,19 +462,59 @@ public class KryptonTransformerFinalBsh {
             Iterator entryIterator = inputJsonObject.keys();
         while (entryIterator.hasNext()) {
             String key = (String) entryIterator.next(); // Get key as String            Map memberInfo = new HashMap();
-            if (!key.equals("memberType")) {
                     Map memberInfo = new HashMap();
                     memberInfo.put("key", key);
                     memberInfo.put("value", inputJsonObject.optString(key) != null ? inputJsonObject.optString(key) : "");
                     memberInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
                     memberInfo.put("boundingBox", new HashMap());
                     finalResult.add(memberInfo);
-              }
+
          }
         }
         return finalResult;
     }
 
+
+    private static Map getStringListMap() {
+        Map containerCheckList = new HashMap();
+        List memberChecklist = new ArrayList();
+        memberChecklist.add("member");
+        memberChecklist.add("patient");
+        memberChecklist.add("subscriber");
+        memberChecklist.add("Enrollee");
+
+        List referringProviderChecklist = new ArrayList();
+        referringProviderChecklist.add("member");
+        referringProviderChecklist.add("patient");
+        referringProviderChecklist.add("subscriber");
+        referringProviderChecklist.add("Enrollee");
+
+        List servicingProviderChecklist = new ArrayList();
+        servicingProviderChecklist.add("member");
+        servicingProviderChecklist.add("patient");
+        servicingProviderChecklist.add("subscriber");
+        servicingProviderChecklist.add("Enrollee");
+
+        List servicingFacilityChecklist = new ArrayList();
+        servicingFacilityChecklist.add("member");
+        servicingFacilityChecklist.add("patient");
+        servicingFacilityChecklist.add("subscriber");
+        servicingFacilityChecklist.add("Enrollee");
+
+        List serviceDetailsChecklist = new ArrayList();
+        serviceDetailsChecklist.add("member");
+        serviceDetailsChecklist.add("patient");
+        serviceDetailsChecklist.add("subscriber");
+        serviceDetailsChecklist.add("Enrollee");
+
+        containerCheckList.put("MEMBER_DETAILS", memberChecklist);
+        containerCheckList.put("REFERRING_PROVIDER_DETAILS", referringProviderChecklist);
+        containerCheckList.put("SERVICING_DETAILS", serviceDetailsChecklist);
+        containerCheckList.put("SERVICING_FACILITY_DETAILS", servicingFacilityChecklist);
+        containerCheckList.put("SERVICING_PROVIDER_DETAILS", servicingProviderChecklist);
+        containerCheckList.put("UNDEFINED_PROVIDER_DETAILS", memberChecklist);
+        return containerCheckList;
+    }
 
 }
 

@@ -4,6 +4,7 @@ import bsh.EvalError;
 import bsh.Interpreter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -166,19 +167,32 @@ public class KryptonTransformerFinalBshTest {
         return inputJson;
     }
 
-//    @Test
-//    void mapToMemberDetails() throws IOException {
-//
-//
-//        ObjectMapper objectMapper = new ObjectMapper();
-////        Map<String, Object> inputJson = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
-//
-//        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
-//        List vals = (List) jsonMap.get("MemberInformation");
-//        List<Map<String, Object>> memberDetails = KryptonTransformerFinalBsh.mapToMemberDetails(vals);
-//
-//        System.out.println(memberDetails.toString());
-//    }
+    @Test
+    void mapToMemberDetails() throws IOException {
 
+
+        ObjectMapper objectMapper = new ObjectMapper();
+//        Map<String, Object> inputJson = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
+        JSONArray vals = new JSONArray();
+        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
+        Object memberInformation = jsonMap.get("MemberInformation");
+        // If it's an instance of List (such as ArrayList), you can cast it to a List and then create a JSONArray
+        if (memberInformation instanceof List) {
+            vals = new JSONArray((List<?>) memberInformation);
+        }
+        List<Map<String, Object>> memberDetails = KryptonTransformerFinalBsh.mapToMemberDetails("MEMBER_DETAILS",vals);
+
+        System.out.println(memberDetails.toString());
+    }
+
+
+    @Test
+    void processKryptonJsonTest() throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JSONArray vals = new JSONArray();
+        Map<String, Object> jsonMap = objectMapper.readValue(new File("/home/christopher.paulraj@zucisystems.com/Desktop/pipeline/handyman/src/main/resources/containerJson.txt"), Map.class);
+
+         KryptonTransformerFinalBsh.processKryptonJson(jsonMap);
+    }
 
 }
