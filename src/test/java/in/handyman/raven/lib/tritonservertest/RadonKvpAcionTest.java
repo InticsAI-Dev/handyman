@@ -14,7 +14,7 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://localhost/krypton-x-server/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("http://172.177.31.184:7800/v2/models/krypton-x-service/versions/1/infer")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
                         "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +

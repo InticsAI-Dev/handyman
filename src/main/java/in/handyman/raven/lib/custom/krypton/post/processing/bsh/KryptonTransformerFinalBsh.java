@@ -1,6 +1,5 @@
 package in.handyman.raven.lib.custom.krypton.post.processing.bsh;
 
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -16,7 +15,7 @@ public class KryptonTransformerFinalBsh {
 
 
     public static Map processKryptonJson(Map kryptonJson) {
-        Map metaContainerEntityDetails = getMetaContainerEntityDetails();
+        Map metaContainerEntityDetails = getMetaContainerNodeAliasDetails();
         Map metaContainerItemDetails = getMetaContainerItemDetails();
         Map metaContainerItemAliasDetails = getMetaContainerItemAliasDetails();
         Map outputJson = new HashMap();
@@ -67,7 +66,7 @@ public class KryptonTransformerFinalBsh {
             }
             }else{
 
-                    List outputList = mapToMemberDetails(metaContainerKey, jsonArray);
+                    List outputList = mapTopritorityCheckDetails(metaContainerKey, jsonArray);
                     appendToOutput(metaContainerKey, outputList, outputJson);
 
             }
@@ -108,9 +107,134 @@ public class KryptonTransformerFinalBsh {
         return outputJson;
     }
 
+    public static List mapTopritorityCheckDetails(String metaContainerKey, JSONArray containerInformations) {
+        // Define priority checklist for container types
+        Map containerCheckList = getContainerPriorityMap();
+        List checkListValues = (List) containerCheckList.get(metaContainerKey);        // Handle case with multiple Containers
+        List allContainers = extractAllContainerTypes(containerInformations);
+
+        // Calculate ranks for each Containers type
+        Map ContainersTypeRanks = calculateContainerTypeRanks(allContainers, checkListValues);
+
+        // Find Containers type with minimum rank
+        String ContainersTypeWithMinRank = findContainerTypeWithMinRank(ContainersTypeRanks);
+
+        // Find index of this Containers type in the ContainersInformation list
+        int indexOfMinRankContainers = findIndexOfMinRankContainer(allContainers, ContainersTypeWithMinRank);
+
+        // Create the final result by adding Containers information of the Containers with the minimum rank
+        List finalResult = new ArrayList();
+        if (indexOfMinRankContainers >= 0 && indexOfMinRankContainers < containerInformations.length()) {
+            finalResult = addContainerInfoToFinalResult(containerInformations, indexOfMinRankContainers,finalResult);
+        }
+
+        return finalResult;
+    }
 
 
-    private static Map getMetaContainerEntityDetails() {
+    // Method to extract all container types from containerInformations
+    private static List extractAllContainerTypes(JSONArray containerInformations) {
+        List allContainers = new ArrayList();
+
+        List containerTypeKeys = getAllTypePlaceholders();
+
+        Iterator iterator = containerInformations.iterator();
+        while (iterator.hasNext()) {
+            Object item = iterator.next();
+
+            if (item instanceof JSONObject) {
+
+                JSONObject containerMap = (JSONObject) item; // Cast to JSONObject instead of Map
+                for ( Object containerTypeKey : containerTypeKeys) {
+                    if (containerMap.has(containerTypeKey.toString())) {
+                        Object containerTypeObj = containerMap.opt(containerTypeKey.toString());
+                        String containerTypeValue = "";
+                        if (containerTypeObj != null) {
+                            containerTypeValue = containerTypeObj.toString();
+                        }
+
+                        if (containerTypeValue != null &&
+                                containerTypeValue.trim().length() > 0 &&
+                                !containerTypeValue.equals("null")) {
+                            allContainers.add(containerTypeValue);
+                        } else {
+                            allContainers.add("");
+                        }
+                    }
+                }
+            }
+        }
+        return allContainers;
+    }
+
+
+
+    // Method to calculate ranks for each container type based on the checklist
+    private static Map calculateContainerTypeRanks(List allContainers, List containerChecklist) {
+        Map containerTypeRanks = new HashMap();
+        Iterator containerIterator = allContainers.iterator();
+        while (containerIterator.hasNext()) {
+            String containerType = (String) containerIterator.next();
+            int rank = containerChecklist.indexOf(containerType.toLowerCase()) + 1;
+            if (rank == 0) {
+                rank = Integer.MAX_VALUE;
+            }
+            containerTypeRanks.put(containerType, new Integer(rank));
+        }
+        return containerTypeRanks;
+    }
+
+    // Method to find the container type with the minimum rank
+    private static String findContainerTypeWithMinRank(Map containerTypeRanks) {
+        String containerTypeWithMinRank = null;
+        int minRank = Integer.MAX_VALUE;
+
+        Iterator rankEntryIterator = containerTypeRanks.entrySet().iterator();
+        while (rankEntryIterator.hasNext()) {
+            Map.Entry entry = (Map.Entry) rankEntryIterator.next();
+            Integer rankValue = (Integer) entry.getValue();
+            if (rankValue.intValue() < minRank) {
+                minRank = rankValue.intValue();
+                containerTypeWithMinRank = (String) entry.getKey();
+            }
+        }
+        return containerTypeWithMinRank;
+    }
+
+    // Method to find the index of the container type with minimum rank in allContainers list
+    private static int findIndexOfMinRankContainer(List allContainers, String containerTypeWithMinRank) {
+        int indexOfMinRankContainer = -1;
+        for (int i = 0; i < allContainers.size(); i++) {
+            String container = (String) allContainers.get(i);
+            if (container.equals(containerTypeWithMinRank)) {
+                indexOfMinRankContainer = i;
+                break;
+            }
+        }
+        return indexOfMinRankContainer;
+    }
+
+    // Method to add the selected container's information to the final result
+    private static List addContainerInfoToFinalResult(JSONArray containerInformation, int indexOfMinRankContainer, List finalResult) {
+        JSONObject inputJsonObject = containerInformation.optJSONObject(indexOfMinRankContainer); // Get JSONObject instead of Map        Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
+        if (inputJsonObject != null) {
+            Iterator entryIterator = inputJsonObject.keys();
+        while (entryIterator.hasNext()) {
+            String key = (String) entryIterator.next(); // Get key as String            Map containerInfo = new HashMap();
+                    Map containerInfo = new HashMap();
+                    containerInfo.put("key", key);
+                    containerInfo.put("value", inputJsonObject.optString(key) != null ? inputJsonObject.optString(key) : "");
+                    containerInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
+                    containerInfo.put("boundingBox", new HashMap());
+                    finalResult.add(containerInfo);
+
+         }
+        }
+        return finalResult;
+    }
+
+
+    private static Map getMetaContainerNodeAliasDetails() {
         Map metaContainerEntityDetails = new HashMap();
 
         List memberDetails = new ArrayList();
@@ -130,7 +254,6 @@ public class KryptonTransformerFinalBsh {
         servicingDetails.add("serviceDetails");
 
 
-
         List servicingFacilityDetails = new ArrayList();
         servicingFacilityDetails.add("SERVICING_FACILITY_DETAILS");
         servicingFacilityDetails.add("FacilityInformation");
@@ -141,15 +264,163 @@ public class KryptonTransformerFinalBsh {
         servicingProviderDetails.add("SERVICING_PROVIDER_DETAILS");
         servicingProviderDetails.add("servicingProvider");
 
+
+        List undefinedProviderDetails = new ArrayList();
+        undefinedProviderDetails.add("UndefinedProviderInformation");
+
         metaContainerEntityDetails.put("MEMBER_DETAILS", memberDetails);
         metaContainerEntityDetails.put("REFERRING_PROVIDER_DETAILS", referringProviderDetails);
         metaContainerEntityDetails.put("SERVICING_DETAILS", servicingDetails);
         metaContainerEntityDetails.put("SERVICING_FACILITY_DETAILS", servicingFacilityDetails);
         metaContainerEntityDetails.put("SERVICING_PROVIDER_DETAILS", servicingProviderDetails);
-        metaContainerEntityDetails.put("UNDEFINED_PROVIDER_DETAILS", servicingProviderDetails);
+        metaContainerEntityDetails.put("UNDEFINED_PROVIDER_DETAILS", undefinedProviderDetails);
 
         return metaContainerEntityDetails;
     }
+
+
+    private static Map getContainerPriorityMap() {
+        Map containerCheckList = new HashMap();
+        List memberChecklist = new ArrayList();
+        memberChecklist.add("member");
+        memberChecklist.add("patient");
+        memberChecklist.add("subscriber");
+        memberChecklist.add("Enrollee");
+
+        List referringProviderChecklist = new ArrayList();
+        referringProviderChecklist.add("Requesting Provider");
+
+
+        List servicingProviderChecklist = new ArrayList();
+        servicingProviderChecklist.add("Attending Physician");
+
+
+        List servicingFacilityChecklist = new ArrayList();
+        servicingFacilityChecklist.add("Admitting Facility");
+
+        List serviceDetailsChecklist = new ArrayList();
+        serviceDetailsChecklist.add("member");
+
+        List undefinedDetailsChecklist = new ArrayList();
+        undefinedDetailsChecklist.add("undefined");
+
+
+        containerCheckList.put("MEMBER_DETAILS", memberChecklist);
+        containerCheckList.put("REFERRING_PROVIDER_DETAILS", referringProviderChecklist);
+        containerCheckList.put("SERVICING_DETAILS", serviceDetailsChecklist);
+        containerCheckList.put("SERVICING_FACILITY_DETAILS", servicingFacilityChecklist);
+        containerCheckList.put("SERVICING_PROVIDER_DETAILS", servicingProviderChecklist);
+        containerCheckList.put("UNDEFINED_PROVIDER_DETAILS", undefinedDetailsChecklist);
+        return containerCheckList;
+    }
+
+
+    private static List getAllTypePlaceholders() {
+        List containerTypeKeys = new ArrayList();
+        containerTypeKeys.add("memberType");
+        containerTypeKeys.add("providerType");
+
+        return containerTypeKeys;
+    }
+
+
+    static Map getMetaContainerItemAliasDetails() {
+        Map metaContainerItemAliasDetails = new HashMap();
+
+
+        // Member Information
+        Map memberContainerItemAliasDetails = new HashMap();
+        memberContainerItemAliasDetails.put("member_zipcode", "memberZipcode");
+        memberContainerItemAliasDetails.put("member_last_name", "memberName");
+        memberContainerItemAliasDetails.put("member_id", "memberId");
+        memberContainerItemAliasDetails.put("member_date_of_birth", "memberDOB");
+        memberContainerItemAliasDetails.put("member_gender", "memberGender");
+        memberContainerItemAliasDetails.put("member_state", "memberState");
+        memberContainerItemAliasDetails.put("member_first_name", "memberName");
+        memberContainerItemAliasDetails.put("member_full_name", "memberName");
+        memberContainerItemAliasDetails.put("medicaid_id", "medicaidId");
+        memberContainerItemAliasDetails.put("member_city", "memberCity");
+        memberContainerItemAliasDetails.put("member_address_line1", "memberAddress");
+        memberContainerItemAliasDetails.put("member_group_id", "memberGroupId");
+        memberContainerItemAliasDetails.put("member_type", "memberType");
+        memberContainerItemAliasDetails.put("member_phone", "memberPhone");
+        metaContainerItemAliasDetails.put("MEMBER_DETAILS",memberContainerItemAliasDetails);
+
+
+
+        // Facility Information
+        Map facilityContainerItemAliasDetails = new HashMap();
+        facilityContainerItemAliasDetails.put("servicing_facility_type", "providerType");
+        facilityContainerItemAliasDetails.put("servicing_facility_name", "providerName");
+        facilityContainerItemAliasDetails.put("servicing_facility_npi", "providerNPI");
+        facilityContainerItemAliasDetails.put("servicing_facility_tax_id", "providerTaxId");
+        facilityContainerItemAliasDetails.put("servicing_facility_address", "providerAddress");
+        facilityContainerItemAliasDetails.put("servicing_facility_city", "providerCity");
+        facilityContainerItemAliasDetails.put("servicing_facility_state", "providerState");
+        facilityContainerItemAliasDetails.put("servicing_facility_zip", "providerZip");
+        facilityContainerItemAliasDetails.put("servicing_facility_specialty", "providerSpecialty");
+        metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS",facilityContainerItemAliasDetails);
+
+        // REFERRING PROVIDER
+        Map referringProviderItemAliasDetails = new HashMap();
+        referringProviderItemAliasDetails.put("referring_provider_type", "providerType");
+        referringProviderItemAliasDetails.put("referring_provider_name", "providerName");
+        referringProviderItemAliasDetails.put("referring_provider_npi", "providerNPI");
+        referringProviderItemAliasDetails.put("referring_provider_tax_id", "providerTaxId");
+        referringProviderItemAliasDetails.put("referring_provider_address", "providerAddress");
+        referringProviderItemAliasDetails.put("referring_provider_city", "providerCity");
+        referringProviderItemAliasDetails.put("referring_provider_state", "providerState");
+        referringProviderItemAliasDetails.put("referring_provider_zip", "providerZip");
+        referringProviderItemAliasDetails.put("referring_provider_specialty", "providerSpecialty");
+        metaContainerItemAliasDetails.put("REFERRING_PROVIDER_DETAILS",referringProviderItemAliasDetails);
+
+
+
+        // Servicing Provider Information
+        Map servicingProviderItemAliasDetails = new HashMap();
+        servicingProviderItemAliasDetails.put("servicing_provider_type", "providerType");
+        servicingProviderItemAliasDetails.put("servicing_provider_name", "providerName");
+        servicingProviderItemAliasDetails.put("servicing_provider_npi", "providerNPI");
+        servicingProviderItemAliasDetails.put("servicing_provider_tax_id", "providerTaxId");
+        servicingProviderItemAliasDetails.put("servicing_provider_address", "providerAddress");
+        servicingProviderItemAliasDetails.put("servicing_provider_city", "providerCity");
+        servicingProviderItemAliasDetails.put("servicing_provider_state", "providerState");
+        servicingProviderItemAliasDetails.put("servicing_provider_zip", "providerZip");
+        servicingProviderItemAliasDetails.put("servicing_provider_specialty", "providerSpecialty");
+        metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS",servicingProviderItemAliasDetails);
+
+
+        // Service Details
+        Map serviceDetailsItemAliasDetails = new HashMap();
+        serviceDetailsItemAliasDetails.put("service_cpt_codes", "cptCodes");
+        serviceDetailsItemAliasDetails.put("service_diagnosis_codes", "diagnosisCodes");
+        serviceDetailsItemAliasDetails.put("diagnosis_description", "diagnosisDescription");
+        serviceDetailsItemAliasDetails.put("service_authorization_id", "authorizationID");
+        serviceDetailsItemAliasDetails.put("service_level_of_service", "levelOfService");
+        serviceDetailsItemAliasDetails.put("service_level_of_care", "levelOfCare");
+        serviceDetailsItemAliasDetails.put("service_start_date", "serviceStartDate");
+        serviceDetailsItemAliasDetails.put("service_end_date", "serviceEndDate");
+        serviceDetailsItemAliasDetails.put("service_admit_date", "admitDate");
+        serviceDetailsItemAliasDetails.put("service_discharge_date", "dischargeDate");
+        serviceDetailsItemAliasDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
+        metaContainerItemAliasDetails.put("SERVICING_DETAILS",serviceDetailsItemAliasDetails);
+
+
+        Map undefinedProviderDetails = new HashMap();
+        undefinedProviderDetails.put("undefined_provider_type", "providerType");
+        undefinedProviderDetails.put("undefined_provider_name", "providerName");
+        undefinedProviderDetails.put("undefined_provider_npi", "providerNPI");
+        undefinedProviderDetails.put("undefined_provider_tax_id", "providerTaxId");
+        undefinedProviderDetails.put("undefined_provider_address", "providerAddress");
+        undefinedProviderDetails.put("undefined_provider_city", "providerCity");
+        undefinedProviderDetails.put("undefined_provider_state", "providerState");
+        undefinedProviderDetails.put("undefined_provider_zip", "providerZip");
+        undefinedProviderDetails.put("undefined_provider_specialty", "providerSpecialty");
+        metaContainerItemAliasDetails.put("UNDEFINED_PROVIDER_DETAILS",undefinedProviderDetails);
+
+        return metaContainerItemAliasDetails;
+    }
+
 
     private static Map getMetaContainerItemDetails() {
         Map metaContainerItemDetails = new HashMap();
@@ -226,285 +497,23 @@ public class KryptonTransformerFinalBsh {
         servicingProviderDetails.add("servicing_provider_address_line1");
         metaContainerItemDetails.put("SERVICING_PROVIDER_DETAILS", servicingProviderDetails);
 
+
+        List undefinedProviderDetails = new ArrayList();
+        undefinedProviderDetails.add("undefined_provider_type");
+        undefinedProviderDetails.add("undefined_provider_name");
+        undefinedProviderDetails.add("undefined_provider_npi");
+        undefinedProviderDetails.add("undefined_provider_tax_id");
+        undefinedProviderDetails.add("undefined_provider_address");
+        undefinedProviderDetails.add("undefined_provider_city");
+        undefinedProviderDetails.add("undefined_provider_state");
+        undefinedProviderDetails.add("undefined_provider_zip");
+        undefinedProviderDetails.add("undefined_provider_specialty");
+        metaContainerItemDetails.put("UNDEFINED_PROVIDER_DETAILS", undefinedProviderDetails);
+
+
         return metaContainerItemDetails;
     }
 
-    static Map getMetaContainerItemAliasDetails() {
-        Map metaContainerItemAliasDetails = new HashMap();
-        Map memberContainerEntityDetails = new HashMap();
-
-        // Member Information
-        memberContainerEntityDetails.put("member_zipcode", "memberZipcode");
-        memberContainerEntityDetails.put("member_last_name", "memberName");
-        memberContainerEntityDetails.put("member_id", "memberId");
-        memberContainerEntityDetails.put("member_date_of_birth", "memberDOB");
-        memberContainerEntityDetails.put("member_gender", "memberGender");
-        memberContainerEntityDetails.put("member_state", "memberState");
-        memberContainerEntityDetails.put("member_first_name", "memberName");
-        memberContainerEntityDetails.put("member_full_name", "memberName");
-        memberContainerEntityDetails.put("medicaid_id", "medicaidId");
-        memberContainerEntityDetails.put("member_city", "memberCity");
-        memberContainerEntityDetails.put("member_address_line1", "memberAddress");
-        memberContainerEntityDetails.put("member_group_id", "memberGroupId");
-        memberContainerEntityDetails.put("member_type", "memberType");
-        memberContainerEntityDetails.put("member_phone", "memberPhone");
-        metaContainerItemAliasDetails.put("MEMBER_DETAILS",memberContainerEntityDetails);
-
-        Map facilityContainerEntityDetails = new HashMap();
-
-        // Facility Information
-        facilityContainerEntityDetails.put("servicing_facility_type", "providerFacilityType");
-        facilityContainerEntityDetails.put("servicing_facility_name", "facilityName");
-        facilityContainerEntityDetails.put("servicing_facility_npi", "providerFacilityNPI");
-        facilityContainerEntityDetails.put("servicing_facility_tax_id", "providerFacilityTaxId");
-        facilityContainerEntityDetails.put("servicing_facility_address", "providerFacilityAddress");
-        facilityContainerEntityDetails.put("servicing_facility_city", "providerFacilityCity");
-        facilityContainerEntityDetails.put("servicing_facility_state", "providerFacilityState");
-        facilityContainerEntityDetails.put("servicing_facility_zip", "providerFacilityZip");
-        facilityContainerEntityDetails.put("servicing_facility_specialty", "providerFacilitySpecialty");
-        metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS",facilityContainerEntityDetails);
-
-        Map servicingProviderContainerEntityDetails = new HashMap();
-
-        // Servicing Provider Information
-        servicingProviderContainerEntityDetails.put("servicing_provider_type", "providerType");
-        servicingProviderContainerEntityDetails.put("servicing_provider_name", "providerName");
-        servicingProviderContainerEntityDetails.put("servicing_provider_npi", "providerNPI");
-        servicingProviderContainerEntityDetails.put("servicing_provider_tax_id", "providerTaxId");
-        servicingProviderContainerEntityDetails.put("servicing_provider_address", "providerAddress");
-        servicingProviderContainerEntityDetails.put("servicing_provider_city", "providerCity");
-        servicingProviderContainerEntityDetails.put("servicing_provider_state", "providerState");
-        servicingProviderContainerEntityDetails.put("servicing_provider_zip", "providerZip");
-        servicingProviderContainerEntityDetails.put("servicing_provider_specialty", "providerSpecialty");
-        metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS",facilityContainerEntityDetails);
-
-        // Service Details
-        Map serviceDetailsContainerEntityDetails = new HashMap();
-        serviceDetailsContainerEntityDetails.put("service_cpt_codes", "cptCodes");
-        serviceDetailsContainerEntityDetails.put("service_diagnosis_codes", "diagnosisCodes");
-        serviceDetailsContainerEntityDetails.put("diagnosis_description", "diagnosisDescription");
-        serviceDetailsContainerEntityDetails.put("service_authorization_id", "authorizationID");
-        serviceDetailsContainerEntityDetails.put("service_level_of_service", "levelOfService");
-        serviceDetailsContainerEntityDetails.put("service_level_of_care", "levelOfCare");
-        serviceDetailsContainerEntityDetails.put("service_start_date", "serviceStartDate");
-        serviceDetailsContainerEntityDetails.put("service_end_date", "serviceEndDate");
-        serviceDetailsContainerEntityDetails.put("service_admit_date", "admitDate");
-        serviceDetailsContainerEntityDetails.put("service_discharge_date", "dischargeDate");
-        serviceDetailsContainerEntityDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
-        metaContainerItemAliasDetails.put("SERVICING_DETAILS",facilityContainerEntityDetails);
-
-        return metaContainerItemAliasDetails;
-    }
-
-
-
-    Map inputKryptonJson() {
-        Map inputJson = new HashMap();
-        Map memberInformation = new HashMap();
-        memberInformation.put("memberType", "");
-        memberInformation.put("memberName", "");
-        memberInformation.put("memberId", "");
-        memberInformation.put("memberGroupId", null);
-        memberInformation.put("memberDOB", "");
-        memberInformation.put("memberAddress", "");
-        memberInformation.put("memberCity", "");
-        memberInformation.put("memberState", "");
-        memberInformation.put("memberZipcode", "");
-        memberInformation.put("memberPhone", null);
-        memberInformation.put("medicaidId", "");
-        memberInformation.put("memberGender", "null");
-
-        Map serviceDetails = new HashMap();
-        serviceDetails.put("cptCodes", Arrays.asList("", ""));
-        serviceDetails.put("diagnosisCodes", new ArrayList());
-        serviceDetails.put("authorizationID", "");
-        serviceDetails.put("levelOfService", "");
-        serviceDetails.put("levelOfCare", Arrays.asList(""));
-        serviceDetails.put("serviceStartDate", "");
-        serviceDetails.put("serviceEndDate", null);
-        serviceDetails.put("admitDate", "");
-        serviceDetails.put("dischargeDate", null);
-        serviceDetails.put("voluntaryInvoluntaryStatus", "");
-
-        inputJson.put("MemberInformation", Arrays.asList(memberInformation));
-        inputJson.put("ServiceDetails", serviceDetails);
-
-        return inputJson;
-    }
-
-    public static List mapToMemberDetails(String metaContainerKey, JSONArray memberInformations) {
-        // Define priority checklist for member types
-        Map containerCheckList = getStringListMap();
-        List checkListValues = (List) containerCheckList.get(metaContainerKey);        // Handle case with multiple members
-        List allMembers = extractAllMemberTypes(memberInformations);
-
-        // Calculate ranks for each member type
-        Map memberTypeRanks = calculateMemberTypeRanks(allMembers, checkListValues);
-
-        // Find member type with minimum rank
-        String memberTypeWithMinRank = findMemberTypeWithMinRank(memberTypeRanks);
-
-        // Find index of this member type in the memberInformation list
-        int indexOfMinRankMember = findIndexOfMinRankMember(allMembers, memberTypeWithMinRank);
-
-        // Create the final result by adding member information of the member with the minimum rank
-        List finalResult = new ArrayList();
-        if (indexOfMinRankMember >= 0 && indexOfMinRankMember < memberInformations.length()) {
-            finalResult = addMemberInfoToFinalResult(memberInformations, indexOfMinRankMember,finalResult);
-        }
-
-        return finalResult;
-    }
-
-
-    // Method to extract all member types from memberInformations
-    private static List extractAllMemberTypes(JSONArray memberInformations) {
-        List allMembers = new ArrayList();
-
-        List containerTypeKeys = getList();
-
-        Iterator iterator = memberInformations.iterator();
-        while (iterator.hasNext()) {
-            Object item = iterator.next();
-
-            if (item instanceof JSONObject) {
-
-                JSONObject memberMap = (JSONObject) item; // Cast to JSONObject instead of Map
-                for ( Object containerTypeKey : containerTypeKeys) {
-                    if (memberMap.has(containerTypeKey.toString())) {
-                        Object memberTypeObj = memberMap.opt(containerTypeKey.toString());
-                        String memberTypeValue = "";
-                        if (memberTypeObj != null) {
-                            memberTypeValue = memberTypeObj.toString();
-                        }
-
-                        if (memberTypeValue != null &&
-                                memberTypeValue.trim().length() > 0 &&
-                                !memberTypeValue.equals("null")) {
-                            allMembers.add(memberTypeValue);
-                        } else {
-                            allMembers.add("");
-                        }
-                    }
-                }
-            }
-        }
-        return allMembers;
-    }
-
-
-    private static List getList() {
-        List containerTypeKeys = new ArrayList();
-        containerTypeKeys.add("memberType");
-        containerTypeKeys.add("providerType");
-        return containerTypeKeys;
-    }
-
-    // Method to calculate ranks for each member type based on the checklist
-    private static Map calculateMemberTypeRanks(List allMembers, List memberChecklist) {
-        Map memberTypeRanks = new HashMap();
-        Iterator membersIterator = allMembers.iterator();
-        while (membersIterator.hasNext()) {
-            String memberType = (String) membersIterator.next();
-            int rank = memberChecklist.indexOf(memberType.toLowerCase()) + 1;
-            if (rank == 0) {
-                rank = Integer.MAX_VALUE;
-            }
-            memberTypeRanks.put(memberType, new Integer(rank));
-        }
-        return memberTypeRanks;
-    }
-
-    // Method to find the member type with the minimum rank
-    private static String findMemberTypeWithMinRank(Map memberTypeRanks) {
-        String memberTypeWithMinRank = null;
-        int minRank = Integer.MAX_VALUE;
-
-        Iterator rankEntryIterator = memberTypeRanks.entrySet().iterator();
-        while (rankEntryIterator.hasNext()) {
-            Map.Entry entry = (Map.Entry) rankEntryIterator.next();
-            Integer rankValue = (Integer) entry.getValue();
-            if (rankValue.intValue() < minRank) {
-                minRank = rankValue.intValue();
-                memberTypeWithMinRank = (String) entry.getKey();
-            }
-        }
-        return memberTypeWithMinRank;
-    }
-
-    // Method to find the index of the member type with minimum rank in allMembers list
-    private static int findIndexOfMinRankMember(List allMembers, String memberTypeWithMinRank) {
-        int indexOfMinRankMember = -1;
-        for (int i = 0; i < allMembers.size(); i++) {
-            String member = (String) allMembers.get(i);
-            if (member.equals(memberTypeWithMinRank)) {
-                indexOfMinRankMember = i;
-                break;
-            }
-        }
-        return indexOfMinRankMember;
-    }
-
-    // Method to add the selected member's information to the final result
-    private static List addMemberInfoToFinalResult(JSONArray memberInformation, int indexOfMinRankMember, List finalResult) {
-        JSONObject inputJsonObject = memberInformation.optJSONObject(indexOfMinRankMember); // Get JSONObject instead of Map        Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
-        if (inputJsonObject != null) {
-            Iterator entryIterator = inputJsonObject.keys();
-        while (entryIterator.hasNext()) {
-            String key = (String) entryIterator.next(); // Get key as String            Map memberInfo = new HashMap();
-                    Map memberInfo = new HashMap();
-                    memberInfo.put("key", key);
-                    memberInfo.put("value", inputJsonObject.optString(key) != null ? inputJsonObject.optString(key) : "");
-                    memberInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
-                    memberInfo.put("boundingBox", new HashMap());
-                    finalResult.add(memberInfo);
-
-         }
-        }
-        return finalResult;
-    }
-
-
-    private static Map getStringListMap() {
-        Map containerCheckList = new HashMap();
-        List memberChecklist = new ArrayList();
-        memberChecklist.add("member");
-        memberChecklist.add("patient");
-        memberChecklist.add("subscriber");
-        memberChecklist.add("Enrollee");
-
-        List referringProviderChecklist = new ArrayList();
-        referringProviderChecklist.add("member");
-        referringProviderChecklist.add("patient");
-        referringProviderChecklist.add("subscriber");
-        referringProviderChecklist.add("Enrollee");
-
-        List servicingProviderChecklist = new ArrayList();
-        servicingProviderChecklist.add("member");
-        servicingProviderChecklist.add("patient");
-        servicingProviderChecklist.add("subscriber");
-        servicingProviderChecklist.add("Enrollee");
-
-        List servicingFacilityChecklist = new ArrayList();
-        servicingFacilityChecklist.add("member");
-        servicingFacilityChecklist.add("patient");
-        servicingFacilityChecklist.add("subscriber");
-        servicingFacilityChecklist.add("Enrollee");
-
-        List serviceDetailsChecklist = new ArrayList();
-        serviceDetailsChecklist.add("member");
-        serviceDetailsChecklist.add("patient");
-        serviceDetailsChecklist.add("subscriber");
-        serviceDetailsChecklist.add("Enrollee");
-
-        containerCheckList.put("MEMBER_DETAILS", memberChecklist);
-        containerCheckList.put("REFERRING_PROVIDER_DETAILS", referringProviderChecklist);
-        containerCheckList.put("SERVICING_DETAILS", serviceDetailsChecklist);
-        containerCheckList.put("SERVICING_FACILITY_DETAILS", servicingFacilityChecklist);
-        containerCheckList.put("SERVICING_PROVIDER_DETAILS", servicingProviderChecklist);
-        containerCheckList.put("UNDEFINED_PROVIDER_DETAILS", memberChecklist);
-        return containerCheckList;
-    }
 
 }
 
