@@ -66,19 +66,9 @@ public class KryptonTransformerFinalBsh {
                 }
             }
             }else{
-//                if(metaContainerKey.equals("MEMBER_DETAILS")){
+
                     List outputList = mapToMemberDetails(metaContainerKey, jsonArray);
                     appendToOutput(metaContainerKey, outputList, outputJson);
-//                }
-//                else {
-//                    for (int i = 0; i < jsonArray.length(); i++) {
-//                        JSONObject item = jsonArray.optJSONObject(i);
-//                        if (item != null) {
-//                            List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
-//                            appendToOutput(metaContainerKey, outputList, outputJson);
-//                        }
-//                    }
-//                }
 
             }
         } else if (jsonValue instanceof JSONObject) {
