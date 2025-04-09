@@ -187,23 +187,23 @@ public class KryptonJsonDataTransformer {
                         kvpContainers.put(containerName, llmJsonParserKvpKryptonList);
                     }
                 }
-                kvpContainers.forEach((container, kvps) -> {
-                    Optional<String> containerIdOpt = getContainerId(container);
-                    containerIdOpt.ifPresent(containerId -> {
-                        try {
-                            String responseJson = objectMapper.writeValueAsString(kvps);
-                            String encryptedContent = encryptIfRequired(responseJson);
 
-                            outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, encryptedContent));
-                        } catch (JsonProcessingException e) {
-                            throw new HandymanException("Error processing JSON", e, action);
-                        }
-                    });
-                });
 
             });
 
+            kvpContainers.forEach((container, kvps) -> {
+                Optional<String> containerIdOpt = getContainerId(container);
+                containerIdOpt.ifPresent(containerId -> {
+                    try {
+                        String responseJson = objectMapper.writeValueAsString(kvps);
+                        String encryptedContent = encryptIfRequired(responseJson);
 
+                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, encryptedContent));
+                    } catch (JsonProcessingException e) {
+                        throw new HandymanException("Error processing JSON", e, action);
+                    }
+                });
+            });
 
         }
 
