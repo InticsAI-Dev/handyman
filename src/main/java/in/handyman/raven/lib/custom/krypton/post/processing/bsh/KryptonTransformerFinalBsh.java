@@ -352,26 +352,26 @@ public class KryptonTransformerFinalBsh {
         // Facility Information
         Map facilityContainerItemAliasDetails = new HashMap();
         facilityContainerItemAliasDetails.put("servicing_facility_type", "providerType");
-        facilityContainerItemAliasDetails.put("servicing_facility_name", "providerName");
+        facilityContainerItemAliasDetails.put("servicing_facility_full_name", "providerName");
         facilityContainerItemAliasDetails.put("servicing_facility_npi", "providerNPI");
-        facilityContainerItemAliasDetails.put("servicing_facility_tax_id", "providerTaxId");
-        facilityContainerItemAliasDetails.put("servicing_facility_address", "providerAddress");
+        facilityContainerItemAliasDetails.put("servicing_facility_tin", "providerTaxId");
+        facilityContainerItemAliasDetails.put("servicing_facility_address_line1", "providerAddress");
         facilityContainerItemAliasDetails.put("servicing_facility_city", "providerCity");
         facilityContainerItemAliasDetails.put("servicing_facility_state", "providerState");
-        facilityContainerItemAliasDetails.put("servicing_facility_zip", "providerZip");
+        facilityContainerItemAliasDetails.put("servicing_facility_zipcode", "providerZip");
         facilityContainerItemAliasDetails.put("servicing_facility_specialty", "providerSpecialty");
         metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS",facilityContainerItemAliasDetails);
 
         // REFERRING PROVIDER
         Map referringProviderItemAliasDetails = new HashMap();
         referringProviderItemAliasDetails.put("referring_provider_type", "providerType");
-        referringProviderItemAliasDetails.put("referring_provider_name", "providerName");
+        referringProviderItemAliasDetails.put("referring_provider_full_name", "providerName");
         referringProviderItemAliasDetails.put("referring_provider_npi", "providerNPI");
-        referringProviderItemAliasDetails.put("referring_provider_tax_id", "providerTaxId");
-        referringProviderItemAliasDetails.put("referring_provider_address", "providerAddress");
+        referringProviderItemAliasDetails.put("referring_provider_tin", "providerTaxId");
+        referringProviderItemAliasDetails.put("referring_provider_address_line1", "providerAddress");
         referringProviderItemAliasDetails.put("referring_provider_city", "providerCity");
         referringProviderItemAliasDetails.put("referring_provider_state", "providerState");
-        referringProviderItemAliasDetails.put("referring_provider_zip", "providerZip");
+        referringProviderItemAliasDetails.put("referring_provider_zipcode", "providerZip");
         referringProviderItemAliasDetails.put("referring_provider_specialty", "providerSpecialty");
         metaContainerItemAliasDetails.put("REFERRING_PROVIDER_DETAILS",referringProviderItemAliasDetails);
 
@@ -380,29 +380,29 @@ public class KryptonTransformerFinalBsh {
         // Servicing Provider Information
         Map servicingProviderItemAliasDetails = new HashMap();
         servicingProviderItemAliasDetails.put("servicing_provider_type", "providerType");
-        servicingProviderItemAliasDetails.put("servicing_provider_name", "providerName");
+        servicingProviderItemAliasDetails.put("servicing_provider_full_name", "providerName");
         servicingProviderItemAliasDetails.put("servicing_provider_npi", "providerNPI");
-        servicingProviderItemAliasDetails.put("servicing_provider_tax_id", "providerTaxId");
-        servicingProviderItemAliasDetails.put("servicing_provider_address", "providerAddress");
+        servicingProviderItemAliasDetails.put("servicing_provider_tin", "providerTaxId");
+        servicingProviderItemAliasDetails.put("servicing_provider_address_line1", "providerAddress");
         servicingProviderItemAliasDetails.put("servicing_provider_city", "providerCity");
         servicingProviderItemAliasDetails.put("servicing_provider_state", "providerState");
-        servicingProviderItemAliasDetails.put("servicing_provider_zip", "providerZip");
+        servicingProviderItemAliasDetails.put("servicing_provider_zipcode", "providerZip");
         servicingProviderItemAliasDetails.put("servicing_provider_specialty", "providerSpecialty");
         metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS",servicingProviderItemAliasDetails);
 
 
         // Service Details
         Map serviceDetailsItemAliasDetails = new HashMap();
-        serviceDetailsItemAliasDetails.put("service_cpt_codes", "cptCodes");
-        serviceDetailsItemAliasDetails.put("service_diagnosis_codes", "diagnosisCodes");
+        serviceDetailsItemAliasDetails.put("service_code", "cptCodes");
+        serviceDetailsItemAliasDetails.put("diagnosis_code", "diagnosisCodes");
         serviceDetailsItemAliasDetails.put("diagnosis_description", "diagnosisDescription");
-        serviceDetailsItemAliasDetails.put("service_authorization_id", "authorizationID");
-        serviceDetailsItemAliasDetails.put("service_level_of_service", "levelOfService");
-        serviceDetailsItemAliasDetails.put("service_level_of_care", "levelOfCare");
-        serviceDetailsItemAliasDetails.put("service_start_date", "serviceStartDate");
-        serviceDetailsItemAliasDetails.put("service_end_date", "serviceEndDate");
-        serviceDetailsItemAliasDetails.put("service_admit_date", "admitDate");
-        serviceDetailsItemAliasDetails.put("service_discharge_date", "dischargeDate");
+        serviceDetailsItemAliasDetails.put("auth_id", "authorizationID");
+        serviceDetailsItemAliasDetails.put("level_of_service", "levelOfService");
+        serviceDetailsItemAliasDetails.put("level_of_care", "levelOfCare");
+        serviceDetailsItemAliasDetails.put("service_from_date", "serviceStartDate");
+        serviceDetailsItemAliasDetails.put("service_to_date", "serviceEndDate");
+        serviceDetailsItemAliasDetails.put("auth_admit_date", "admitDate");
+        serviceDetailsItemAliasDetails.put("auth_discharge_date", "dischargeDate");
         serviceDetailsItemAliasDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
         metaContainerItemAliasDetails.put("SERVICING_DETAILS",serviceDetailsItemAliasDetails);
 
@@ -421,7 +421,6 @@ public class KryptonTransformerFinalBsh {
 
         return metaContainerItemAliasDetails;
     }
-
 
     private static Map getMetaContainerItemDetails() {
         Map metaContainerItemDetails = new HashMap();
