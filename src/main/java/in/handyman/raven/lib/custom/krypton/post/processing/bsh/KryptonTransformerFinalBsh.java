@@ -580,7 +580,6 @@ public class KryptonTransformerFinalBsh {
         return metaContainerItemAliasDetails;
     }
 
-
     private static Map getMetaContainerItemDetails() {
         Map metaContainerItemDetails = new HashMap();
 
