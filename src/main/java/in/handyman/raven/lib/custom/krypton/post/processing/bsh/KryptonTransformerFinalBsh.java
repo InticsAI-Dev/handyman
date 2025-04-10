@@ -631,7 +631,6 @@ public class KryptonTransformerFinalBsh {
         servicingFacilityDetails.add("servicing_facility_state");
         servicingFacilityDetails.add("servicing_facility_zipcode");
         servicingFacilityDetails.add("servicing_facility_full_name");
-        servicingFacilityDetails.add("servicing_facility_full_name");
         servicingFacilityDetails.add("servicing_facility_last_name");
         servicingFacilityDetails.add("servicing_facility_specialty");
         servicingFacilityDetails.add("servicing_facility_address_line2");
