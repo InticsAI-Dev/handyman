@@ -92,20 +92,59 @@ public class KryptonTransformerFinalBsh {
         List outputJson = new ArrayList();
         Iterator metaKeyIterator = metaItemAndKeyDetails.keySet().iterator();
 
+        List validName = new ArrayList<>();
+        validName.add("providerName");
+        validName.add("memberName");
+
+        List nameFirstLast = new ArrayList<>();
+        nameFirstLast.add("first_name");
+        nameFirstLast.add("last_name");
+
+
         while (metaKeyIterator.hasNext()) {
             String metaKey = (String) metaKeyIterator.next();
             String jsonKey = (String) metaItemAndKeyDetails.get(metaKey);
             if (jsonObject.has(jsonKey)) {
-                Map outputObject = new HashMap();
-                outputObject.put("key", metaKey);
-                outputObject.put("value", jsonObject.optString(jsonKey) != null ? jsonObject.optString(jsonKey) : "");
-                outputObject.put("confidence", new Integer(100));
-                outputObject.put("boundingBox", new HashMap());
-                outputJson.add(outputObject);
+                if(!validName.contains(jsonKey)){
+                    String value = jsonObject.optString(jsonKey) != null ? jsonObject.optString(jsonKey) : "";
+                    outputJsonBind(jsonObject, metaKey, value, outputJson);
+                }else {
+                    String value = jsonObject.optString(jsonKey) != null ? jsonObject.optString(jsonKey) : "";
+                   if(metaKey.contains("member_full_name")){
+                       Map nameList = transformMemberName(jsonKey, metaKey, value);
+                       outputJsonBind(jsonObject, "member_full_name", (String) nameList.get("member_full_name"), outputJson);
+                       outputJsonBind(jsonObject, "member_first_name", (String) nameList.get("member_first_name"), outputJson);
+                       outputJsonBind(jsonObject, "member_last_name", (String) nameList.get("member_last_name"), outputJson);
+                   }else if(metaKey.contains("servicing_provider_full_name")){
+                        Map nameList = transformServicingProviderName(jsonKey, metaKey, value);
+                        outputJsonBind(jsonObject, "servicing_provider_full_name", (String) nameList.get("servicing_provider_full_name"), outputJson);
+                        outputJsonBind(jsonObject, "servicing_provider_first_name", (String) nameList.get("servicing_provider_first_name"), outputJson);
+                        outputJsonBind(jsonObject, "servicing_provider_last_name", (String) nameList.get("servicing_provider_last_name"), outputJson);
+                    }else if(metaKey.contains("referring_provider_full_name")){
+                       Map nameList = transformReferringProviderName(jsonKey, metaKey, value);
+                       outputJsonBind(jsonObject, "referring_provider_full_name", (String) nameList.get("referring_provider_full_name"), outputJson);
+                       outputJsonBind(jsonObject, "referring_provider_first_name", (String) nameList.get("referring_provider_first_name"), outputJson);
+                       outputJsonBind(jsonObject, "referring_provider_last_name", (String) nameList.get("referring_provider_last_name"), outputJson);
+                   }else if(metaKey.contains("referring_provider_full_name")){
+                       Map nameList = transformFacilityProviderName(jsonKey, metaKey, value);
+                       outputJsonBind(jsonObject, "servicing_facility_full_name", (String) nameList.get("servicing_facility_full_name"), outputJson);
+                       outputJsonBind(jsonObject, "servicing_facility_first_name", (String) nameList.get("servicing_facility_first_name"), outputJson);
+                       outputJsonBind(jsonObject, "servicing_facility_last_name", (String) nameList.get("servicing_facility_last_name"), outputJson);
+                   }
+                }
             }
         }
 
         return outputJson;
+    }
+
+    private static void outputJsonBind(JSONObject jsonObjectvalue, String metaKey, String value, List outputJson) {
+        Map outputObject = new HashMap();
+        outputObject.put("key", metaKey);
+        outputObject.put("value", !value.isEmpty() ? value: "");
+        outputObject.put("confidence", new Integer(100));
+        outputObject.put("boundingBox", new HashMap());
+        outputJson.add(outputObject);
     }
 
     public static List mapTopritorityCheckDetails(String metaContainerKey, JSONArray containerInformations) {
@@ -234,6 +273,125 @@ public class KryptonTransformerFinalBsh {
         return finalResult;
     }
 
+    static Map transformServicingProviderName( String containerName, String sorItemName,String name) {
+
+        if (name == null || name.trim().isEmpty()) {
+            return new HashMap();
+        }
+
+        String[] parts = name.trim().split("\\s+");
+        String firstName, lastName = "";
+
+        if (parts.length > 1) {
+            firstName = "";
+            for (int i = 0; i < parts.length - 1; i++) {
+                firstName += parts[i] + " ";
+            }
+            firstName = firstName.trim();
+            lastName = parts[parts.length - 1];
+        } else {
+            firstName = parts[0];
+            lastName = "";
+        }
+
+        Map processedName = new HashMap();
+        processedName.put("servicing_provider_first_name",firstName);
+        processedName.put("servicing_provider_last_name",lastName);
+        processedName.put("servicing_provider_full_name",name);
+
+
+        return processedName;
+    }
+
+    static Map transformMemberName( String containerName, String sorItemName,String name) {
+
+        if (name == null || name.trim().isEmpty()) {
+            return new HashMap();
+        }
+
+        String[] parts = name.trim().split("\\s+");
+        String firstName, lastName = "";
+
+        if (parts.length > 1) {
+            firstName = "";
+            for (int i = 0; i < parts.length - 1; i++) {
+                firstName += parts[i] + " ";
+            }
+            firstName = firstName.trim();
+            lastName = parts[parts.length - 1];
+        } else {
+            firstName = parts[0];
+            lastName = "";
+        }
+
+        Map processedName = new HashMap();
+        processedName.put("member_first_name",firstName);
+        processedName.put("member_last_name",lastName);
+        processedName.put("member_full_name", name);
+
+        return processedName;
+    }
+
+    static Map transformReferringProviderName( String containerName, String sorItemName,String name) {
+
+        if (name == null || name.trim().isEmpty()) {
+            return new HashMap();
+        }
+
+        String[] parts = name.trim().split("\\s+");
+        String firstName, lastName = "";
+
+        if (parts.length > 1) {
+            firstName = "";
+            for (int i = 0; i < parts.length - 1; i++) {
+                firstName += parts[i] + " ";
+            }
+            firstName = firstName.trim();
+            lastName = parts[parts.length - 1];
+        } else {
+            firstName = parts[0];
+            lastName = "";
+        }
+
+        Map processedName = new HashMap();
+        processedName.put("referring_provider_first_name",firstName);
+        processedName.put("referring_provider_last_name",lastName);
+        processedName.put("referring_provider_full_name",name);
+
+
+        return processedName;
+    }
+
+    static Map transformFacilityProviderName( String containerName, String sorItemName,String name) {
+
+        if (name == null || name.trim().isEmpty()) {
+            return new HashMap();
+        }
+
+        String[] parts = name.trim().split("\\s+");
+        String firstName, lastName = "";
+
+        if (parts.length > 1) {
+            firstName = "";
+            for (int i = 0; i < parts.length - 1; i++) {
+                firstName += parts[i] + " ";
+            }
+            firstName = firstName.trim();
+            lastName = parts[parts.length - 1];
+        } else {
+            firstName = parts[0];
+            lastName = "";
+        }
+
+        Map processedName = new HashMap();
+        processedName.put("referring_provider_first_name",firstName);
+        processedName.put("referring_provider_last_name",lastName);
+        processedName.put("referring_provider_full_name",name);
+
+
+        return processedName;
+    }
+
 
     private static Map getMetaContainerNodeAliasDetails() {
         Map metaContainerEntityDetails = new HashMap();
@@ -352,26 +510,26 @@ public class KryptonTransformerFinalBsh {
         // Facility Information
         Map facilityContainerItemAliasDetails = new HashMap();
         facilityContainerItemAliasDetails.put("servicing_facility_type", "providerType");
-        facilityContainerItemAliasDetails.put("servicing_facility_name", "providerName");
+        facilityContainerItemAliasDetails.put("servicing_facility_full_name", "providerName");
         facilityContainerItemAliasDetails.put("servicing_facility_npi", "providerNPI");
-        facilityContainerItemAliasDetails.put("servicing_facility_tax_id", "providerTaxId");
-        facilityContainerItemAliasDetails.put("servicing_facility_address", "providerAddress");
+        facilityContainerItemAliasDetails.put("servicing_facility_tin", "providerTaxId");
+        facilityContainerItemAliasDetails.put("servicing_facility_address_line1", "providerAddress");
         facilityContainerItemAliasDetails.put("servicing_facility_city", "providerCity");
         facilityContainerItemAliasDetails.put("servicing_facility_state", "providerState");
-        facilityContainerItemAliasDetails.put("servicing_facility_zip", "providerZip");
+        facilityContainerItemAliasDetails.put("servicing_facility_zipcode", "providerZip");
         facilityContainerItemAliasDetails.put("servicing_facility_specialty", "providerSpecialty");
         metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS",facilityContainerItemAliasDetails);
 
         // REFERRING PROVIDER
         Map referringProviderItemAliasDetails = new HashMap();
         referringProviderItemAliasDetails.put("referring_provider_type", "providerType");
-        referringProviderItemAliasDetails.put("referring_provider_name", "providerName");
+        referringProviderItemAliasDetails.put("referring_provider_full_name", "providerName");
         referringProviderItemAliasDetails.put("referring_provider_npi", "providerNPI");
-        referringProviderItemAliasDetails.put("referring_provider_tax_id", "providerTaxId");
-        referringProviderItemAliasDetails.put("referring_provider_address", "providerAddress");
+        referringProviderItemAliasDetails.put("referring_provider_tin", "providerTaxId");
+        referringProviderItemAliasDetails.put("referring_provider_address_line1", "providerAddress");
         referringProviderItemAliasDetails.put("referring_provider_city", "providerCity");
         referringProviderItemAliasDetails.put("referring_provider_state", "providerState");
-        referringProviderItemAliasDetails.put("referring_provider_zip", "providerZip");
+        referringProviderItemAliasDetails.put("referring_provider_zipcode", "providerZip");
         referringProviderItemAliasDetails.put("referring_provider_specialty", "providerSpecialty");
         metaContainerItemAliasDetails.put("REFERRING_PROVIDER_DETAILS",referringProviderItemAliasDetails);
 
@@ -380,29 +538,29 @@ public class KryptonTransformerFinalBsh {
         // Servicing Provider Information
         Map servicingProviderItemAliasDetails = new HashMap();
         servicingProviderItemAliasDetails.put("servicing_provider_type", "providerType");
-        servicingProviderItemAliasDetails.put("servicing_provider_name", "providerName");
+        servicingProviderItemAliasDetails.put("servicing_provider_full_name", "providerName");
         servicingProviderItemAliasDetails.put("servicing_provider_npi", "providerNPI");
-        servicingProviderItemAliasDetails.put("servicing_provider_tax_id", "providerTaxId");
-        servicingProviderItemAliasDetails.put("servicing_provider_address", "providerAddress");
+        servicingProviderItemAliasDetails.put("servicing_provider_tin", "providerTaxId");
+        servicingProviderItemAliasDetails.put("servicing_provider_address_line1", "providerAddress");
         servicingProviderItemAliasDetails.put("servicing_provider_city", "providerCity");
         servicingProviderItemAliasDetails.put("servicing_provider_state", "providerState");
-        servicingProviderItemAliasDetails.put("servicing_provider_zip", "providerZip");
+        servicingProviderItemAliasDetails.put("servicing_provider_zipcode", "providerZip");
         servicingProviderItemAliasDetails.put("servicing_provider_specialty", "providerSpecialty");
         metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS",servicingProviderItemAliasDetails);
 
 
         // Service Details
         Map serviceDetailsItemAliasDetails = new HashMap();
-        serviceDetailsItemAliasDetails.put("service_cpt_codes", "cptCodes");
-        serviceDetailsItemAliasDetails.put("service_diagnosis_codes", "diagnosisCodes");
+        serviceDetailsItemAliasDetails.put("service_code", "cptCodes");
+        serviceDetailsItemAliasDetails.put("diagnosis_code", "diagnosisCodes");
         serviceDetailsItemAliasDetails.put("diagnosis_description", "diagnosisDescription");
-        serviceDetailsItemAliasDetails.put("service_authorization_id", "authorizationID");
-        serviceDetailsItemAliasDetails.put("service_level_of_service", "levelOfService");
-        serviceDetailsItemAliasDetails.put("service_level_of_care", "levelOfCare");
-        serviceDetailsItemAliasDetails.put("service_start_date", "serviceStartDate");
-        serviceDetailsItemAliasDetails.put("service_end_date", "serviceEndDate");
-        serviceDetailsItemAliasDetails.put("service_admit_date", "admitDate");
-        serviceDetailsItemAliasDetails.put("service_discharge_date", "dischargeDate");
+        serviceDetailsItemAliasDetails.put("auth_id", "authorizationID");
+        serviceDetailsItemAliasDetails.put("level_of_service", "levelOfService");
+        serviceDetailsItemAliasDetails.put("level_of_care", "levelOfCare");
+        serviceDetailsItemAliasDetails.put("service_from_date", "serviceStartDate");
+        serviceDetailsItemAliasDetails.put("service_to_date", "serviceEndDate");
+        serviceDetailsItemAliasDetails.put("auth_admit_date", "admitDate");
+        serviceDetailsItemAliasDetails.put("auth_discharge_date", "dischargeDate");
         serviceDetailsItemAliasDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
         metaContainerItemAliasDetails.put("SERVICING_DETAILS",serviceDetailsItemAliasDetails);
 
