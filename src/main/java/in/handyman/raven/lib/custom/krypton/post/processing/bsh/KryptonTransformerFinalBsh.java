@@ -39,8 +39,8 @@ public class KryptonTransformerFinalBsh {
         while (metaKeys.hasNext()) {
             String metaContainerKey = (String) metaKeys.next();
             List values = (List) metaContainerEntityDetails.get(metaContainerKey);
-            if(metaContainerItemAliasDetails.containsKey(metaContainerKey)){
-                Map metaItemAndKeyDetails=(Map) metaContainerItemAliasDetails.get(metaContainerKey);
+            if (metaContainerItemAliasDetails.containsKey(metaContainerKey)) {
+                Map metaItemAndKeyDetails = (Map) metaContainerItemAliasDetails.get(metaContainerKey);
 
                 if (values.contains(jsonKey)) {
                     Object jsonValue = jsonObject.opt(jsonKey);
@@ -57,18 +57,18 @@ public class KryptonTransformerFinalBsh {
         if (jsonValue instanceof JSONArray) {
             JSONArray jsonArray = (JSONArray) jsonValue;
             Integer infoNodeLen = jsonArray.length();
-            if(infoNodeLen<2){
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject item = jsonArray.optJSONObject(i);
-                if (item != null) {
-                    List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
-                    appendToOutput(metaContainerKey, outputList, outputJson);
+            if (infoNodeLen < 2) {
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject item = jsonArray.optJSONObject(i);
+                    if (item != null) {
+                        List outputList = buildOutputList(metaContainerKey, item, metaContainerItemDetails, metaItemAndKeyDetails);
+                        appendToOutput(metaContainerKey, outputList, outputJson);
+                    }
                 }
-            }
-            }else{
+            } else {
 
-                    List outputList = mapTopritorityCheckDetails(metaContainerKey, jsonArray);
-                    appendToOutput(metaContainerKey, outputList, outputJson);
+                List outputList = mapTopritorityCheckDetails(metaContainerKey, jsonArray);
+                appendToOutput(metaContainerKey, outputList, outputJson);
 
             }
         } else if (jsonValue instanceof JSONObject) {
@@ -165,7 +165,7 @@ public class KryptonTransformerFinalBsh {
         // Create the final result by adding Containers information of the Containers with the minimum rank
         List finalResult = new ArrayList();
         if (indexOfMinRankContainers >= 0 && indexOfMinRankContainers < containerInformations.length()) {
-            finalResult = addContainerInfoToFinalResult(containerInformations, indexOfMinRankContainers,finalResult);
+            finalResult = addContainerInfoToFinalResult(containerInformations, indexOfMinRankContainers, finalResult);
         }
 
         return finalResult;
@@ -185,7 +185,7 @@ public class KryptonTransformerFinalBsh {
             if (item instanceof JSONObject) {
 
                 JSONObject containerMap = (JSONObject) item; // Cast to JSONObject instead of Map
-                for ( Object containerTypeKey : containerTypeKeys) {
+                for (Object containerTypeKey : containerTypeKeys) {
                     if (containerMap.has(containerTypeKey.toString())) {
                         Object containerTypeObj = containerMap.opt(containerTypeKey.toString());
                         String containerTypeValue = "";
@@ -206,7 +206,6 @@ public class KryptonTransformerFinalBsh {
         }
         return allContainers;
     }
-
 
 
     // Method to calculate ranks for each container type based on the checklist
@@ -268,7 +267,7 @@ public class KryptonTransformerFinalBsh {
                     containerInfo.put("boundingBox", new HashMap());
                     finalResult.add(containerInfo);
 
-         }
+            }
         }
         return finalResult;
     }
@@ -458,7 +457,7 @@ public class KryptonTransformerFinalBsh {
         servicingFacilityChecklist.add("Admitting Facility");
 
         List serviceDetailsChecklist = new ArrayList();
-        serviceDetailsChecklist.add("member");
+        serviceDetailsChecklist.add("Service Details");
 
         List undefinedDetailsChecklist = new ArrayList();
         undefinedDetailsChecklist.add("undefined");
@@ -503,8 +502,7 @@ public class KryptonTransformerFinalBsh {
         memberContainerItemAliasDetails.put("member_group_id", "memberGroupId");
         memberContainerItemAliasDetails.put("member_type", "memberType");
         memberContainerItemAliasDetails.put("member_phone", "memberPhone");
-        metaContainerItemAliasDetails.put("MEMBER_DETAILS",memberContainerItemAliasDetails);
-
+        metaContainerItemAliasDetails.put("MEMBER_DETAILS", memberContainerItemAliasDetails);
 
 
         // Facility Information
@@ -518,7 +516,7 @@ public class KryptonTransformerFinalBsh {
         facilityContainerItemAliasDetails.put("servicing_facility_state", "providerState");
         facilityContainerItemAliasDetails.put("servicing_facility_zipcode", "providerZip");
         facilityContainerItemAliasDetails.put("servicing_facility_specialty", "providerSpecialty");
-        metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS",facilityContainerItemAliasDetails);
+        metaContainerItemAliasDetails.put("SERVICING_FACILITY_DETAILS", facilityContainerItemAliasDetails);
 
         // REFERRING PROVIDER
         Map referringProviderItemAliasDetails = new HashMap();
@@ -531,14 +529,15 @@ public class KryptonTransformerFinalBsh {
         referringProviderItemAliasDetails.put("referring_provider_state", "providerState");
         referringProviderItemAliasDetails.put("referring_provider_zipcode", "providerZip");
         referringProviderItemAliasDetails.put("referring_provider_specialty", "providerSpecialty");
-        metaContainerItemAliasDetails.put("REFERRING_PROVIDER_DETAILS",referringProviderItemAliasDetails);
-
+        metaContainerItemAliasDetails.put("REFERRING_PROVIDER_DETAILS", referringProviderItemAliasDetails);
 
 
         // Servicing Provider Information
         Map servicingProviderItemAliasDetails = new HashMap();
         servicingProviderItemAliasDetails.put("servicing_provider_type", "providerType");
         servicingProviderItemAliasDetails.put("servicing_provider_full_name", "providerName");
+        servicingProviderItemAliasDetails.put("servicing_provider_first_name", "providerName");
+        servicingProviderItemAliasDetails.put("servicing_provider_last_name", "providerName");
         servicingProviderItemAliasDetails.put("servicing_provider_npi", "providerNPI");
         servicingProviderItemAliasDetails.put("servicing_provider_tin", "providerTaxId");
         servicingProviderItemAliasDetails.put("servicing_provider_address_line1", "providerAddress");
@@ -546,7 +545,7 @@ public class KryptonTransformerFinalBsh {
         servicingProviderItemAliasDetails.put("servicing_provider_state", "providerState");
         servicingProviderItemAliasDetails.put("servicing_provider_zipcode", "providerZip");
         servicingProviderItemAliasDetails.put("servicing_provider_specialty", "providerSpecialty");
-        metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS",servicingProviderItemAliasDetails);
+        metaContainerItemAliasDetails.put("SERVICING_PROVIDER_DETAILS", servicingProviderItemAliasDetails);
 
 
         // Service Details
@@ -562,7 +561,7 @@ public class KryptonTransformerFinalBsh {
         serviceDetailsItemAliasDetails.put("auth_admit_date", "admitDate");
         serviceDetailsItemAliasDetails.put("auth_discharge_date", "dischargeDate");
         serviceDetailsItemAliasDetails.put("service_voluntary_involuntary_status", "voluntaryInvoluntaryStatus");
-        metaContainerItemAliasDetails.put("SERVICING_DETAILS",serviceDetailsItemAliasDetails);
+        metaContainerItemAliasDetails.put("SERVICING_DETAILS", serviceDetailsItemAliasDetails);
 
 
         Map undefinedProviderDetails = new HashMap();
@@ -575,7 +574,7 @@ public class KryptonTransformerFinalBsh {
         undefinedProviderDetails.put("undefined_provider_state", "providerState");
         undefinedProviderDetails.put("undefined_provider_zip", "providerZip");
         undefinedProviderDetails.put("undefined_provider_specialty", "providerSpecialty");
-        metaContainerItemAliasDetails.put("UNDEFINED_PROVIDER_DETAILS",undefinedProviderDetails);
+        metaContainerItemAliasDetails.put("UNDEFINED_PROVIDER_DETAILS", undefinedProviderDetails);
 
         return metaContainerItemAliasDetails;
     }
@@ -632,6 +631,7 @@ public class KryptonTransformerFinalBsh {
         servicingFacilityDetails.add("servicing_facility_state");
         servicingFacilityDetails.add("servicing_facility_zipcode");
         servicingFacilityDetails.add("servicing_facility_full_name");
+        servicingFacilityDetails.add("servicing_facility_full_name");
         servicingFacilityDetails.add("servicing_facility_last_name");
         servicingFacilityDetails.add("servicing_facility_specialty");
         servicingFacilityDetails.add("servicing_facility_address_line2");
@@ -645,6 +645,7 @@ public class KryptonTransformerFinalBsh {
         List servicingProviderDetails = new ArrayList();
         servicingProviderDetails.add("servicing_provider_first_name");
         servicingProviderDetails.add("servicing_provider_last_name");
+        servicingProviderDetails.add("servicing_provider_full_name");
         servicingProviderDetails.add("servicing_provider_city");
         servicingProviderDetails.add("servicing_provider_tin");
         servicingProviderDetails.add("servicing_provider_zipcode");
@@ -674,4 +675,3 @@ public class KryptonTransformerFinalBsh {
 
 
 }
-
