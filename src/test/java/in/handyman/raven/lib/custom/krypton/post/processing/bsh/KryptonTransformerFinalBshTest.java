@@ -56,25 +56,6 @@ public class KryptonTransformerFinalBshTest {
 
 
     @Test
-    void mapToMemberDetails() throws IOException {
-
-
-        ObjectMapper objectMapper = new ObjectMapper();
-//        Map<String, Object> inputJson = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
-        JSONArray vals = new JSONArray();
-        Map<String, Object> jsonMap = objectMapper.readValue(new File("src/main/resources/memberJson.txt"), Map.class);
-        Object memberInformation = jsonMap.get("MemberInformation");
-        // If it's an instance of List (such as ArrayList), you can cast it to a List and then create a JSONArray
-        if (memberInformation instanceof List) {
-            vals = new JSONArray((List<?>) memberInformation);
-        }
-        List<Map<String, Object>> memberDetails = KryptonTransformerFinalBsh.mapTopritorityCheckDetails("MEMBER_DETAILS",vals);
-
-        System.out.println(memberDetails.toString());
-    }
-
-
-    @Test
     void processKryptonJsonTest() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         JSONArray vals = new JSONArray();
