@@ -20,10 +20,9 @@ public class KryptonTransformerFinalBsh {
         Map metaContainerItemAliasDetails = getMetaContainerItemAliasDetails();
         Map outputJson = new HashMap();
 
-
+        System.out.println(kryptonJson);
         JSONObject jsonObject = new JSONObject(kryptonJson);
         Iterator keys = jsonObject.keys();
-
 
         while (keys.hasNext()) {
             String jsonKey = (String) keys.next();
@@ -45,7 +44,7 @@ public class KryptonTransformerFinalBsh {
 
                 if (values.contains(jsonKey)) {
                     Object jsonValue = jsonObject.opt(jsonKey);
-                    handleJsonValue(metaContainerKey, jsonValue, outputJson, metaContainerItemDetails, metaItemAndKeyDetails, metaContainerItemAliasDetails);
+                    handleJsonValue(metaContainerKey, jsonValue, outputJson, metaContainerItemDetails, metaItemAndKeyDetails);
                 }
             }
 
@@ -53,7 +52,7 @@ public class KryptonTransformerFinalBsh {
     }
 
     private static void handleJsonValue(String metaContainerKey, Object jsonValue, Map outputJson,
-                                        Map metaContainerItemDetails, Map metaItemAndKeyDetails, Map metaContainerItemAliasDetails) {
+                                        Map metaContainerItemDetails, Map metaItemAndKeyDetails) {
 
         if (jsonValue instanceof JSONArray) {
             JSONArray jsonArray = (JSONArray) jsonValue;
@@ -68,7 +67,7 @@ public class KryptonTransformerFinalBsh {
                 }
             } else {
 
-                List outputList = mapTopritorityCheckDetails(metaContainerKey, jsonArray, metaItemAndKeyDetails, metaContainerItemAliasDetails);
+                List outputList = mapTopritorityCheckDetails(metaContainerKey, jsonArray);
                 appendToOutput(metaContainerKey, outputList, outputJson);
 
             }
@@ -93,75 +92,45 @@ public class KryptonTransformerFinalBsh {
         List outputJson = new ArrayList();
         Iterator metaKeyIterator = metaItemAndKeyDetails.keySet().iterator();
 
-        List validName = new ArrayList();
+        List validName = new ArrayList<>();
         validName.add("providerName");
         validName.add("memberName");
+
+        List nameFirstLast = new ArrayList<>();
+        nameFirstLast.add("first_name");
+        nameFirstLast.add("last_name");
+
 
         while (metaKeyIterator.hasNext()) {
             String metaKey = (String) metaKeyIterator.next();
             String jsonKey = (String) metaItemAndKeyDetails.get(metaKey);
             if (jsonObject.has(jsonKey)) {
                 if(!validName.contains(jsonKey)){
-                    String resultString = "";
-                    if(jsonObject.get(jsonKey) instanceof JSONArray){
-                        JSONArray values = (JSONArray) jsonObject.get(jsonKey);
-                        List items = new ArrayList();
-                        for(int i = 0; i < values.length(); i++){
-                            items.add(values.get(i));
-                        }
-                        resultString = String.join(", ", items);
-                        outputJsonBind(jsonObject, metaKey, resultString, outputJson);
-                    }else if (jsonObject.get(jsonKey) instanceof String) {
-                        outputJsonBind(jsonObject, metaKey, jsonObject.get(jsonKey).toString(), outputJson);
-                    } else if (jsonObject.get(jsonKey) != null) {
-                        // fallback for unexpected types
-                        resultString = jsonObject.get(jsonKey).toString();
-                        outputJsonBind(jsonObject, metaKey, resultString, outputJson);
-                    }
-
+                    String value = jsonObject.optString(jsonKey) != null ? jsonObject.optString(jsonKey) : "";
+                    outputJsonBind(jsonObject, metaKey, value, outputJson);
                 }else {
-                    String value ;
-                    if(jsonObject.get(jsonKey) instanceof JSONArray){
-                        JSONArray values = (JSONArray) jsonObject.get(jsonKey);
-                        List items = new ArrayList();
-                        for(int i = 0; i < values.length(); i++){
-                            items.add(values.get(i));
-                        }
-                        value = String.join(", ", items);
-                        outputJsonBind(jsonObject, metaKey, value, outputJson);
-                    }
-
-                    if(metaKey.contains("member_full_name")){
-                        value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                        Map nameList = transformMemberName(jsonKey, metaKey, value);
-                        outputJsonBind(jsonObject, "member_full_name", (String) nameList.get("member_full_name"), outputJson);
-                        outputJsonBind(jsonObject, "member_first_name", (String) nameList.get("member_first_name"), outputJson);
-                        outputJsonBind(jsonObject, "member_last_name", (String) nameList.get("member_last_name"), outputJson);
-                    }else if(metaKey.contains("servicing_provider_full_name")){
-                        value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
+                    String value = jsonObject.optString(jsonKey) != null ? jsonObject.optString(jsonKey) : "";
+                   if(metaKey.contains("member_full_name")){
+                       Map nameList = transformMemberName(jsonKey, metaKey, value);
+                       outputJsonBind(jsonObject, "member_full_name", (String) nameList.get("member_full_name"), outputJson);
+                       outputJsonBind(jsonObject, "member_first_name", (String) nameList.get("member_first_name"), outputJson);
+                       outputJsonBind(jsonObject, "member_last_name", (String) nameList.get("member_last_name"), outputJson);
+                   }else if(metaKey.contains("servicing_provider_full_name")){
                         Map nameList = transformServicingProviderName(jsonKey, metaKey, value);
                         outputJsonBind(jsonObject, "servicing_provider_full_name", (String) nameList.get("servicing_provider_full_name"), outputJson);
                         outputJsonBind(jsonObject, "servicing_provider_first_name", (String) nameList.get("servicing_provider_first_name"), outputJson);
                         outputJsonBind(jsonObject, "servicing_provider_last_name", (String) nameList.get("servicing_provider_last_name"), outputJson);
                     }else if(metaKey.contains("referring_provider_full_name")){
-                        value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                        Map nameList = transformReferringProviderName(jsonKey, metaKey, value);
-                        outputJsonBind(jsonObject, "referring_provider_full_name", (String) nameList.get("referring_provider_full_name"), outputJson);
-                        outputJsonBind(jsonObject, "referring_provider_first_name", (String) nameList.get("referring_provider_first_name"), outputJson);
-                        outputJsonBind(jsonObject, "referring_provider_last_name", (String) nameList.get("referring_provider_last_name"), outputJson);
-                    }else if(metaKey.contains("servicing_facility_full_name")){
-                        value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                        Map nameList = transformFacilityProviderName(jsonKey, metaKey, value);
-                        outputJsonBind(jsonObject, "servicing_facility_full_name", (String) nameList.get("servicing_facility_full_name"), outputJson);
-                        outputJsonBind(jsonObject, "servicing_facility_first_name", (String) nameList.get("servicing_facility_first_name"), outputJson);
-                        outputJsonBind(jsonObject, "servicing_facility_last_name", (String) nameList.get("servicing_facility_last_name"), outputJson);
-                    }else if(metaKey.contains("undefined_provider_full_name")){
-                        value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                        Map nameList = transformUndefinedProviderName(jsonKey, metaKey, value);
-                        outputJsonBind(jsonObject, "undefined_provider_full_name", (String) nameList.get("undefined_provider_full_name"), outputJson);
-                        outputJsonBind(jsonObject, "undefined_provider_first_name", (String) nameList.get("undefined_provider_first_name"), outputJson);
-                        outputJsonBind(jsonObject, "undefined_provider_last_name", (String) nameList.get("undefined_provider_last_name"), outputJson);
-                    }
+                       Map nameList = transformReferringProviderName(jsonKey, metaKey, value);
+                       outputJsonBind(jsonObject, "referring_provider_full_name", (String) nameList.get("referring_provider_full_name"), outputJson);
+                       outputJsonBind(jsonObject, "referring_provider_first_name", (String) nameList.get("referring_provider_first_name"), outputJson);
+                       outputJsonBind(jsonObject, "referring_provider_last_name", (String) nameList.get("referring_provider_last_name"), outputJson);
+                   }else if(metaKey.contains("referring_provider_full_name")){
+                       Map nameList = transformFacilityProviderName(jsonKey, metaKey, value);
+                       outputJsonBind(jsonObject, "servicing_facility_full_name", (String) nameList.get("servicing_facility_full_name"), outputJson);
+                       outputJsonBind(jsonObject, "servicing_facility_first_name", (String) nameList.get("servicing_facility_first_name"), outputJson);
+                       outputJsonBind(jsonObject, "servicing_facility_last_name", (String) nameList.get("servicing_facility_last_name"), outputJson);
+                   }
                 }
             }
         }
@@ -172,13 +141,13 @@ public class KryptonTransformerFinalBsh {
     private static void outputJsonBind(JSONObject jsonObjectvalue, String metaKey, String value, List outputJson) {
         Map outputObject = new HashMap();
         outputObject.put("key", metaKey);
-        outputObject.put("value", (!value.isEmpty()) && (!value.equals("null")) ? value: "");
-        outputObject.put("confidence", getConfidenceScore());
+        outputObject.put("value", !value.isEmpty() ? value: "");
+        outputObject.put("confidence", new Integer(100));
         outputObject.put("boundingBox", new HashMap());
         outputJson.add(outputObject);
     }
 
-    public static List mapTopritorityCheckDetails(String metaContainerKey, JSONArray containerInformations, Map metaItemAndKeyDetails, Map metaContainerItemAliasDetails) {
+    public static List mapTopritorityCheckDetails(String metaContainerKey, JSONArray containerInformations) {
         // Define priority checklist for container types
         Map containerCheckList = getContainerPriorityMap();
         List checkListValues = (List) containerCheckList.get(metaContainerKey);        // Handle case with multiple Containers
@@ -196,11 +165,7 @@ public class KryptonTransformerFinalBsh {
         // Create the final result by adding Containers information of the Containers with the minimum rank
         List finalResult = new ArrayList();
         if (indexOfMinRankContainers >= 0 && indexOfMinRankContainers < containerInformations.length()) {
-            finalResult = addContainerInfoToFinalResult(containerInformations, indexOfMinRankContainers, finalResult, metaItemAndKeyDetails);
-        } else if (indexOfMinRankContainers == -1) {
-
-            finalResult = addContainerInfoToFinalResult(containerInformations, 0, finalResult, metaItemAndKeyDetails);
-
+            finalResult = addContainerInfoToFinalResult(containerInformations, indexOfMinRankContainers, finalResult);
         }
 
         return finalResult;
@@ -249,8 +214,7 @@ public class KryptonTransformerFinalBsh {
         Iterator containerIterator = allContainers.iterator();
         while (containerIterator.hasNext()) {
             String containerType = (String) containerIterator.next();
-            int rank = containerChecklist.indexOf(containerType.trim()) + 1;
-
+            int rank = containerChecklist.indexOf(containerType.toLowerCase()) + 1;
             if (rank == 0) {
                 rank = Integer.MAX_VALUE;
             }
@@ -287,6 +251,25 @@ public class KryptonTransformerFinalBsh {
             }
         }
         return indexOfMinRankContainer;
+    }
+
+    // Method to add the selected container's information to the final result
+    private static List addContainerInfoToFinalResult(JSONArray containerInformation, int indexOfMinRankContainer, List finalResult) {
+        JSONObject inputJsonObject = containerInformation.optJSONObject(indexOfMinRankContainer); // Get JSONObject instead of Map        Iterator entryIterator = inputJsonObjectMap.entrySet().iterator();
+        if (inputJsonObject != null) {
+            Iterator entryIterator = inputJsonObject.keys();
+        while (entryIterator.hasNext()) {
+            String key = (String) entryIterator.next(); // Get key as String            Map containerInfo = new HashMap();
+                    Map containerInfo = new HashMap();
+                    containerInfo.put("key", key);
+                    containerInfo.put("value", inputJsonObject.optString(key) != null ? inputJsonObject.optString(key) : "");
+                    containerInfo.put("confidence", new Integer(0));  // Using 100 as in the original class
+                    containerInfo.put("boundingBox", new HashMap());
+                    finalResult.add(containerInfo);
+
+            }
+        }
+        return finalResult;
     }
 
     static Map transformServicingProviderName( String containerName, String sorItemName,String name) {
@@ -378,37 +361,6 @@ public class KryptonTransformerFinalBsh {
         return processedName;
     }
 
-    static Map transformUndefinedProviderName( String containerName, String sorItemName,String name) {
-
-        if (name == null || name.trim().isEmpty()) {
-            return new HashMap();
-        }
-
-        String[] parts = name.trim().split("\\s+");
-        String firstName, lastName = "";
-
-        if (parts.length > 1) {
-            firstName = "";
-            for (int i = 0; i < parts.length - 1; i++) {
-                firstName += parts[i] + " ";
-            }
-            firstName = firstName.trim();
-            lastName = parts[parts.length - 1];
-        } else {
-            firstName = parts[0];
-            lastName = "";
-        }
-
-        Map processedName = new HashMap();
-        processedName.put("undefined_provider_first_name",firstName);
-        processedName.put("undefined_provider_last_name",lastName);
-        processedName.put("undefined_provider_full_name",name);
-
-
-        return processedName;
-    }
-
-
     static Map transformFacilityProviderName( String containerName, String sorItemName,String name) {
 
         if (name == null || name.trim().isEmpty()) {
@@ -435,115 +387,9 @@ public class KryptonTransformerFinalBsh {
         processedName.put("referring_provider_last_name",lastName);
         processedName.put("referring_provider_full_name",name);
 
+
         return processedName;
     }
-
-    private static List addContainerInfoToFinalResult(JSONArray containerInformation,
-                                                      int indexOfMinRankContainer,
-                                                      List finalResult,
-                                                      Map metaItemAndKeyDetails) {
-        JSONObject jsonObject = containerInformation.optJSONObject(indexOfMinRankContainer);
-
-        if (jsonObject != null) {
-            Iterator metaKeyIterator = metaItemAndKeyDetails.keySet().iterator();
-
-            List validName = new ArrayList();
-            validName.add("providerName");
-            validName.add("memberName");
-
-            while (metaKeyIterator.hasNext()) {
-                String metaKey = (String) metaKeyIterator.next();
-                String jsonKey = (String) metaItemAndKeyDetails.get(metaKey);
-                List items = new ArrayList();
-                List outputJson = new ArrayList();
-
-                if (jsonObject.has(jsonKey)) {
-                    if (!validName.contains(jsonKey)) {
-                        String value;
-                        if(jsonObject.get(jsonKey) instanceof JSONArray){
-                            JSONArray values = (JSONArray) jsonObject.get(jsonKey);
-                            for(int i = 0; i < values.length(); i++){
-                                items.add(values.get(i));
-                            }
-                            value = String.join(", ", items);
-                            addNameToResult(finalResult, metaKey, value);
-                        }else if (jsonObject.get(jsonKey) instanceof String) {
-                            value = (String) jsonObject.get(jsonKey);  // Directly assign the value if it's a String
-                            addNameToResult(finalResult, metaKey, value);
-                        } else if (jsonObject.get(jsonKey) != null) {
-                            // fallback for unexpected types
-                            value = jsonObject.get(jsonKey).toString();
-                            addNameToResult(finalResult, metaKey, value);
-                        }
-
-                    } else {
-                        // Handle name fields
-                        String value;
-                        if(jsonObject.get(jsonKey) instanceof JSONArray){
-                            JSONArray values = (JSONArray) jsonObject.get(jsonKey);
-                            for(int i = 0; i < values.length(); i++){
-                                items.add(values.get(i));
-                            }
-                            value = String.join(", ", items);
-                        }else if (jsonObject.get(jsonKey) instanceof String) {
-                            value = jsonObject.get(jsonKey).toString();
-                        }
-                        if (metaKey.contains("member_full_name")) {
-                            value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                            Map nameList = transformMemberName(jsonKey, metaKey, value);
-                            addNameToResult(finalResult, "member_full_name", nameList.get("member_full_name").toString());
-                            addNameToResult(finalResult, "member_first_name", nameList.get("member_first_name").toString());
-                            addNameToResult(finalResult, "member_last_name", nameList.get("member_last_name").toString());
-                        }
-                        else if (metaKey.contains("servicing_provider_full_name")) {
-                            value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                            Map nameList = transformServicingProviderName(jsonKey, metaKey, value);
-                            addNameToResult(finalResult, "servicing_provider_full_name", nameList.get("servicing_provider_full_name").toString());
-                            addNameToResult(finalResult, "servicing_provider_first_name", nameList.get("servicing_provider_first_name").toString());
-                            addNameToResult(finalResult, "servicing_provider_last_name", nameList.get("servicing_provider_last_name").toString());
-                        }
-                        else if (metaKey.contains("referring_provider_full_name")) {
-                            value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                            Map nameList = transformReferringProviderName(jsonKey, metaKey, value);
-                            addNameToResult(finalResult, "referring_provider_full_name", nameList.get("referring_provider_full_name").toString());
-                            addNameToResult(finalResult, "referring_provider_first_name", nameList.get("referring_provider_first_name").toString());
-                            addNameToResult(finalResult, "referring_provider_last_name", nameList.get("referring_provider_last_name").toString());
-                        }
-                        else if (metaKey.contains("facility_provider_full_name")) {
-                            value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                            Map nameList = transformFacilityProviderName(jsonKey, metaKey, value);
-                            addNameToResult(finalResult, "servicing_facility_full_name", nameList.get("servicing_facility_full_name").toString());
-                            addNameToResult(finalResult, "servicing_facility_first_name", nameList.get("servicing_facility_first_name").toString());
-                            addNameToResult(finalResult, "servicing_facility_last_name", nameList.get("servicing_facility_last_name").toString());
-                        } else if (metaKey.contains("undefined_provider_full_name")) {
-                            value = (String) jsonObject.get(jsonKey)!=null?(String) jsonObject.get(jsonKey) : "";
-                            Map nameList = transformUndefinedProviderName(jsonKey, metaKey, value);
-                            addNameToResult(finalResult, "undefined_provider_full_name", nameList.get("undefined_provider_full_name").toString());
-                            addNameToResult(finalResult, "undefined_provider_first_name", nameList.get("undefined_provider_first_name").toString());
-                            addNameToResult(finalResult, "undefined_provider_last_name", nameList.get("undefined_provider_last_name").toString());
-                        }
-                    }
-                }
-            }
-        }
-
-        return finalResult;
-    }
-
-    static float getConfidenceScore() {
-        return 100;
-    }
-
-    // Helper method to add name entries to finalResult
-    private static void addNameToResult(List finalResult, String key, String value) {
-        Map containerInfo = new HashMap();
-        containerInfo.put("key", key);
-        containerInfo.put("value", (!value.isEmpty()) && (!value.equals("null")) ? value: "");
-        containerInfo.put("confidence", getConfidenceScore());
-        containerInfo.put("boundingBox", new HashMap());
-        finalResult.add(containerInfo);
-    }
-
 
 
     private static Map getMetaContainerNodeAliasDetails() {
@@ -594,9 +440,9 @@ public class KryptonTransformerFinalBsh {
     private static Map getContainerPriorityMap() {
         Map containerCheckList = new HashMap();
         List memberChecklist = new ArrayList();
-        memberChecklist.add("Member");
-        memberChecklist.add("Patient");
-        memberChecklist.add("Subscriber");
+        memberChecklist.add("member");
+        memberChecklist.add("patient");
+        memberChecklist.add("subscriber");
         memberChecklist.add("Enrollee");
 
         List referringProviderChecklist = new ArrayList();
@@ -720,7 +566,7 @@ public class KryptonTransformerFinalBsh {
 
         Map undefinedProviderDetails = new HashMap();
         undefinedProviderDetails.put("undefined_provider_type", "providerType");
-        undefinedProviderDetails.put("undefined_provider_full_name", "providerName");
+        undefinedProviderDetails.put("undefined_provider_name", "providerName");
         undefinedProviderDetails.put("undefined_provider_npi", "providerNPI");
         undefinedProviderDetails.put("undefined_provider_tax_id", "providerTaxId");
         undefinedProviderDetails.put("undefined_provider_address", "providerAddress");
@@ -812,7 +658,7 @@ public class KryptonTransformerFinalBsh {
 
         List undefinedProviderDetails = new ArrayList();
         undefinedProviderDetails.add("undefined_provider_type");
-        undefinedProviderDetails.add("undefined_provider_full_name");
+        undefinedProviderDetails.add("undefined_provider_name");
         undefinedProviderDetails.add("undefined_provider_npi");
         undefinedProviderDetails.add("undefined_provider_tax_id");
         undefinedProviderDetails.add("undefined_provider_address");
