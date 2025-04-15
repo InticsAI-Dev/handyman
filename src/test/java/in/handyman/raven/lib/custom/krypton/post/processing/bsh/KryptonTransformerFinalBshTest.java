@@ -54,14 +54,4 @@ public class KryptonTransformerFinalBshTest {
 
     }
 
-
-    @Test
-    void processKryptonJsonTest() throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        JSONArray vals = new JSONArray();
-        Map<String, Object> jsonMap = objectMapper.readValue(new File("/home/christopher.paulraj@zucisystems.com/Desktop/pipeline/handyman/src/main/resources/containerJson.txt"), Map.class);
-
-         KryptonTransformerFinalBsh.processKryptonJson(jsonMap);
-    }
-
 }

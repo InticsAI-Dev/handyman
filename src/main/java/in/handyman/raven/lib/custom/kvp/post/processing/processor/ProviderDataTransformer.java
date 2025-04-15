@@ -159,6 +159,9 @@ public class ProviderDataTransformer {
                 }
 
             }
+            if(kvpContainers.isEmpty()){
+                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), encryptIfRequired("[]")));
+            }
 
             kvpContainers.forEach((container, kvps) -> {
                 Optional<String> containerIdOpt = getContainerId(container);

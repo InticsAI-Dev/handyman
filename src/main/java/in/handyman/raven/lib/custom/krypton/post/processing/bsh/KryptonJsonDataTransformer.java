@@ -134,6 +134,10 @@ public class KryptonJsonDataTransformer {
             List<?> kryptonDataList = (List<?>) kryptonMapObject;
             Map<String, List<LlmJsonParserKvpKrypton>> kvpContainers = new HashMap<>();
 
+            if(kryptonDataList.isEmpty()){
+                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), encryptIfRequired("[]")));
+            }
+
             for (int i = 0; i < kryptonDataList.size(); i++) {
 
                 Hashtable item = (Hashtable) kryptonDataList.get(i);
@@ -170,6 +174,11 @@ public class KryptonJsonDataTransformer {
 
             Map<String,List<Object>> kryptonDataList = (Map<String,List<Object>>) kryptonMapObject;
             Map<String, List<LlmJsonParserKvpKrypton>> kvpContainers = new HashMap<>();
+
+            if(kryptonDataList.isEmpty()){
+                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), encryptIfRequired("[]")));
+            }
+
 
             kryptonDataList.forEach((containerName, kryptonMap) -> {
                 for (int i = 0; i < kryptonMap.size(); i++) {
