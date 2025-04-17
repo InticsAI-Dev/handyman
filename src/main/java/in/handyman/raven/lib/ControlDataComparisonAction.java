@@ -215,29 +215,23 @@ public class ControlDataComparisonAction implements IActionExecution {
     boolean actualEmpty = normalizedActual.isEmpty();
     boolean extractedEmpty = normalizedExtracted.isEmpty();
 
-    // True Negative - Both empty and NO TOUCH
     if ("NO TOUCH".equals(matchStatus) && actualEmpty && extractedEmpty) {
       return "TN";
     }
 
-    // True Positive - Both non-empty and NO TOUCH
     if ("NO TOUCH".equals(matchStatus) && !actualEmpty && !extractedEmpty) {
       return "TP";
     }
 
-    // False Positive - Actual empty but extracted present
     if (actualEmpty && !extractedEmpty) {
       return "FP";
     }
 
-    // False Negative cases:
-    // 1. Actual present but extracted empty
-    // 2. Both present but mismatch (any touch status except NO TOUCH)
+
     if (!actualEmpty && (extractedEmpty || !"NO TOUCH".equals(matchStatus))) {
       return "FN";
     }
 
-    // Default case (shouldn't normally reach here)
     return "UNKNOWN";
   }
 
