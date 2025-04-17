@@ -51,9 +51,9 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     public final ActionExecutionAudit action;
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
+    private final OkHttpClient httpclient;
 
-    final OkHttpClient httpclient = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.MINUTES).writeTimeout(10, TimeUnit.MINUTES).readTimeout(10, TimeUnit.MINUTES).build();
-
+    private static final String COPRO_SOCKET_TIMEOUT="copro.client.socket.timeout";
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String processBase64;
@@ -64,9 +64,11 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
+        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT,"100"));
         this.pageContentMinLength = pageContentMinLength;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
+        this.httpclient =  new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
     }
 
 

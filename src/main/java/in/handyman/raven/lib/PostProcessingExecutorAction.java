@@ -6,6 +6,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.PostProcessingExecutor;
 import in.handyman.raven.lib.model.scalar.ValidatorByBeanShellExecutor;
 import in.handyman.raven.util.CommonQueryUtil;
@@ -23,6 +25,7 @@ import org.slf4j.MarkerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -42,7 +45,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private final Marker aMarker;
 
     private List<PostProcessingExecutorInput> postProcessingExecutorInputs = new ArrayList<>();
-
+    private static final String PIPELINE_END_TO_END_ENCRYPTION_VARIABLE = "pipeline.end.to.end.encryption";
 
     public PostProcessingExecutorAction(final ActionExecutionAudit action, final Logger log,
                                         final Object postProcessingExecutor) {
@@ -55,6 +58,10 @@ public class PostProcessingExecutorAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+
+        String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(PIPELINE_END_TO_END_ENCRYPTION_VARIABLE);
+        boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
 
         Long groupId = Long.valueOf(postProcessingExecutor.getGroupId());
         String batchId = postProcessingExecutor.getBatchId();
@@ -74,11 +81,23 @@ public class PostProcessingExecutorAction implements IActionExecution {
             }
         });
 
-        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, jdbi, log);
+        postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+            if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
+            }
+        });
+
+        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log);
         log.info("Starting the post processing for row wise details");
         postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
         log.info("Completed the post processing for row wise details");
         log.info("Updated validator configuration details of size {}", postProcessingExecutorInputs.size());
+
+        postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+            if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                postProcessingExecutorInput.setExtractedValue(encryption.encrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
+            }
+        });
 
         consumerBatch(jdbi, postProcessingExecutorInputs, outputTableName, batchId, groupId);
     }
@@ -164,5 +183,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private Long questionId;
         private Long synonymId;
         private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
     }
 }
