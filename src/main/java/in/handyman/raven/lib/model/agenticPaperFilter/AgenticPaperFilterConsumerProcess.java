@@ -33,7 +33,7 @@ import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
-        import org.slf4j.Logger;
+import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput>  {
@@ -48,7 +48,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     public static final String KRYPTON_START = "KRYPTON START";
     public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.agentic.paper.filter.extraction.handler.name";
     public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
-        public static final String AGENTIC_PAPER_FILTER_MODEL_NAME = "preprocess.agentic.paper.filter.model.name";
+    public static final String AGENTIC_PAPER_FILTER_MODEL_NAME = "preprocess.agentic.paper.filter.model.name";
     private static final MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
 
     private static final String PROCESS_NAME = "AGENTIC PAPER FILTER";
@@ -74,7 +74,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.pageContentMinLength = pageContentMinLength;
     }
 
-
     @Override
     public List<AgenticPaperFilterOutput> process(URL endpoint, AgenticPaperFilterInput entity) throws IOException {
         List<AgenticPaperFilterOutput> parentObj = new ArrayList<>();
@@ -82,7 +81,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
         String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
         String textExtractionModelName = action.getContext().get(AGENTIC_PAPER_FILTER_MODEL_NAME);
-
 
         String inputFilePath = entity.getFilePath();
         Long rootPipelineId = entity.getRootPipelineId();
@@ -95,7 +93,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long tenantId = entity.getTenantId();
         Long actionId = action.getActionId();
         String batchId = entity.getBatchId();
-
 
         //payload
         DataExtractionData dataExtractionData = new DataExtractionData();
@@ -114,22 +111,18 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
-
         TritonRequest requestBody = new TritonRequest();
         requestBody.setName(AGENTIC_PAPER_FILTER_START);
         requestBody.setShape(List.of(1, 1));
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
-
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
 
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
-
 
         if (Objects.equals("COPRO", coproHandlerName)) {
             if (log.isInfoEnabled()) {
@@ -139,10 +132,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
             coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
         } else if (Objects.equals("REPLICATE", coproHandlerName)) {
-
             if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
                 if (log.isInfoEnabled()) {
-
                     log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
                 }
                 String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
@@ -163,7 +154,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 replicateResponseBuilder(endpoint, request, parentObj, entity, replicateJsonRequest);
             } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
                 if (log.isInfoEnabled()) {
-
                     log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
                 }
                 String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
@@ -190,12 +180,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         } else if (Objects.equals("TRITON", coproHandlerName)) {
             log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
             if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
-
-
                 DataExtractionData dataExtractionPayload = getArgonRequestPayloadFromEntity(entity);
                 if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
                     dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-
                 } else {
                     dataExtractionPayload.setBase64Img("");
                 }
@@ -206,12 +193,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonArgon, mediaType)).build();
                 tritonRequestArgonExecutor(entity, request, parentObj, jsonRequestTritonArgon, endpoint);
             } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
-
-
                 RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
                 if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
                     kryptonRequestPayloadFromQuery.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-
                 } else {
                     kryptonRequestPayloadFromQuery.setBase64Img("");
                 }
@@ -224,10 +208,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             }
         }
 
-
         return parentObj;
     }
-
 
     private RadonKvpExtractionRequest getKryptonRequestPayloadFromQuery(AgenticPaperFilterInput entity) {
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
@@ -247,7 +229,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         return radonKvpExtractionRequest;
     }
 
-
     private void tritonRequestKryptonExecutor(AgenticPaperFilterInput entity, Request request, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint) {
         Long tenantId = entity.getTenantId();
         String templateId = entity.getTemplateId();
@@ -258,7 +239,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
-
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> {
@@ -269,7 +249,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                                 throw new HandymanException("Exception in extracted output Data request {}", e);
                             }
                         });
-
                     });
                 }
             } else {
@@ -282,7 +261,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
-
         }
     }
 
@@ -318,7 +296,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .isBlankPage(flag)
                 .tenantId(dataExtractionDataItem.getTenantId())
-                .templateId(templateId).processId(dataExtractionDataItem.getProcessId())
+                .templateId(templateId)
+                .processId(dataExtractionDataItem.getProcessId())
                 .templateName(entity.getTemplateName())
                 .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
                 .modelName(modelName)
@@ -329,7 +308,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .endpoint(String.valueOf(endpoint))
                 .build());
     }
-
     private void extractedArgonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
 
@@ -371,7 +349,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                                 throw new HandymanException("Exception in extracted output Data request {}", e);
                             }
                         });
-
                     });
                 }
             } else {
@@ -384,7 +361,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
-
         }
     }
 
@@ -394,7 +370,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         tritonRequestPayload.setShape(List.of(1, 1));
         tritonRequestPayload.setDatatype(TritonDataTypes.BYTES.name());
         tritonRequestPayload.setData(Collections.singletonList(dataExtractionPayloadString));
-
 
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(tritonRequestPayload));
@@ -419,9 +394,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         return dataExtractionData;
     }
 
-
     private void replicateResponseBuilder(URL endpoint, Request request, List<AgenticPaperFilterOutput> parentObj, AgenticPaperFilterInput entity, String replicateJsonRequest) {
-
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
@@ -433,7 +406,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
                     log.error(aMarker, "The replicate response has empty output {}", replicateResponse.getOutput());
                 }
-
             } else {
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, "The replicate response status {}", response.message());
@@ -444,15 +416,12 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             log.error(aMarker, "The Exception occurred in replicate {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("test extraction consumer failed for replicate batch/group " + entity.getGroupId(), handymanException, this.action);
-
         }
     }
-
 
     public String getBase64ForPath(String imagePath) throws IOException {
         String base64Image = new String();
         try {
-
             // Read the image file into a byte array
             byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
 
@@ -470,9 +439,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         return base64Image;
     }
 
-
     private void extractedReplicateOutputResponse(URL endpoint, AgenticPaperFilterInput entity, ReplicateResponse replicateResponse, List<AgenticPaperFilterOutput> parentObj, String replicateJsonRequest, String replicateJsonResponse) throws JsonProcessingException {
-
         DataExtractionDataItem dataExtractionDataItem = mapper.treeToValue(replicateResponse.getOutput(), DataExtractionDataItem.class);
         final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
         final String flag = (!Objects.isNull(contentString) && contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
@@ -495,8 +462,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         }
 
         parentObj.add(AgenticPaperFilterOutput.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(extractedContentEnc).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Text extraction action api call completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(replicateResponse.getModel()).modelVersion(replicateResponse.getVersion()).batchId(batchId).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(replicateJsonResponse)).endpoint(endpoint.toString()).build());
-
-
     }
 
     private void coproRequestBuilder(AgenticPaperFilterInput entity, Request request, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId, String jsonInputRequest, URL endpoint) {
@@ -510,7 +475,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
             if (response.isSuccessful()) {
                 extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "", jsonInputRequest, responseBody, endpoint.toString());
-
             } else {
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, "The Exception occurred in response {}", response.message());
@@ -521,7 +485,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             log.error(aMarker, "The Exception occurred in Copro {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
-
         }
     }
 
@@ -624,6 +587,4 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         }
         return requestStr;
     }
-
-
 }
