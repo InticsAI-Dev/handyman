@@ -42,9 +42,9 @@ import org.slf4j.MarkerFactory;
 )
 public class AgenticPaperFilterAction implements IActionExecution  {
 
-  public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
+  public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?)";
+  public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT = "agentic.paper.filter.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";

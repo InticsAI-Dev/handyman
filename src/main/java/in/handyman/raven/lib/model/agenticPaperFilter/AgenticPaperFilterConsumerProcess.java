@@ -265,49 +265,61 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
 
-    private void extractedKryptonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
+    private void extractedKryptonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem,
+                                                   List<AgenticPaperFilterOutput> parentObj, String modelName,
+                                                   String modelVersion, String request, String response,
+                                                   String endpoint) throws JsonProcessingException {
 
         RadonKvpLineItem dataExtractionDataItem = mapper.readValue(stringDataItem, RadonKvpLineItem.class);
-
-        String extractedContent;
-
-        final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+        String inferResponseJson = dataExtractionDataItem.getInferResponse();
+        JsonNode inferResponseNode = mapper.readTree(inferResponseJson);
+        String formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
+        String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String encryptSotPageContent = action.getContext().get("pipeline.agentic.paper.filter.encryption");
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        if (Objects.equals(encryptSotPageContent, "true")) {
-            extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(), "AES256", "TEXT_DATA");
-        } else {
-            extractedContent = dataExtractionDataItem.getInferResponse();
-        }
+        String extractedContent = Objects.equals(encryptSotPageContent, "true")
+                ? encryption.encrypt(formattedInferResponse, "AES256", "TEXT_DATA")
+                : formattedInferResponse;
 
         String templateId = entity.getTemplateId();
-        parentObj.add(AgenticPaperFilterOutput.builder()
-                .filePath(entity.getFilePath())
-                .extractedText(extractedContent)
-                .originId(dataExtractionDataItem.getOriginId())
-                .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
-                .paperNo(dataExtractionDataItem.getPaperNo())
-                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
-                .message("Agentic Paper Filter macro completed with krypton triton api call")
-                .createdOn(entity.getCreatedOn())
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .isBlankPage(flag)
-                .tenantId(dataExtractionDataItem.getTenantId())
-                .templateId(templateId)
-                .processId(dataExtractionDataItem.getProcessId())
-                .templateName(entity.getTemplateName())
-                .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
-                .modelName(modelName)
-                .modelVersion(modelVersion)
-                .batchId(entity.getBatchId())
-                .request(encryptRequestResponse(request))
-                .response(encryptRequestResponse(response))
-                .endpoint(String.valueOf(endpoint))
-                .build());
+
+        Iterator<Map.Entry<String, JsonNode>> fields = inferResponseNode.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String containerName = entry.getKey();
+            String containerValue = entry.getValue().asText();
+
+            parentObj.add(AgenticPaperFilterOutput.builder()
+                    .filePath(entity.getFilePath())
+                    .extractedText(extractedContent)
+                    .originId(dataExtractionDataItem.getOriginId())
+                    .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
+                    .paperNo(dataExtractionDataItem.getPaperNo())
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                    .stage(PROCESS_NAME)
+                    .message("Agentic Paper Filter macro completed with krypton triton api call")
+                    .createdOn(entity.getCreatedOn())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .isBlankPage(flag)
+                    .tenantId(dataExtractionDataItem.getTenantId())
+                    .templateId(templateId)
+                    .processId(dataExtractionDataItem.getProcessId())
+                    .templateName(entity.getTemplateName())
+                    .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
+                    .modelName(modelName)
+                    .modelVersion(modelVersion)
+                    .batchId(entity.getBatchId())
+                    .request(encryptRequestResponse(request))
+                    .response(encryptRequestResponse(response))
+                    .endpoint(String.valueOf(endpoint))
+                    .containerName(containerName)
+                    .containerValue(containerValue)
+                    .build());
+        }
     }
+
     private void extractedArgonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
 

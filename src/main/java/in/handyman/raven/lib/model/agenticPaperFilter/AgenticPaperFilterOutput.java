@@ -23,6 +23,8 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
     private Long processId;
     private String filePath;
     private String extractedText;
+    private String containerName;
+    private String containerValue;
     private String fileName;
     private Integer paperNo;
     private String status;
@@ -44,7 +46,7 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId,this.templateId
-                ,this.processId,this.filePath, this.extractedText,this.paperNo,this.fileName
+                ,this.processId,this.filePath, this.extractedText, this.containerName, this.containerValue,this.paperNo,this.fileName
                 ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
                 ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint).collect(Collectors.toList());
     }
