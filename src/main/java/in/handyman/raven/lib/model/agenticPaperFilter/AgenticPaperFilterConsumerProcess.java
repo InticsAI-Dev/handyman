@@ -270,7 +270,10 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                                                    String modelVersion, String request, String response,
                                                    String endpoint) throws JsonProcessingException {
 
-        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(stringDataItem, RadonKvpLineItem.class);
+        String cleanedJson = stringDataItem.replaceAll("```json", "").replaceAll("```", "").trim();
+
+        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
+
         String inferResponseJson = dataExtractionDataItem.getInferResponse();
         JsonNode inferResponseNode = mapper.readTree(inferResponseJson);
         String formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
