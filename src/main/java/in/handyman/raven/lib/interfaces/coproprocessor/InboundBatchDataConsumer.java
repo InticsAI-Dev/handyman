@@ -86,6 +86,8 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
             checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime);
         } catch (Exception e) {
             logger.error("Final persistence failed", e);
+            throw new HandymanException("Final persistence failed ", e, actionExecutionAudit);
+
         } finally {
             logger.info("Consumer {} completed the process and persisted {} rows", countDownLatch.getCount(), nodeCount.get());
             countDownLatch.countDown();
@@ -105,6 +107,8 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
             }
         } catch (Exception e) {
             logger.error("Error in callable process in consumer", e);
+            throw new HandymanException("Error in callable process in consumer ", e, actionExecutionAudit);
+
         }
         processedEntity.addAll(results);
     }
@@ -127,7 +131,8 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
             int[] execute = preparedBatch.execute();
             logger.info("Consumer persisted {}", execute);
         } catch (Exception e) {
-            logger.error("exception in prepared batch {}", e);
+            logger.error("Exception in prepared batch ", e);
+            throw new HandymanException("Exception in prepared batch {} ", e, actionExecutionAudit);
         }
     }
 
