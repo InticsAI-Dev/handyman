@@ -23,7 +23,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
-@Slf4j
 public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implements Callable<Void> {
 
     private final String insertSql;

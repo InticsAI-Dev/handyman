@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     private final BlockingQueue<I> queue;
