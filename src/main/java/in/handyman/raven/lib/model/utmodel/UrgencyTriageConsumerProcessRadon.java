@@ -394,7 +394,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                 assert response.body() != null;
 
                 if (!outputNode.isEmpty() && !outputNode.isNull()) {
-                    extractReplicateOutputDataRequest(entity, outputNode, parentObj, urgencyTriageResponse.getModel(), urgencyTriageResponse.getVersion(), jsonRequest, responseBody, endpoint.toString());
+                    extractReplicateOutputDataRequest(entity, outputNode, parentObj, "REPLICATE",  "1", jsonRequest, responseBody, endpoint.toString());
                 }
             } else {
                 parentObj.add(UrgencyTriageOutputTable.builder()
