@@ -174,7 +174,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             String jsonRequestEnc = encryptRequestResponse(jsonRequest);
             tritonRequestBuilder(entity, parentObj, request, jsonRequestEnc, endpoint);
         }
-
+        log.info("Total number of entries in the parent object: {}", parentObj.size());
         return parentObj;
     }
 

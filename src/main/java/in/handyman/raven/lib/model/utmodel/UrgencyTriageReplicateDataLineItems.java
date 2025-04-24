@@ -25,6 +25,7 @@ public class UrgencyTriageReplicateDataLineItems {
     private Long rootPipelineId;
     private Long tenantId;
     private UrgencyTriageModelBoundingBox bboxes;
+    private String batchId;
 
 
 }

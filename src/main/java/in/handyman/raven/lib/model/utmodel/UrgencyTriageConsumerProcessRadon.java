@@ -130,6 +130,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
             log.info(aMarker, "Request has been build with the parameters \n coproUrl  {} ,inputFilePath : {} ,outputDir {} ", endpoint, inputFilePath, outputDir);
         }
 
+        log.info("Total number of entries in the parent object: {}", parentObj.size());
         return parentObj;
     }
 

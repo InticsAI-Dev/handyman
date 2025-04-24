@@ -205,7 +205,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             Request request = new Request.Builder()
                     .url(endpoint)
                     .post(RequestBody.create(replicateJsonRequest, MEDIA_TYPE_JSON))
-                    .addHeader("Authorization", "Bearer " + PropertyHandler.get("replicate.api.token.v1"))
+                    .addHeader("Authorization", "Bearer " + PropertyHandler.get("runpod.api.token.v1"))
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Prefer", "wait")
                     .build();

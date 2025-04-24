@@ -107,6 +107,7 @@ class ZeroShotClassifierActionTest {
                 Map.entry("actionId", "1"),
                 Map.entry("copro.request.activator.handler.name", "RUNPOD"),
                 Map.entry("filter.zsc.page.content.lower", "true"),
+                Map.entry("temp_schema_name", "paper"),
                 Map.entry("write.batch.size", "5")));
 
 
