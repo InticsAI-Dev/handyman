@@ -1,27 +1,25 @@
-package in.handyman.raven.lib.model.textextraction;
+package in.handyman.raven.lib.model.zeroshotclassifier.replicate;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Data
-public class DataExtractionData {
+public class ZeroShotClassifierReplicate {
+
     private Long rootPipelineId;
-    private Long actionId;
+    private String actionId;
+    private String processId;
     private String process;
     private String originId;
-    private Integer paperNumber;
-    private Long processId;
-    private String inputFilePath;
+    private Integer paperNo;
     private Integer groupId;
-    private Long tenantId;
-    private String templateName;
+    private String keysToFilter;
+    private String pageContent;
     private String batchId;
-    private String base64img;
 
 }
-

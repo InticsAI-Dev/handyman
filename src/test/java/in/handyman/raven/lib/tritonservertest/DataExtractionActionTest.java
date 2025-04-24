@@ -233,26 +233,26 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("https:///v1/deployments/inticsai-dev/deploy-mindee-ocr/predictions")
+                .endPoint("https://api.runpod.ai/v2/6suxkm7225dbxg/runsync")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT 'batch-1' as batch_id, 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id," +
-                        " 1 as paper_no, " +
-                        "'" + filePath + "' as file_path," +
-                        " 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name, 'Extract all the page content and return as text and dont add preambles' as prompt")
+                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id,b.root_pipeline_id, a.batch_id, now() as created_on\n" +
+                        "FROM info.paper_itemizer a\n" +
+                        "join preprocess.preprocess_payload_error_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
+                        "WHERE a.root_pipeline_id =127533 and a.tenant_id = 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.241:7700/v2/models/krypton-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "https://api.runpod.ai/v2/6suxkm7225dbxg/runsync");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("replicate.request.api.token", "API_TOKEN"),
                 Map.entry("replicate.text.extraction.version", "1"),
-                Map.entry("copro.request.activator.handler.name", "REPLICATE"),
+                Map.entry("copro.request.text.extraction.handler.name", "RUNPOD"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
-                Map.entry("text.extraction.model.name", "KRYPTON"),
+                Map.entry("preprocess.text.extraction.model.name", "ARGON"),
                 Map.entry("page.content.min.length.threshold", "1"),
                 Map.entry("write.batch.size", "5")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);

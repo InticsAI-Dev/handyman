@@ -19,16 +19,14 @@ class ZeroShotClassifierActionTest {
         final ZeroShotClassifierPaperFilter build = ZeroShotClassifierPaperFilter.builder()
                 .condition(true)
                 .name("Test ZeroShotClassifier")
-                .processID("1234")
-                .querySet("select 1 as paper_no, 'drug name, patient name,prescriber name' as page_content, 1 as group_id, 'INT-1' as origin_id, \n" +
-                        "'1234' as process_id,1 as sor_container_id, 'Patient' as truth_entity, \n"
-                        + "jsonb_object_agg(t.truth_entity,t.keys_to_filter) as truth_placeholder\n" +
-                        "                        from (select te.sor_container_id  as sor_container_id,\n" +
-                        "                        te.truth_entity as truth_entity,te.sor_truth_entity_id,\n" +
-                        "                        jsonb_agg(st.truth_entity) as keys_to_filter\n" +
-                        "                        from sor_meta.sor_truth_entity_placeholder st\n" +
-                        "                        join sor_meta.sor_truth_entity te on te.truth_entity= st.truth_entity\n" +
-                        "                        group by te.sor_container_id,te.sor_truth_entity_id,te.truth_entity )t")
+                .processID("audit")
+                .querySet("select a.origin_id,a.paper_no,\n" +
+                        "sot.content as page_content, 'Humana' as template_name, 3033 as group_id ,a.root_pipeline_id as root_pipeline_id,\n" +
+                        "'3033' as process_id,\n" +
+                        "a.truth_placeholder,a.tenant_id as tenant_id ,a.batch_id, now() as created_on\n" +
+                        "from paper.paper_filter_zsc_pm_input_aggregate_audit a\n" +
+                        "join info.source_of_truth sot on a.origin_id = sot.origin_id and a.paper_no = sot.paper_no and sot.batch_id = a.batch_id and sot.tenant_id = a.tenant_id\n" +
+                        "where a.root_pipeline_id = 3033;")
                 .resourceConn("intics_agadia_db_conn")
                 .build();
 
@@ -49,7 +47,7 @@ class ZeroShotClassifierActionTest {
         final PhraseMatchPaperFilter build = PhraseMatchPaperFilter.builder()
                 .condition(true)
                 .name("Test PhraseMatch")
-                .processID("1234")
+                .processID("audit")
                 .querySet("select sot.paper_no, sot.content as page_content, sot.group_id, sot.origin_id, \n" +
                         "'1234' as process_id,t.sor_container_id,t.truth_entity, \n" +
                         "t.keys_to_filter from (select ste.sor_container_id as sor_container_id, \n" +
@@ -65,7 +63,7 @@ class ZeroShotClassifierActionTest {
                         "group by ste.sor_container_id,ste.truth_entity  )t\n" +
                         "cross join info.source_of_truth sot\n" +
                         "where sot.origin_id ='INT-1' limit 2;")
-                .resourceConn("intics_agadia_db_conn")
+                .resourceConn("intics_zio_db_conn")
                 .build();
 
 
@@ -83,22 +81,18 @@ class ZeroShotClassifierActionTest {
         final ZeroShotClassifierPaperFilter build = ZeroShotClassifierPaperFilter.builder()
                 .condition(true)
                 .name("Test ZSC")
-                .processID("12345")
+                .processID("audit")
                 .readBatchSize("1")
                 .threadCount("1")
                 .writeBatchSize("1")
-                .endPoint("http://192.168.10.239:10183/copro/filtering/zero-shot-classifier")
-                .querySet("SELECT " +
-                        "1 AS paper_no, " +
-                        "'drug name, patient name, prescriber name' AS page_content, " +
-                        "1 AS group_id, " +
-                        "'INT-1' AS origin_id, " +
-                        "1 AS process_id, " +
-                        "1 AS rootPipelineId, " +
-                        "JSONB_BUILD_OBJECT(" +
-                        "'Drug', ARRAY_TO_JSON(ARRAY['Strength', 'Quantity', 'Drug Requested', 'Drug', 'Medication', 'Drug name and Strength', 'Drug name', 'Dose', 'Directions', 'Diagnosis']), " +
-                        "'Member', ARRAY_TO_JSON(ARRAY['Members Name', 'Member Name', 'Member Id', 'Member Optima', 'Member DOB', 'Members DOB'])" +
-                        ") AS truthPlaceholder")
+                .endPoint("https://api.runpod.ai/v2/oq74j3k9oxclog/runsync")
+                .querySet("select a.origin_id,a.paper_no,\n" +
+                        "sot.content as page_content, 3033 as group_id ,a.root_pipeline_id as root_pipeline_id,\n" +
+                        "'3033' as process_id,\n" +
+                        "a.truth_placeholder,a.tenant_id as tenant_id ,a.batch_id, now() as created_on\n" +
+                        "from paper.paper_filter_zsc_pm_input_aggregate_audit a\n" +
+                        "join info.source_of_truth sot on a.origin_id = sot.origin_id and a.paper_no = sot.paper_no and sot.batch_id = a.batch_id and sot.tenant_id = a.tenant_id\n" +
+                        "where a.root_pipeline_id = 3033;")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 
@@ -111,6 +105,8 @@ class ZeroShotClassifierActionTest {
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("triton.request.activator", "false"),
                 Map.entry("actionId", "1"),
+                Map.entry("copro.request.activator.handler.name", "RUNPOD"),
+                Map.entry("filter.zsc.page.content.lower", "true"),
                 Map.entry("write.batch.size", "5")));
 
 

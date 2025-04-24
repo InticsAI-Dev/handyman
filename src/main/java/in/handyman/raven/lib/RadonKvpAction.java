@@ -57,12 +57,12 @@ public class RadonKvpAction implements IActionExecution {
     private static final String INSERT_INTO = "INSERT INTO";
     public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path," +
             " total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, " +
-            "root_pipeline_id, batch_id, model_registry, status, stage, message, category,request,response,endpoint,sor_container_id";
+            "root_pipeline_id, batch_id, model_registry, status, stage, message, category,request,response,endpoint,sor_container_id, truth_entity_id, sip_type";
     public static final String VAL_STRING_LIST = "VALUES( ?,?,?,?,?," +
             "?,?,?,?,?" +
             ",?,?,?,?,?," +
             "?,?, ?, ?" +
-            ",?,?,?,?, ?)";
+            ",?,?,?,?, ?, ?, ?)";
 
     private final ActionExecutionAudit action;
     private final Logger log;

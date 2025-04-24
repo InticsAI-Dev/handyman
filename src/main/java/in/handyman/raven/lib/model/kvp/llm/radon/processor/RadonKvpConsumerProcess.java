@@ -15,9 +15,11 @@ import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
+import in.handyman.raven.lib.replicate.ReplicateRequest;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.util.PropertyHandler;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -46,7 +48,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
-
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
     public final Jdbi jdbi;
 
     private final ProviderDataTransformer providerDataTransformer;
@@ -66,6 +68,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     @Override
     public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
+        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
+
         List<RadonQueryOutputTable> parentObj = new ArrayList<>();
         String rootPipelineId = String.valueOf(entity.getRootPipelineId());
         String filePath = String.valueOf(entity.getInputFilePath());
@@ -188,14 +192,33 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
 
-        if (Objects.equals("false", tritonRequestActivator)) {
+        if (Objects.equals("COPRO", coproHandlerName)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
-        } else {
+            String jsonResponseEnc = encryptRequestResponse(jsonRequest);
+            coproResponseBuilder(entity, request, parentObj, jsonResponseEnc, endpoint);
+        } else if (Objects.equals("RUNPOD", coproHandlerName)) {
+            ReplicateRequest replicateRequest=new ReplicateRequest();
+//            replicateRequest.setVersion(replicateRadonVersion);
+            replicateRequest.setInput(radonKvpExtractionRequest);
+            String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(RequestBody.create(replicateJsonRequest, MEDIA_TYPE_JSON))
+                    .addHeader("Authorization", "Bearer " + PropertyHandler.get("replicate.api.token.v1"))
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "wait")
+                    .build();
+
+            String jsonResponseEnc = encryptRequestResponse(jsonRequest);
+            replicateRequestBuilder(entity,request, parentObj , jsonResponseEnc, endpoint );
+        }
+        else if (Objects.equals("TRITON", coproHandlerName)){
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
+            String jsonResponseEnc = encryptRequestResponse(jsonRequest);
+
+            tritonRequestBuilder(entity, request, parentObj, jsonResponseEnc, endpoint);
         }
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
@@ -593,5 +616,88 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         return requestStr;
     }
 
+    private void replicateRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
+        Long groupId = entity.getGroupId();
+        Long processId = entity.getProcessId();
+        Long tenantId = entity.getTenantId();
+        Integer paperNo = entity.getPaperNo();
+        Long rootPipelineId = entity.getRootPipelineId();
+
+
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+            JsonNode rootNode = mapper.readTree(responseBody);
+            JsonNode outputNode = rootNode.path("output");
+
+            if (response.isSuccessful()) {
+                assert response.body() != null;
+
+                if (outputNode != null && !outputNode.isEmpty()) {
+                    try {
+                        extractTritonOutputDataResponse(entity, String.valueOf(outputNode), parentObj, jsonRequest, responseBody, endpoint.toString());
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    } catch (EvalError e) {
+                        throw new RuntimeException(e);
+                    }
+
+                }
+            } else {
+                parentObj.add(RadonQueryOutputTable.builder()
+                        .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                        .paperNo(paperNo)
+                        .groupId(groupId)
+                        .inputFilePath(entity.getInputFilePath())
+                        .tenantId(tenantId)
+                        .actionId(action.getActionId())
+                        .processId(processId)
+                        .rootPipelineId(rootPipelineId)
+                        .process(entity.getProcess())
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .stage(entity.getApiName())
+                        .message(responseBody)
+                        .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .createdUserId(tenantId)
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .lastUpdatedUserId(tenantId)
+                        .category(entity.getCategory())
+                        .request(jsonRequest)
+                        .response(response.message())
+                        .endpoint(String.valueOf(endpoint))
+                        .sipType(entity.getSipType())
+                        .truthEntityId(entity.getTruthEntityId())
+                        .build());
+                log.info(aMarker, "Error in getting response from replicate response {}", responseBody);
+            }
+        } catch (IOException e) {
+            parentObj.add(RadonQueryOutputTable.builder()
+                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                    .paperNo(paperNo)
+                    .groupId(groupId)
+                    .inputFilePath(entity.getInputFilePath())
+                    .tenantId(tenantId)
+                    .processId(processId)
+                    .rootPipelineId(rootPipelineId)
+                    .actionId(action.getActionId())
+                    .process(entity.getProcess())
+                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                    .stage(entity.getApiName())
+                    .message(ExceptionUtil.toString(e))
+                    .batchId(entity.getBatchId())
+                    .createdOn(entity.getCreatedOn())
+                    .createdUserId(tenantId)
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .lastUpdatedUserId(tenantId)
+                    .category(entity.getCategory())
+                    .sipType(entity.getSipType())
+                    .truthEntityId(entity.getTruthEntityId())
+                    .build());
+
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response  from replicate server {}", ExceptionUtil.toString(e));
+        }
+    }
 
 }
