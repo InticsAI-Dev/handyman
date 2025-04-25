@@ -142,6 +142,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             replicateRequest.setInput(dataExtractionData);
 
             String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+            log.info("replicateJsonRequest"+"\n\n"+replicateJsonRequest+"\n\n");
             Request request = new Request.Builder()
                     .url(endpoint)
                     .post(RequestBody.create(replicateJsonRequest, mediaType))
@@ -667,6 +668,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             String responseBody = Objects.requireNonNull(response.body()).string();
             JsonNode rootNode = mapper.readTree(responseBody);
             JsonNode outputNode = rootNode.path("output");
+            log.info("<-----------------------response----------------------->"+"\n"+response+"\n\n");
+
 
             if (response.isSuccessful()) {
                 if (!outputNode.isEmpty() && !outputNode.isNull()) {
