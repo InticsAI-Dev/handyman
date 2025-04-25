@@ -410,8 +410,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .category(entity.getCategory())
                     .message("Radon kvp action macro completed")
                     .request(encryptRequestResponse(request))
-                    .response(encryptRequestResponse(response))
                     .sorContainerId(entity.getSorContainerId())
+                    .response(encryptRequestResponse(response))
+                    .truthEntityId(entity.getTruthEntityId())
                     .endpoint(String.valueOf(endpoint))
                     .build()
             );
@@ -699,5 +700,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             log.error(aMarker, "The Exception occurred in getting response  from replicate server {}", ExceptionUtil.toString(e));
         }
     }
+
+
 
 }

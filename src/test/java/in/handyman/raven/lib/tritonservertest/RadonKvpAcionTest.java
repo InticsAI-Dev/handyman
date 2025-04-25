@@ -16,13 +16,13 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                 .endpoint("https://api.runpod.ai/v2/mds27mhmolybf0/runsync")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT input_file_path, prompt,process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,\n" +
-                        "batch_id, model_registry, category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
-                        " WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
-                        " WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,\n" +
-                        "base64img, truth_entity_id, sip_type\n" +
-                        "FROM sor_transaction.radon_kvp_input_audit\n" +
-                        "WHERE model_registry = 'RADON' and tenant_id='1' limit 1")
+                .querySet("SELECT '/data/tenant/PI/pdf_to_image/cpt/cpt_0.png' as input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
+                        "a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
+                        "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
+                        "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id\n" +
+                        "FROM sor_transaction.radon_kvp_input_audit a\n" +
+                        "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
+                        "WHERE a.model_registry = 'RADON' and a.tenant_id='1' and a.root_pipeline_id =76995")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

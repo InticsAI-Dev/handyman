@@ -14,7 +14,6 @@ import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRes
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.replicate.ReplicateRequest;
-import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
@@ -78,7 +77,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         List<DataExtractionOutputTable> parentObj = new ArrayList<>();
 
         String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
-        String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
         String textExtractionModelName = action.getContext().get(TEXT_EXTRACTION_MODEL_NAME);
 
 
@@ -451,7 +449,29 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = entity.getTemplateName();
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
-        parentObj.add(DataExtractionOutputTable.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(contentString).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Text extraction action api call completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName("").modelVersion("").batchId(batchId).request(replicateJsonRequest).response(replicateJsonResponse).endpoint(endpoint.toString()).build());
+        parentObj.add(DataExtractionOutputTable.builder()
+                .filePath(new File(filePath).getAbsolutePath())
+                .extractedText(contentString)
+                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .groupId(entity.getGroupId())
+                .paperNo(paperNo)
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                .stage(PROCESS_NAME).message("Text extraction action api call completed")
+                .createdOn(entity.getCreatedOn())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .isBlankPage(flag)
+                .tenantId(tenantId)
+                .templateId(templateId)
+                .processId(processId)
+                .templateName(templateName)
+                .rootPipelineId(rootPipelineId)
+                .modelName("")
+                .modelVersion("")
+                .batchId(batchId)
+                .request(replicateJsonRequest)
+                .response(replicateJsonResponse)
+                .fileName("")
+                .endpoint(endpoint.toString()).build());
 
 
     }
@@ -648,16 +668,16 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             JsonNode rootNode = mapper.readTree(responseBody);
             JsonNode outputNode = rootNode.path("output");
 
-            if (response.isSuccessful()) {
+            if (true) {
                 if (!outputNode.isEmpty() && !outputNode.isNull()) {
                     extractedReplicateOutputResponse(endpoint, entity, outputNode, parentObj, replicateJsonRequest, responseBody);
                 }else {
-                    parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
+                    parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message("").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
                     log.error(aMarker, "The replicate response has empty output {}", outputNode);
                 }
 
             } else {
-                parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(DataExtractionOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message("").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(replicateJsonRequest).response(responseBody).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, "The replicate response status {}", responseBody);
             }
         } catch (Exception e) {

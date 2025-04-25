@@ -236,10 +236,14 @@ class DataExtractionActionTest {
                 .endPoint("https://api.runpod.ai/v2/6suxkm7225dbxg/runsync")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet(" SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id,b.root_pipeline_id, a.batch_id, now() as created_on\n" +
-                        "FROM info.paper_itemizer a\n" +
-                        "join preprocess.preprocess_payload_error_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
-                        "WHERE a.root_pipeline_id =127533 and a.tenant_id = 1;")
+                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,\n" +
+                        "b.root_pipeline_id,c.template_name, b.batch_id, now() as created_on, r.base_prompt as user_prompt,\n" +
+                        "r.system_prompt as system_prompt                   \n" +
+                        "FROM info.auto_rotation a left join info.template_detection_result c on c.origin_id=a.origin_id\n" +
+                        "  and a.tenant_id=c.tenant_id  left join sor_meta.radon_prompt_table r on r.tenant_id=a.tenant_id                     \n" +
+                        "  join preprocess.preprocess_payload_error_queue b on a.origin_id=b.origin_id and c.tenant_id=b.tenant_id\n" +
+                        "where a.group_id=1 and a.tenant_id = 1 and b.batch_id ='BATCH-1_0' \n" +
+                        "and r.process='TEXT_EXTRACTION' and r.use_case='PREPROCESS' and r.document_type='HEALTH_CARE' limit 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "https://api.runpod.ai/v2/6suxkm7225dbxg/runsync");
