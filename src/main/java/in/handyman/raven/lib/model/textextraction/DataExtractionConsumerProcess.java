@@ -149,7 +149,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Prefer", "wait")
                     .build();
-
+            log.info("headers#####################################"+"\n"+request+"\n\n");
             replicateRequestBuilder(endpoint , request, parentObj, entity,replicateJsonRequest);
         }
         else if (Objects.equals("TRITON", coproHandlerName)){
@@ -668,7 +668,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
             JsonNode rootNode = mapper.readTree(responseBody);
             JsonNode outputNode = rootNode.path("output");
 
-            if (true) {
+            if (response.isSuccessful()) {
                 if (!outputNode.isEmpty() && !outputNode.isNull()) {
                     extractedReplicateOutputResponse(endpoint, entity, outputNode, parentObj, replicateJsonRequest, responseBody);
                 }else {

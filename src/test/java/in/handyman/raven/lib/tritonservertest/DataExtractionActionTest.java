@@ -215,7 +215,7 @@ class DataExtractionActionTest {
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("replicate.request.api.token", "API_TOKEN"),
                 Map.entry("replicate.text.extraction.version", "1"),
-                Map.entry("copro.request.text.extraction.handler.name", "REPLICATE"),
+                Map.entry("copro.request.text.extraction.handler.name", "RUNPOD"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.text.extraction.model.name", "ARGON"),
@@ -243,7 +243,7 @@ class DataExtractionActionTest {
                         "  and a.tenant_id=c.tenant_id  left join sor_meta.radon_prompt_table r on r.tenant_id=a.tenant_id                     \n" +
                         "  join preprocess.preprocess_payload_error_queue b on a.origin_id=b.origin_id and c.tenant_id=b.tenant_id\n" +
                         "where a.group_id=1 and a.tenant_id = 1 and b.batch_id ='BATCH-1_0' \n" +
-                        "and r.process='TEXT_EXTRACTION' and r.use_case='PREPROCESS' and r.document_type='HEALTH_CARE' limit 1;")
+                        "and r.process='TEXT_EXTRACTION' and r.use_case='PREPROCESS' and r.document_type='HEALTH_CARE';")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "https://api.runpod.ai/v2/6suxkm7225dbxg/runsync");
