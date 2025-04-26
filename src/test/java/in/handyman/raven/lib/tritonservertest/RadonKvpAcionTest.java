@@ -14,7 +14,7 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://api.runpod.ai/v2/mds27mhmolybf0/runsync")
+                .endpoint("https://api.runpod.ai/v2/iyijelhlez4ply/runsync")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT '/data/tenant/PI/pdf_to_image/cpt/cpt_0.png' as input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
                         "a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +

@@ -21,6 +21,7 @@ public class UrgencyTriageModelPayload {
     private String inputFilePath;
     private String outputDir;
     private String batchId;
-    private String prompt;
-    private String base64img;
+    private String systemPrompt;
+    private String userPrompt;
+    private String base64Img;
 }

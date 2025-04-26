@@ -26,7 +26,8 @@ public class UrgencyTriageInputTable implements CoproProcessor.Entity {
     private String inputFilePath;
     private Long rootPipelineId;
     private String batchId;
-    private String prompt;
+    private String userPrompt;
+    private String systemPrompt;
     private Timestamp createdOn;
     private String base64img;
 

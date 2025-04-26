@@ -26,6 +26,11 @@ public class UrgencyTriageReplicateDataLineItems {
     private Long tenantId;
     private UrgencyTriageModelBoundingBox bboxes;
     private String batchId;
+    private String base64Img;
+    private String extractedImageUnit;
+    private Integer imageDPI;
+    private Integer imageHeight;
+    private Integer imageWidth;
 
 
 }

@@ -76,9 +76,10 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
         urgencyTriageModelPayload.setGroupId(entity.getGroupId());
         urgencyTriageModelPayload.setPaperNo(entity.getPaperNo());
         urgencyTriageModelPayload.setOriginId(entity.getOriginId());
-        urgencyTriageModelPayload.setPrompt(entity.getPrompt());
+        urgencyTriageModelPayload.setUserPrompt(entity.getUserPrompt());
+        urgencyTriageModelPayload.setSystemPrompt(entity.getSystemPrompt());
         urgencyTriageModelPayload.setBatchId(entity.getBatchId());
-        urgencyTriageModelPayload.setBase64img(entity.getBase64img());
+        urgencyTriageModelPayload.setBase64Img(entity.getBase64img());
 
         String jsonInputRequest = objectMapper.writeValueAsString(urgencyTriageModelPayload);
 
