@@ -118,6 +118,9 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Prefer", "wait")
                     .build();
+            log.info("request\n\n\n"+ request+ "\n\n\n");
+            log.info("replicateJsonRequest\n\n"+ replicateJsonRequest+ "\n\n");
+
             String jsonRequestEnc = encryptRequestResponse(replicateJsonRequest);
             replicateRequestBuilder(entity,request, parentObj , jsonRequestEnc, endpoint, objectMapper);
         }else {
@@ -390,6 +393,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
             String responseBody = response.body().string();
             JsonNode rootNode = mapper.readTree(responseBody);
             JsonNode outputNode = rootNode.path("output");
+            log.info("outputNode\n\n"+ outputNode+ "\n\n");
 
             if (response.isSuccessful()) {
                 ObjectMapper objectMappers = new ObjectMapper();
