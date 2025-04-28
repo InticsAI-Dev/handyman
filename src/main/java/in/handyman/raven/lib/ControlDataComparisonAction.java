@@ -13,6 +13,7 @@ import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -108,6 +109,9 @@ public class ControlDataComparisonAction implements IActionExecution {
     String sorItemName = controlDataComparisonQueryInputTable.getSorItemName();
     String encryptionPolicy = controlDataComparisonQueryInputTable.getEncryptionPolicy();
     String isEncrypted = controlDataComparisonQueryInputTable.getIsEncrypted();
+    Long sorItemId = controlDataComparisonQueryInputTable.getSorItemId();
+    Long sorContainerId = controlDataComparisonQueryInputTable.getSorContainerId();
+
 
     InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
     String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
@@ -133,7 +137,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
         log.info("Encryption completed for the date sorItem {}:", sorItemName);
         log.info("Inserting date type data validation at {}:", outputTable);
-        insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
+        insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName,sorItemId, sorContainerId);
       } catch (HandymanException e) {
         HandymanException handymanException = new HandymanException(e);
         HandymanException.insertException("Error while inserting date type data validation", handymanException, action);
@@ -152,7 +156,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
         log.info("Encryption completed for the gender sorItem {}:", sorItemName);
         log.info("Inserting gender type data validation at {}:", outputTable);
-        insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
+        insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
       } catch (HandymanException e) {
         HandymanException handymanException = new HandymanException(e);
         HandymanException.insertException("Error while inserting gender type data validation.", handymanException ,action);
@@ -170,7 +174,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
         log.info("Encryption completed for the sorItem {}:", sorItemName);
         log.info("Inserting string type data validation at {}:", outputTable);
-        insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName);
+        insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
       } catch (HandymanException e) {
         HandymanException handymanException = new HandymanException(e);
         HandymanException.insertException("Error while inserting generic type data validation {}:", handymanException, action);
@@ -181,22 +185,25 @@ public class ControlDataComparisonAction implements IActionExecution {
   private void insertExecutionInfo(Jdbi jdbi, String outputTable, Long rootPipelineId, Long groupId,
                                    Long tenantId, String originId, String batchId, Long paperNo,
                                    String actualValue, String extractedValue, String matchStatus,
-                                   Long mismatchCount, String fileName) {
+                                   Long mismatchCount, String fileName, String sorItemName, Long sorItemId, Long sorContainerId) {
     String classification = determineClassification(actualValue, extractedValue, matchStatus);
 
-    jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable +
-                    "(root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " +
-                    "paper_no, actual_value, extracted_value, match_status, mismatch_count, " +
-                    "tenant_id, classification) " +
-                    "VALUES(:rootPipelineId, :createdOn, :groupId, :fileName, :originId, " +
-                    ":batchId, :paperNo, :actualValue, :extractedValue, :matchStatus, " +
-                    ":mismatchCount, :tenantId, :classification);")
+    jdbi.useHandle(handle -> handle.createUpdate(
+                    "INSERT INTO " + outputTable + " (" +
+                            "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " +
+                            "paper_no, actual_value, extracted_value, match_status, mismatch_count, " +
+                            "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" +
+                            ") VALUES (" +
+                            ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " +
+                            ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " +
+                            ":classification, :sorContainerId, :sorItemName, :sorItemId" +
+                            ");")
             .bind("rootPipelineId", rootPipelineId)
             .bind("createdOn", LocalDate.now())
             .bind("groupId", groupId)
-            .bind("batchId", batchId)
-            .bind("fileName",fileName)
+            .bind("fileName", fileName)
             .bind("originId", originId)
+            .bind("batchId", batchId)
             .bind("paperNo", paperNo)
             .bind("actualValue", actualValue)
             .bind("extractedValue", extractedValue)
@@ -204,11 +211,15 @@ public class ControlDataComparisonAction implements IActionExecution {
             .bind("mismatchCount", mismatchCount)
             .bind("tenantId", tenantId)
             .bind("classification", classification)
-            .execute());
+            .bind("sorContainerId", sorContainerId)
+            .bind("sorItemName", sorItemName)
+            .bind("sorItemId", sorItemId)
+            .execute()
+    );
   }
 
 
-  private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
+    private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
     String normalizedActual = actualValue == null ? "" : actualValue.trim();
     String normalizedExtracted = extractedValue == null ? "" : extractedValue.trim();
 

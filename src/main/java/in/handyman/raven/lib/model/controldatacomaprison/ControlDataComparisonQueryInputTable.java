@@ -30,4 +30,6 @@ public class ControlDataComparisonQueryInputTable {
     private String sorItemName;
     private String encryptionPolicy;
     private String isEncrypted;
+    private Long sorItemId;
+    private Long sorContainerId;
 }
