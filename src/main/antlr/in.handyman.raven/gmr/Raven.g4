@@ -180,6 +180,7 @@ action:
     |controlDataComparison
     |providerContainerParser
     |postProcessingExecutor
+    |agenticPaperFilter
     );
 
 
@@ -1396,6 +1397,14 @@ postProcessingExecutor:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
+
+agenticPaperFilter:
+  	'agenticPaperFilter' 'as' name=STRING
+  	'resource-conn' resourceConn=STRING
+  	'result-table' resultTable=STRING
+  	'copro-url' endPoint=STRING
+  	'process-id' processId=STRING
+  	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 //rules
 
