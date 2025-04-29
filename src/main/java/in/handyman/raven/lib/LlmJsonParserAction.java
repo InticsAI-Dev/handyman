@@ -120,11 +120,7 @@ public class LlmJsonParserAction implements IActionExecution {
                             log.info(aMarker, "Llm json parser insert query {}", insertQueryKrypton);
                             innerParsedResponsesKrypton = new ArrayList<>();
 
-                            innerParsedResponsesKrypton = objectMapper.readValue(
-                                    stringObjectMap.traverse(),
-                                    new TypeReference<List<LlmJsonParserKvpKrypton>>() {
-                                    }
-                            );
+                            innerParsedResponsesKrypton = objectMapper.readValue(stringObjectMap.traverse(), new TypeReference<List<LlmJsonParserKvpKrypton>>() {});
                         } catch (Exception e) {
                             action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
                             HandymanException handymanException = new HandymanException(e);

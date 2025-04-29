@@ -21,9 +21,16 @@ import in.handyman.raven.lib.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import okhttp3.*;
+
+import java.net.http.HttpClient;
+import java.time.Instant;
+import java.time.Duration;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
+import java.net.http.HttpRequest;
+import java.net.URI;
+import java.net.http.HttpResponse;
 
 import java.io.IOException;
 import java.net.URL;
@@ -31,6 +38,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.TimeoutException;
+
 
 import static in.handyman.raven.lib.utils.DatabaseUtility.fetchBshResultByClassName;
 
@@ -50,6 +59,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
     public final Jdbi jdbi;
+    HttpClient client = HttpClient.newHttpClient();
+
 
     private final ProviderDataTransformer providerDataTransformer;
 
@@ -617,6 +628,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         return requestStr;
     }
 
+
     private void replicateRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
@@ -627,7 +639,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = response.body().string();
-            JsonNode rootNode = mapper.readTree(responseBody);
+            JsonNode  results = mapper.readTree(responseBody);
+            JsonNode rootNode = checkStatus(results, endpoint);
             JsonNode outputNode = rootNode.path("output");
 
             if (response.isSuccessful()) {
@@ -698,9 +711,48 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response  from replicate server {}", ExceptionUtil.toString(e));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
+    private JsonNode checkStatus(JsonNode initialResponse, URL endpoint) throws Exception {
+        final String jobId = initialResponse.path("id").asText();
+        final String initialStatus = initialResponse.path("status").asText();
 
+        if ("COMPLETED".equals(initialStatus) || "FAILED".equals(initialStatus)) {
+            log.info("Job " + jobId + " initial status: " + initialStatus);
+            return initialResponse;
+        }
 
+        final String url = String.format("https://api.runpod.ai/v2/iyijelhlez4ply/status/%s", jobId);
+        Instant start = Instant.now();
+
+        while (Duration.between(start, Instant.now()).getSeconds() < (long) 4000) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Authorization", "Bearer " + PropertyHandler.get("runpod.api.token.v1"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> finalResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (finalResponse.statusCode() / 100 != 2) {
+                throw new IOException("Failed to get status: " + finalResponse.body());
+            }
+
+            JsonNode json = mapper.readTree(finalResponse.body());
+            String jobStatus = json.path("status").asText();
+            log.info("Job " + jobId + " polled status: " + jobStatus);
+
+            if ("COMPLETED".equals(jobStatus) || "FAILED".equals(jobStatus)) {
+                return json;
+            }
+
+            Thread.sleep(5 * 1000L);
+        }
+
+        throw new TimeoutException(String.format("Job %s did not complete within %d seconds", jobId, (long) 4000));
+    }
 }
