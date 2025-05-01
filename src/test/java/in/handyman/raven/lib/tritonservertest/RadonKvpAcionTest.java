@@ -44,6 +44,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("pipeline.end.to.end.encryption", "false");
         ac.getContext().put("document_type", "HEALTH_CARE");
         ac.getContext().put("tenant_id", "1");
+        ac.getContext().put("copro.request.activator.handler.name", "RUNPOD");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
 
