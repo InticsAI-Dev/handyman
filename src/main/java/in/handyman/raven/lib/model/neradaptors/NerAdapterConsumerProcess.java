@@ -18,11 +18,16 @@ import org.slf4j.Marker;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
 public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess<NerInputTable, NerOutputTable> {
     private static final MediaType MediaTypeJSON = MediaType
@@ -77,7 +82,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     public List<NerOutputTable> process(URL endpoint, NerInputTable result) throws Exception {
 
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
-        String encryptData = action.getContext().getOrDefault("pipeline.end.to.end.encryption","false");
+        String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         if (Objects.equals(encryptData, "true")) {
             if (Objects.equals(result.getIsEncrypted(), "true")) {
                 result.setInputValue(encryption.decrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));

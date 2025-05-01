@@ -23,6 +23,9 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+
 
 public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<ZeroShotClassifierInputTable, ZeroShotClassifierOutputTable> {
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
@@ -33,7 +36,6 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType MediaTypeJSON = MediaType
             .parse("application/json; charset=utf-8");
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
 
     public final ActionExecutionAudit action;
@@ -65,7 +67,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
         String decryptedContent;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             decryptedContent = encryption.decrypt(pageContent, "AES256", "ZSC_TEXT_DATA");
@@ -79,7 +81,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<Map<String, List<String>>>() {
         });
-        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+        if ("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))) {
             keysToFilterObject.replaceAll((key, valueList) ->
                     valueList.stream()
                             .map(String::toLowerCase)
@@ -139,7 +141,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
 
     @NotNull
     private String normalizeCaseToLower(String pageContent) {
-        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+        if ("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))) {
             pageContent = pageContent.toLowerCase();
             log.info("Converted the input string content into lower");
             return pageContent;
@@ -361,7 +363,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

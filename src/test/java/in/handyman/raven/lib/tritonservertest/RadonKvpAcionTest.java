@@ -6,6 +6,9 @@ import in.handyman.raven.lib.model.RadonKvp;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+
 @Slf4j
 public class RadonKvpAcionTest {
     @Test
@@ -39,9 +42,9 @@ public class RadonKvpAcionTest {
         ac.getContext().put("copro.client.api.sleeptime", "10");
         ac.getContext().put("pipeline.copro.api.process.file.format", "BASE64");
         ac.getContext().put("pipeline.encryption.default.holder", "");
-        ac.getContext().put("pipeline.text.extraction.encryption", "true");
+        ac.getContext().put(ENCRYPT_TEXT_EXTRACTION_OUTPUT, "true");
         ac.getContext().put("bbox.radon_bbox_activator", "false");
-        ac.getContext().put("pipeline.end.to.end.encryption", "false");
+        ac.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         ac.getContext().put("document_type", "HEALTH_CARE");
         ac.getContext().put("tenant_id", "1");
         ac.getContext().put("copro.request.activator.handler.name", "RUNPOD");

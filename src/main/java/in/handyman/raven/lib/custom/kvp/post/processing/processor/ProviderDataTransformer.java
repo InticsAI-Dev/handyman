@@ -23,6 +23,8 @@ import org.slf4j.Marker;
 
 import java.util.*;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+
 
 public class ProviderDataTransformer {
 
@@ -159,7 +161,7 @@ public class ProviderDataTransformer {
                 }
 
             }
-            if(kvpContainers.isEmpty()){
+            if (kvpContainers.isEmpty()) {
                 outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), encryptIfRequired("[]")));
             }
 
@@ -213,7 +215,7 @@ public class ProviderDataTransformer {
 
     private String encryptIfRequired(String content) {
 
-        if ("true".equals(action.getContext().get("pipeline.req.res.encryption"))) {
+        if ("true".equals(action.getContext().get(ENCRYPT_REQUEST_RESPONSE))) {
             return encryption.encrypt(content, "AES256", "RADON_KVP_JSON");
         }
         return content;

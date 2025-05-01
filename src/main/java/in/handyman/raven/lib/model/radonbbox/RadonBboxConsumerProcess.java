@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+
 
 public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<RadonBboxInputEntity, RadonBboxOutputEntity> {
     public static final String RADON_BBOX = PipelineName.RADON_KVP_BBOX.getProcessName();
@@ -59,7 +61,7 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
+
     public RadonBboxConsumerProcess(Logger log, Marker aMarker, ActionExecutionAudit action, RadonKvpBbox radonKvpBbox, ObjectMapper objectMapper, final String processBase64, final FileProcessingUtils fileProcessingUtils) {
         this.log = log;
         this.aMarker = aMarker;
@@ -242,14 +244,14 @@ public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<
 
     }
 
-    public String encryptRequestResponse(String request){
-        String encryptReqRes= action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
-        String requestStr ;
-        if("true".equals(encryptReqRes)){
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request,"AES256","COPRO_REQUEST");
-            requestStr=encryptedRequest;
-        }else {
-            requestStr=request;
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
         }
         return requestStr;
     }

@@ -32,6 +32,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
     public static final String TEXT_EXTRACTOR_START = "TEXT EXTRACTOR START";
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
@@ -50,10 +53,9 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
     public final ActionExecutionAudit action;
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     private final OkHttpClient httpclient;
 
-    private static final String COPRO_SOCKET_TIMEOUT="copro.client.socket.timeout";
+    private static final String COPRO_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String processBase64;
@@ -64,11 +66,11 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
-        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT,"100"));
+        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT, "100"));
         this.pageContentMinLength = pageContentMinLength;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
-        this.httpclient =  new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
+        this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
     }
 
 
@@ -292,7 +294,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
@@ -334,7 +336,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String extractedContent;
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
@@ -481,7 +483,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String templateName = entity.getTemplateName();
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String extractedContentEnc;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
@@ -568,7 +570,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
         String templateId = entity.getTemplateId();
 
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String extractedContentEnc;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
@@ -596,7 +598,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
 
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String extractedContentEnc;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
@@ -670,7 +672,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

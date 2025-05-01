@@ -10,7 +10,10 @@ import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpInputEntity;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpOutputEntity;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -20,6 +23,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess<AlchemyKvpInputEntity, AlchemyKvpOutputEntity> {
 
@@ -37,7 +42,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private final int timeOut;
     private final String authToken;
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
+
     public AlchemyKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AlchemyKvpResponseAction aAction) {
         this.log = log;
         this.aMarker = aMarker;
@@ -58,11 +63,11 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
     public List<AlchemyKvpOutputEntity> process(URL endpoint, AlchemyKvpInputEntity entity) throws Exception {
 
 
-         log.info(aMarker, " Alchemy consumer process Started for origin id {}", entity.getAlchemyOriginId());
+        log.info(aMarker, " Alchemy consumer process Started for origin id {}", entity.getAlchemyOriginId());
 
         List<AlchemyKvpOutputEntity> parentObj = new ArrayList<>();
         String originId = entity.getAlchemyOriginId();
-        Long rootPipelineId=entity.getRootPipelineId();
+        Long rootPipelineId = entity.getRootPipelineId();
 
 
         log.info(aMarker, "Request object  endpoint {} ", endpoint);
@@ -85,31 +90,31 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
                 if (!alchemyApiPayload.getPayload().isEmpty() && !alchemyApiPayload.getPayload().isNull() && alchemyApiPayload.isSuccess()) {
 
-                        parentObj.add(AlchemyKvpOutputEntity
-                                .builder()
-                                        .processId(entity.getProcessId())
-                                        .tenantId(tenantId)
-                                        .groupId(entity.getGroupId())
-                                        .kvpResponse(encryptRequestResponse(String.valueOf(alchemyApiPayload.getPayload())))
-                                        .alchemyOriginId(entity.getAlchemyOriginId())
-                                        .pipelineOriginId(entity.getPipelineOriginId())
-                                        .rootPipelineId(rootPipelineId)
-                                        .fileName(entity.getFileName())
-                                        .stage("PRODUCT_OUTBOUND").status("COMPLETED").message("alchemy kvp response completed for origin_id - "+entity.getAlchemyOriginId())
-                                .build());
-                    }
-                } else {
                     parentObj.add(AlchemyKvpOutputEntity
                             .builder()
                             .processId(entity.getProcessId())
                             .tenantId(tenantId)
                             .groupId(entity.getGroupId())
+                            .kvpResponse(encryptRequestResponse(String.valueOf(alchemyApiPayload.getPayload())))
                             .alchemyOriginId(entity.getAlchemyOriginId())
                             .pipelineOriginId(entity.getPipelineOriginId())
                             .rootPipelineId(rootPipelineId)
-                            .stage("PRODUCT_OUTBOUND").status("FAILED").message("alchemy kvp response failed for origin_id - "+entity.getAlchemyOriginId())
+                            .fileName(entity.getFileName())
+                            .stage("PRODUCT_OUTBOUND").status("COMPLETED").message("alchemy kvp response completed for origin_id - " + entity.getAlchemyOriginId())
                             .build());
                 }
+            } else {
+                parentObj.add(AlchemyKvpOutputEntity
+                        .builder()
+                        .processId(entity.getProcessId())
+                        .tenantId(tenantId)
+                        .groupId(entity.getGroupId())
+                        .alchemyOriginId(entity.getAlchemyOriginId())
+                        .pipelineOriginId(entity.getPipelineOriginId())
+                        .rootPipelineId(rootPipelineId)
+                        .stage("PRODUCT_OUTBOUND").status("FAILED").message("alchemy kvp response failed for origin_id - " + entity.getAlchemyOriginId())
+                        .build());
+            }
 
 
         } catch (Exception e) {
@@ -126,7 +131,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

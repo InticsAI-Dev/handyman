@@ -8,26 +8,15 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.Exception;
-import java.lang.Override;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
-import in.handyman.raven.lib.model.textextraction.*;
- import in.handyman.raven.lib.model.triton.*;
- import in.handyman.raven.lib.replicate.ReplicateRequest;
+import in.handyman.raven.lib.model.textextraction.DataExtractionData;
+import in.handyman.raven.lib.model.textextraction.DataExtractionDataItem;
+import in.handyman.raven.lib.model.textextraction.DataExtractionResponse;
+import in.handyman.raven.lib.model.triton.*;
+import in.handyman.raven.lib.replicate.ReplicateRequest;
 import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import in.handyman.raven.lib.utils.ProcessFileFormatE;
@@ -36,7 +25,20 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
-public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput>  {
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+
+public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput> {
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -52,7 +54,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private static final MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
 
     private static final String PROCESS_NAME = "AGENTIC PAPER FILTER";
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
     private final int pageContentMinLength;
@@ -62,7 +63,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
-
 
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64) {
@@ -279,7 +279,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
         String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
-        String encryptSotPageContent = action.getContext().get("pipeline.agentic.paper.filter.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         String extractedContent = Objects.equals(encryptSotPageContent, "true")
@@ -330,7 +330,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String extractedContent;
-        String encryptSotPageContent = action.getContext().get("pipeline.agentic.paper.filter.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
@@ -466,7 +466,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String templateName = entity.getTemplateName();
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
-        String encryptSotPageContent = action.getContext().get("pipeline.agentic.paper.filter.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         String extractedContentEnc;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
@@ -518,7 +518,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long rootPipelineId = entity.getRootPipelineId();
         String batchId = entity.getBatchId();
 
-        String encryptSotPageContent = action.getContext().get("pipeline.agentic.paper.filter.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         String extractedContentEnc;
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
@@ -592,7 +592,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

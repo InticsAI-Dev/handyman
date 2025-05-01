@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
+
 @Slf4j
 class DataExtractionActionTest {
 //    @Test
@@ -317,7 +319,7 @@ class DataExtractionActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.agentic.paper.filter.model.name", "KRYPTON"),
                 Map.entry("pipeline.copro.api.process.file.format", "FILE"),
-                Map.entry("pipeline.agentic.paper.filter.encryption", "false"),
+                Map.entry(ENCRYPT_AGENTIC_FILTER_OUTPUT, "false"),
                 Map.entry("page.content.min.length.threshold", "1"),
                 Map.entry("write.batch.size", "5")));
         AgenticPaperFilterAction dataExtractionAction = new AgenticPaperFilterAction(actionExecutionAudit, log, dataExtraction);

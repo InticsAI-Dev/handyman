@@ -30,6 +30,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 import static in.handyman.raven.lib.utils.DatabaseUtility.fetchBshResultByClassName;
 
 public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<RadonQueryInputTable, RadonQueryOutputTable> {
@@ -45,7 +47,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final OkHttpClient httpclient;
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
     public final Jdbi jdbi;
 
@@ -85,7 +86,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
             String inputResponseJsonstr = entity.getInputResponseJson();
             String inputResponseJson;
-            String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
+            String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
 
             log.info("Checking if end-to-end encryption is enabled: {}", encryptOutputJsonContent);
 
@@ -345,7 +346,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String extractedContent;
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
-        String encryptOutputJsonContent = action.getContext().get("pipeline.end.to.end.encryption");
+        String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
         log.info(aMarker, "checking provider data found for the given input {}", Boolean.TRUE.equals(entity.getPostProcess()));
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
@@ -582,7 +583,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

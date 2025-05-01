@@ -5,6 +5,8 @@ import in.handyman.raven.lib.model.PostProcessingExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+
 @Slf4j
 class PostProcessingExecutorActionTest {
 
@@ -59,7 +61,7 @@ class PostProcessingExecutorActionTest {
         action.getContext().put("batch_id", "BATCH-113_0");
         action.getContext().put("created_user_id", "1");
         action.getContext().put("outbound.mapper.bsh.class.order", "NonLookUpFieldsMixerValidator");
-        action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("NonLookUpFieldsMixerValidator", "import org.slf4j.Logger;\n" +
                 "import org.slf4j.LoggerFactory;\n" +
                 "\n" +

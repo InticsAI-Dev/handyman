@@ -25,6 +25,8 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+
 public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProcess<AutoRotationInputTable, AutoRotationOutputTable> {
 
     public static final String PROCESS_NAME = PipelineName.AUTO_ROTATION.getProcessName();
@@ -39,7 +41,6 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     private final OkHttpClient httpclient;
     private final AutoRotationAction aAction;
     private final String AUTO_ROTATION = "AUTO_ROTATION";
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     private final int timeOut;
     private final FileProcessingUtils fileProcessingUtils;
     private final String tritonRequestActivator;
@@ -272,7 +273,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

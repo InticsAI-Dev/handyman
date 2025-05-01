@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+
 @Slf4j
 class ScalarAdapterActionTest {
 
@@ -46,7 +48,7 @@ class ScalarAdapterActionTest {
         action.setRootPipelineId(11011L);
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
-        action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("validaiton.char-limit-count", "1");
 
@@ -211,19 +213,19 @@ class ScalarAdapterActionTest {
     }
 
     @Test
-    public void formatDate(){
+    public void formatDate() {
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
-        action.getContext().put("pipeline.end.to.end.encryption", "true");
-        action.getContext().put("scalar.data.formats.deduct.century","true");
+        action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        action.getContext().put("scalar.data.formats.deduct.century", "true");
         action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
         action.getContext().put("validaiton.char-limit-count", "1");
 
-        Datevalidator datevalidator= Datevalidator.builder()
+        Datevalidator datevalidator = Datevalidator.builder()
                 .allowedDateFormats("")
                 .comparableDate("")
                 .condition(true)
@@ -232,10 +234,10 @@ class ScalarAdapterActionTest {
                 .inputValue("")
                 .build();
         FieldValidator fieldValidator = FieldValidator.builder().allowedSpecialChar("yyyy-MM-dd").inputValue("10/12/30").build();
-        DatevalidatorAction datevalidatorAction=new DatevalidatorAction(action,log,datevalidator);
+        DatevalidatorAction datevalidatorAction = new DatevalidatorAction(action, log, datevalidator);
         FieldValidator formatedFieldValidator = datevalidatorAction.formatDate(fieldValidator);
         System.out.println(formatedFieldValidator.getInputValue());
-      log.info("Validator special character {} and validator input value {} output formatted value {}", fieldValidator.getAllowedSpecialChar(), fieldValidator.getInputValue(), formatedFieldValidator.getInputValue());
+        log.info("Validator special character {} and validator input value {} output formatted value {}", fieldValidator.getAllowedSpecialChar(), fieldValidator.getInputValue(), formatedFieldValidator.getInputValue());
     }
 
     @Test

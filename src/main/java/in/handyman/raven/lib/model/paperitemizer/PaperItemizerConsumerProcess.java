@@ -25,6 +25,8 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+
 public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProcess<PaperItemizerInputTable, PaperItemizerOutputTable> {
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
@@ -46,7 +48,6 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
             .build();
 
     private final String processBase64;
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
     private final PaperItemizer paperItemizer;
 
@@ -384,7 +385,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");

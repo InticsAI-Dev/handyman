@@ -7,6 +7,8 @@ import in.handyman.raven.lib.model.LlmJsonParser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+
 
 @Slf4j
 public class LlmJsonParserActionTest {
@@ -40,14 +42,13 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("sor.transaction.bbox.activator.enable", "true");
         ac.getContext().put("sor.transaction.confidence.activator.enable", "true");
-        ac.getContext().put("pipeline.end.to.end.encryption", "false");
+        ac.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
 
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 
         llmJsonParserAction.execute();
-
 
 
     }

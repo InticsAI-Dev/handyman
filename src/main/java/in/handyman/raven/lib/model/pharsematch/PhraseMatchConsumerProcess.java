@@ -26,6 +26,9 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+
 public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProcess<PhraseMatchInputTable, PhraseMatchOutputTable> {
     public static final String FILTER_ZSC_PAGE_CONTENT_LOWER = "filter.zsc.page.content.lower";
     private final Logger log;
@@ -40,7 +43,6 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
             .writeTimeout(10, TimeUnit.MINUTES)
             .readTimeout(10, TimeUnit.MINUTES)
             .build();
-    public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
 
     public PhraseMatchConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action) {
         this.log = log;
@@ -62,7 +64,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
 
-        String encryptSotPageContent = action.getContext().get("pipeline.text.extraction.encryption");
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             decryptedContent = encryption.decrypt(pageContent, "AES256", "PM_TEXT_INPUT");
@@ -73,7 +75,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, List<String>> keysToFilterObject = objectMapper.readValue(entity.getTruthPlaceholder(), new TypeReference<>() {
         });
-        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+        if ("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))) {
             keysToFilterObject.replaceAll((key, valueList) ->
                     valueList.stream()
                             .map(String::toLowerCase)
@@ -331,7 +333,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_REQ_RES_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
@@ -344,7 +346,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
     @NotNull
     private String normalizeCaseToLower(String pageContent) {
-        if("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))){
+        if ("true".equals(action.getContext().get(FILTER_ZSC_PAGE_CONTENT_LOWER))) {
             pageContent = pageContent.toLowerCase();
             log.info("Converted the input string content into lower");
             return pageContent;
