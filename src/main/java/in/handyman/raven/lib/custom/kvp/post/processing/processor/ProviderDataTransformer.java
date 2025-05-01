@@ -23,6 +23,7 @@ import org.slf4j.Marker;
 
 import java.util.*;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 
@@ -162,7 +163,7 @@ public class ProviderDataTransformer {
 
             }
             if (kvpContainers.isEmpty()) {
-                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), encryptIfRequired("[]")));
+                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), "[]"));
             }
 
             kvpContainers.forEach((container, kvps) -> {
@@ -170,9 +171,9 @@ public class ProviderDataTransformer {
                 containerIdOpt.ifPresent(containerId -> {
                     try {
                         String responseJson = objectMapper.writeValueAsString(kvps);
-                        String encryptedContent = encryptIfRequired(responseJson);
 
-                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, encryptedContent));
+
+                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
                     } catch (JsonProcessingException e) {
                         throw new HandymanException("Error processing JSON", e, action);
                     }
@@ -215,6 +216,14 @@ public class ProviderDataTransformer {
 
     private String encryptIfRequired(String content) {
 
+        if ("true".equals(action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION))) {
+            return encryption.encrypt(content, "AES256", "RADON_KVP_JSON");
+        }
+        return content;
+    }
+
+    private String encryptReqResIfRequired(String content) {
+
         if ("true".equals(action.getContext().get(ENCRYPT_REQUEST_RESPONSE))) {
             return encryption.encrypt(content, "AES256", "RADON_KVP_JSON");
         }
@@ -232,7 +241,7 @@ public class ProviderDataTransformer {
                 .lastUpdatedUserId(entity.getTenantId())
                 .originId(entity.getOriginId())
                 .paperNo(entity.getPaperNo())
-                .totalResponseJson(encryptedContent)
+                .totalResponseJson(encryptIfRequired(encryptedContent))
                 .groupId(entity.getGroupId())
                 .inputFilePath(entity.getInputFilePath())
                 .actionId(action.getActionId())
@@ -246,8 +255,8 @@ public class ProviderDataTransformer {
                 .batchId(entity.getBatchId())
                 .message("Radon KVP mapping completed")
                 .category(entity.getCategory())
-                .request(encryptIfRequired(request))
-                .response(encryptIfRequired(apiResponse))
+                .request(encryptReqResIfRequired(request))
+                .response(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
                 .sorContainerId(Long.valueOf(containerId))
                 .build();
