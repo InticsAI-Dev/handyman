@@ -213,7 +213,7 @@ public class ProviderDataTransformer {
 
     private String encryptIfRequired(String content) {
 
-        if ("true".equals(action.getContext().get("pipeline.end.to.end.encryption"))) {
+        if ("true".equals(action.getContext().get("pipeline.req.res.encryption"))) {
             return encryption.encrypt(content, "AES256", "RADON_KVP_JSON");
         }
         return content;
