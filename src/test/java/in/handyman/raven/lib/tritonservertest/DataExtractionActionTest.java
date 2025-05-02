@@ -233,7 +233,7 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("https://api.runpod.ai/v2/6suxkm7225dbxg/runsync")
+                .endPoint("http://127.0.0.1:3089/v2/6suxkm7225dbxg/runsync")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
                 .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,\n" +
