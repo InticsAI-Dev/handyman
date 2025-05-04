@@ -22,7 +22,8 @@ public class RadonKvpAcionTest {
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id\n" +
                         "FROM sor_transaction.radon_kvp_input_audit a\n" +
                         "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
-                        "WHERE a.model_registry = 'RADON' and a.tenant_id='1' and a.root_pipeline_id =76995")
+                        "WHERE a.model_registry = 'RADON' and a.tenant_id='6' and a.root_pipeline_id =4248\n" +
+                        "limit 5;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -43,7 +44,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("bbox.radon_bbox_activator", "false");
         ac.getContext().put("pipeline.end.to.end.encryption", "false");
         ac.getContext().put("document_type", "HEALTH_CARE");
-        ac.getContext().put("tenant_id", "1");
+        ac.getContext().put("tenant_id", "6");
         ac.getContext().put("copro.request.activator.handler.name", "RUNPOD");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
