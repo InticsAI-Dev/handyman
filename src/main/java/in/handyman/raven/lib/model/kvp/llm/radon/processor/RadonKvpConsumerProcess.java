@@ -725,7 +725,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             return initialResponse;
         }
 
-        final String url = String.format("https://api.runpod.ai/v2/iyijelhlez4ply/status/%s", jobId);
+        final String url = String.format(action.getContext().get("runpod.status.endpoint")+"%s", jobId);
         Instant start = Instant.now();
 
         while (Duration.between(start, Instant.now()).getSeconds() < (long) 4000) {
@@ -738,7 +738,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
             HttpResponse<String> finalResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (finalResponse.statusCode() / 100 != 2) {
+            if (finalResponse.  statusCode() / 100 != 2) {
                 throw new IOException("Failed to get status: " + finalResponse.body());
             }
 
