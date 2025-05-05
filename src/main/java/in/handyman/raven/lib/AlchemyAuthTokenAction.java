@@ -89,6 +89,9 @@ public class AlchemyAuthTokenAction implements IActionExecution {
 
             } else {
                 log.info(aMarker, "The Failure Response {} --> {}", name, responseBody);
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("Alchemy auth token consumer failed for tenantId " + tenantId, handymanException, this.action);
+
                 action.getContext().put(name.concat(".error"), "true");
                 action.getContext().put(name.concat(".errorMessage"), responseBody);
             }

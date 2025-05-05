@@ -252,7 +252,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .response(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
                         .build());
-                log.info(aMarker, "Error in getting response from triton response {}", response.message());
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+
+                log.info(aMarker, "Error in getting response from triton api {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
@@ -442,6 +445,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .endpoint(String.valueOf(endpoint))
                         .sorContainerId(entity.getSorContainerId())
                         .build());
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+
                 log.info(aMarker, "Error in converting response from copro server {}", response.message());
             }
         } catch (IOException e) {

@@ -146,6 +146,9 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
                 extractedCoproOutputResponse(entity, responseBody, parentObj, "", "", jsonInputRequest, responseBody, String.valueOf(endpoint));
             } else {
                 parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(response.message())).endpoint(String.valueOf(endpoint)).rootPipelineId(rootPipelineId).build());
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("Auto rotation consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
         } catch (Exception e) {
@@ -179,6 +182,9 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
 
             } else {
                 parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(response.message())).endpoint(String.valueOf(endpoint)).build());
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("Auto rotation consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+
                 log.info(aMarker, "Error in getting response {}", response.message());
             }
         } catch (Exception e) {
@@ -221,6 +227,7 @@ public class AutoRotationConsumerProcess implements CoproProcessor.ConsumerProce
                     .response(encryptRequestResponse(response))
                     .endpoint(endpoint)
                     .build());
+
         } catch (JsonProcessingException e) {
 
             parentObj.add(AutoRotationOutputTable.builder().originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).tenantId(tenantId).templateId(templateId).paperNo(paperNo).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(AUTO_ROTATION).message(ExceptionUtil.toString(e)).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).batchId(entity.getBatchId()).request(encryptRequestResponse(request)).response(encryptRequestResponse(response)).endpoint(String.valueOf(endpoint)).build());

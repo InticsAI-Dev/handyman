@@ -124,6 +124,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("Paper itemizer consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+
                 log.error(aMarker, "Error in processing response from copro API {}", response.message());
             }
 
@@ -192,6 +195,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                                 .response(encryptRequestResponse(response.message()))
                                 .endpoint(String.valueOf(endpoint))
                                 .build());
+                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException.insertException("Paper itemizer consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+
                 log.error(aMarker, "Error in getting response from copro {}", response.message());
             }
 
@@ -216,7 +222,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                             .endpoint(String.valueOf(endpoint))
                             .build());
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Paper Itemize consumer failed for originId " + originId, handymanException, this.action);
+            HandymanException.insertException("Paper Itemizer consumer failed for originId " + originId, handymanException, this.action);
             log.error(aMarker, "The Exception occurred in request {}", exception.getMessage(), exception);
         }
     }
