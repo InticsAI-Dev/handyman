@@ -38,6 +38,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
 import static java.lang.Math.random;
 
 /**
@@ -165,7 +166,7 @@ public class AssetInfoAction implements IActionExecution {
             var fileSize = file.length() / 1024;
             String fileExtension = FilenameUtils.getExtension(file.getName());
             String fileAbsolutePath = file.getAbsolutePath();
-            String decodedFileName =  decodeFileName(file.getName());
+            String decodedFileName = decodeFileName(file.getName());
             String base64ForPathValue = getBase64ForPath(fileAbsolutePath, fileExtension);
             float pageWidth = 0f;
             float pageHeight = 0f;
@@ -272,7 +273,7 @@ public class AssetInfoAction implements IActionExecution {
 
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(PIPELINE_PAGE_ENCODE_ENCRYPT);
+        String encryptReqRes = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
