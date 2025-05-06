@@ -11,7 +11,7 @@ public class ProviderTransformerFinalBsh {
         this.logger = logger;
     }
 
-     public List processProviders(List providers) {
+    public List processProviders(List providers) {
         logger.info("Starting processProviders execution");
 
         List result = new ArrayList();
@@ -21,34 +21,44 @@ public class ProviderTransformerFinalBsh {
         Map nameMappingDetails = nameMappingDetails();
         List outputProviderContainerList = outputProviderContainerList();
 
+        Map providerTypeCount = new HashMap();
+        for (Object obj : providers) {
+            Map provider = (Map) obj;
+            String providerType = (String) provider.get("Provider Type");
+            providerTypeCount.put(providerType, (Integer)providerTypeCount.getOrDefault(providerType, 0) + 1);
+        }
+
         for (int i = 0; i < providers.size(); i++) {
             Map provider = (Map) providers.get(i);
-            logger.debug("Processing provider keys: " + provider.keySet());
+            logger.debug("Processing provider keys: {} ", provider.keySet());
 
-            String matchedContainer = findMatchingContainer((String) provider.get("Provider Type"), metaProviderEntityDetails);
-            logger.info(matchedContainer + " found in the provider type json and mapping the fields.");
+            String providerType = (String) provider.get("Provider Type");
+            String matchedContainer = findMatchingContainer(providerType, metaProviderEntityDetails);
+            logger.info("{} found in the provider type json and mapping the fields.", matchedContainer);
 
-            if (!matchedContainer.equals("UNDEFINED_PROVIDER_DETAILS")) {
+            // Check if the provider type is duplicated
+            if (((Integer) providerTypeCount.get(providerType) > 1) || matchedContainer.equals("UNDEFINED_PROVIDER_DETAILS")) {
+                logger.info("Provider type {} is duplicated or undefined. Processing as undefined.", providerType);
+                processUndefinedProviderData(provider, "UNDEFINED_PROVIDER_DETAILS", itemMappingDetails, nameMappingDetails, undefinedResult);
+            } else {
                 if (outputProviderContainerList.contains(matchedContainer)) {
                     outputProviderContainerList.remove(matchedContainer);
                     processProviderData(provider, matchedContainer, itemMappingDetails, nameMappingDetails, result);
                 } else {
-                    logger.info(matchedContainer + " container already found and mapped so mapping this node to undefined provider.");
+                    logger.info("{} container already found. Mapping to undefined provider.", matchedContainer);
                     processUndefinedProviderData(provider, "UNDEFINED_PROVIDER_DETAILS", itemMappingDetails, nameMappingDetails, undefinedResult);
                 }
-            } else {
-                processUndefinedProviderData(provider, "UNDEFINED_PROVIDER_DETAILS", itemMappingDetails, nameMappingDetails, undefinedResult);
             }
         }
 
         result.addAll(undefinedResult);
-        logger.info("processProviders completed with result size: " + result.size());
+        logger.info("processProviders completed with result size: {}" , result.size());
 
         return transformListToVector(result);
     }
 
     Vector transformListToVector(List inputList) {
-        logger.info("Mapping the final result from object to vector list: " + inputList.size());
+        logger.info("Mapping the final result from object to vector list: {}", inputList.size());
         Vector result = new Vector();
 
         for (int i = 0; i < inputList.size(); i++) {
@@ -76,7 +86,7 @@ public class ProviderTransformerFinalBsh {
             for (int i = 0; i < values.size(); i++) {
                 String value = (String) values.get(i);
                 if (cleanedProviderType.contains(cleanString(value))) {
-                    logger.info("Executing exact match for container: " + entry.getKey());
+                    logger.info("Executing exact match for container: {}" , entry.getKey());
                     return (String) entry.getKey();
                 }
             }
@@ -91,7 +101,7 @@ public class ProviderTransformerFinalBsh {
         for (Iterator it = metaProviderEntityDetails.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry entry = (Map.Entry) it.next();
             List values = (List) entry.getValue();
-            logger.debug("Calculating similarity for container: " + entry.getKey());
+            logger.debug("Calculating similarity for container: {}" , entry.getKey());
 
             for (int i = 0; i < values.size(); i++) {
                 String value = (String) values.get(i);
@@ -120,7 +130,7 @@ public class ProviderTransformerFinalBsh {
             return bestMatch;
         }
 
-        logger.info("No exact match found. Using closest match: " + bestMatch + " with similarity: " + maxDistance);
+        logger.info("No exact match found. Using closest match: {} with similarity: {}" ,bestMatch, maxDistance);
         return "UNDEFINED_PROVIDER_DETAILS";
     }
 
@@ -128,19 +138,19 @@ public class ProviderTransformerFinalBsh {
                              Map nameMappingDetails, List result) {
         List itemsList = (List) itemMappingDetails.get(matchedContainer);
         if (itemsList == null) {
-            logger.warn("No items mapping found for container: " + matchedContainer);
+            logger.warn("No items mapping found for container: {}" , matchedContainer);
             return;
         }
 
-        logger.debug("Processing provider keys: " + provider.keySet());
+        logger.debug("Processing provider key sets: {}" , provider.keySet());
 
         for (int i = 0; i < itemsList.size(); i++) {
             String item = (String) itemsList.get(i);
             String mappedKey = (String) nameMappingDetails.get(item);
-            logger.debug("Checking item: " + item + " -> mapped to provider key: " + mappedKey);
+            logger.debug("Checking item: {} -> mapped to provider key: {}",item, mappedKey);
 
             if (mappedKey != null) {
-                logger.debug("Accessing key in provider map: " + mappedKey);
+                logger.debug("Accessing key in provider map: {}" , mappedKey);
                 String keyValue = (String) provider.get(mappedKey);
                 if (mappedKey.equals("Provider Name")) {
                     if (matchedContainer.equals("SERVICING_PROVIDER_DETAILS")) {
@@ -167,19 +177,19 @@ public class ProviderTransformerFinalBsh {
                                       Map nameMappingDetails, List undefinedResult) {
         List itemsList = (List) itemMappingDetails.get(matchedContainer);
         if (itemsList == null) {
-            logger.warn("No items mapping found for container: " + matchedContainer);
+            logger.warn("No items mapping found for undefined container: {}", matchedContainer);
             return;
         }
 
-        logger.debug("Processing undefined provider keys: " + provider.keySet());
+        logger.debug("Processing undefined provider keys: {}" , provider.keySet());
 
         for (int i = 0; i < itemsList.size(); i++) {
             String item = (String) itemsList.get(i);
             String mappedKey = (String) nameMappingDetails.get(item);
-            logger.debug("Checking item: " + item + " -> mapped to provider key: " + mappedKey);
+            logger.debug("Checking item: {} -> mapped to undefined provider key: {}" ,item, mappedKey);
 
             if (mappedKey != null) {
-                logger.debug("Accessing key in provider map: " + mappedKey);
+                logger.debug("Accessing key in undefined provider map: {}",  mappedKey);
                 String keyValue = (String) provider.get(mappedKey);
                 if (keyValue != null) {
                     boolean found = false;
@@ -338,7 +348,7 @@ public class ProviderTransformerFinalBsh {
         Map metaProviderEntityDetails = new HashMap();
         metaProviderEntityDetails.put("SERVICING_PROVIDER_DETAILS", Arrays.asList(new String[]{"Servicing Provider", "physician", "Therapist", "Attending physician", "Accepting physician", "Rendering Provider"}));
         metaProviderEntityDetails.put("REFERRING_PROVIDER_DETAILS", Arrays.asList(new String[]{"Referring Provider", "Requesting Provider", "Ordering Provider"}));
-        metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList(new String[]{"SERVICING_FACILITY_DETAILS", "Service Facility", "Facility", "facility name"}));
+        metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList(new String[]{"SERVICING_FACILITY_DETAILS", "Servicing Facility", "Service Facility", "Facility", "facility name"}));
         return metaProviderEntityDetails;
     }
 
