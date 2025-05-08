@@ -14,7 +14,7 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://api.runpod.ai/v2/iyijelhlez4ply/runsync")
+                .endpoint("https://api.runpod.ai/v2/fju8pzlidmm49e/runsync")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT '/data/tenant/PI/pdf_to_image/cpt/cpt_0.png' as input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
                         "a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
@@ -22,8 +22,8 @@ public class RadonKvpAcionTest {
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id\n" +
                         "FROM sor_transaction.radon_kvp_input_audit a\n" +
                         "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
-                        "WHERE a.model_registry = 'RADON' and a.tenant_id='6' and a.root_pipeline_id =4248\n" +
-                        "limit 5;")
+                        "WHERE a.model_registry = 'RADON' and a.tenant_id='6' and a.root_pipeline_id =6327\n" +
+                        "limit 1;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -48,6 +48,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("copro.request.activator.handler.name", "RUNPOD");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
+        ac.getContext().put("runpod.status.endpoint", "https://api.runpod.ai/v2/fju8pzlidmm49e/status/");
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);

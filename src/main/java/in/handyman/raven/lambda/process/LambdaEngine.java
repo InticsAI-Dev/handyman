@@ -54,7 +54,7 @@ public class LambdaEngine {
      */
     public static PipelineExecutionAudit start(final LContext lContext) throws HandymanException {
 
-//        log.info("the given request  => " + lContext);
+        log.info("the given request  => " + lContext);
         final String hostName;
         try {
             hostName = InetAddress.getLocalHost().getHostAddress();
@@ -356,7 +356,7 @@ public class LambdaEngine {
         actionExecutionAudit.setActionName(actionContext.getName());
         if (logger.isDebugEnabled()) {
             logger.debug("actionContext Execution context {}", actionContext.getName());
-//            logger.debug("actionContext Execution context {}", actionContext);
+            logger.debug("actionContext Execution context {}", actionContext);
         }
         actionExecutionAudit.setInput(MAPPER.convertValue(actionContext, JsonNode.class));
         HandymanActorSystemAccess.update(actionExecutionAudit);
