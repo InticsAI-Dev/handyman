@@ -57,7 +57,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
-    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.kvp.activator.handler.name";
     public final Jdbi jdbi;
     HttpClient client = HttpClient.newHttpClient();
 
