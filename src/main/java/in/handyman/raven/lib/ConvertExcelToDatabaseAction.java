@@ -265,9 +265,9 @@ public class ConvertExcelToDatabaseAction implements IActionExecution {
       );
     } catch (Exception e) {
       insertSummaryAudit(jdbi, 0, 0, resultQueue.size(), "failed in batch insert", tenantId);
-      log.error(aMarker, "error inserting result {}", resultQueue, e);
+      log.error(aMarker, "Error inserting result {}", resultQueue, e);
       HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("error inserting result" + resultQueue, handymanException, action);
+      HandymanException.insertException("Error inserting result" + resultQueue, handymanException, action);
     }
   }
 
@@ -288,9 +288,9 @@ public class ConvertExcelToDatabaseAction implements IActionExecution {
         bindBean.execute();
       });
     } catch (Exception exception) {
-      log.error(aMarker, "error inserting into batch insert audit  {}", ExceptionUtil.toString(exception));
+      log.error(aMarker, "Error inserting into batch insert audit  {}", ExceptionUtil.toString(exception));
       HandymanException handymanException = new HandymanException(exception);
-      HandymanException.insertException("error inserting into batch insert audit", handymanException, action);
+      HandymanException.insertException("Error inserting into batch insert audit", handymanException, action);
 
     }
   }

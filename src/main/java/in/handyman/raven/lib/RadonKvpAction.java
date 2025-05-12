@@ -133,11 +133,11 @@ public class RadonKvpAction implements IActionExecution {
             Thread.sleep(threadSleepTime);
             final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils,jdbi,providerDataTransformer);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
-            log.info(aMarker, " llm kvp Action has been completed {}  ", radonKvp.getName());
+            log.info(aMarker, " LLM kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {
             action.getContext().put(radonKvp.getName() + ".isSuccessful", "false");
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("error in execute method for llm kvp action", handymanException, action);
+            HandymanException.insertException("Error in execute method for LLM kvp action", handymanException, action);
 
         }
 

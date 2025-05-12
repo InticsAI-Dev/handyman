@@ -146,7 +146,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 } catch (Exception t) {
                     log.error(aMarker, "Error inserting result {} and {}", insert.getOriginId(), insert.getSorItemName(), t);
                     HandymanException handymanException = new HandymanException(t);
-                    HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result for groupId " + groupId, handymanException, action);
+                    HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result for groupId " + groupId + " origin Id " + insert.getOriginId() + " paper No " + insert.getPaperNo(), handymanException, action);
                 }
             }));
         } catch (Exception t) {

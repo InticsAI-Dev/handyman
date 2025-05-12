@@ -118,9 +118,9 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
 
         } catch (Exception e) {
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            log.error(aMarker, "The Exception occurred in getting response {} for origin Id {}", ExceptionUtil.toString(e),originId);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Alchemy kvp api consumer failed for origin_id - " + originId,
+            HandymanException.insertException("Alchemy kvp api consumer failed for origin Id - " + originId,
                     handymanException,
                     this.action);
             log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));

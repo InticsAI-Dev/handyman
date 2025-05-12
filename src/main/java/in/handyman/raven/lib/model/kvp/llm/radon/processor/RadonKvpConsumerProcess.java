@@ -222,7 +222,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
                         } catch (IOException | EvalError e) {
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
                             log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
                         }
                     }));
@@ -253,7 +253,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .endpoint(String.valueOf(endpoint))
                         .build());
                 HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                 log.info(aMarker, "Error in getting response from triton api {}", response.message());
             }
@@ -280,7 +280,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
         }
     }
@@ -418,8 +418,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             extractedCoproOutputResponse(entity, radonDataItem, parentObj, jsonInputRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
-                            log.error(aMarker, "The Exception occurred in converting response from triton server output {}", ExceptionUtil.toString(e));
+                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting response from triton server output origin Id {}  paper no {} and exception {}", entity.getOriginId(), entity.getPaperNo(), ExceptionUtil.toString(e));
                         }
                     }));
 
@@ -446,9 +446,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .sorContainerId(entity.getSorContainerId())
                         .build());
                 HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException.insertException("Radon KVP consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.info(aMarker, "Error in converting response from copro server {}", response.message());
+                log.info(aMarker, "Error in converting response from copro server {} origin Id {} and paper No {}", response.message(), entity.getOriginId(), paperNo);
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
@@ -470,8 +470,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Radon kvp action consumer failed for batch/group " + groupId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in getting response from copro server {}", ExceptionUtil.toString(e));
+            HandymanException.insertException("Radon kvp action consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response from copro server exception {} for origin Id {} and paper No {}", ExceptionUtil.toString(e), entity.getOriginId(), entity.getPaperNo());
         }
     }
 
@@ -572,7 +572,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
     private String assignEmptyValues(String jsonString) {
-        // Assign empty strings to keys with no values
+        // Assign empty strings to keys with no valuesfor
         jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
         return jsonString;
     }

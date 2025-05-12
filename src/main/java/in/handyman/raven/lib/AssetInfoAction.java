@@ -238,9 +238,9 @@ public class AssetInfoAction implements IActionExecution {
             );
         } catch (Exception e) {
             insertSummaryAudit(jdbi, 0, 0, resultQueue.size(), "failed in batch insert", tenantId);
-            log.error(aMarker, "error inserting result ", e);
+            log.error(aMarker, "Error inserting result ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("error inserting result ", handymanException, action);
+            HandymanException.insertException("Error inserting result ", handymanException, action);
         }
     }
 
@@ -263,9 +263,9 @@ public class AssetInfoAction implements IActionExecution {
                 bindBean.execute();
             });
         } catch (Exception exception) {
-            log.error(aMarker, "error inserting into batch insert audit  {}", ExceptionUtil.toString(exception));
+            log.error(aMarker, "Error inserting into batch insert audit  {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("error inserting into batch insert audit", handymanException, action);
+            HandymanException.insertException("Error inserting into batch insert audit", handymanException, action);
 
         }
     }

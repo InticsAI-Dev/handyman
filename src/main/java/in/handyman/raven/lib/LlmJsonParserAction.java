@@ -119,7 +119,7 @@ public class LlmJsonParserAction implements IActionExecution {
 
                         List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = null;
                         try {
-                            log.info(aMarker, "Llm json parser insert query {}", insertQueryKrypton);
+                            log.info(aMarker, "LLM json parser insert query {}", insertQueryKrypton);
                             innerParsedResponsesKrypton = new ArrayList<>();
 
                             innerParsedResponsesKrypton = objectMapper.readValue(
@@ -130,7 +130,7 @@ public class LlmJsonParserAction implements IActionExecution {
                         } catch (Exception e) {
                             action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
+                            HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + inputTable.getOriginId() + " paper No " + inputTable.getPaperNo(), handymanException, action);
 
                         }
 
@@ -183,7 +183,7 @@ public class LlmJsonParserAction implements IActionExecution {
         } catch (Exception e) {
             action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("error in execute method for Llm json parser action", handymanException, action);
+            HandymanException.insertException("Error in execute method for Llm json parser action", handymanException, action);
 
         }
     }
