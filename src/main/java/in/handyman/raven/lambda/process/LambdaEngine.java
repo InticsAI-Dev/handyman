@@ -356,7 +356,7 @@ public class LambdaEngine {
         actionExecutionAudit.setActionName(actionContext.getName());
         if (logger.isDebugEnabled()) {
             logger.debug("actionContext Execution context {}", actionContext.getName());
-            logger.debug("actionContext Execution context {}", actionContext);
+//            logger.debug("actionContext Execution context {}", actionContext);
         }
         actionExecutionAudit.setInput(MAPPER.convertValue(actionContext, JsonNode.class));
         HandymanActorSystemAccess.update(actionExecutionAudit);

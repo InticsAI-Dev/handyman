@@ -727,8 +727,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         final String url = String.format(action.getContext().get("runpod.status.endpoint")+"%s", jobId);
         Instant start = Instant.now();
-
-        while (Duration.between(start, Instant.now()).getSeconds() < (long) 4000) {
+        while (Duration.between(start, Instant.now()).getSeconds() < (long) Integer.parseInt(action.getContext().get("kvp.runpod.check.status"))) {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Authorization", "Bearer " + PropertyHandler.get("runpod.api.token.v1"))
