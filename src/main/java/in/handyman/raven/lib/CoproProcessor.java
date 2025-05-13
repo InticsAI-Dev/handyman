@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     private final BlockingQueue<I> queue;
-    private final ExecutorService executorService;
+    private ExecutorService executorService;
 
     private final Class<O> outputTargetClass;
     private final Class<I> inputTargetClass;
@@ -137,6 +137,13 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
+        if (actionExecutionAudit.getContext().get("copro.processor.thread.creator").equalsIgnoreCase("FIXED_THREAD")){
+            executorService = Executors.newFixedThreadPool(consumerCount);
+            logger.info("Copro processor created with fixed thread pool of size {}", consumerCount);
+        } else {
+            executorService = Executors.newWorkStealingPool();
+            logger.info("Copro processor created with work stealing pool");
+        }
         for (int consumer = 0; consumer < consumerCount; consumer++) {
             executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
                     startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbi, logger));
