@@ -110,7 +110,7 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
                         .batchId(entity.getBatchId())
                         .stage("PRODUCT_OUTBOUND").status("FAILED").message("alchemy kvp response failed for origin_id - " + entity.getAlchemyOriginId())
                         .build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
                 HandymanException.insertException("Outbound Kvp consumer failed for origin id " + originId, handymanException, this.action);
 
             }

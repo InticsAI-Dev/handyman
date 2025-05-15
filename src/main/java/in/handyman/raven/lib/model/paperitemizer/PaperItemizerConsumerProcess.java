@@ -101,7 +101,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             } else {
                 parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(batchId).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(response.message())).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
                 HandymanException.insertException("Paper itemizer consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId(), handymanException, this.action);
 
                 log.error(aMarker, "Error in processing response from copro API {}", response.message());
@@ -137,7 +137,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             } else {
                 parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(entity.getBatchId()).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(response.message())).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
                 HandymanException.insertException("Paper itemizer consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId(), handymanException, this.action);
 
                 log.error(aMarker, "Error in getting response from copro {}", response.message());

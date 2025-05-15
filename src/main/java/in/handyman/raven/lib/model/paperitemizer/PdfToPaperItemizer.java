@@ -24,8 +24,8 @@ import java.util.Optional;
 public class PdfToPaperItemizer {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
     public static final String PAPER_ITEMIZER_IMAGE_TYPE_RGB = "paper.itemizer.image.type.rgb";
-    static final String EXTRACTION_PROCESSING_PAPER_COUNT = "extraction.processing.paper.count";
-    static final String EXTRACTION_PAPER_LIMIT_ACTIVATOR = "extraction.paper.limiter.activator";
+    static final String EXTRACTION_PROCESSING_PAPER_COUNT = "extraction.preprocess.paper.itemizer.processing.paper.count";
+    static final String EXTRACTION_PAPER_LIMIT_ACTIVATOR = "extraction.preprocess.paper.itemizer.processing.paper.limiter.activator";
     static final String PAPER_ITEMIZER_RESIZE_WIDTH = "paper.itemizer.resize.width";
     static final String PAPER_ITEMIZER_RESIZE_HEIGHT = "paper.itemizer.resize.height";
     static final String PAPER_ITEMIZER_FILE_FORMAT = "paper.itemizer.output.format";
