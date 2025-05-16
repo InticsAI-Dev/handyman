@@ -19,13 +19,13 @@ public class UrgencyTriageModelActionTest {
                 .name("urgency triage")
                 .outputDir("/data/output/")
                 .outputTable("urgency_triage.ut_model_result")
-                .endPoint("https://api.runpod.ai/v2/iyijelhlez4ply/runsync")
+                .endPoint("https://api.runpod.ai/v2/fju8pzlidmm49e/runsync")
                 .querySet("SELECT a.origin_id, a.preprocessed_file_id, a.paper_no, a.input_file_path, a.created_user_id, a.last_updated_user_id, a.tenant_id, a.template_id, a.process_id, a.model_registry_id, a.group_id, a.root_pipeline_id, a.batch_id,\n" +
-                        "b.base_prompt as user_prompt,'you are an intelligent analyser' as system_prompt,  now() as created_on, sot.encode as Base64img\n" +
+                        "b.base_prompt as user_prompt,b.system_prompt as system_prompt, now() as created_on, sot.encode as Base64img\n" +
                         "FROM macro.ut_payload_input_table_audit a\n" +
                         "left join sor_meta.radon_prompt_table b on a.tenant_id = b.tenant_id and b.process='RADON_UT'\n" +
-                        "join info.source_of_truth sot on sot.origin_id =a.origin_id\n" +
-                        "WHERE a.root_pipeline_id=3033;")
+                        "join info.source_of_truth sot on sot.origin_id =a.origin_id and sot.paper_no=a.paper_no\n" +
+                        "WHERE a.group_id='164' AND  a.root_pipeline_id='10127' and a.batch_id = 'BATCH-164_0';")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 

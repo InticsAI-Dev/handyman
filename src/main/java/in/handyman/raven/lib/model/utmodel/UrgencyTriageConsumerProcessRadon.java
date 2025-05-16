@@ -32,7 +32,7 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
     public static final String URGENCY_TRIAGE_MODEL = "URGENCY_TRIAGE_MODEL";
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
     private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
-    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.activator.handler.name";
+    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.kvp.activator.handler.name";
 
     private final Logger log;
     private final Marker aMarker;

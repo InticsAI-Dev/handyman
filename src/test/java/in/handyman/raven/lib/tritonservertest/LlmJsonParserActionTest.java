@@ -35,6 +35,8 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("llm.json.parser.trim.extracted.value", "true");
         ac.getContext().put("pipeline.end.to.end.encryption", "false");
         ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
+        ac.getContext().put("kvp.runpod.check.status", "2000");
+
 
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
