@@ -3,18 +3,8 @@ package in.handyman.raven.lib.model.scalar;
 
 import bsh.EvalError;
 import bsh.Interpreter;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
-import in.handyman.raven.lib.encryption.SecurityEngine;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
@@ -31,7 +21,6 @@ public class ValidatorByBeanShellExecutor {
 
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
-
 
 
     public ValidatorByBeanShellExecutor(List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs,
@@ -98,7 +87,9 @@ public class ValidatorByBeanShellExecutor {
             interpreter.eval(sourceCode);
             log.info("Source code loaded successfully");
 
-            String classInstantiation = className + " mapper = new " + className + "();";
+            interpreter.set("logger", log);
+
+            String classInstantiation = className + " mapper = new " + className + "(logger);";
             interpreter.eval(classInstantiation);
             log.info("Class instantiated: {}", classInstantiation);
 
@@ -126,16 +117,9 @@ public class ValidatorByBeanShellExecutor {
             Method getMappedDataMethod = validatorResultObject.getClass().getMethod("getMappedData");
             Object mappedData = getMappedDataMethod.invoke(validatorResultObject);
 
-            Method getLogMessagesMethod = validatorResultObject.getClass().getMethod("getLogMessages");
-            Object logMessages = getLogMessagesMethod.invoke(validatorResultObject);
-
             if (mappedData instanceof Map<?, ?>) {
-                updatedPostProcessingDetailsMap.putAll((Map<String, String>) mappedData);
-            }
-
-            if (logMessages instanceof List) {
-                String combinedLogs = String.join("\n", (List<String>) logMessages);
-                log.info("Logs from BeanShell scripts for class {}: \n{}", className, combinedLogs);
+                Map<String, String> mappedDataResult = (Map<String, String>) mappedData;
+                updatedPostProcessingDetailsMap.putAll(mappedDataResult);
             }
         } catch (Exception e) {
             log.error("Error invoking methods via reflection: ", e);
@@ -166,7 +150,7 @@ public class ValidatorByBeanShellExecutor {
     }
 
 
-    private void updateExistingValidator(PostProcessingExecutorAction.PostProcessingExecutorInput validatorConfigurationDetail,String sorItemValue) {
+    private void updateExistingValidator(PostProcessingExecutorAction.PostProcessingExecutorInput validatorConfigurationDetail, String sorItemValue) {
         log.info("SorItemInfo exists, updating existing value");
 
         validatorConfigurationDetail.setExtractedValue(sorItemValue);
