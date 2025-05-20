@@ -125,7 +125,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         if (allowedAdapters.equals("date") || allowedAdapters.equals("date_reg")) {
             try {
                 String finalDateFormat = action.getContext().get("control.data.date.comparison.format");
-                mismatchCount = dateValidation(extractedValue, actualValue, finalDateFormat);
+                mismatchCount = dateValidation(extractedValue, actualValue, finalDateFormat, originId, paperNo, sorItemName, tenantId);
                 String matchStatus = calculateValidationScores(mismatchCount);
                 log.info("Encryption started for the date sorItem {}:", sorItemName);
                 if (Objects.equals(encryptData, "true")) {
@@ -144,7 +144,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         //gender
         else if (allowedAdapters.equals("gender")) {
             try {
-                mismatchCount = genderValidation(extractedValue, actualValue);
+                mismatchCount = genderValidation(extractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
                 String matchStatus = calculateValidationScores(mismatchCount);
                 log.info("Encryption started for the gender sorItem {}:", sorItemName);
                 if (Objects.equals(encryptData, "true")) {
@@ -161,7 +161,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             }
         } else {
             try {
-                mismatchCount = dataValidation(extractedValue, actualValue);
+                mismatchCount = dataValidation(extractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
                 String matchStatus = calculateValidationScores(mismatchCount);
                 log.info("Encryption started for the sorItem {}:", sorItemName);
                 if (Objects.equals(encryptData, "true")) {
@@ -235,7 +235,6 @@ public class ControlDataComparisonAction implements IActionExecution {
             return "FP";
         }
 
-
         if (!actualEmpty && (extractedEmpty || !"NO TOUCH".equals(matchStatus))) {
             return "FN";
         }
@@ -259,13 +258,13 @@ public class ControlDataComparisonAction implements IActionExecution {
         return matchStatus;
     }
 
-    public Long dataValidation(String extractedData, String actualData) {
+    public Long dataValidation(String extractedData, String actualData, String originId, Long paperNo, String sorItemName, Long tenantId) {
         if (extractedData == null || extractedData.isEmpty()) {
-            log.error("Invalid input for extractedData={}", extractedData);
+            log.warn("Invalid input encountered for extractedData. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return actualData == null ? 0L : (long) actualData.length();
         }
         if (actualData == null || actualData.isEmpty()) {
-            log.error("Invalid input for actualData={}", actualData);
+            log.warn("Invalid input encountered for actualData. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return (long) extractedData.length();
         }
 
@@ -292,13 +291,13 @@ public class ControlDataComparisonAction implements IActionExecution {
         return (long) distance;
     }
 
-    public Long dateValidation(String extractedDate, String actualDate, String inputFormat) {
+    public Long dateValidation(String extractedDate, String actualDate, String inputFormat, String originId, Long paperNo, String sorItemName, Long tenantId) {
         if (extractedDate == null || extractedDate.isEmpty()) {
-            log.error("Invalid input for extractedDate={}", extractedDate);
+            log.warn("Invalid input encountered for extractedDate. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return actualDate == null ? 0L : (long) actualDate.length();
         }
         if (actualDate == null || actualDate.isEmpty()) {
-            log.error("Invalid input for actualDate={}", actualDate);
+            log.warn("Invalid input encountered for actualDate. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return (long) extractedDate.length();
         }
 
@@ -306,29 +305,29 @@ public class ControlDataComparisonAction implements IActionExecution {
 
         try {
             if (extractedDate.matches("\\d{8}")) {
-                extractedLocalDate = parseEightDigitDate(extractedDate, inputFormat);
+                extractedLocalDate = parseEightDigitDate(extractedDate, inputFormat, originId, paperNo, sorItemName, tenantId);
             }
 
             if (extractedLocalDate == null) {
-                extractedLocalDate = parseDateWithFormat(extractedDate, inputFormat);
+                extractedLocalDate = parseDateWithFormat(extractedDate, inputFormat, originId, paperNo, sorItemName, tenantId);
             }
         } catch (DateTimeParseException e) {
-            log.error("Invalid extracted date format: {}", extractedDate);
+            log.warn("Invalid extracted date format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return (long) actualDate.length();
         }
 
         String actualLocalDate;
         try {
-            actualLocalDate = parseDateWithFormat(actualDate, inputFormat);
+            actualLocalDate = parseDateWithFormat(actualDate, inputFormat, originId, paperNo, sorItemName, tenantId);
         } catch (DateTimeParseException e) {
-            log.error("Invalid actual date format: {}", actualDate);
+            log.warn("Invalid actual date format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return (long) actualDate.length();
         }
 
         return getMismatchCount(extractedLocalDate, actualLocalDate);
     }
 
-    private String parseDateWithFormat(String date, String inputFormat) {
+    private String parseDateWithFormat(String date, String inputFormat, String originId, Long paperNo, String sorItemName, Long tenantId) {
         String allowedFormats = action.getContext().get("date.input.formats");
 
         List<DateTimeFormatter> dateInputFormats = Optional.of(allowedFormats)
@@ -344,18 +343,18 @@ public class ControlDataComparisonAction implements IActionExecution {
                 DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
                 return parsedDate.format(outputFormatter);
             } catch (DateTimeParseException ignored) {
-                log.error("Error in parsing the date format for input {} to format {}", inputFormat, date);
+                log.warn("Error in parsing the date format from given input format to specified output format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             }
         }
         return date;
     }
 
-    private String parseEightDigitDate(String date, String inputFormat) {
+    private String parseEightDigitDate(String date, String inputFormat, String originId, Long paperNo, String sorItemName, Long tenantId) {
         String[] possibleFormats = {"yyyyMMdd", "MMddyyyy", "ddMMyyyy", "MMyyyydd"};
 
         for (String format : possibleFormats) {
             try {
-                String reformattedDate = reformatEightDigitDate(date, format);
+                String reformattedDate = reformatEightDigitDate(date, format, originId, paperNo, sorItemName, tenantId);
                 if (reformattedDate.isEmpty()) continue;
 
                 DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -364,13 +363,13 @@ public class ControlDataComparisonAction implements IActionExecution {
                 DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
                 return parsedDate.format(outputFormatter);
             } catch (DateTimeParseException | NullPointerException ignored) {
-                log.error("Error in parsing the Eight digit date format for input {} to format {}", inputFormat, date);
+                log.warn("Error in parsing the Eight digit date format from given input format to specified output format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             }
         }
         return null;
     }
 
-    private String reformatEightDigitDate(String date, String format) {
+    private String reformatEightDigitDate(String date, String format, String originId, Long paperNo, String sorItemName, Long tenantId) {
         if (date.length() != 8) return "";
         try {
             switch (format) {
@@ -382,18 +381,18 @@ public class ControlDataComparisonAction implements IActionExecution {
                     return date.substring(4, 8) + "-" + date.substring(2, 4) + "-" + date.substring(0, 2);
             }
         } catch (Exception ignored) {
-            log.error("Error in reformatting the Eight digit date format for input {} to format {}", format, date);
+            log.warn("Error in reformatting the Eight digit date format from given input format to specified output format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
         }
         return "";
     }
 
-    public Long genderValidation(String extractedGender, String generatedGender) {
+    public Long genderValidation(String extractedGender, String generatedGender, String originId, Long paperNo, String sorItemName, Long tenantId) {
         if (extractedGender == null) {
-            log.error("Invalid input for extractedGender: null");
+            log.warn("Invalid input for extractedGender. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return generatedGender == null ? 0L : (long) generatedGender.length();
         }
         if (generatedGender == null) {
-            log.error("Invalid input for generatedGender: null");
+            log.warn("Invalid input for generatedGender. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
             return (long) extractedGender.length();
         }
         String formattedExtractedGender = normalizeGender(extractedGender);
