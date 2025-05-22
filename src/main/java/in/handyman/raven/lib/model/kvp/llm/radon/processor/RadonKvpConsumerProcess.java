@@ -253,7 +253,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long rootPipelineId = entity.getRootPipelineId();
 
         Instant start = Instant.now();
-        System.out.println("\t\tInput request time in sec for api call: "+start+ "\t\t");
+        log.info("\t\tInput request time in sec for api call: "+start+ "\t\t");
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
@@ -263,7 +263,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 Duration duration = Duration.between(start, end);
                 // Get the difference in seconds
                 long seconds = duration.getSeconds();
-                System.out.println("\nTotal time duration in sec for api call: "+seconds+ "\n");
+                log.info("\nTotal time duration in sec for api call: "+seconds+ "\n");
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
