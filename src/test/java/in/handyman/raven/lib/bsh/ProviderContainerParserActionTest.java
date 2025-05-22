@@ -2,9 +2,7 @@ package in.handyman.raven.lib.bsh;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.ProviderContainerParserAction;
-import in.handyman.raven.lib.ZeroShotClassifierPaperFilterAction;
 import in.handyman.raven.lib.model.ProviderContainerParser;
-import in.handyman.raven.lib.model.ZeroShotClassifierPaperFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +40,7 @@ public class ProviderContainerParserActionTest {
                 .build();
         action.setRootPipelineId(11011L);
 
-        action.getContext().put("gen_output_table.name","sor_transaction.llm_json_provider_parser_12345");
+        action.getContext().put("gen_output_table.name", "sor_transaction.llm_json_provider_parser_12345");
 
         final ProviderContainerParserAction providerContainerParserAction = new ProviderContainerParserAction(action, log, build);
         providerContainerParserAction.execute();
