@@ -31,6 +31,9 @@ import org.slf4j.Marker;
 import java.net.http.HttpRequest;
 import java.net.URI;
 import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.Instant;
+
 
 import java.io.IOException;
 import java.net.URL;
@@ -229,6 +232,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             String jsonResponseEnc = encryptRequestResponse(jsonRequest);
             replicateRequestBuilder(entity,request, parentObj , jsonResponseEnc, endpoint );
         }
+
         else if (Objects.equals("TRITON", coproHandlerName)){
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
@@ -248,11 +252,18 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
 
-
+        Instant start = Instant.now();
+        System.out.println("\t\tInput request time in sec for api call: "+start+ "\t\t");
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
                 String responseBody = response.body().string();
+                Instant end = Instant.now();
+                // Calculate the duration between the two instants
+                Duration duration = Duration.between(start, end);
+                // Get the difference in seconds
+                long seconds = duration.getSeconds();
+                System.out.println("\nTotal time duration in sec for api call: "+seconds+ "\n");
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
