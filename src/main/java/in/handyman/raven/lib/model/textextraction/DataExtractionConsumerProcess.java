@@ -150,7 +150,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Prefer", "wait")
                     .build();
-            log.info("headers#####################################"+"\n"+request+"\n\n");
             replicateRequestBuilder(endpoint , request, parentObj, entity,replicateJsonRequest);
         }
         else if (Objects.equals("TRITON", coproHandlerName)){

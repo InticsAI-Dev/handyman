@@ -205,7 +205,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         if (Objects.equals("COPRO", coproHandlerName)) {
             log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON))
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Accept", "application/json")
+                    .build();
             String jsonResponseEnc = encryptRequestResponse(jsonRequest);
             coproResponseBuilder(entity, request, parentObj, jsonResponseEnc, endpoint);
         } else if (Objects.equals("RUNPOD", coproHandlerName)) {

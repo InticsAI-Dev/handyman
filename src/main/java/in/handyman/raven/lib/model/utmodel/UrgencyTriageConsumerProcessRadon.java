@@ -31,7 +31,6 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
     public static final String RADON_START = "RADON START";
     public static final String URGENCY_TRIAGE_MODEL = "URGENCY_TRIAGE_MODEL";
     public static final String PIPELINE_REQ_RES_ENCRYPTION = "pipeline.req.res.encryption";
-    private static final String PROCESS_NAME = PipelineName.ZERO_SHOT_CLASSIFIER.getProcessName();
     public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.kvp.activator.handler.name";
 
     private final Logger log;
@@ -124,8 +123,12 @@ public class UrgencyTriageConsumerProcessRadon implements CoproProcessor.Consume
             String jsonRequestEnc = encryptRequestResponse(replicateJsonRequest);
             replicateRequestBuilder(entity,request, parentObj , jsonRequestEnc, endpoint, objectMapper);
         }else {
-            Request request = new Request.Builder().url(endpoint)
-                    .post(RequestBody.create(jsonRequest, mediaTypeJSON)).build();
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Accept", "application/json")
+                    .post(RequestBody.create(jsonRequest, mediaTypeJSON))
+                    .build();
             String jsonRequestEnc = encryptRequestResponse(jsonRequest);
             tritonRequestBuilder(entity, request, objectMapper, parentObj, jsonRequestEnc);
         }

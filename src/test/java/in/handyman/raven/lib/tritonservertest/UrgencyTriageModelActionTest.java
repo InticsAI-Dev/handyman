@@ -18,14 +18,14 @@ public class UrgencyTriageModelActionTest {
                 .condition(true)
                 .name("urgency triage")
                 .outputDir("/data/output/")
-                .outputTable("urgency_triage.ut_model_result")
-                .endPoint("https://api.runpod.ai/v2/fju8pzlidmm49e/runsync")
-                .querySet("SELECT a.origin_id, a.preprocessed_file_id, a.paper_no, a.input_file_path, a.created_user_id, a.last_updated_user_id, a.tenant_id, a.template_id, a.process_id, a.model_registry_id, a.group_id, a.root_pipeline_id, a.batch_id,\n" +
-                        "b.base_prompt as user_prompt,b.system_prompt as system_prompt, now() as created_on, sot.encode as Base64img\n" +
-                        "FROM macro.ut_payload_input_table_audit a\n" +
-                        "left join sor_meta.radon_prompt_table b on a.tenant_id = b.tenant_id and b.process='RADON_UT'\n" +
-                        "join info.source_of_truth sot on sot.origin_id =a.origin_id and sot.paper_no=a.paper_no\n" +
-                        "WHERE a.group_id='164' AND  a.root_pipeline_id='10127' and a.batch_id = 'BATCH-164_0';")
+                .outputTable("urgency_triage.ut_model_api_result")
+                .endPoint("http://172.203.90.211:9000/predict")
+                .querySet("SELECT a.origin_id, a.preprocessed_file_id, a.paper_no, a.input_file_path, a.created_user_id, a.last_updated_user_id, a.tenant_id, a.template_id, a.process_id, a.model_registry_id, a.group_id, a.root_pipeline_id, a.batch_id,        \n" +
+                        "b.base_prompt as user_prompt,b.system_prompt as system_prompt, now() as created_on, sot.encode as Base64img        \n" +
+                        "FROM macro.ut_payload_input_table_audit a      \n" +
+                        "left join sor_meta.radon_prompt_table b on a.tenant_id = b.tenant_id and b.process='RADON_UT'        \n" +
+                        "join info.source_of_truth sot on sot.origin_id =a.origin_id and sot.paper_no=a.paper_no  \n" +
+                        "WHERE a.group_id='210' AND  a.root_pipeline_id='15114' and a.batch_id = 'BATCH-210_0';")
                 .resourceConn("intics_zio_db_conn")
                 .build();
 
@@ -39,6 +39,7 @@ public class UrgencyTriageModelActionTest {
                 Map.entry("ut.legacy.api.call.configs", "false"),
                 Map.entry("actionId", "1"),
                 Map.entry("copro.request.activator.handler.name", "RUNPOD"),
+                Map.entry("copro.request.kvp.activator.handler.name", "TRITON"),
                 Map.entry("write.batch.size", "1")));
 
         UrgencyTriageModelAction action1 = new UrgencyTriageModelAction(actionExecutionAudit, log, urgencyTriageModel);
