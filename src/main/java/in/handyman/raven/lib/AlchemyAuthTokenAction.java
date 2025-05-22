@@ -88,18 +88,20 @@ public class AlchemyAuthTokenAction implements IActionExecution {
                 action.getContext().put(name.concat(".tenantId"), String.valueOf(alchemyLoginResponse.getTenantId()));
 
             } else {
-                log.info(aMarker, "The Failure Response {} --> {}", name, responseBody);
-                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
-                HandymanException.insertException("Alchemy auth token consumer failed for tenantId " + tenantId, handymanException, this.action);
+                String errorMessage = "Unsuccessful response for tenant Id " + tenantId + "code : " + response.code() + " message : " + response.message() + " response body " + responseBody;
+                log.error(aMarker, errorMessage);
+                HandymanException handymanException = new HandymanException(errorMessage);
+                HandymanException.insertException(errorMessage, handymanException, this.action);
 
                 action.getContext().put(name.concat(".error"), "true");
-                action.getContext().put(name.concat(".errorMessage"), responseBody);
+                action.getContext().put(name.concat(".errorMessage"), errorMessage);
             }
             action.getContext().put(name + ".isSuccessful", String.valueOf(response.isSuccessful()));
         } catch (Exception e) {
-            log.error(aMarker, "The Exception occurred ", e);
+            String errorMessage = "Exception occurred in alchemy auth token api for tenant Id " + tenantId + " " + e.getMessage();
+            log.error(aMarker, errorMessage);
             action.getContext().put(name + ".isSuccessful", "false");
-            throw new HandymanException("Failed to execute", e, action);
+            throw new HandymanException(errorMessage, e, action);
         }
         log.info(aMarker, "Alchemy Auth Token Generation Action for {} has been completed", alchemyAuthToken.getName());
 

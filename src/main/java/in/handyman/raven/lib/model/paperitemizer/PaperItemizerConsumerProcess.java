@@ -100,17 +100,19 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
                 extractedCoproOutputResponse(entity, objectMapper, parentObj, "", "", responseBody, jsonInputRequest, responseBody, endpoint.toString());
 
             } else {
-                parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(batchId).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(response.message())).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
-                HandymanException.insertException("Paper itemizer consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId(), handymanException, this.action);
+                String errorMessage = "Unsuccessful response for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + "code : " + response.code() + " message : " + response.message();
+                parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(batchId).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(errorMessage)).endpoint(String.valueOf(endpoint)).build());
+                HandymanException handymanException = new HandymanException(errorMessage);
+                HandymanException.insertException(errorMessage, handymanException, this.action);
 
-                log.error(aMarker, "Error in processing response from copro API {}", response.message());
+                log.error(aMarker, errorMessage);
             }
 
         } catch (Exception exception) {
-            parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(exception.getMessage()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(batchId).build());
-            HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("The Exception occurred in execute request for originId " + originId, handymanException, this.action);
+            String errorMessage = "Exception occurred for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " message : " + exception.getMessage();
+            parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(errorMessage).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(batchId).build());
+            HandymanException handymanException = new HandymanException(errorMessage);
+            HandymanException.insertException(errorMessage, handymanException, this.action);
         }
     }
 
@@ -137,7 +139,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
             } else {
                 parentObj.add(PaperItemizerOutputTable.builder().originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).processId(processId).templateId(templateId).tenantId(tenantId).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).batchId(entity.getBatchId()).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(response.message())).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
                 HandymanException.insertException("Paper itemizer consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId(), handymanException, this.action);
 
                 log.error(aMarker, "Error in getting response from copro {}", response.message());

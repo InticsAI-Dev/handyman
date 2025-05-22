@@ -252,10 +252,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .response(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
                         .build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
                 HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.info(aMarker, "Error in getting response from triton api {}", response.message());
+                log.error(aMarker, "Error in getting response from triton api {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
@@ -409,10 +409,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .endpoint(String.valueOf(endpoint))
                         .sorContainerId(entity.getSorContainerId())
                         .build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
                 HandymanException.insertException("Radon KVP consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.info(aMarker, "Error in converting response from copro server {} origin Id {} and paper No {}", response.message(), entity.getOriginId(), paperNo);
+                log.error(aMarker, "Error in converting response from copro server {} origin Id {} and paper No {}", response.message(), entity.getOriginId(), paperNo);
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
