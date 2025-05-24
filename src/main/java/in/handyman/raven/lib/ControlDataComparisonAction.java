@@ -69,7 +69,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                     log.info(aMarker, "executed query from index {}", i.get());
                 });
             });
-
+            log.info("Control data comparison total rows returned from the query {}",controlDataComparisonQueryInputTables.size());
             controlDataComparisonQueryInputTables.forEach(controlDataComparisonQueryInput -> {
                 try {
                     doControlDataValidation(controlDataComparisonQueryInput, jdbi, outputTable);

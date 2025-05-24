@@ -82,7 +82,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 log.info(aMarker, "executed query from index {}", i.get());
             }
         });
-
+        log.info("Post processing Executor action total rows returned from the query {}",postProcessingExecutorInputs.size());
         postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
             if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
                 postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
