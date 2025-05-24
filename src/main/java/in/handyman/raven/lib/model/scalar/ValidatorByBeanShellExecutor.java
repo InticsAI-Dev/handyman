@@ -149,13 +149,7 @@ public class ValidatorByBeanShellExecutor {
                     updateExistingValidator(postProcessingExecutorInput, sorItemValue);
                 } else {
                     log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
-                    BoundingBox boundingBox = BoundingBox.builder()
-                            .bottomRightX(0)
-                            .bottomRightY(0)
-                            .topLeftX(0)
-                            .topLeftY(0)
-                            .build();
-                    postProcessingExecutorInput.setBbox(boundingBox.toString());
+                    postProcessingExecutorInput.setBbox("{}");
                     postProcessingExecutorInput.setVqaScore(0);
                     postProcessingExecutorInput.setAggregatedScore(0);
                     updateExistingValidator(postProcessingExecutorInput, sorItemValue);
