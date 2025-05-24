@@ -5,6 +5,7 @@ import bsh.EvalError;
 import bsh.Interpreter;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
+import in.handyman.raven.lib.model.kvp.llm.jsonparser.BoundingBox;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
@@ -141,7 +142,22 @@ public class ValidatorByBeanShellExecutor {
             PostProcessingExecutorAction.PostProcessingExecutorInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
             if (postProcessingExecutorInput != null) {
                 log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
-                updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), sorItemValue)){
+                    updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                } else if (!Objects.equals(sorItemValue, "")) {
+                    updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                } else {
+                    BoundingBox boundingBox = BoundingBox.builder()
+                            .bottomRightX(0)
+                            .bottomRightY(0)
+                            .topLeftX(0)
+                            .topLeftY(0)
+                            .build();
+                    postProcessingExecutorInput.setBbox(boundingBox.toString());
+                    postProcessingExecutorInput.setVqaScore(0);
+                    postProcessingExecutorInput.setAggregatedScore(0);
+                    updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                }
             } else {
                 log.info("PostProcessing input does exists for sorItem {},", sorItem);
 
