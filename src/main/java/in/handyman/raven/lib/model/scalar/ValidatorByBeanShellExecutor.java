@@ -5,6 +5,7 @@ import bsh.EvalError;
 import bsh.Interpreter;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
+import in.handyman.raven.lib.model.kvp.llm.jsonparser.BoundingBox;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
@@ -141,7 +142,24 @@ public class ValidatorByBeanShellExecutor {
             PostProcessingExecutorAction.PostProcessingExecutorInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
             if (postProcessingExecutorInput != null) {
                 log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
-                updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), sorItemValue)){
+                    log.info("Extracted value and the PostProcessing value are same for the sorItem {}, so no record has been updated.", sorItem);
+                } else if (!Objects.equals(sorItemValue, "")) {
+                    log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItem);
+                    updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                } else {
+                    log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
+                    BoundingBox boundingBox = BoundingBox.builder()
+                            .bottomRightX(0)
+                            .bottomRightY(0)
+                            .topLeftX(0)
+                            .topLeftY(0)
+                            .build();
+                    postProcessingExecutorInput.setBbox(boundingBox.toString());
+                    postProcessingExecutorInput.setVqaScore(0);
+                    postProcessingExecutorInput.setAggregatedScore(0);
+                    updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                }
             } else {
                 log.info("PostProcessing input does exists for sorItem {},", sorItem);
 
