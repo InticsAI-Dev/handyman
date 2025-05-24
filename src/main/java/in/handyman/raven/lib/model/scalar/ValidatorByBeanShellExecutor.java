@@ -143,10 +143,12 @@ public class ValidatorByBeanShellExecutor {
             if (postProcessingExecutorInput != null) {
                 log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
                 if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), sorItemValue)){
-                    updateExistingValidator(postProcessingExecutorInput, sorItemValue);
+                    log.info("Extracted value and the PostProcessing value are same for the sorItem {}, so no record has been updated.", sorItem);
                 } else if (!Objects.equals(sorItemValue, "")) {
+                    log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItem);
                     updateExistingValidator(postProcessingExecutorInput, sorItemValue);
                 } else {
+                    log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
                     BoundingBox boundingBox = BoundingBox.builder()
                             .bottomRightX(0)
                             .bottomRightY(0)
