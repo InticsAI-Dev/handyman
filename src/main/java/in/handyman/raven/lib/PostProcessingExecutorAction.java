@@ -187,5 +187,6 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String modelRegistry;
         private String encryptionPolicy;
         private String isEncrypted;
+        private String lineItemType;
     }
 }
