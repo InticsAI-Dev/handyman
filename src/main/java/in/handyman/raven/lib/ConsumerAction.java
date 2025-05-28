@@ -13,7 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -76,8 +80,6 @@ public class ConsumerAction implements IActionExecution {
                     actionCallableList.add(collect);
                   });
         } catch (Exception e) {
-          HandymanException handymanException = new HandymanException(e);
-          HandymanException.insertException("Error at payload implementation ", handymanException, actionExecutionAudit);
           log.error("Error at payload implementation", e);
         }
       }
@@ -95,10 +97,8 @@ public class ConsumerAction implements IActionExecution {
         try {
           downLatch.await();
         } catch (InterruptedException e) {
-          HandymanException handymanException = new HandymanException(e);
-          HandymanException.insertException("Failed to execute the consumer ", handymanException, actionExecutionAudit);
-
           log.error(aMarker, "Failed to execute the consumer {}", ExceptionUtil.toString(e));
+          throw new HandymanException("Failed to execute the consumer", e, actionExecutionAudit);
         }
         log.info("completed all task to executors");
       }
