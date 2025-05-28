@@ -334,7 +334,7 @@ producer:
      '}' ('on-condition' condition=expression)* ('fielding' threadCount=STRING)*;
 
 consumer:
-    'consumer''as' name=STRING  ( 'pop-event-from' event=STRING 'on-resource' source=resource )*  ('pop-result-from' pop=STRING 'limit' limit=STRING)* 'execute' '{'
+    'consumer''as' name=STRING  ( 'pop-event-from' event=STRING 'on-resource' source=STRING )*  ('pop-result-from' pop=STRING 'limit' limit=STRING)* 'execute' '{'
        (actions+=action)*
        '}' ('on-condition' condition=expression)* ('fielding' threadCount=STRING)* ('on-standalone' standalone=expression)* ;
 

@@ -101,7 +101,7 @@ public class ProducerConsumerModelAction implements IActionExecution {
         final List<ConsumerAction> consumerActions = producerConsumerModel.getConsume().stream().map(consumerContext -> {
             var consumer = new Consumer();
             consumer.setPcmId(pipelineId);
-            consumer.setSource(producerConsumerModel.getSource());
+            consumer.setSource(producerConsumerModel.getSource().getConfigName());
             consumers.add(consumer);
             CommandProxy.setTarget(consumer, consumerContext, actionExecutionAudit.getContext());
             log.info(aMarker, "{}", consumerContext);
