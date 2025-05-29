@@ -34,6 +34,9 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Long sorContainerId;
     private Boolean postProcess;
     private String postProcessClassName;
+    private Long truthEntityId;
+    private String sipType;
+    private String base64img;
 
 
     @Override
