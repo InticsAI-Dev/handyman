@@ -29,6 +29,7 @@ public class UrgencyTriageInputTable implements CoproProcessor.Entity {
     private String userPrompt;
     private String systemPrompt;
     private Timestamp createdOn;
+    private String base64img;
 
     @Override
     public List<Object> getRowData() {
