@@ -59,7 +59,13 @@ public class ValidatorByBeanShellExecutor {
         Long rootPipelineId = actionExecutionAudit.getRootPipelineId();
         Map<String, String> postProcessingDetailsMap = getValidatorConfigurationDetailsMap(postProcessingDetailsByPageNo);
 
-        String customMapperClassOrderVariable = "outbound.mapper.bsh.class.order";
+        boolean isMultiValue = postProcessingDetailsByPageNo.stream()
+                .anyMatch(input -> "multi_value".equals(input.getLineItemType()));
+
+        String customMapperClassOrderVariable = isMultiValue
+                ? "outbound.mapper.multi.bsh.class.order"
+                : "outbound.mapper.bsh.class.order";
+
         String customMapperClassOrder = actionExecutionAudit.getContext().get(customMapperClassOrderVariable);
 
         final List<String> outboundClassMapperOrders = Optional.ofNullable(customMapperClassOrder)

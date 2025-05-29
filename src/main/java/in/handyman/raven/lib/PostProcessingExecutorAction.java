@@ -156,6 +156,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         }
     }
 
+
     @Override
     public boolean executeIf() throws Exception {
         return postProcessingExecutor.getCondition();
@@ -187,5 +188,6 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String modelRegistry;
         private String encryptionPolicy;
         private String isEncrypted;
+        private String lineItemType;
     }
 }
