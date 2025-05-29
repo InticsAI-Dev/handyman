@@ -52,6 +52,9 @@ import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUE
 @ActionExecution(actionName = "AlchemyResponse")
 public class AlchemyResponseAction implements IActionExecution {
     public static final String ALCHEMY_TRANSFORM = "ALCHEMY_TRANSFORM";
+    public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
+    public static final String DEFAULT_COPRO_CLIENT_SOCKET_TIMEOUT = "100";
+
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -64,13 +67,20 @@ public class AlchemyResponseAction implements IActionExecution {
 
     private static final String DEFAULT_CONSUMER_API_COUNT = "10";
 
-    final OkHttpClient httpclient = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.MINUTES).writeTimeout(10, TimeUnit.MINUTES).readTimeout(10, TimeUnit.MINUTES).build();
+    private final OkHttpClient httpclient ;
 
+    public final Integer clientSocketTimeout;
     public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log, final Object alchemyResponse) {
         this.alchemyResponse = (AlchemyResponse) alchemyResponse;
         this.action = action;
         this.log = log;
         this.aMarker = MarkerFactory.getMarker(" AlchemyResponse:" + this.alchemyResponse.getName());
+        this.clientSocketTimeout=Integer.valueOf(action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, DEFAULT_COPRO_CLIENT_SOCKET_TIMEOUT));
+        this.httpclient = new OkHttpClient.Builder()
+                .connectTimeout(this.clientSocketTimeout, TimeUnit.MINUTES)
+                .writeTimeout(this.clientSocketTimeout, TimeUnit.MINUTES)
+                .readTimeout(this.clientSocketTimeout, TimeUnit.MINUTES)
+                .build();
     }
 
     @Override
