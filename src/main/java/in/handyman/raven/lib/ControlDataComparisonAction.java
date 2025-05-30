@@ -199,11 +199,11 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
 
         if (actualEmpty && !extractedEmpty) {
-            return "FP";
+            return "FN";
         }
 
         if (!actualEmpty && (extractedEmpty || !"NO TOUCH".equals(matchStatus))) {
-            return "FN";
+            return "FP";
         }
 
         return "UNKNOWN";
