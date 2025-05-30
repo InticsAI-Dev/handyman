@@ -1,10 +1,6 @@
 package in.handyman.raven.lambda.access.repo;
 
-import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.ActionExecutionStatusAudit;
-import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.PipelineExecutionStatusAudit;
-import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
+import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
 import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
 import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
@@ -113,4 +109,7 @@ public interface HandymanRepo {
     List<PipelineExecutionAudit> findAllByPipelineName(final String pipelineName);
 
     List<PipelineExecutionAudit> findAllProcessName(final String processName);
+
+    List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId);
+    List<HandymanExceptionAuditDetails> findAllHandymanExceptions();
 }

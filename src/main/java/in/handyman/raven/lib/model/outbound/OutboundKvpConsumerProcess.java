@@ -57,7 +57,7 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
     @Override
     public List<AlchemyKvpOutputEntity> process(URL endpoint, AlchemyKvpInputEntity entity) throws Exception {
 
-        log.info(aMarker, " Alchemy cosumer process Started for origin id {}", entity.getAlchemyOriginId());
+        log.info(aMarker, " Alchemy consumer process Started for origin id {}", entity.getAlchemyOriginId());
 
         List<AlchemyKvpOutputEntity> parentObj = new ArrayList<>();
         String originId = entity.getAlchemyOriginId();
@@ -99,6 +99,7 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
                             .build());
                 }
             } else {
+                String errorMessage = "Unsuccessful response for batch/group " + entity.getGroupId() + "code : " + response.code() + " message : " + response.message();
                 parentObj.add(AlchemyKvpOutputEntity
                         .builder()
                         .processId(entity.getProcessId())
@@ -108,21 +109,22 @@ public class OutboundKvpConsumerProcess implements CoproProcessor.ConsumerProces
                         .pipelineOriginId(entity.getPipelineOriginId())
                         .rootPipelineId(rootPipelineId)
                         .batchId(entity.getBatchId())
-                        .stage("PRODUCT_OUTBOUND").status("FAILED").message("alchemy kvp response failed for origin_id - " + entity.getAlchemyOriginId())
+                        .stage("PRODUCT_OUTBOUND").status("FAILED").message(errorMessage)
                         .build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Outbound Kvp consumer failed for origin id " + originId, handymanException, this.action);
-
+                HandymanException handymanException = new HandymanException(errorMessage);
+                HandymanException.insertException(errorMessage, handymanException, this.action);
+                log.error(aMarker, errorMessage);
             }
 
 
         } catch (Exception e) {
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            String errorMessage = "The Exception occurred in getting response for origin Id " + originId + " with error message : " + ExceptionUtil.toString(e);
+            log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Alchemy kvp api consumer failed for origin_id - " + originId,
+            HandymanException.insertException(errorMessage,
                     handymanException,
                     this.action);
-            log.error(aMarker, "The Exception occurred in getting response {}", ExceptionUtil.toString(e));
+            log.error(aMarker, errorMessage);
         }
 
 

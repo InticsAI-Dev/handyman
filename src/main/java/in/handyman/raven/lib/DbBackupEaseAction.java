@@ -296,7 +296,7 @@ public class DbBackupEaseAction implements IActionExecution {
       } catch (UnableToExecuteStatementException exception) {
         log.error(aMarker, "Exception occurred in database backup audit insert: {}", exception.getMessage(), exception);
         HandymanException handymanException = new HandymanException(exception);
-        HandymanException.insertException("Exception occurred in database backup audit insert for the file -  " + dataBaseBackupOutputTable.getDbBackupFileName(), handymanException, this.action);
+        HandymanException.insertException("Exception occurred in database backup audit insert for the group Id " + dataBaseBackupOutputTable.getGroupId(), handymanException, this.action);
       }
     });
   }

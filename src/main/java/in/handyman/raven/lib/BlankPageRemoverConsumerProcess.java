@@ -102,7 +102,7 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
             log.info(aMarker, "The Exception occurred in blank page remover ", e);
             //TODO  insert query for error queue
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("AutoRotation consumer failed for batch/group "+groupId,
+            HandymanException.insertException("AutoRotation consumer failed for batch/group " + groupId,
                     handymanException,
                     this.action);
         }

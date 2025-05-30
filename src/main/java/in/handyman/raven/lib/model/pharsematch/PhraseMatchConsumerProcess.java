@@ -183,7 +183,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Error in inserting Intellimatch result table", handymanException, this.action);
+            HandymanException.insertException("Error in inserting Intelli match result table for origin Id " + entity.getOriginId() + " and paper No " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }
@@ -243,7 +243,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
                             .build());
             log.error(aMarker, "Exception occurred in the phrase match paper filter action {}", ExceptionUtil.toString(exception));
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("Error in inserting Intellimatch result table", handymanException, this.action);
+            HandymanException.insertException("Error in inserting Intelli match result table for origin Id " + entity.getOriginId() + " and paper No " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }

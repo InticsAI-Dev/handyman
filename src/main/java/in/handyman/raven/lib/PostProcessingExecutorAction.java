@@ -82,7 +82,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 log.info(aMarker, "executed query from index {}", i.get());
             }
         });
-
+        log.info("Post processing Executor action total rows returned from the query {}",postProcessingExecutorInputs.size());
         postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
             if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
                 postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
@@ -146,7 +146,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 } catch (Exception t) {
                     log.error(aMarker, "Error inserting result {} and {}", insert.getOriginId(), insert.getSorItemName(), t);
                     HandymanException handymanException = new HandymanException(t);
-                    HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result for groupId " + groupId, handymanException, action);
+                    HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result for groupId " + groupId + " origin Id " + insert.getOriginId() + " paper No " + insert.getPaperNo(), handymanException, action);
                 }
             }));
         } catch (Exception t) {
@@ -155,6 +155,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
             HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result", handymanException, action);
         }
     }
+
 
     @Override
     public boolean executeIf() throws Exception {
@@ -187,5 +188,6 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String modelRegistry;
         private String encryptionPolicy;
         private String isEncrypted;
+        private String lineItemType;
     }
 }

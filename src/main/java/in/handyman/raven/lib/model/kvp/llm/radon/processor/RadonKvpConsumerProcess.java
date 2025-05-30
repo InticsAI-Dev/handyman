@@ -222,7 +222,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
                         } catch (IOException | EvalError e) {
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
                             log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
                         }
                     }));
@@ -252,10 +252,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .response(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
                         .build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.info(aMarker, "Error in getting response from triton api {}", response.message());
+                log.error(aMarker, "Error in getting response from triton api {}", response.message());
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
@@ -280,47 +280,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
         }
     }
 
-    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
-        try {
-            if (jsonResponse.contains("```json")) {
-                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
-                // Define the regex pattern to match content between ```json and ```
-                Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
-                Matcher matcher = pattern.matcher(jsonResponse);
-
-                if (matcher.find()) {
-                    // Extract the JSON string from the matched group
-                    String jsonString = matcher.group(1);
-                    jsonString = jsonString.replace("\n", "");
-                    // Convert the cleaned JSON string to a JsonNode
-                    jsonResponse = repairJson(jsonString);
-                    if (!jsonResponse.isEmpty()) {
-                        return objectMapper.readTree(jsonResponse);
-                    } else {
-                        return null;
-                    }
-                } else {
-                    jsonResponse = repairJson(jsonResponse);
-                    return objectMapper.readTree(jsonResponse);
-                }
-            } else if (jsonResponse.contains("{")) {
-                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
-                jsonResponse = repairJson(jsonResponse);
-                return objectMapper.readTree(jsonResponse);
-            } else {
-                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
-                return null;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     public JsonNode getJsonNodeFromInferResponse(ObjectMapper objectMapper, String jsonString) throws JsonProcessingException {
         try {
@@ -355,7 +319,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
             log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
             String providerClassName = action.getContext().get(entity.getPostProcessClassName());
-            Optional<String> sourceCode = fetchBshResultByClassName(jdbi, providerClassName);
+            Optional<String> sourceCode = fetchBshResultByClassName(jdbi, providerClassName, tenantId);
             if (sourceCode.isPresent()) {
                 List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, modelResponse.getInferResponse(), entity, request, response, endpoint);
                 parentObj.addAll(providerParentObj);
@@ -418,8 +382,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             extractedCoproOutputResponse(entity, radonDataItem, parentObj, jsonInputRequest, responseBody, endpoint.toString());
                         } catch (JsonProcessingException e) {
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("radon kvp consumer failed for batch/group " + groupId, handymanException, this.action);
-                            log.error(aMarker, "The Exception occurred in converting response from triton server output {}", ExceptionUtil.toString(e));
+                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting response from triton server output origin Id {}  paper no {} and exception {}", entity.getOriginId(), entity.getPaperNo(), ExceptionUtil.toString(e));
                         }
                     }));
 
@@ -445,10 +409,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .endpoint(String.valueOf(endpoint))
                         .sorContainerId(entity.getSorContainerId())
                         .build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Radon KVP consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.info(aMarker, "Error in converting response from copro server {}", response.message());
+                log.error(aMarker, "Error in converting response from copro server {} origin Id {} and paper No {}", response.message(), entity.getOriginId(), paperNo);
             }
         } catch (IOException e) {
             parentObj.add(RadonQueryOutputTable.builder()
@@ -470,8 +434,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .build());
 
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Radon kvp action consumer failed for batch/group " + groupId, handymanException, this.action);
-            log.error(aMarker, "The Exception occurred in getting response from copro server {}", ExceptionUtil.toString(e));
+            HandymanException.insertException("Radon kvp action consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response from copro server exception {} for origin Id {} and paper No {}", ExceptionUtil.toString(e), entity.getOriginId(), entity.getPaperNo());
         }
     }
 
@@ -516,77 +480,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         );
     }
 
-    private String repairJson(String jsonString) {
-
-        // Ensure keys and string values are enclosed in double quotes
-        jsonString = addMissingQuotes(jsonString);
-
-        // Balance braces and brackets
-        jsonString = balanceBracesAndBrackets(jsonString);
-
-        // Assign empty strings to keys with no values
-        jsonString = assignEmptyValues(jsonString);
-
-        return jsonString;
-    }
-
-    private String addMissingQuotes(String jsonString) {
-        // Ensure keys are enclosed in double quotes
-        jsonString = jsonString.replaceAll("(\\{|,\\s*)(\\w+)(?=\\s*:)", "$1\"$2\"");
-
-        // Ensure string values are enclosed in double quotes
-        // This regex matches values that are not already enclosed in quotes
-        jsonString = jsonString.replaceAll("(?<=:)\\s*([^\"\\s,\\n}\\]]+)(?=\\s*(,|}|\\n|\\]))", "\"$1\"");
-
-        return jsonString;
-    }
-
-
-    private String balanceBracesAndBrackets(String jsonString) {
-        // Balance braces and brackets
-        int openBraces = 0;
-        int closeBraces = 0;
-        int openBrackets = 0;
-        int closeBrackets = 0;
-
-        for (char c : jsonString.toCharArray()) {
-            if (c == '{') openBraces++;
-            if (c == '}') closeBraces++;
-            if (c == '[') openBrackets++;
-            if (c == ']') closeBrackets++;
-        }
-
-        // Add missing closing braces
-        while (openBraces > closeBraces) {
-            jsonString += "}";
-            closeBraces++;
-        }
-
-        // Add missing closing brackets
-        while (openBrackets > closeBrackets) {
-            jsonString += "]";
-            closeBrackets++;
-        }
-
-        return jsonString;
-    }
-
-    private String assignEmptyValues(String jsonString) {
-        // Assign empty strings to keys with no values
-        jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
-        return jsonString;
-    }
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public Map<String, Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-            throws IOException {
-        String json = jsonParser.getText();
-        // Remove the ```json block and any leading/trailing spaces
-        json = json.replace("```json", "").replace("```", "").trim();
-        // Deserialize the cleaned JSON string into a Map
-        return objectMapper.readValue(json, Map.class);
-    }
 
     public String encryptRequestResponse(String request) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);

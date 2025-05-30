@@ -41,7 +41,50 @@ class PaperItemizerActionTest {
 
 
     @Test
-    void tritonServer() throws Exception {
+    void paperItemizerInputFromLocal() throws Exception {
+        PaperItemizer paperItemizer = PaperItemizer.builder()
+                .name("paper itemizer macro test after copro optimization")
+                .resourceConn("intics_zio_db_conn")
+                .condition(true)
+                .processId("138980184199100180")
+                .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
+                .resultTable("info.paper_itemizer")
+                .outputDir("/data/tenant/PI")
+                .querySet(" SELECT 'ORIGIN-1' as origin_id, 1 as group_id ,'/home/anandh.andrews@zucisystems.com/intics-workspace/Asgard/ANTHEM-docs/AUMI/build/testing/paper-itemizer/merged_sample_dnu.pdf' as file_path,1 as tenant_id,'12345' as process_id, 1110 as root_pipeline_id, 'BATCH-1' as batch_id, now() as created_on;")
+                .build();
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.setActionId(1L);
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.paper-itemizer.url", "https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer"),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("triton.request.activator", "true"),
+                Map.entry("paper.itemizer.consumer.API.count", "1"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
+                Map.entry("paper.itemizer.model.name", "XENON"),
+                Map.entry("actionId", "1"),
+                Map.entry("paper.itemization.using.app", "true"),
+                Map.entry("paper.itemizer.resize.width", "1700"),
+                Map.entry("paper.itemizer.resize.height", "2200"),
+                Map.entry("read.batch.size", "5"),
+                Map.entry("paper.itemizer.file.dpi", "200"),
+                Map.entry("paper.itemizer.output.format", "png"),
+                Map.entry("paper.itemizer.image.type.rgb", "true"),
+                Map.entry("paper.itemization.resize.activator", "false"),
+                Map.entry("write.batch.size", "5")));
+
+        PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
+        long startTime = System.currentTimeMillis();
+
+        paperItemizerAction.execute();
+        long endTime = System.currentTimeMillis();
+        long totalTimeMillis = endTime - startTime;
+        System.out.println("Execution time: " + totalTimeMillis + " ms");
+
+    }
+
+
+    @Test
+    void paperItemizerInputFromDb() throws Exception {
         PaperItemizer paperItemizer = PaperItemizer.builder()
                 .name("paper itemizer macro test after copro optimization")
                 .resourceConn("intics_zio_db_conn")
@@ -77,7 +120,13 @@ class PaperItemizerActionTest {
                 Map.entry("write.batch.size", "5")));
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
+        long startTime = System.currentTimeMillis();
+
         paperItemizerAction.execute();
+        long endTime = System.currentTimeMillis();
+        long totalTimeMillis = endTime - startTime;
+        System.out.println("Execution time: " + totalTimeMillis + " ms");
+
     }
 }
 

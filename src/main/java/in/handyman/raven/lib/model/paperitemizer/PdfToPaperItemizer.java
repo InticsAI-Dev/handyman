@@ -8,6 +8,7 @@ import in.handyman.raven.lib.model.triton.PipelineName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.slf4j.Logger;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -15,24 +16,35 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Marker;
-import org.slf4j.Logger;
+import java.util.Objects;
+import java.util.Optional;
 
 public class PdfToPaperItemizer {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
-    private static ActionExecutionAudit action;
+    public static final String PAPER_ITEMIZER_IMAGE_TYPE_RGB = "paper.itemizer.image.type.rgb";
+    static final String EXTRACTION_PROCESSING_PAPER_COUNT = "extraction.preprocess.paper.itemizer.processing.paper.count";
+    static final String EXTRACTION_PAPER_LIMIT_ACTIVATOR = "extraction.preprocess.paper.itemizer.processing.paper.limiter.activator";
+    static final String PAPER_ITEMIZER_RESIZE_WIDTH = "paper.itemizer.resize.width";
+    static final String PAPER_ITEMIZER_RESIZE_HEIGHT = "paper.itemizer.resize.height";
+    static final String PAPER_ITEMIZER_FILE_FORMAT = "paper.itemizer.output.format";
+    static final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
+    static final String MODEL_NAME = "APP";
+    static final String VERSION = "1";
+    public final String EXTENSION_PDF = "pdf";
+    private final ActionExecutionAudit action;
+    private final Logger log;
 
-    public static List<PaperItemizerOutputTable> paperItemizer(String filePath, String outputDir, ActionExecutionAudit action, Logger log, PaperItemizerInputTable entity) {
 
-        final String PAPER_ITEMIZER_RESIZE_WIDTH = "paper.itemizer.resize.width";
-        final String PAPER_ITEMIZER_RESIZE_HEIGHT = "paper.itemizer.resize.height";
-        final String PAPER_ITEMIZER_FILE_FORMAT = "paper.itemizer.output.format";
-        final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
-        final String MODEL_NAME = "APP";
-        final String VERSION = "1";
-        final String IMAGE_TYPE = action.getContext().get("paper.itemizer.image.type.rgb");
+    public PdfToPaperItemizer(ActionExecutionAudit action, Logger log) {
+        this.action = action;
+        this.log = log;
+    }
+
+    public List<PaperItemizerOutputTable> paperItemizer(String filePath, String outputDir, PaperItemizerInputTable entity) {
+
+        final String IMAGE_TYPE = action.getContext().get(PAPER_ITEMIZER_IMAGE_TYPE_RGB);
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
 
         File targetDir = readDirectory(outputDir, log);
@@ -41,7 +53,7 @@ public class PdfToPaperItemizer {
         String fileExtension = getFileExtension(new File(filePath)).toLowerCase();
         log.info("The input file has Origin ID {} and file extension {}", entity.getOriginId(), fileExtension);
 
-       if (fileExtension.equals("pdf")) {
+        if (fileExtension.equals(EXTENSION_PDF)) {
             try (PDDocument document = PDDocument.load(new File(filePath))) {
                 int dpi = Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_FILE_DPI));
                 String fileFormat = action.getContext().get(PAPER_ITEMIZER_FILE_FORMAT);
@@ -56,15 +68,16 @@ public class PdfToPaperItemizer {
                 targetDir = new File(String.valueOf(combinedtargetDirPath));
                 boolean created = targetDir.mkdirs();
                 if (!targetDir.exists() && !targetDir.mkdirs()) {
-                    new HandymanException("Failed to create output directory: " + targetDir );
+                    new HandymanException("Failed to create output directory: " + targetDir);
                 }
 
                 log.info("Status for directory creation : {} for file {}", created ? "Successful" : "Failed", fileNameWithoutExtension);
 
-                int pageCount = document.getNumberOfPages();
+                int pageCount = getPageNo(document.getNumberOfPages());
+
                 File outputFile = null;
                 Integer pageNumber = 0;
-                ImageType imageType = Objects.equals("true", IMAGE_TYPE)? ImageType.RGB: ImageType.GRAY;
+                ImageType imageType = Objects.equals("true", IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
 
                 List<PaperItemizerOutputTable> paperItemizerOutputTables = new ArrayList<>();
                 for (int page = 0; page < pageCount; page++) {
@@ -106,7 +119,7 @@ public class PdfToPaperItemizer {
                                 .response("")
                                 .endpoint("")
                                 .build());
-                    }catch (Exception exception) {
+                    } catch (Exception exception) {
                         parentObj.add(
                                 PaperItemizerOutputTable
                                         .builder()
@@ -127,7 +140,7 @@ public class PdfToPaperItemizer {
                                         .endpoint("")
                                         .build());
                         HandymanException handymanException = new HandymanException(exception);
-                        HandymanException.insertException("Paper Itemize consumer failed for originId " + entity.getOriginId(), handymanException, action);
+                        HandymanException.insertException("Paper Itemize consumer failed for origin Id " + entity.getOriginId(), handymanException, action);
                         log.error("The Exception occurred in request {}", exception.getMessage(), exception);
                     }
                     log.info("Itemized papers successfully created in folder: {} ", targetDir.getAbsolutePath());
@@ -138,13 +151,25 @@ public class PdfToPaperItemizer {
             } catch (Exception e) {
                 log.error("Error during paper itemization: {}", e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException( "paper itemization consumer failed for {}"+ entity.getOriginId(), handymanException, action);
+                HandymanException.insertException("paper itemization consumer failed for origin Id " + entity.getOriginId(), handymanException, action);
 
             }
         } else {
             new HandymanException("Unsupported file type: " + fileExtension);
         }
         return parentObj;
+    }
+
+    private int getPageNo(int originalPaperCount) {
+        String extractionPaperLimitActivator = action.getContext().get(EXTRACTION_PAPER_LIMIT_ACTIVATOR);
+        int extractionProcessingPaperCount = Integer.parseInt(action.getContext().get(EXTRACTION_PROCESSING_PAPER_COUNT));
+
+        if (extractionPaperLimitActivator.equals("true")) {
+            return Math.min(originalPaperCount, extractionProcessingPaperCount);
+        } else {
+            return originalPaperCount;
+        }
+
     }
 
     private static String removeExtension(final String fileName) {
@@ -154,6 +179,7 @@ public class PdfToPaperItemizer {
             return fileName;
         }
     }
+
     public static String getFileExtension(final File file) {
         final String name = file.getName();
         int lastIndexOf = name.indexOf(".");

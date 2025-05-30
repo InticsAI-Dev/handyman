@@ -171,7 +171,7 @@ public class AlchemyInfoAction implements IActionExecution {
             } catch (Exception e) {
                 log.error(aMarker, "The Exception occurred in alchemy info action", e);
                 HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Exception occurred in alchemy info action for group id - " + groupId + " and originId - " + pipelineOriginId, handymanException, this.action);
+                HandymanException.insertException("Exception occurred in alchemy info action for group id - " + groupId + " and originId - " + pipelineOriginId , handymanException, this.action);
             }
             return parentObj;
         }

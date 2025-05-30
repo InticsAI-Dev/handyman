@@ -1,11 +1,13 @@
 package in.handyman.raven.lib.custom.kvp.post.processing.bsh;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 
 import java.util.*;
 
 public class ProviderTransformerFinalBsh {
     private Logger logger;
+    private final ObjectMapper objectMapper=new ObjectMapper();
 
     public ProviderTransformerFinalBsh(Logger logger) {
         this.logger = logger;
@@ -197,16 +199,34 @@ public class ProviderTransformerFinalBsh {
                     for (Object innerObj : undefinedResult) {
                         ProviderTransformerOutputItem providerTransformedObject = (ProviderTransformerOutputItem) innerObj;
                         if (providerTransformedObject.getKey().equals(item)) {
-                            String oldValue = providerTransformedObject.getValue();
-                            String newValue = oldValue.concat(",").concat(keyValue.replaceAll(",", " "));
-                            providerTransformedObject.setValue(newValue);
+                            String oldJson = providerTransformedObject.getValue();
+                            List valueList;
+                            try {
+                                valueList = objectMapper.readValue(oldJson, List.class);
+                            } catch (Exception e) {
+                                valueList = new ArrayList();
+                                logger.error("Error in mapping the undefined provider value into the respective provider field {}",item); // Handle serialization failure
+                            }
+                            valueList.add(keyValue);
+                            try {
+                                String newJson = objectMapper.writeValueAsString(valueList);
+                                providerTransformedObject.setValue(newJson);
+                            } catch (Exception e) {
+                                logger.error("Error in mapping the undefined provider value into the respective provider field {}",item); // Handle serialization failure
+                            }
                             found = true;
                             break;
                         }
                     }
 
                     if (!found) {
-                        undefinedResult.add(new ProviderTransformerOutputItem(item, keyValue.replaceAll(",", " "), new HashMap(), matchedContainer));
+                        List newList = new ArrayList();
+                        try {
+                            String json = objectMapper.writeValueAsString(newList);
+                            undefinedResult.add(new ProviderTransformerOutputItem(item, json, new HashMap(), matchedContainer));
+                        } catch (Exception e) {
+                            logger.error("Error in mapping the undefined provider value into the respective provider field {}",item); // Handle serialization failure
+                        }
                     }
                 }
             }

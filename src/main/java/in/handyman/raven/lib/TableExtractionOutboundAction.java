@@ -221,7 +221,7 @@ public class TableExtractionOutboundAction implements IActionExecution {
             });
         } catch (Exception exception) {
             HandymanException handymanException = new HandymanException(exception);
-            HandymanException.insertException("error inserting into batch insert audit", handymanException, action);
+            HandymanException.insertException("Error inserting into batch insert audit", handymanException, action);
 
         }
     }
@@ -308,7 +308,7 @@ public class TableExtractionOutboundAction implements IActionExecution {
 
                         } catch (Exception e) {
                             HandymanException handymanException = new HandymanException(e);
-                            handymanException.insertException("cannot parse string " + cellValue, handymanException, action);
+                            handymanException.insertException("Cannot parse string " + cellValue, handymanException, action);
                         }
 
 

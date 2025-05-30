@@ -52,7 +52,7 @@ public class ProviderDataTransformer {
     public List<RadonQueryOutputTable> processProviderData(
             String sourceCode, String className, String responsePayload,
             RadonQueryInputTable entity, String request, String apiResponse, String endpoint) {
-        log.info("Starting processProviderData for class: {}", className);
+        log.info("Starting processProviderData for class: {} with origin Id {} and paper no {} for container Id {}", className, entity.getOriginId(), entity.getPaperNo(), entity.getSorContainerId());
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 

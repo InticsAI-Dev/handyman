@@ -151,13 +151,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 replicateRequest.setInput(dataExtractionData);
 
                 String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
-                Request request = new Request.Builder()
-                        .url(endpoint)
-                        .post(RequestBody.create(replicateJsonRequest, mediaType))
-                        .addHeader("Authorization", "Bearer " + replicateApiToken)
-                        .addHeader("Content-Type", "application/json")
-                        .addHeader("Prefer", "wait")
-                        .build();
+                Request request = new Request.Builder().url(endpoint).post(RequestBody.create(replicateJsonRequest, mediaType)).addHeader("Authorization", "Bearer " + replicateApiToken).addHeader("Content-Type", "application/json").addHeader("Prefer", "wait").build();
 
                 replicateResponseBuilder(endpoint, request, parentObj, entity, replicateJsonRequest);
             } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
@@ -177,13 +171,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
                 String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
 
-                Request request = new Request.Builder()
-                        .url(endpoint)
-                        .post(RequestBody.create(replicateJsonRequest, mediaType))
-                        .addHeader("Authorization", "Bearer " + replicateApiToken)
-                        .addHeader("Content-Type", "application/json")
-                        .addHeader("Prefer", "wait")
-                        .build();
+                Request request = new Request.Builder().url(endpoint).post(RequestBody.create(replicateJsonRequest, mediaType)).addHeader("Authorization", "Bearer " + replicateApiToken).addHeader("Content-Type", "application/json").addHeader("Prefer", "wait").build();
                 tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionPayloadString, endpoint);
             }
         } else if (Objects.equals("TRITON", coproHandlerName)) {
@@ -265,8 +253,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                             try {
                                 extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                             } catch (JsonProcessingException e) {
-                                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                                HandymanException.insertException("Data extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                                HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                                 throw new HandymanException("Exception in extracted output Data request {}", e);
                             }
@@ -276,17 +264,17 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 }
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Data extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.error(aMarker, "The Exception occurred in getting response {}",response.message());
+                log.error(aMarker, "The Exception occurred in getting response {}", response.message());
             }
         } catch (Exception e) {
             parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for Origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }
@@ -310,29 +298,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         }
 
         String templateId = entity.getTemplateId();
-        parentObj.add(DataExtractionOutputTable.builder()
-                .filePath(entity.getFilePath())
-                .extractedText(extractedContent)
-                .originId(dataExtractionDataItem.getOriginId())
-                .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
-                .paperNo(dataExtractionDataItem.getPaperNo())
-                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                .stage(PROCESS_NAME)
-                .message("Data extraction macro completed with krypton triton api call")
-                .createdOn(entity.getCreatedOn())
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .isBlankPage(flag)
-                .tenantId(dataExtractionDataItem.getTenantId())
-                .templateId(templateId).processId(dataExtractionDataItem.getProcessId())
-                .templateName(entity.getTemplateName())
-                .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
-                .modelName(modelName)
-                .modelVersion(modelVersion)
-                .batchId(entity.getBatchId())
-                .request(encryptRequestResponse(request))
-                .response(encryptRequestResponse(response))
-                .endpoint(String.valueOf(endpoint))
-                .build());
+        parentObj.add(DataExtractionOutputTable.builder().filePath(entity.getFilePath()).extractedText(extractedContent).originId(dataExtractionDataItem.getOriginId()).groupId(Math.toIntExact(dataExtractionDataItem.getGroupId())).paperNo(dataExtractionDataItem.getPaperNo()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed with krypton triton api call").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(entity.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(entity.getBatchId()).request(encryptRequestResponse(request)).response(encryptRequestResponse(response)).endpoint(String.valueOf(endpoint)).build());
     }
 
     private void extractedArgonOutputDataRequest(DataExtractionInputTable entity, String stringDataItem, List<DataExtractionOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
@@ -381,8 +347,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 }
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Data extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                 log.error(aMarker, "The Exception occurred ");
             }
@@ -391,7 +357,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }
@@ -439,16 +405,16 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                     extractedReplicateOutputResponse(endpoint, entity, replicateResponse, parentObj, replicateJsonRequest, responseBody);
                 } else {
                     parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                    HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                    HandymanException.insertException("Data extraction replicate consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                    HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                    HandymanException.insertException("Text extraction replicate consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                     log.error(aMarker, "The replicate response has empty output {}", replicateResponse.getOutput());
                 }
 
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Data extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                 log.error(aMarker, "The replicate response status {}", response.message());
             }
@@ -457,7 +423,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred in replicate {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for replicate batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for replicate origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }
@@ -527,8 +493,8 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Data extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                 log.error(aMarker, "The Exception occurred in getting response {}", response.message());
             }
@@ -537,7 +503,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
             log.error(aMarker, "The Exception occurred in Copro {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for origin Id " + originId + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }
@@ -568,17 +534,17 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
                 }
             } else {
                 parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Data extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException.insertException("Text extraction consumer failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.error(aMarker, "The Exception occurred in getting response {}",response.message());
+                log.error(aMarker, "The Exception occurred in getting response {}", response.message());
             }
         } catch (Exception e) {
             parentObj.add(DataExtractionOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Text extraction consumer failed for origin Id " + originId + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
         }
     }

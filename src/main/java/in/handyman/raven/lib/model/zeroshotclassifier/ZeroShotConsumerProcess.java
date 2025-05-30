@@ -316,7 +316,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             });
         } catch (JsonProcessingException e) {
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Zero shot classifier paper filter action failed in response json processing - ", handymanException, action);
+            HandymanException.insertException("Zero shot classifier paper filter action for origin Id " + entity.getOriginId() + "and paper No " + entity.getPaperNo() + " failed in response json processing ", handymanException, action);
         }
     }
 
@@ -358,7 +358,7 @@ public class ZeroShotConsumerProcess implements CoproProcessor.ConsumerProcess<Z
             });
         } catch (JsonProcessingException e) {
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Zero shot classifier paper filter action failed in response json processing - ", handymanException, action);
+            HandymanException.insertException("Zero shot classifier paper filter action for origin Id " + entity.getOriginId() + "and paper No " + entity.getPaperNo() + " failed in response json processing ", handymanException, action);
         }
     }
 

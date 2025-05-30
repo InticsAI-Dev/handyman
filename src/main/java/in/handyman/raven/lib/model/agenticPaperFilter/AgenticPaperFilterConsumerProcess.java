@@ -246,23 +246,27 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                             try {
                                 extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                             } catch (JsonProcessingException e) {
-                                throw new HandymanException("Exception in extracted output Data request {}", e);
+                                String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + " message : " + response.message();
+                                HandymanException handymanException = new HandymanException(errorMessage);
+                                HandymanException.insertException(errorMessage, handymanException, this.action);
+                                log.error(aMarker, errorMessage);
                             }
                         });
                     });
                 }
             } else {
+                String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + response.message();
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
-                log.error(aMarker, "The Exception occurred getting response {}",response.message());
+                HandymanException handymanException = new HandymanException(errorMessage);
+                HandymanException.insertException(errorMessage, handymanException, this.action);
+                log.error(aMarker, errorMessage);
             }
         } catch (Exception e) {
-            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
-
-            log.error(aMarker, "The Exception occurred ", e);
+            String errorMessage = "Error in api call consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + "\n message : " + e.getMessage();
+            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
+            log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException(errorMessage, handymanException, this.action);
         }
     }
 
@@ -370,17 +374,17 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 }
             } else {
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
+                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId() + "origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
 
-                log.error(aMarker, "The Exception occurred in getting response {}",response.message());
+                log.error(aMarker, "The Exception occurred in getting response {}", response.message());
             }
         } catch (Exception e) {
             parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In getting Response").endpoint(String.valueOf(endpoint)).build());
 
             log.error(aMarker, "The Exception occurred ", e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Agentic paper filter extraction consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
         }
     }
 
@@ -428,8 +432,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 }
             } else {
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
+                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
                 log.error(aMarker, "The replicate response status {}", response.message());
             }
         } catch (Exception e) {
@@ -437,7 +441,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
             log.error(aMarker, "The Exception occurred in replicate {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for replicate batch/group " + entity.getGroupId(), handymanException, this.action);
+            HandymanException.insertException("Agentic paper Filter consumer failed for replicate batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
         }
     }
 
@@ -499,7 +503,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "", jsonInputRequest, responseBody, endpoint.toString());
             } else {
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Non-successful response: " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
                 HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
 
                 log.error(aMarker, "The Exception occurred in response {}", response.message());
@@ -509,7 +513,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
             log.error(aMarker, "The Exception occurred in Copro {} ", e.toString());
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("test extraction consumer failed for batch/group " + groupId, handymanException, this.action);
+            HandymanException.insertException("Agentic paper filter extraction consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
         }
     }
 

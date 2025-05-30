@@ -4,11 +4,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
-import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.ActionExecutionStatusAudit;
-import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.PipelineExecutionStatusAudit;
-import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
+import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
 import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
 import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
@@ -535,6 +531,24 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         });
     }
 
+    @Override
+    public List<HandymanExceptionAuditDetails> findAllHandymanExceptions(){
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(HandymanExceptionRepo.class);
+            return repo.findAllHandymanExceptions();
+        });
+    }
+
+    @Override
+    public List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId){
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(HandymanExceptionRepo.class);
+            return repo.findHandymanExceptionsByRootPipelineId(rootPipelineId);
+        });
+    }
+
     public String encryptString(String message){
         InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
 
@@ -565,23 +579,5 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class HandymanExceptionAuditDetails {
-        private Integer groupId;
-        private Long rootPipelineId;
-        private String rootPipelineName;
-        private String pipelineName;
-        private Long actionId;
-        private String actionName;
-        private String exceptionInfo;
-        private String message;
-        private Long processId;
-        private Long createdBy;
-        private LocalDateTime createdDate;
-        private Long lastModifiedBy;
-        private LocalDateTime lastModifiedDate;
-    }
+
 }
