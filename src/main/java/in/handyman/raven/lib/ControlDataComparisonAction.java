@@ -69,7 +69,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                     log.info(aMarker, "executed query from index {}", i.get());
                 });
             });
-            log.info("Control data comparison total rows returned from the query {}",controlDataComparisonQueryInputTables.size());
+            log.info("Control data comparison total rows returned from the query {}", controlDataComparisonQueryInputTables.size());
             controlDataComparisonQueryInputTables.forEach(controlDataComparisonQueryInput -> {
                 try {
                     doControlDataValidation(controlDataComparisonQueryInput, jdbi, outputTable);
@@ -89,7 +89,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     }
 
     private void doControlDataValidation(ControlDataComparisonQueryInputTable controlDataComparisonQueryInputTable, Jdbi jdbi, String outputTable) throws JsonProcessingException {
-        log.info("Processing the Control Data Comparison input data ControlDataComparisonQueryInputTable: {}", controlDataComparisonQueryInputTable);
+        log.info("Processing the Control Data Comparison input data ControlDataComparisonQueryInputTable for origin id: {} and paper no: {} and sor item name: {}", controlDataComparisonQueryInputTable.getOriginId(), controlDataComparisonQueryInputTable.getPaperNo(), controlDataComparisonQueryInputTable.getSorItemName());
 
         Long tenantId = controlDataComparisonQueryInputTable.getTenantId();
         String originId = controlDataComparisonQueryInputTable.getOriginId();
