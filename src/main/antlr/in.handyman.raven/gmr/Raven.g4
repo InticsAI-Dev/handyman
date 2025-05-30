@@ -181,6 +181,7 @@ action:
     |providerContainerParser
     |postProcessingExecutor
     |agenticPaperFilter
+    |runpodActiveWorkerSetup
     );
 
 
@@ -1404,6 +1405,13 @@ agenticPaperFilter:
   	'result-table' resultTable=STRING
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
+  	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+runpodActiveWorkerSetup:
+    'runpodActiveWorkerSetup' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'endpoint' endpoint=STRING
+    'paperCount' papercount=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 //rules
