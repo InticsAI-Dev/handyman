@@ -93,11 +93,11 @@ class PaperItemizerActionTest {
                 .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
                 .resultTable("info.paper_itemizer")
                 .outputDir("/data/tenant/PI")
-                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/taulia/Sample 6 620762476-facture-galaxy-z-fold.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
+                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/Hand Written_Final_8778811305.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
                         "from preprocess.preprocess_payload_queue_archive a\n" +
                         "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
                         "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.root_pipeline_id in (102257,115587,107841,120075)")
+                        "where a.root_pipeline_id in (64255)")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -116,8 +116,12 @@ class PaperItemizerActionTest {
                 Map.entry("paper.itemizer.file.dpi", "200"),
                 Map.entry("paper.itemizer.output.format", "png"),
                 Map.entry("paper.itemizer.image.type.rgb", "true"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.count", "5"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.limiter.activator", "true"),
                 Map.entry("paper.itemization.resize.activator", "false"),
+                Map.entry("copro.processor.thread.creator", "FIXED_THREAD"),
                 Map.entry("write.batch.size", "5")));
+
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
         long startTime = System.currentTimeMillis();
