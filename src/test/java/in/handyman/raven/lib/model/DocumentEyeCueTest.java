@@ -31,6 +31,7 @@ class DocumentEyeCueTest {
                 Map.entry("document.eye.cue.read.batch.size", "5"),
                 Map.entry("document.eye.cue.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
+                Map.entry("copro.processor.thread.creator", "FIXED_THREAD"),
                 Map.entry("document.eye.cue.write.batch.size", "5")));
 
         DocumentEyeCueAction documentEyeCueAction = new DocumentEyeCueAction(actionExecutionAudit, log, documentEyeCue);
