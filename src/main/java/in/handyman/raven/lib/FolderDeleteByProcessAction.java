@@ -15,6 +15,9 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -79,7 +82,12 @@ public class FolderDeleteByProcessAction implements IActionExecution {
         String processName = folderDeleteProcessInputTable.getProcessName();
         Long tenantId = folderDeleteProcessInputTable.getTenantId();
         Long rootPipelineId = folderDeleteProcessInputTable.getRootPipelineId();
-        deleteAllFilesInFolder(directoryPath);
+        boolean isValidFile = isFile(directoryPath);
+        if(isValidFile){
+            deleteFile(directoryPath);
+        }else {
+            deleteAllFilesInFolder(directoryPath);
+        }
 
         try (var ignored = jdbi.open()) {
             log.info("Jdbi connection is open, initiating the status updating for folder deletion");
@@ -109,6 +117,24 @@ public class FolderDeleteByProcessAction implements IActionExecution {
                     .bind("tenantId", tenantId)
                     .execute();
         });
+    }
+
+    public static boolean isFile(String pathStr) {
+        Path path = Paths.get(pathStr);
+        return Files.exists(path) && Files.isRegularFile(path);
+    }
+
+    public void deleteFile(String filePath) {
+        File file = new File(filePath);
+        if (file.exists() && file.isFile()) {
+            if (file.delete()) {
+                log.info("File deleted: {}", filePath);
+            } else {
+                log.warn("Failed to delete file: {}", filePath);
+            }
+        } else {
+            log.warn("Provided path is not a valid file: {}", filePath);
+        }
     }
 
     public void deleteAllFilesInFolder(String folderPath) {
