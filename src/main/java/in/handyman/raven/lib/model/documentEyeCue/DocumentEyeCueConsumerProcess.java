@@ -106,6 +106,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
             String base64Content = fileProcessingUtils.convertFileToBase64(entity.getFilePath());
             documentEyeCueRequest.setBase64Pdf(base64Content);
+            documentEyeCueRequest.setInputFilePath(entity.getFilePath());
         } else {
             documentEyeCueRequest.setInputFilePath(entity.getFilePath());
         }
