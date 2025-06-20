@@ -23,7 +23,7 @@ import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUE
 
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
 
-    public static final String PROCESS_NAME = "DOCUMENT_EYE_CUE";
+    public static final String PROCESS_NAME = "DOC_EYE_CUE";
 
     public final ActionExecutionAudit action;
 
@@ -170,7 +170,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .processId(entity.getProcessId())
                     .templateId(entity.getTemplateId())
                     .processedFilePath(documentEyeCueResponse.getProcessedPdfPath())
-                    .status(documentEyeCueResponse.getStatus())
+                    .status("COMPLETED")
                     .stage(PROCESS_NAME)
                     .message(documentEyeCueResponse.getErrorMessage() != null ?
                             documentEyeCueResponse.getErrorMessage() : "Document EyeCue processing completed successfully")
@@ -181,6 +181,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .request(encryptRequestResponse(jsonInputRequest))
                     .response(encryptRequestResponse(responseBody))
                     .endpoint(endpoint.toString())
+                    .encodedFilePath(documentEyeCueResponse.getProcessedPdfBase64())
                     .build();
 
             // Handle base64 response if needed

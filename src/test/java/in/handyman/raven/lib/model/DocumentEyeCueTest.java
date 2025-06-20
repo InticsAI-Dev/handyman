@@ -32,7 +32,7 @@ class DocumentEyeCueTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
-                Map.entry("document.eye.cue.api.url", "http://192.168.12.94:7999/intics-copro/document-eye-cue"),
+                Map.entry("document.eye.cue.api.url", "http://192.168.10.238:7999/intics-copro/document-eye-cue"),
                 Map.entry("document.eye.cue.read.batch.size", "5"),
                 Map.entry("document.eye.cue.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),

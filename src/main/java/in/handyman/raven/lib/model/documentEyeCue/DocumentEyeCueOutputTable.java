@@ -34,13 +34,14 @@ public class DocumentEyeCueOutputTable implements CoproProcessor.Entity {
     private String request;
     private String response;
     private String endpoint;
+    private String encodedFilePath;
 
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processedFilePath,
                 this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId,
-                this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint).collect(Collectors.toList());
+                this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint, this.encodedFilePath).collect(Collectors.toList());
     }
 }
 
