@@ -48,25 +48,25 @@ public class DocumentEyeCueAction implements IActionExecution {
 
     private final String processBase64;
 
-    public static final String processFileFormat = "pipeline.copro.api.process.file.format";
+    public static final String PROCESS_FILE_FORMAT = "pipeline.copro.api.process.file.format";
 
-    public static final String documentEyeCueReadBatchSize = "document.eye.cue.read.batch.size";
+    public static final String DOCUMENT_EYE_CUE_READ_BATCH_SIZE = "document.eye.cue.read.batch.size";
 
-    public static final String documentEyeCueReadWriteSize = "document.eye.cue.write.batch.size";
+    public static final String DOCUMENT_EYE_CUE_WRITE_BATCH_SIZE = "document.eye.cue.write.batch.size";
 
-    public static final String documentEyeCueConsumerApiCount = "document.eye.cue.consumer.API.count";
+    public static final String DOCUMENT_EYE_CUE_CONSUMER_API_COUNT = "document.eye.cue.consumer.API.count";
 
     public static final String INSERT_COLUMNS = "origin_id, group_id, tenant_id, template_id, processed_file_path, status, " +
             "stage, message, created_on, process_id, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, encoded_file_path";
 
-    public static final String documentEyeCueApiUrl = "document.eye.cue.api.url";
+    public static final String DOCUMENT_EYE_CUE_API_URL = "document.eye.cue.api.url";
 
     public DocumentEyeCueAction(final ActionExecutionAudit action, final Logger log,
                                 final Object documentEyeCue) {
         this.documentEyeCue = (DocumentEyeCue) documentEyeCue;
         this.action = action;
         this.log = log;
-        this.processBase64 = action.getContext().get(processFileFormat);
+        this.processBase64 = action.getContext().get(PROCESS_FILE_FORMAT);
         this.aMarker = MarkerFactory.getMarker(" DocumentEyeCue:" + this.documentEyeCue.getName());
     }
 
@@ -80,9 +80,9 @@ public class DocumentEyeCueAction implements IActionExecution {
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
 
             //4. call the method start producer from preprocessor
-            Integer readBatchSize = Integer.valueOf(action.getContext().get(documentEyeCueReadBatchSize));
-            Integer consumerApiCount = Integer.valueOf(action.getContext().get(documentEyeCueConsumerApiCount));
-            Integer writeBatchSize = Integer.valueOf(action.getContext().get(documentEyeCueReadWriteSize));
+            Integer readBatchSize = Integer.valueOf(action.getContext().get(DOCUMENT_EYE_CUE_READ_BATCH_SIZE));
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get(DOCUMENT_EYE_CUE_CONSUMER_API_COUNT));
+            Integer writeBatchSize = Integer.valueOf(action.getContext().get(DOCUMENT_EYE_CUE_WRITE_BATCH_SIZE));
 
 
             final String outputDir = Optional.ofNullable(documentEyeCue.getOutputDir()).map(String::valueOf).orElse(null);
@@ -94,7 +94,7 @@ public class DocumentEyeCueAction implements IActionExecution {
             log.info(aMarker, "Document EyeCue Insert query {}", insertQuery);
 
             //3. initiate Copro processor and Copro urls
-            final List<URL> urls = Optional.ofNullable(action.getContext().get(documentEyeCueApiUrl)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            final List<URL> urls = Optional.ofNullable(action.getContext().get(DOCUMENT_EYE_CUE_API_URL)).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
