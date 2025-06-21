@@ -41,7 +41,8 @@ class DocumentEyeCueTest {
                 Map.entry("document.eye.cue.language", "eng"),
                 Map.entry("document.eye.cue.force.ocr", "false"),
                 Map.entry("document.eye.cue.skip.text.pages", "true"),
-                Map.entry("document.eye.cue.max.paper.count", "5")
+                Map.entry("document.eye.cue.max.paper.count", "5"),
+                Map.entry("doc.eyecue.encryption", "true")
         ));
         actionExecutionAudit.setActionId(1L);
 

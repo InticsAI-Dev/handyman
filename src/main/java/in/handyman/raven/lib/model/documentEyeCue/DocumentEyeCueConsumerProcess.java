@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.lib.encryption.EncryptionConstants.DOC_EYECUE_ENCRYPTION;
 
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
 
@@ -181,7 +182,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .request(encryptRequestResponse(jsonInputRequest))
                     .response(encryptRequestResponse(responseBody))
                     .endpoint(endpoint.toString())
-                    .encodedFilePath(documentEyeCueResponse.getProcessedPdfBase64())
+                    .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
                     .build();
 
             // Handle base64 response if needed
@@ -267,6 +268,14 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
     public String encryptRequestResponse(String data) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
+        if ("true".equals(encryptReqRes)) {
+            return SecurityEngine.getInticsIntegrityMethod(action).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
+        }
+        return data;
+    }
+
+    public String encryptDocEyeBase64(String data) {
+        String encryptReqRes = action.getContext().get(DOC_EYECUE_ENCRYPTION);
         if ("true".equals(encryptReqRes)) {
             return SecurityEngine.getInticsIntegrityMethod(action).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
         }
