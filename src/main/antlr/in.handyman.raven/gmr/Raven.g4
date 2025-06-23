@@ -181,6 +181,7 @@ action:
     |providerContainerParser
     |postProcessingExecutor
     |agenticPaperFilter
+    |documentEyeCue
     );
 
 
@@ -1405,6 +1406,18 @@ agenticPaperFilter:
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+documentEyeCue:
+	'documentEyeCue' 'as' name=STRING
+	'outputDir' outputDir=STRING
+	'copro-url' endpoint=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
 
 //rules
 
