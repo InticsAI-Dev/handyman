@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.utils;
+package in.handyman.raven.core.utils;
 
 public enum ProcessFileFormatE {
     BASE64, FILE

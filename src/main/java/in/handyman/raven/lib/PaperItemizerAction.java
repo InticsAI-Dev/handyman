@@ -9,7 +9,7 @@ import in.handyman.raven.lib.model.PaperItemizer;
 import in.handyman.raven.lib.model.paperitemizer.PaperItemizerConsumerProcess;
 import in.handyman.raven.lib.model.paperitemizer.PaperItemizerInputTable;
 import in.handyman.raven.lib.model.paperitemizer.PaperItemizerOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;

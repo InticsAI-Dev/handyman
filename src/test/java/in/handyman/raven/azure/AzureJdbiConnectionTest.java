@@ -1,7 +1,5 @@
 package in.handyman.raven.azure;
 
-import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
-import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 
 public class AzureJdbiConnectionTest {

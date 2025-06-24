@@ -22,7 +22,7 @@ import in.handyman.raven.lib.model.AgenticPaperFilter;
 import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterConsumerProcess;
 import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterInput;
 import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterOutput;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.currency.detection;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,7 +31,10 @@ public class CurrencyDetectionInputQuerySet implements CoproProcessor.Entity {
     public List<Object> getRowData() {
         return null;
     }
-
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
 
 
 }

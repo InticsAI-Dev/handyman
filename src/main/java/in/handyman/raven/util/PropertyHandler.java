@@ -1,7 +1,7 @@
 package in.handyman.raven.util;
 
 import in.handyman.raven.lambda.process.HRequestResolver;
-import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

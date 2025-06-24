@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.utils;
+package in.handyman.raven.core.utils;
 
 
 import org.jdbi.v3.core.Jdbi;

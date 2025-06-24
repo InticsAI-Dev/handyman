@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -257,6 +258,10 @@ public class DrugMatchAction implements IActionExecution {
     @Override
     public List<Object> getRowData() {
       return null;
+    }
+    @Override
+    public String getStatus() {
+      return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
   }
 

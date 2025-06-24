@@ -12,6 +12,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
 import in.handyman.raven.lib.model.ProductResponse;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -260,6 +261,10 @@ public class ProductResponseAction implements IActionExecution {
         @Override
         public List<Object> getRowData() {
             return null;
+        }
+        @Override
+        public String getStatus() {
+            return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
         }
     }
 

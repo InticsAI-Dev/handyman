@@ -1,14 +1,14 @@
-package in.handyman.raven.lib.encryption;
+package in.handyman.raven.core.encryption;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
-import in.handyman.raven.lib.encryption.impl.ProtegrityApiEncryptionImpl;
-import in.handyman.raven.lib.encryption.impl.ProtegrityEncryptionImpl;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.core.encryption.impl.ProtegrityApiEncryptionImpl;
+import in.handyman.raven.core.encryption.impl.ProtegrityEncryptionImpl;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static in.handyman.raven.lib.encryption.EncryptionConstants.*;
+import static in.handyman.raven.core.encryption.EncryptionConstants.*;
 
 public class SecurityEngine {
 

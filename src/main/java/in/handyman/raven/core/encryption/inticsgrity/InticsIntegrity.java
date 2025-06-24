@@ -1,7 +1,7 @@
-package in.handyman.raven.lib.encryption.inticsgrity;
+package in.handyman.raven.core.encryption.inticsgrity;
 
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lib.encryption.InticsDataEncryptionApi;
+import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
 
 public class InticsIntegrity implements InticsDataEncryptionApi {
 

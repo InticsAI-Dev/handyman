@@ -1,12 +1,9 @@
-package in.handyman.raven.lib.azure.adapters;
+package in.handyman.raven.core.azure.adapters;
 
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import in.handyman.raven.lib.encryption.SecurityEngine;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 

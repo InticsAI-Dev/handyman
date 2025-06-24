@@ -1,6 +1,5 @@
-package in.handyman.raven.lib.utils;
+package in.handyman.raven.core.utils;
 
-import in.handyman.raven.util.PropertyHandler;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

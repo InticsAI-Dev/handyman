@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.neradaptors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -53,6 +54,11 @@ public class NerInputTable implements CoproProcessor.Entity {
     private String batchId;
     private String isEncrypted;
     private String encryptionPolicy;
+
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
 
     @Override
     public List<Object> getRowData() {
