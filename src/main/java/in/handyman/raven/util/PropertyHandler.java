@@ -46,14 +46,7 @@ public class PropertyHandler {
                 throw new UncheckedIOException("Sorry, unable to load " + CONFIG_PROPERTIES, e);
             }
         } else {
-            final String encryptionPassword = System.getenv("JASYPT_ENCRYPTOR_PASSWORD");
-            final AES256TextEncryptor aesEncryptor = new AES256TextEncryptor();
 
-            if (encryptionPassword != null && !encryptionPassword.isEmpty()) {
-                aesEncryptor.setPassword(encryptionPassword);
-            } else {
-                LOGGER.error("Encryption password is not set");
-            }
             LOGGER.info("config.file is present");
             Map<String, String> tempProps;
             try (InputStream input = new FileInputStream(configPath)) {
