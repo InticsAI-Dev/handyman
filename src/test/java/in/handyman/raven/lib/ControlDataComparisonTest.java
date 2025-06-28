@@ -4,13 +4,11 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.ControlDataComparison;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.logging.Logger;
 
 @Slf4j
-public class ControlDataComparisionTest {
+public class ControlDataComparisonTest {
     @Test
     void executeProduct() throws Exception {
 
@@ -40,12 +38,12 @@ public class ControlDataComparisionTest {
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
 
-        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, controlDataComparison );
+        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, controlDataComparison);
         deliveryNotifyAction.execute();
     }
 
     @Test
-    void dateValidation() throws Exception{
+    void dateValidation() throws Exception {
         log.info("Date validation started");
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
@@ -58,15 +56,15 @@ public class ControlDataComparisionTest {
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
 
-        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build() );
+        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build());
         Long validationResults = deliveryNotifyAction.dateValidation("1955-08-24",
-                "08/24/1955", "yyyy/MM/dd", "ORIGIN-5043", 1L, "member_id",1L);
+                "08/24/1955", "yyyy/MM/dd", "ORIGIN-5043", 1L, "member_id", 1L);
         System.out.println(validationResults);
         log.info("Date validation completed");
     }
 
     @Test
-    void dataValidation() throws Exception{
+    void dataValidation() throws Exception {
         log.info("Data validation started");
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
@@ -79,10 +77,33 @@ public class ControlDataComparisionTest {
                 Map.entry("consumer.API.count", "1"),
                 Map.entry("write.batch.size", "1")));
 
-        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build() );
+        ControlDataComparisonAction deliveryNotifyAction = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build());
         Long validationResults = deliveryNotifyAction.dateValidation("Jon D",
-                "John", "yyyy/MM/dd", "ORIGIN-5043", 1L, "member_id",1L);
+                "John", "yyyy/MM/dd", "ORIGIN-5043", 1L, "member_id", 1L);
         System.out.println(validationResults);
         log.info("Data validation completed");
+    }
+
+    @Test
+    void testGetNormalizedExtractedValue_MultiValue() {
+        log.info("Multi-value normalization test started");
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "1"),
+                Map.entry("outbound.doc.delivery.notify.url", ""),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("agadia.secretKey", ""),
+                Map.entry("outbound.context.condition", "Product"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("write.batch.size", "1")
+        ));
+        ControlDataComparisonAction action = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build());
+        String actualValue = "19234,5647,3456";
+        String extractedValue = "5647,3456,19234";
+        String lineItemType = "multi_value";
+        String result = action.getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
+        System.out.println(result);
+        log.info("Data Ordering completed");
     }
 }
