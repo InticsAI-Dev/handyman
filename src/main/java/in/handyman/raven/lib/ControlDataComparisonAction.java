@@ -208,7 +208,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                     .filter(value -> !actualSet.contains(value))
                     .forEach(reorderedExtracted::add);
 
-            log.info("Reordered Extracted value: {}", reorderedExtracted);
+            log.info("Reordered Extracted value.");
             return String.join(",", reorderedExtracted);
         }
         return extractedValue;
