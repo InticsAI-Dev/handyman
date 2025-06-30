@@ -16,6 +16,7 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
+import javassist.NotFoundException;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -225,6 +226,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
                 }
             } else {
+                
                 parentObj.add(RadonQueryOutputTable.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                         .paperNo(paperNo)
@@ -237,7 +239,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .process(entity.getProcess())
                         .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                         .stage(entity.getApiName())
-                        .message(response.message())
+                        .message(encryptRequestResponse(response.message()))
                         .batchId(entity.getBatchId())
                         .createdOn(entity.getCreatedOn())
                         .createdUserId(tenantId)
@@ -254,31 +256,35 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 log.error(aMarker, "Error in getting response from triton api {}", response.message());
             }
         } catch (IOException e) {
-            parentObj.add(RadonQueryOutputTable.builder()
-                    .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                    .paperNo(paperNo)
-                    .groupId(groupId)
-                    .inputFilePath(entity.getInputFilePath())
-                    .tenantId(tenantId)
-                    .processId(processId)
-                    .rootPipelineId(rootPipelineId)
-                    .actionId(action.getActionId())
-                    .process(entity.getProcess())
-                    .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                    .stage(entity.getApiName())
-                    .message(ExceptionUtil.toString(e))
-                    .batchId(entity.getBatchId())
-                    .createdOn(entity.getCreatedOn())
-                    .createdUserId(tenantId)
-                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                    .lastUpdatedUserId(tenantId)
-                    .category(entity.getCategory())
-                    .build());
+            handleErrorParentObject(entity, parentObj, e);
 
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
         }
+    }
+
+    private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e) {
+        parentObj.add(RadonQueryOutputTable.builder()
+                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .paperNo(entity.getPaperNo())
+                .groupId(entity.getGroupId())
+                .inputFilePath(entity.getInputFilePath())
+                .tenantId(entity.getTenantId())
+                .processId(entity.getProcessId())
+                .rootPipelineId(entity.getRootPipelineId())
+                .actionId(action.getActionId())
+                .process(entity.getProcess())
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                .stage(entity.getApiName())
+                .message(encryptRequestResponse(ExceptionUtil.toString(e)))
+                .batchId(entity.getBatchId())
+                .createdOn(entity.getCreatedOn())
+                .createdUserId(entity.getTenantId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .lastUpdatedUserId(entity.getTenantId())
+                .category(entity.getCategory())
+                .build());
     }
 
 
