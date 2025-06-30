@@ -133,7 +133,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                 }
                 log.info("Encryption completed for the date sorItem {}:", sorItemName);
                 log.info("Inserting date type data validation at {}:", outputTable);
-                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId,lineItemType);
+                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
             } catch (HandymanException e) {
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error while inserting date type data validation origin Id" + originId + " paper No " + paperNo, handymanException, action);
@@ -152,14 +152,15 @@ public class ControlDataComparisonAction implements IActionExecution {
                 }
                 log.info("Encryption completed for the gender sorItem {}:", sorItemName);
                 log.info("Inserting gender type data validation at {}:", outputTable);
-                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId,lineItemType);
+                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
             } catch (HandymanException e) {
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error while inserting gender type data validation origin Id " + originId + " paper No " + paperNo, handymanException, action);
             }
         } else {
             try {
-                mismatchCount = dataValidation(extractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
+                String finalExtractedValue = getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
+                mismatchCount = dataValidation(finalExtractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
                 String matchStatus = calculateValidationScores(mismatchCount);
                 log.info("Encryption started for the sorItem {}:", sorItemName);
                 if (Objects.equals(encryptData, "true")) {
@@ -169,7 +170,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                 }
                 log.info("Encryption completed for the sorItem {}:", sorItemName);
                 log.info("Inserting string type data validation at {}:", outputTable);
-                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId,lineItemType);
+                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
             } catch (HandymanException e) {
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error while inserting generic type data validation origin Id : " + originId + " paper No " + paperNo, handymanException, action);
@@ -181,10 +182,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                                      Long tenantId, String originId, String batchId, Long paperNo,
                                      String actualValue, String extractedValue, String matchStatus,
                                      Long mismatchCount, String fileName, String sorItemName,
-                                     Long sorItemId, Long sorContainerId, String lineItemType) {
-        String finalExtractedValue = getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
+                                     Long sorItemId, Long sorContainerId) {
 
-        String classification = determineClassification(actualValue, finalExtractedValue, matchStatus);
+        String classification = determineClassification(actualValue, extractedValue, matchStatus);
         jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ");").bind("rootPipelineId", rootPipelineId).bind("createdOn", LocalDate.now()).bind("groupId", groupId).bind("fileName", fileName).bind("originId", originId).bind("batchId", batchId).bind("paperNo", paperNo).bind("actualValue", actualValue).bind("extractedValue", extractedValue).bind("matchStatus", matchStatus).bind("mismatchCount", mismatchCount).bind("tenantId", tenantId).bind("classification", classification).bind("sorContainerId", sorContainerId).bind("sorItemName", sorItemName).bind("sorItemId", sorItemId).execute());
     }
     public String getNormalizedExtractedValue(String actualValue, String extractedValue, String lineItemType) {
@@ -193,19 +193,26 @@ public class ControlDataComparisonAction implements IActionExecution {
                     .map(String::trim)
                     .collect(Collectors.toList());
 
-            final Set<String> extractedSet = Arrays.stream(extractedValue.split(","))
+            final List<String> extractedList = Arrays.stream(extractedValue.split(","))
                     .map(String::trim)
-                    .collect(Collectors.toSet());
+                    .collect(Collectors.toList());
+
+            final Set<String> extractedSet = new HashSet<>(extractedList);
 
             List<String> reorderedExtracted = actualList.stream()
                     .filter(extractedSet::contains)
                     .collect(Collectors.toList());
 
+            Set<String> actualSet = new HashSet<>(actualList);
+            extractedList.stream()
+                    .filter(value -> !actualSet.contains(value))
+                    .forEach(reorderedExtracted::add);
+
+            log.info("Reordered Extracted value: {}", reorderedExtracted);
             return String.join(",", reorderedExtracted);
         }
         return extractedValue;
     }
-
 
     private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
