@@ -49,8 +49,8 @@ class PaperItemizerActionTest {
                 .processId("138980184199100180")
                 .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
                 .resultTable("info.paper_itemizer")
-                .outputDir("/data/tenant/PI")
-                .querySet(" SELECT 'ORIGIN-1' as origin_id, 1 as group_id ,'/home/anandh.andrews@zucisystems.com/intics-workspace/Asgard/ANTHEM-docs/AUMI/build/testing/paper-itemizer/merged_sample_dnu.pdf' as file_path,1 as tenant_id,'12345' as process_id, 1110 as root_pipeline_id, 'BATCH-1' as batch_id, now() as created_on;")
+                .outputDir("/home/hemantho.rabert@zucisystems.com/workspace/pi_output")
+                .querySet(" SELECT 'ORIGIN-1' as origin_id, 1 as group_id ,'/home/hemantho.rabert@zucisystems.com/workspace/Anthem_Samples/Silver_QA_FIles/Filesname_starts_with_FM/FM202505021307008.pdf' as file_path,1 as tenant_id,'12345' as process_id, 1110 as root_pipeline_id, 'BATCH-1' as batch_id, now() as created_on;")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -69,7 +69,10 @@ class PaperItemizerActionTest {
                 Map.entry("paper.itemizer.file.dpi", "200"),
                 Map.entry("paper.itemizer.output.format", "png"),
                 Map.entry("paper.itemizer.image.type.rgb", "true"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.count", "5"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.limiter.activator", "true"),
                 Map.entry("paper.itemization.resize.activator", "false"),
+                Map.entry("copro.processor.thread.creator", "FIXED_THREAD"),
                 Map.entry("write.batch.size", "5")));
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
@@ -93,11 +96,11 @@ class PaperItemizerActionTest {
                 .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
                 .resultTable("info.paper_itemizer")
                 .outputDir("/data/tenant/PI")
-                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/taulia/Sample 6 620762476-facture-galaxy-z-fold.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
+                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/Hand Written_Final_8778811305.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
                         "from preprocess.preprocess_payload_queue_archive a\n" +
                         "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
                         "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.root_pipeline_id in (102257,115587,107841,120075)")
+                        "where a.root_pipeline_id in (64255)")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -116,8 +119,12 @@ class PaperItemizerActionTest {
                 Map.entry("paper.itemizer.file.dpi", "200"),
                 Map.entry("paper.itemizer.output.format", "png"),
                 Map.entry("paper.itemizer.image.type.rgb", "true"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.count", "5"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.limiter.activator", "true"),
                 Map.entry("paper.itemization.resize.activator", "false"),
+                Map.entry("copro.processor.thread.creator", "FIXED_THREAD"),
                 Map.entry("write.batch.size", "5")));
+
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
         long startTime = System.currentTimeMillis();
