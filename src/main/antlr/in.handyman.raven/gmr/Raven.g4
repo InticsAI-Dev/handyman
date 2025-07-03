@@ -181,6 +181,7 @@ action:
     |providerContainerParser
     |postProcessingExecutor
     |agenticPaperFilter
+    |errorResponseJsonTrigger
     );
 
 
@@ -1405,15 +1406,15 @@ agenticPaperFilter:
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
-errorResponse:
+
+
+errorResponseJsonTrigger:
     'errorResponse' 'as' name=STRING
     'tenantId' tenantId=STRING
     'auth-token' token=STRING
-    'result-table' resultTable=STRING
+    'alchemy-url' endpoint=STRING
     'on-resource-conn' resourceConn=STRING
-    'using'  '{'
-     querySet=STRING
-    '}'('on-condition' condition=expression)*;
+    'using' '{' querySet=STRING '}'('on-condition' condition=expression)*;
 
 
 //rules
