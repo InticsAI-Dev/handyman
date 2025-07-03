@@ -30,12 +30,13 @@ public class CoproRetryService {
     private static ActionExecutionAudit action;
     private static int maxRetries ;
 
-    public static Response callCoproApiWithRetry(Request request, CoproRetryErrorAudictTable retryAudict, ActionExecutionAudit actionAudit) {
+    public static Response callCoproApiWithRetry(Request request, CoproRetryErrorAudictTable retryAudict, ActionExecutionAudit actionAudit) throws IOException {
         int attempt = 0;
         action = actionAudit;
         boolean isRetryActive = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled","false"));
-        maxRetries = isRetryActive ? action.getContext().get("copro.retry.attempt") != null ? Integer.parseInt(action.getContext().get("retry.attempt")):1:1;
+        maxRetries = isRetryActive ? action.getContext().get("copro.retry.attempt") != null ? Integer.parseInt(action.getContext().get("copro.retry.attempt")):1:1;
         Response response = null;
+        IOException lastException = null;
         while (attempt < maxRetries) {
             int nextAttempt = attempt+1;
             try  {
@@ -51,32 +52,39 @@ public class CoproRetryService {
                 }
             } catch (IOException e) {
                 log.error("Attempt {}: IOException - {}", attempt + 1, ExceptionUtil.toString(e));
+                lastException = e;
                 if(isRetryActive && (nextAttempt < maxRetries)){
-                    insertCoproRetryErrorAudict(retryAudict, request, null,e);
+                    insertCoproRetryErrorAudict(retryAudict, request, null,lastException);
                 }
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error inserting into copro retry audit", handymanException, action);
             }
             attempt++;
         }
-        return response;
+        if (response != null) {
+            return response;
+        }
+
+        throw lastException != null
+                ? lastException
+                : new IOException("Copro API call failed with no response and no exception.");
     }
 
     private static void insertCoproRetryErrorAudict(CoproRetryErrorAudictTable retryAudict, Request request, Response response,Exception e) {
         try {
-            retryAudict.setRequest(encryptRequestResponse(String.valueOf(request)));
+            retryAudict.setRequest(encryptRequestResponse(request.toString()));
             if(response != null){
                 retryAudict.setMessage(response.message());
                 retryAudict.setResponse(encryptRequestResponse(response.toString()));
             }else{
-                retryAudict.setMessage(e.getMessage());
-                retryAudict.setResponse(null);
+                retryAudict.setMessage(e.getMessage()!= null ? e.getMessage():ExceptionUtil.toString(e));
+                retryAudict.setResponse(encryptRequestResponse(ExceptionUtil.toString(e)));
             }
 
             jdbi.useTransaction(handle -> {
                 Update update = handle.createUpdate("  INSERT INTO macro." + errorAudictTable +
-                        "( origin_id, group_id, tenant_id,process_id, file_path,paper_no,status,created_on,root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
-                        " VALUES(:originId, :groupId, :tenantId, :processId, :filePath,:paperNo,:status,:createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
+                        "( origin_id, group_id, tenant_id,process_id, file_path,paper_no,status,stage,created_on,root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
+                        " VALUES(:originId, :groupId, :tenantId, :processId, :filePath,:paperNo,:status,:stage,:createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
                 Update bindBean = update.bindBean(retryAudict);
                 bindBean.execute();
             });
