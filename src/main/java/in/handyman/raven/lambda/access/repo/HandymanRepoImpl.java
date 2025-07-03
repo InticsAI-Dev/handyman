@@ -5,10 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.*;
-import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
-import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
-import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
-import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
+import in.handyman.raven.lambda.doa.config.*;
 import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
@@ -180,6 +177,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         checkJDBIConnection();
         return JDBI.withHandle(handle -> {
             var repo = handle.attach(SpwCommonConfigRepo.class);
+            return repo.findAll();
+        });
+    }
+
+    @Override
+    public List<DatumDriftConfig> findAllDatumDrifts() {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(DatumDriftConfigRepo.class);
             return repo.findAll();
         });
     }
