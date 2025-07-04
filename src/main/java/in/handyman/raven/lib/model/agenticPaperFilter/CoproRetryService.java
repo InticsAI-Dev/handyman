@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
@@ -44,7 +46,7 @@ public class CoproRetryService {
                     response.close();
                 }
                 response = httpclient.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
+                if ((response.isSuccessful() && response.body() != null) || !isRetryRequired(response.code())) {
                     return response;
                 } else if(isRetryActive && (nextAttempt < maxRetries)){
                     log.error("Attempt {}: Unsuccessful response {} - {}", attempt + 1, response.code(), response.message());
@@ -68,6 +70,15 @@ public class CoproRetryService {
         throw lastException != null
                 ? lastException
                 : new IOException("Copro API call failed with no response and no exception.");
+    }
+
+    private static boolean isRetryRequired(int errorCode) {
+        boolean isRetryNeeded = true;
+        List<Integer> errorCodeList = Arrays.asList(400,401,402,403,404);
+        if(errorCodeList.contains(errorCode)){
+            isRetryNeeded = false;
+        }
+        return isRetryNeeded;
     }
 
     private static void insertCoproRetryErrorAudict(CoproRetryErrorAudictTable retryAudict, Request request, Response response,Exception e) {
