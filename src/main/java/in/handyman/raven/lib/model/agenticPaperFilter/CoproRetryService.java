@@ -83,8 +83,8 @@ public class CoproRetryService {
 
             jdbi.useTransaction(handle -> {
                 Update update = handle.createUpdate("  INSERT INTO macro." + errorAudictTable +
-                        "( origin_id, group_id, tenant_id,process_id, file_path,paper_no,status,stage,created_on,root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
-                        " VALUES(:originId, :groupId, :tenantId, :processId, :filePath,:paperNo,:status,:stage,:createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
+                        "( origin_id, group_id, tenant_id,process_id, file_path,paper_no,message,status,stage,created_on,root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
+                        " VALUES(:originId, :groupId, :tenantId, :processId, :filePath,:paperNo,:message,:status,:stage,:createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
                 Update bindBean = update.bindBean(retryAudict);
                 bindBean.execute();
             });
