@@ -10,7 +10,7 @@ import in.handyman.raven.lib.model.RadonKvpBbox;
 import in.handyman.raven.lib.model.radonbbox.RadonBboxConsumerProcess;
 import in.handyman.raven.lib.model.radonbbox.query.input.RadonBboxInputEntity;
 import in.handyman.raven.lib.model.radonbbox.query.output.RadonBboxOutputEntity;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;

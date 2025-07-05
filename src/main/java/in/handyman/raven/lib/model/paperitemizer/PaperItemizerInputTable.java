@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.paperitemizer;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,6 +25,11 @@ public class PaperItemizerInputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String batchId;
     private Timestamp createdOn;
+
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
 
     @Override
     public List<Object> getRowData() {

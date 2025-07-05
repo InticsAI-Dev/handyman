@@ -3,6 +3,7 @@ package in.handyman.raven.lib.interfaces.coproprocessor;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -22,9 +23,12 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implements Callable<Void> {
 
+    public static final String COPRO_PROCESSOR_RETRY_FAILED_FILES = "copro.processor.retry.failed.files";
+    public static final String COPRO_PROCESSOR_RETRY_FAILED_FILES_MAX_ATTEMPTS = "copro.processor.retry.failed.files.max.attempts";
     private final String insertSql;
     private final Integer writeBatchSize;
     private final CoproProcessor.ConsumerProcess<I, O> callable;
@@ -102,8 +106,17 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
             logger.info("Nodes size {} and index value {}", nodesSize, index);
             if (nodesSize != index) {
                 URL endpoint = nodes.get(index);
-                final List<O> list = callable.process(endpoint, take);
-                results.addAll(list);
+                final List<O> initialResults = callable.process(endpoint, take);
+                String retryFailedFilesActivator = actionExecutionAudit.getContext().getOrDefault(COPRO_PROCESSOR_RETRY_FAILED_FILES, "false");
+                if("true".equals(retryFailedFilesActivator))
+                {
+                    int retryFailedFilesMaxAttempts = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault(COPRO_PROCESSOR_RETRY_FAILED_FILES_MAX_ATTEMPTS, "3"));
+                    final List<O> finalResults = retryFailedFiles(initialResults, callable, endpoint, take, retryFailedFilesMaxAttempts);
+                    results.addAll(finalResults);
+                }else {
+                    results.addAll(initialResults);
+                }
+
             }
         } catch (Exception e) {
             logger.error("Error in callable process in consumer", e);
@@ -112,6 +125,101 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         }
         processedEntity.addAll(results);
     }
+
+    private List<O> retryFailedFiles(List<O> resultSet, CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts) {
+        List<O> finalResults = new ArrayList<>(resultSet);
+        List<O> failedResults = extractFailedResults(resultSet);
+        finalResults.removeAll(failedResults);
+
+        insertFailedCoproProcess(take, failedResults, 0);
+
+        for (O failedItem : failedResults) {
+            List<O> retryOutput = retryWithAttempts(callable, endpoint, take, maxAttempts);
+            processRetryResults(retryOutput, finalResults, take);
+        }
+
+        return finalResults;
+    }
+
+    private List<O> extractFailedResults(List<O> resultSet) {
+        return resultSet.stream()
+                .filter(o -> ConsumerProcessApiStatus.FAILED.getStatusDescription().equals(o.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    private List<O> retryWithAttempts(CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts) {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                List<O> retryOutput = callable.process(endpoint, take);
+                if (hasSuccess(retryOutput)) return retryOutput;
+                insertFailedCoproProcess(take, retryOutput, attempt);
+            } catch (Exception e) {
+                logger.error("Retry attempt {} failed for item. Error: {}", attempt, e.getMessage(), e);
+                throw new HandymanException("Error in callable process in consumer ", e, actionExecutionAudit);
+            }
+        }
+        return null;
+    }
+
+    private boolean hasSuccess(List<O> retryOutput) {
+        return retryOutput.stream()
+                .anyMatch(o -> ConsumerProcessApiStatus.COMPLETED.getStatusDescription().equals(o.getStatus()));
+    }
+
+    private void processRetryResults(List<O> retryOutput, List<O> finalResults, I take) {
+        if (retryOutput == null || retryOutput.isEmpty()) return;
+
+        boolean success = false;
+
+        for (O result : retryOutput) {
+            if (ConsumerProcessApiStatus.COMPLETED.getStatusDescription().equals(result.getStatus())) {
+                finalResults.add(result);
+                success = true;
+                break;
+            }
+        }
+
+        if (!success) {
+            // Final failure, include in result
+            retryOutput.stream()
+                    .filter(o -> ConsumerProcessApiStatus.FAILED.getStatusDescription().equals(o.getStatus()))
+                    .forEach(finalResults::add);
+        }
+    }
+
+
+
+    private void insertFailedCoproProcess(I failedEntityRequest,List<O> retryOutputResponse, int attemptNumber) {
+        retryOutputResponse.forEach(o -> {
+            jdbi.useHandle(handle -> {
+                handle.createUpdate(
+                                "INSERT INTO failed_copro_process (" +
+                                        "created_by, created_date, last_modified_by, last_modified_date, " +
+                                        "action_id, rows_processed, rows_read, rows_written, " +
+                                        "request, failed_response, attempts, time_taken, root_pipeline_id" +
+                                        ") VALUES (:createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, " +
+                                        ":actionId, :rowsProcessed, :rowsRead, :rowsWritten, " +
+                                        ":request, :failedResponse, :attempts, :timeTaken, :rootPipelineId)"
+                        )
+                        .bind("createdBy", actionExecutionAudit.getCreatedBy())
+                        .bind("createdDate", LocalDateTime.now())
+                        .bind("lastModifiedBy", actionExecutionAudit.getLastModifiedBy())
+                        .bind("lastModifiedDate", LocalDateTime.now())
+                        .bind("actionId", actionExecutionAudit.getActionId())
+                        .bind("rowsProcessed", 0)
+                        .bind("rowsRead", 0)
+                        .bind("rowsWritten", 0)
+                        .bind("request", failedEntityRequest)
+                        .bind("failedResponse", o)
+                        .bind("attempts", attemptNumber)
+                        .bind("timeTaken", 0.0)
+                        .bind("rootPipelineId", actionExecutionAudit.getRootPipelineId())
+                        .execute();
+            });
+        });
+
+    }
+
 
     private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime) {
         if (nodeCount.get() % writeBatchSize == 0) {

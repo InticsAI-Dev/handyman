@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,7 +36,10 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Boolean postProcess;
     private String postProcessClassName;
 
-
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
     @Override
     public List<Object> getRowData() {
         return List.of();

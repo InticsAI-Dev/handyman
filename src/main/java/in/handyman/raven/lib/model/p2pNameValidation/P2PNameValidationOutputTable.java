@@ -32,6 +32,7 @@ public class P2PNameValidationOutputTable implements CoproProcessor.Entity {
     private Integer synonymId;
     private String modelRegistry;
     private String batchId;
+    private String status;
 
 
     @Override

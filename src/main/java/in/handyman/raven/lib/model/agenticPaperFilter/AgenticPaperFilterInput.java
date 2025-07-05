@@ -1,12 +1,14 @@
 package in.handyman.raven.lib.model.agenticPaperFilter;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.List;
 @Data
 @AllArgsConstructor
@@ -31,7 +33,12 @@ public class AgenticPaperFilterInput  implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return null;
+        return Collections.emptyList();
+    }
+
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
 
 }

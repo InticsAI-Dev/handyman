@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.encryption.SecurityEngine;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
@@ -18,8 +18,8 @@ import in.handyman.raven.lib.model.textextraction.DataExtractionResponse;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.lib.replicate.ReplicateRequest;
 import in.handyman.raven.lib.replicate.ReplicateResponse;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
-import in.handyman.raven.lib.utils.ProcessFileFormatE;
+import in.handyman.raven.core.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -35,8 +35,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput> {
     private final ActionExecutionAudit action;
@@ -124,91 +124,123 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
 
-        if (Objects.equals("COPRO", coproHandlerName)) {
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "Executing COPRO handler for endpoint: {}", endpoint);
-            }
-
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
-            coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
-        } else if (Objects.equals("REPLICATE", coproHandlerName)) {
-            if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
-                if (log.isInfoEnabled()) {
-                    log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
-                }
-                String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
-                dataExtractionData.setBase64Img(base64ForPath);
-
-                ReplicateRequest replicateRequest = new ReplicateRequest();
-                replicateRequest.setInput(dataExtractionData);
-
-                String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
-                Request request = new Request.Builder()
-                        .url(endpoint)
-                        .post(RequestBody.create(replicateJsonRequest, mediaType))
-                        .addHeader("Authorization", "Bearer " + replicateApiToken)
-                        .addHeader("Content-Type", "application/json")
-                        .addHeader("Prefer", "wait")
-                        .build();
-
-                replicateResponseBuilder(endpoint, request, parentObj, entity, replicateJsonRequest);
-            } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
-                if (log.isInfoEnabled()) {
-                    log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
-                }
-                String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
-
-                RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
-                kryptonRequestPayloadFromQuery.setBase64Img(base64ForPath);
-
-                String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
-
-                ReplicateRequest replicateRequest = new ReplicateRequest();
-                replicateRequest.setInput(textExtractionPayloadString);
-
-                String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
-
-                Request request = new Request.Builder()
-                        .url(endpoint)
-                        .post(RequestBody.create(replicateJsonRequest, mediaType))
-                        .addHeader("Authorization", "Bearer " + replicateApiToken)
-                        .addHeader("Content-Type", "application/json")
-                        .addHeader("Prefer", "wait")
-                        .build();
-                tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionPayloadString, endpoint);
-            }
-        } else if (Objects.equals("TRITON", coproHandlerName)) {
-            log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
-            if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
-                DataExtractionData dataExtractionPayload = getArgonRequestPayloadFromEntity(entity);
-                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-                    dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-                } else {
-                    dataExtractionPayload.setBase64Img("");
-                }
-                String dataExtractionPayloadString = mapper.writeValueAsString(dataExtractionPayload);
-
-                String jsonRequestTritonArgon = getTritonRequestPayload(dataExtractionPayloadString, AGENTIC_PAPER_FILTER_START, mapper);
-
-                Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonArgon, mediaType)).build();
-                tritonRequestArgonExecutor(entity, request, parentObj, jsonRequestTritonArgon, endpoint);
-            } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
-                RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
-                if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-                    kryptonRequestPayloadFromQuery.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-                } else {
-                    kryptonRequestPayloadFromQuery.setBase64Img("");
-                }
-                String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
-
-                String jsonRequestTritonKrypton = getTritonRequestPayload(textExtractionPayloadString, KRYPTON_START, mapper);
-
-                Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
-                tritonRequestKryptonExecutor(entity, request, parentObj, jsonRequestTritonKrypton, endpoint);
-            }
-        }
+         getCoproHandlerMethod(endpoint, entity, coproHandlerName, jsonInputRequest, parentObj, originId, groupId, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken, filePath);
 
         return parentObj;
+    }
+
+    private void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, String coproHandlerName, String jsonInputRequest, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId, String textExtractionModelName, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken, String filePath) throws IOException {
+        if (Objects.equals("COPRO", coproHandlerName)) {
+            getCoproHandlerMethod(endpoint, entity, jsonInputRequest, parentObj, originId, groupId);
+        } else if (Objects.equals("REPLICATE", coproHandlerName)) {
+            getReplicateHandlerMethod(endpoint, entity, parentObj, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken);
+        } else if (Objects.equals("TRITON", coproHandlerName)) {
+            log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
+            getTritonHandlerMethod(endpoint, entity, parentObj, textExtractionModelName, filePath);
+        }
+    }
+
+    private void getTritonHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, String filePath) throws IOException {
+        if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
+            getTritonArgonHandlerName(endpoint, entity, parentObj, filePath);
+        } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
+            RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
+            getTritonKryptonHandlerName(endpoint, entity, parentObj, filePath, kryptonRequestPayloadFromQuery);
+        }
+    }
+
+    private void getTritonKryptonHandlerName(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String filePath, RadonKvpExtractionRequest kryptonRequestPayloadFromQuery) throws IOException {
+        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+            kryptonRequestPayloadFromQuery.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+        } else {
+            kryptonRequestPayloadFromQuery.setBase64Img("");
+        }
+        String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
+
+        String jsonRequestTritonKrypton = getTritonRequestPayload(textExtractionPayloadString, KRYPTON_START, mapper);
+
+        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
+        tritonRequestKryptonExecutor(entity, request, parentObj, jsonRequestTritonKrypton, endpoint);
+    }
+
+    private void getTritonArgonHandlerName(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String filePath) throws IOException {
+        DataExtractionData dataExtractionPayload = getArgonRequestPayloadFromEntity(entity);
+        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
+            dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
+        } else {
+            dataExtractionPayload.setBase64Img("");
+        }
+        String dataExtractionPayloadString = mapper.writeValueAsString(dataExtractionPayload);
+
+        String jsonRequestTritonArgon = getTritonRequestPayload(dataExtractionPayloadString, AGENTIC_PAPER_FILTER_START, mapper);
+
+        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonArgon, mediaType)).build();
+        tritonRequestArgonExecutor(entity, request, parentObj, jsonRequestTritonArgon, endpoint);
+    }
+
+    private void getReplicateHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken) throws IOException {
+        if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
+            getReplicateArgonMethod(endpoint, entity, parentObj, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken);
+        } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
+            if (log.isInfoEnabled()) {
+                log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
+            }
+            getReplicateKryptonMethod(endpoint, entity, parentObj, dataExtractionData, objectMapper, replicateApiToken);
+        }
+    }
+
+    private void getReplicateKryptonMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken) throws IOException {
+        String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
+
+        RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
+        kryptonRequestPayloadFromQuery.setBase64Img(base64ForPath);
+
+        String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
+
+        ReplicateRequest replicateRequest = new ReplicateRequest();
+        replicateRequest.setInput(textExtractionPayloadString);
+
+        String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+
+        Request request = new Request.Builder()
+                .url(endpoint)
+                .post(RequestBody.create(replicateJsonRequest, mediaType))
+                .addHeader("Authorization", "Bearer " + replicateApiToken)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Prefer", "wait")
+                .build();
+        tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionPayloadString, endpoint);
+    }
+
+    private void getReplicateArgonMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken) throws IOException {
+        if (log.isInfoEnabled()) {
+            log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
+        }
+        String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
+        dataExtractionData.setBase64Img(base64ForPath);
+
+        ReplicateRequest replicateRequest = new ReplicateRequest();
+        replicateRequest.setInput(dataExtractionData);
+
+        String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
+        Request request = new Request.Builder()
+                .url(endpoint)
+                .post(RequestBody.create(replicateJsonRequest, mediaType))
+                .addHeader("Authorization", "Bearer " + replicateApiToken)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Prefer", "wait")
+                .build();
+
+        replicateResponseBuilder(endpoint, request, parentObj, entity, replicateJsonRequest);
+    }
+
+    private void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, String jsonInputRequest, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId) {
+        if (log.isInfoEnabled()) {
+            log.info(aMarker, "Executing COPRO handler for endpoint: {}", endpoint);
+        }
+
+        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
+        coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
     }
 
     private RadonKvpExtractionRequest getKryptonRequestPayloadFromQuery(AgenticPaperFilterInput entity) {
@@ -235,7 +267,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        try (Response response = httpclient.newCall(request).execute()) {
+        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -255,14 +288,14 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     });
                 } else {
                     String errorMessage = "Successful response in consumer but output node not found for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + response.message();
-                    parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
+                    handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
                     HandymanException handymanException = new HandymanException(errorMessage);
                     HandymanException.insertException(errorMessage, handymanException, this.action);
                     log.error(aMarker, errorMessage);
                 }
             } else {
                 String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + response.message();
-                parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
+                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
                 log.error(aMarker, errorMessage);
@@ -274,6 +307,29 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(errorMessage, handymanException, this.action);
         }
+    }
+
+    private CoproRetryErrorAudictTable setErrorAudictInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
+        CoproRetryErrorAudictTable retryAudict = CoproRetryErrorAudictTable.builder()
+                .originId(entity.getOriginId())
+                .groupId(Math.toIntExact(entity.getGroupId()))
+                .tenantId(entity.getTenantId())
+                .processId(entity.getProcessId())
+                .filePath(entity.getFilePath())
+                .paperNo(entity.getPaperNo())
+                .createdOn(entity.getCreatedOn())
+                .rootPipelineId(entity.getRootPipelineId())
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                .stage("RETRY API CALL TO COPRO")
+                .batchId(entity.getBatchId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .endpoint(String.valueOf(endPoint))
+                .build();
+        return retryAudict;
+    }
+
+    private void handleKryptonErrorResponse(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint, Long tenantId, String templateId, Long processId, Response response, Long rootPipelineId, String templateName, String responseBody) {
+        parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
     }
 
 
@@ -361,7 +417,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        try (Response response = httpclient.newCall(request).execute()) {
+        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -379,7 +436,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     });
                 }
             } else {
-                parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
+                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
                 HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
                 HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId() + "origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
 
@@ -425,7 +482,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
     private void replicateResponseBuilder(URL endpoint, Request request, List<AgenticPaperFilterOutput> parentObj, AgenticPaperFilterInput entity, String replicateJsonRequest) {
-        try (Response response = httpclient.newCall(request).execute()) {
+        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -433,11 +491,11 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 if (!replicateResponse.getOutput().isEmpty() && !replicateResponse.getOutput().isNull()) {
                     extractedReplicateOutputResponse(endpoint, entity, replicateResponse, parentObj, replicateJsonRequest, responseBody);
                 } else {
-                    parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
+                    handleKryptonErrorResponse(entity, parentObj, replicateJsonRequest, endpoint, entity.getTenantId(), entity.getTemplateId(), entity.getProcessId(), response, entity.getRootPipelineId(), entity.getTemplateName(), responseBody);
                     log.error(aMarker, "The replicate response has empty output {}", replicateResponse.getOutput());
                 }
             } else {
-                parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
+                handleKryptonErrorResponse(entity, parentObj, replicateJsonRequest, endpoint, entity.getTenantId(), entity.getTemplateId(), entity.getProcessId(), response, entity.getRootPipelineId(), entity.getTemplateName(), responseBody);
                 HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
                 HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
                 log.error(aMarker, "The replicate response status {}", response.message());
@@ -502,7 +560,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        try (Response response = httpclient.newCall(request).execute()) {
+        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {

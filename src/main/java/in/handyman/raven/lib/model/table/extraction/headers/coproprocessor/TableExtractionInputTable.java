@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.table.extraction.headers.coproprocessor;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.table.extraction.headers.copro.legacy.response.TableData;
 import in.handyman.raven.lib.model.table.extraction.headers.copro.legacy.response.TableResponse;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,7 +32,10 @@ public class TableExtractionInputTable implements CoproProcessor.Entity {
     private Long sorContainerId;
     private Long channelId;
     private String batchId;
-
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
     @Override
     public List<Object> getRowData() {
         return null;

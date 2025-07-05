@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.textextraction;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,7 +30,10 @@ public class DataExtractionInputTable implements CoproProcessor.Entity {
     private String userPrompt;
     private String systemPrompt;
     private String base64Img;
-
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
     @Override
     public List<Object> getRowData() {
         return null;

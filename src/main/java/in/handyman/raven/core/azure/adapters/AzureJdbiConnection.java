@@ -1,9 +1,5 @@
-package in.handyman.raven.lib.azure.adapters;
+package in.handyman.raven.core.azure.adapters;
 
-import com.azure.core.credential.AccessToken;
-import com.azure.core.credential.TokenRequestContext;
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 
@@ -11,7 +7,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
-import java.util.logging.Logger;
 
 @Slf4j
 public class AzureJdbiConnection {

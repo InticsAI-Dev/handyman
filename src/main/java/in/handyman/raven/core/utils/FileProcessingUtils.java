@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.utils;
+package in.handyman.raven.core.utils;
 
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;

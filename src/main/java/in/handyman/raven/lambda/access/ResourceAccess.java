@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
-import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;

@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.radonbbox.query.input;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,7 +27,10 @@ public class RadonBboxInputEntity implements CoproProcessor.Entity {
     private String modelRegistry;
     private String inputFilePath;
     private String radonOutput;
-
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
     @Override
     public List<Object> getRowData() {
         return null;

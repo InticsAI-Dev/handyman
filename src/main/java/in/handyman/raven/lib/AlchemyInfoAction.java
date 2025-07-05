@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.AlchemyInfo;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -162,6 +163,7 @@ public class AlchemyInfoAction implements IActionExecution {
                             .alchemyOriginId(originUploadResponse.getOriginId())
                             .originFilePath(inputFilePath)
                             .width(originUploadResponse.getWidth())
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                             .height(originUploadResponse.getHeight())
                             .rootPipelineId(rootPipelineId)
                             .batchId(entity.getBatchId())
@@ -192,6 +194,10 @@ public class AlchemyInfoAction implements IActionExecution {
         public List<Object> getRowData() {
             return null;
         }
+        @Override
+        public String getStatus() {
+            return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+        }
     }
 
     @AllArgsConstructor
@@ -209,6 +215,7 @@ public class AlchemyInfoAction implements IActionExecution {
         private Integer height;
         private Long rootPipelineId;
         private String batchId;
+        private String status;
 
 
         @Override

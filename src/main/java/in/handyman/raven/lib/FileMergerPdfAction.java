@@ -10,7 +10,7 @@ import in.handyman.raven.lib.model.FileMergerPdf;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerPdfConsumerProcess;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerpdfInputEntity;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerpdfOutputEntity;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;

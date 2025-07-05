@@ -10,7 +10,7 @@ import in.handyman.raven.lib.model.DataExtraction;
 import in.handyman.raven.lib.model.textextraction.DataExtractionConsumerProcess;
 import in.handyman.raven.lib.model.textextraction.DataExtractionInputTable;
 import in.handyman.raven.lib.model.textextraction.DataExtractionOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

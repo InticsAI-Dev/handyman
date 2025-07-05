@@ -6,7 +6,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.AssetInfo;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
@@ -38,7 +38,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
 import static java.lang.Math.random;
 
 /**

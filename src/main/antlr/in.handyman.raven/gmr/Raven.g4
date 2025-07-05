@@ -1406,6 +1406,16 @@ agenticPaperFilter:
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+errorResponse:
+    'errorResponse' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'result-table' resultTable=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
+
 
 documentEyeCue:
 	'documentEyeCue' 'as' name=STRING

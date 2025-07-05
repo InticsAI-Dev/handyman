@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.encryption;
+package in.handyman.raven.core.encryption;
 
 import in.handyman.raven.exception.HandymanException;
 

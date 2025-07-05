@@ -1,7 +1,7 @@
-package in.handyman.raven.lib.encryption.impl;
+package in.handyman.raven.core.encryption.impl;
 
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lib.encryption.InticsDataEncryptionApi;
+import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

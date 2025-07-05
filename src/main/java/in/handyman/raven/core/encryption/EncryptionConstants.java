@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.encryption;
+package in.handyman.raven.core.encryption;
 
 public final class EncryptionConstants {
     private EncryptionConstants() {
