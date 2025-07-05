@@ -11,14 +11,13 @@ import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
-import in.handyman.raven.lib.model.agenticPaperFilter.CoproRetryErrorAudictTable;
-import in.handyman.raven.lib.model.agenticPaperFilter.CoproRetryService;
+import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryService;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
-import javassist.NotFoundException;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -209,8 +208,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
 
-        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
+        CoproRetryErrorAuditTable audictInput =  setErrorAuditInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi,httpclient)) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
                 String responseBody = response.body().string();
@@ -266,8 +265,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-    private CoproRetryErrorAudictTable setErrorAudictInputDetails(RadonQueryInputTable entity, URL endPoint) {
-            CoproRetryErrorAudictTable retryAudict = CoproRetryErrorAudictTable.builder()
+    private CoproRetryErrorAuditTable setErrorAuditInputDetails(RadonQueryInputTable entity, URL endPoint) {
+            CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
                     .originId(entity.getOriginId())
                     .groupId(Math.toIntExact(entity.getGroupId()))
                     .tenantId(entity.getTenantId())
@@ -282,7 +281,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .endpoint(String.valueOf(endPoint))
                     .build();
-            return retryAudict;
+            return retryAudit;
     }
 
     private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e) {
@@ -395,8 +394,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
 
-        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
+        CoproRetryErrorAuditTable audictInput =  setErrorAuditInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi,httpclient)) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);

@@ -19,9 +19,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 import in.handyman.raven.lib.model.AgenticPaperFilter;
-import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterConsumerProcess;
-import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterInput;
-import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterOutput;
+import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterConsumerProcess;
+import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterInput;
+import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterOutput;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -94,7 +94,7 @@ public class AgenticPaperFilterAction implements IActionExecution  {
       Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
       Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
       AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
-              new AgenticPaperFilterConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
+              new AgenticPaperFilterConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64,jdbi);
 
       coproProcessor.startProducer(agenticPaperFilter.getQuerySet(), readBatchSize);
       Thread.sleep(1000);

@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.agenticPaperFilter;
+package in.handyman.raven.lib.model.agentic.paper.filter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +22,7 @@ import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -58,20 +59,21 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     public static final String PAGE_CONTENT_YES = "yes";
     private final int pageContentMinLength;
     final OkHttpClient httpclient = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.MINUTES).writeTimeout(10, TimeUnit.MINUTES).readTimeout(10, TimeUnit.MINUTES).build();
-
+    final Jdbi jdbi;
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
 
 
-    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64) {
+    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64,Jdbi jdbi) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
         this.pageContentMinLength = pageContentMinLength;
+        this.jdbi=jdbi;
     }
 
     @Override
@@ -267,8 +269,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
+        CoproRetryErrorAuditTable auditInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,auditInput,action, jdbi,httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -309,8 +311,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         }
     }
 
-    private CoproRetryErrorAudictTable setErrorAudictInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
-        CoproRetryErrorAudictTable retryAudict = CoproRetryErrorAudictTable.builder()
+    private CoproRetryErrorAuditTable setErrorAudictInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
+        CoproRetryErrorAuditTable retryAudict = CoproRetryErrorAuditTable.builder()
                 .originId(entity.getOriginId())
                 .groupId(Math.toIntExact(entity.getGroupId()))
                 .tenantId(entity.getTenantId())
@@ -417,8 +419,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
+        CoproRetryErrorAuditTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi, httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -482,8 +484,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
     private void replicateResponseBuilder(URL endpoint, Request request, List<AgenticPaperFilterOutput> parentObj, AgenticPaperFilterInput entity, String replicateJsonRequest) {
-        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
+        CoproRetryErrorAuditTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi, httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -560,8 +562,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        CoproRetryErrorAudictTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action)) {
+        CoproRetryErrorAuditTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi, httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {

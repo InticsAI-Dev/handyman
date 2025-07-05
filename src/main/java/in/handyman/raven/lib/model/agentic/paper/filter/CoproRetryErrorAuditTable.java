@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.agenticPaperFilter;
+package in.handyman.raven.lib.model.agentic.paper.filter;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @Data
 @Builder
-public class CoproRetryErrorAudictTable {
+public class CoproRetryErrorAuditTable {
     private String originId;
     private Integer groupId;
     private Long tenantId;
