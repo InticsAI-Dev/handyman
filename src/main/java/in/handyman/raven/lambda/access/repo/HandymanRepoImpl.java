@@ -13,6 +13,11 @@ import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.ConfigEncryptionUtils;
+import in.handyman.raven.lambda.doa.config.*;
+import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -176,6 +181,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         checkJDBIConnection();
         return JDBI.withHandle(handle -> {
             var repo = handle.attach(SpwCommonConfigRepo.class);
+            return repo.findAll();
+        });
+    }
+
+    @Override
+    public List<DatumDriftConfig> findAllDatumDrifts() {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(DatumDriftConfigRepo.class);
             return repo.findAll();
         });
     }

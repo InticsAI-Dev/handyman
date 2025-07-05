@@ -1,10 +1,7 @@
 package in.handyman.raven.lambda.access.repo;
 
 import in.handyman.raven.lambda.doa.audit.*;
-import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
-import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
-import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
-import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
+import in.handyman.raven.lambda.doa.config.*;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +27,8 @@ public interface HandymanRepo {
     void update(final SpwInstanceConfig spwInstanceConfig);
 
     List<SpwInstanceConfig> findAllInstances();
+
+    List<DatumDriftConfig> findAllDatumDrifts();
 
     List<SpwInstanceConfig> findAllByInstanceVariable(final String variable);
 
