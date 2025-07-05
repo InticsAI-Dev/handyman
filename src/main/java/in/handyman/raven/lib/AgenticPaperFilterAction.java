@@ -22,6 +22,7 @@ import in.handyman.raven.lib.model.AgenticPaperFilter;
 import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterConsumerProcess;
 import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterInput;
 import in.handyman.raven.lib.model.agenticPaperFilter.AgenticPaperFilterOutput;
+import in.handyman.raven.lib.utils.CustomBatchWithScaling;
 import in.handyman.raven.lib.utils.FileProcessingUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -90,14 +91,31 @@ public class AgenticPaperFilterAction implements IActionExecution  {
       final CoproProcessor<AgenticPaperFilterInput, AgenticPaperFilterOutput> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), AgenticPaperFilterOutput.class, AgenticPaperFilterInput.class, jdbi, log, new AgenticPaperFilterInput(), urls, action);
 
       Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-      Integer consumerApiCount = Integer.valueOf(action.getContext().get(AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT));
-      Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-      Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
-      AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
-              new AgenticPaperFilterConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
-
       coproProcessor.startProducer(agenticPaperFilter.getQuerySet(), readBatchSize);
       Thread.sleep(1000);
+
+      int consumerApiCount = 0;
+      CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
+      boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
+      if (isPodScalingCheckEnabled) {
+        log.info(aMarker, "Pod Scaling Check is enabled, computing consumer API count using CustomBatchWithScaling");
+        consumerApiCount = customBatchWithScaling.computePaperFilterApiCount();
+      }
+
+      if (consumerApiCount <= 0) {
+        log.info(aMarker, "No paper filter consumer API count found using kube client, using existing context value");
+        String defaultValue = "1";
+          String value = action.getContext().getOrDefault(AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT, String.valueOf(1)).trim();
+          consumerApiCount = value.isEmpty() ? Integer.parseInt(defaultValue) : Integer.parseInt(value);
+      }
+
+      log.info(aMarker, "Consumer API count for Agentic Paper Filter is {}", consumerApiCount);
+
+      Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+      Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
+      final AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
+              new AgenticPaperFilterConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
+
       coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, agenticPaperFilterConsumerProcess);
       log.info(aMarker, " Agentic Paper Filter Action has been completed {}  ", agenticPaperFilter.getName());
     } catch (Exception e) {
