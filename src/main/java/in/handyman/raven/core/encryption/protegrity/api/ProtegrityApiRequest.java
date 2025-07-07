@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.encryption.protegrity.api;
+package in.handyman.raven.core.encryption.protegrity.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;

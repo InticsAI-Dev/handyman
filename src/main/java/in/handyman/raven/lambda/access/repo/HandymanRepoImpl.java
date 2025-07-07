@@ -2,31 +2,22 @@ package in.handyman.raven.lambda.access.repo;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
-import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
-import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -60,9 +51,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         getDatabaseConnectionByConnectionType();
     }
 
-    public static Jdbi getDatabaseConnectionByConnectionType(){
+    public static Jdbi getDatabaseConnectionByConnectionType() {
         String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
-        if(legacyResourceConnection.equals(AZURE)){
+        if (legacyResourceConnection.equals(AZURE)) {
 
             String azureTenantId = PropertyHandler.get(AZURE_TENANT_ID);
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
@@ -193,7 +184,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     @Override
     public SpwResourceConfig getResourceConfig(final String name) {
         checkJDBIConnection();
-        SpwResourceConfig resourceConfig=findOneResourceConfig(name).orElseThrow();
+        SpwResourceConfig resourceConfig = findOneResourceConfig(name).orElseThrow();
         resourceConfig.setPassword(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getPassword()));
         resourceConfig.setResourceUrl(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getResourceUrl()));
         resourceConfig.setUserName(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getUserName()));
@@ -538,7 +529,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
-    public List<HandymanExceptionAuditDetails> findAllHandymanExceptions(){
+    public List<HandymanExceptionAuditDetails> findAllHandymanExceptions() {
         checkJDBIConnection();
         return JDBI.withHandle(handle -> {
             var repo = handle.attach(HandymanExceptionRepo.class);
@@ -547,7 +538,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
-    public List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId){
+    public List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId) {
         checkJDBIConnection();
         return JDBI.withHandle(handle -> {
             var repo = handle.attach(HandymanExceptionRepo.class);
@@ -555,16 +546,17 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         });
     }
 
-    public String encryptString(String message){
+    public String encryptString(String message) {
         InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
 
         String messageEncrypted = inticsIntegrity.encrypt(message, "AES256", "SQL_DATA");
         return messageEncrypted;
     }
+
     public void insertExceptionLog(ActionExecutionAudit actionExecutionAudit, Throwable exception, String message) {
         checkJDBIConnection();
         HandymanExceptionAuditDetails exceptionAuditDetails = HandymanExceptionAuditDetails.builder()
-          //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
+                //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())
                 .rootPipelineName(actionExecutionAudit.getParentPipelineName())
                 .pipelineName(actionExecutionAudit.getPipelineName())
@@ -583,7 +575,6 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         log.info("inserting exception audit details has been completed");
 
     }
-
 
 
 }

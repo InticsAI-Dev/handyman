@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.agenticPaperFilter;
+package in.handyman.raven.lib.model.agentic.paper.filter;
 
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;

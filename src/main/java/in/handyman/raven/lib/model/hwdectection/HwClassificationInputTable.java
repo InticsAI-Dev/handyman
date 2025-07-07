@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.hwdectection;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,7 +31,10 @@ import java.util.List;
         private String batchId;
         private Timestamp createdOn;
 
-
+       @Override
+       public String getStatus() {
+           return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+       }
 
         @Override
         public List<Object> getRowData() {

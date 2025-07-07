@@ -2,14 +2,16 @@ package in.handyman.raven.lib.model.documentEyeCue;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.core.encryption.EncryptionConstants;
+import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
-import in.handyman.raven.lib.utils.ProcessFileFormatE;
+
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -18,10 +20,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
-import static in.handyman.raven.lib.encryption.EncryptionConstants.DOC_EYECUE_ENCRYPTION;
-
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
 
     public static final String PROCESS_NAME = "DOC_EYE_CUE";
@@ -267,7 +265,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     public String encryptRequestResponse(String data) {
-        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
+        String encryptReqRes = action.getContext().get(EncryptionConstants.ENCRYPT_REQUEST_RESPONSE);
         if ("true".equals(encryptReqRes)) {
             return SecurityEngine.getInticsIntegrityMethod(action).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
         }
@@ -275,7 +273,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     public String encryptDocEyeBase64(String data) {
-        String encryptReqRes = action.getContext().get(DOC_EYECUE_ENCRYPTION);
+        String encryptReqRes = action.getContext().get(EncryptionConstants.DOC_EYECUE_ENCRYPTION);
         if ("true".equals(encryptReqRes)) {
             return SecurityEngine.getInticsIntegrityMethod(action).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
         }

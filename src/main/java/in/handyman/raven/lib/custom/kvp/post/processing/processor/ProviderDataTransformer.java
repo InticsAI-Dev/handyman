@@ -6,25 +6,26 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.utils.DatabaseUtility;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderTransformerFinal;
 import in.handyman.raven.lib.custom.kvp.post.processing.bsh.ProviderTransformerOutputItem;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import in.handyman.raven.lib.utils.DatabaseUtility;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.util.*;
 
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 
 public class ProviderDataTransformer {
@@ -63,7 +64,7 @@ public class ProviderDataTransformer {
 
             interpreter.eval(sourceCode);
 
-            Map<String, Object> responseMap = parseResponse(responsePayload);
+            Map<String, Object> responseMap = parseResponse(responsePayload, request, endpoint, entity, outputList);
             if (responseMap.isEmpty()) {
                 log.warn("Parsed response is empty for payload: {}", responsePayload);
                 return outputList;
@@ -80,20 +81,65 @@ public class ProviderDataTransformer {
                     outputList.addAll(mappedInterpreterData);
 
                 } catch (EvalError e) {
-
-                    throw new HandymanException("Error evaluating Beanshell script", e, action);
+                    String errorMessage = "Error evaluating Beanshell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
+                    handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
                 }
             });
 
         } catch (Exception e) {
-            throw new HandymanException("Error executing script ", e, action);
+            String errorMessage = "Error executing script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
+            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
         }
 
         log.info("Total mapped entries: {}", outputList.size());
         return outputList;
     }
 
-    private Map<String, Object> parseResponse(String responsePayload) {
+    void handleErrorOutputEntity(RadonQueryInputTable entity, String message, String request, String responsePayload, String endpoint, Exception e, List<RadonQueryOutputTable> outputList) {
+        outputList.add(RadonQueryOutputTable.builder()
+                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .paperNo(entity.getPaperNo())
+                .groupId(entity.getGroupId())
+                .inputFilePath(entity.getInputFilePath())
+                .actionId(action.getActionId())
+                .tenantId(entity.getTenantId())
+                .processId(entity.getTenantId())
+                .rootPipelineId(entity.getRootPipelineId())
+                .process(entity.getProcess())
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                .stage(entity.getApiName())
+                .message(message)
+                .batchId(entity.getBatchId())
+                .category(entity.getCategory())
+                .request(encryptRequestResponse(request))
+                .response(encryptRequestResponse(responsePayload))
+                .endpoint(String.valueOf(endpoint))
+                .sorContainerId(entity.getSorContainerId())
+                .build());
+        log.error(message);
+        handleHandymanExceptionInsert(message, e);
+
+    }
+
+    private void handleHandymanExceptionInsert(String message, Exception e) {
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException(message, handymanException, action);
+    }
+
+    public String encryptRequestResponse(String request) {
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
+        String requestStr;
+        if ("true".equals(encryptReqRes)) {
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
+        }
+        return requestStr;
+    }
+
+
+    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint, RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) {
 
         if (responsePayload == null) {
             log.warn("Response payload is null or empty.");
@@ -104,8 +150,10 @@ public class ProviderDataTransformer {
             return objectMapper.readValue(responsePayload, new TypeReference<Map<String, Object>>() {
             });
         } catch (Exception e) {
-            throw new HandymanException("Error parsing response JSON", e, action);
+            String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
+            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
         }
+        return Map.of();
     }
 
     private List<RadonQueryOutputTable> processMappingInterpreter(
@@ -175,7 +223,9 @@ public class ProviderDataTransformer {
 
                         outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
                     } catch (JsonProcessingException e) {
-                        throw new HandymanException("Error processing JSON", e, action);
+                        String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
+                        handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
+
                     }
                 });
             });

@@ -6,7 +6,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AlchemyKvpResponseAction;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.alchemy.common.AlchemyApiPayload;
-import in.handyman.raven.lib.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpInputEntity;
 import in.handyman.raven.lib.model.outbound.AlchemyKvpOutputEntity;
 import in.handyman.raven.util.ExceptionUtil;
@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess<AlchemyKvpInputEntity, AlchemyKvpOutputEntity> {
 

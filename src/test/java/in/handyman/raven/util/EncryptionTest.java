@@ -2,8 +2,8 @@ package in.handyman.raven.util;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TransformAction;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.Transform;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;

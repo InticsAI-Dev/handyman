@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.templatedetection;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,10 @@ public class TemplateDetectionInputTable implements CoproProcessor.Entity {
 
     public Timestamp getCreatedOn() {
         return createdOn;
+    }
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
 
     public void setCreatedOn(Timestamp createdOn) {

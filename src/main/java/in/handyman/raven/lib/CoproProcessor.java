@@ -163,5 +163,6 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     public interface Entity {
         List<Object> getRowData();
+        String getStatus();
     }
 }

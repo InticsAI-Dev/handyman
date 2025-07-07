@@ -1,11 +1,11 @@
-package in.handyman.raven.lib.encryption.impl;
+package in.handyman.raven.core.encryption.impl;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.encryption.InticsDataEncryptionApi;
+import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -9,7 +9,7 @@ import in.handyman.raven.lib.model.HwDetection;
 import in.handyman.raven.lib.model.hwdectection.HwClassificationConsumerProcess;
 import in.handyman.raven.lib.model.hwdectection.HwClassificationInputTable;
 import in.handyman.raven.lib.model.hwdectection.HwClassificationOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
