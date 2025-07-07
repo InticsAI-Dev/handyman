@@ -32,4 +32,5 @@ public class CoproRetryErrorAuditTable {
     private String request;
     private String response;
     private String endpoint;
+    private int attempt;
 }
