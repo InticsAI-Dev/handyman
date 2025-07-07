@@ -27,6 +27,7 @@ import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpConsumerProce
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.core.utils.FileProcessingUtils;
+
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -64,9 +65,8 @@ public class RadonKvpAction implements IActionExecution {
     private final InticsIntegrity securityEngine;
 
     private final int threadSleepTime;
-    private final int consumerApiCount;
     private final int writeBatchSize;
-    private final int readBatchSize;
+    private int readBatchSize;
     private final int timeout;
 
     private final String targetTableName;
@@ -85,9 +85,7 @@ public class RadonKvpAction implements IActionExecution {
 
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
         this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
-        this.consumerApiCount = parseContextValue(action, "Radon.kvp.consumer.API.count", "1");
         this.writeBatchSize = parseContextValue(action, "write.batch.size", "10");
-        this.readBatchSize = parseContextValue(action, "read.batch.size", "10");
 
         this.targetTableName = this.radonKvp.getOutputTable();
         this.radonKvpUrl = this.radonKvp.getEndpoint();
@@ -119,8 +117,32 @@ public class RadonKvpAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
+            int consumerApiCount = 0;
+            CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
+            boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
+            if (isPodScalingCheckEnabled) {
+                log.info(aMarker, "Pod Scaling Check is enabled, computing consumer API count using CustomBatchWithScaling");
+                consumerApiCount = customBatchWithScaling.computeSorTransactionApiCount();
+            }
+
+            if (consumerApiCount <= 0) {
+                log.info(aMarker, "No kvp consumer API count found using kube client, using existing context value");
+                String key = "Radon.kvp.consumer.API.count";
+                consumerApiCount = parseContextValue(action, key, "1");
+            }
+            log.info(aMarker, "Consumer API count for kvp action is {}", consumerApiCount);
+
+            readBatchSize = parseContextValue(action, "read.batch.size", "10");
+            if (consumerApiCount >= readBatchSize){
+                log.info(aMarker, "Consumer API count {} is greater than read batch size {}, setting read batch size to consumer API count", consumerApiCount, readBatchSize);
+                readBatchSize = consumerApiCount;
+            } else {
+                log.info(aMarker, "Consumer API count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerApiCount, readBatchSize);
+            }
+
             final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
             Thread.sleep(threadSleepTime);
+
             final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils,jdbi,providerDataTransformer);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " LLM kvp Action has been completed {}  ", radonKvp.getName());
