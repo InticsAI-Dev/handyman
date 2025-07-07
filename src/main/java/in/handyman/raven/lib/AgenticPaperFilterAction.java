@@ -90,10 +90,6 @@ public class AgenticPaperFilterAction implements IActionExecution  {
 
       final CoproProcessor<AgenticPaperFilterInput, AgenticPaperFilterOutput> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), AgenticPaperFilterOutput.class, AgenticPaperFilterInput.class, jdbi, log, new AgenticPaperFilterInput(), urls, action);
 
-      Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-      coproProcessor.startProducer(agenticPaperFilter.getQuerySet(), readBatchSize);
-      Thread.sleep(1000);
-
       int consumerApiCount = 0;
       CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
       boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
@@ -110,6 +106,20 @@ public class AgenticPaperFilterAction implements IActionExecution  {
       }
 
       log.info(aMarker, "Consumer API count for Agentic Paper Filter is {}", consumerApiCount);
+
+      String readBatchSizeDefaultValue = "10";
+      String value = action.getContext().getOrDefault(READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
+      int readBatchSize = value.isEmpty() ? Integer.parseInt(readBatchSizeDefaultValue) : Integer.parseInt(value);
+
+      if (consumerApiCount >= readBatchSize){
+        log.info(aMarker, "Consumer API count {} is greater than read batch size {}, setting read batch size to consumer API count", consumerApiCount, readBatchSize);
+        readBatchSize = consumerApiCount;
+      } else {
+        log.info(aMarker, "Consumer API count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerApiCount, readBatchSize);
+      }
+
+      coproProcessor.startProducer(agenticPaperFilter.getQuerySet(), readBatchSize);
+      Thread.sleep(1000);
 
       Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
       Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));

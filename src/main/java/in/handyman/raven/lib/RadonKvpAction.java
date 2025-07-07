@@ -66,7 +66,7 @@ public class RadonKvpAction implements IActionExecution {
 
     private final int threadSleepTime;
     private final int writeBatchSize;
-    private final int readBatchSize;
+    private int readBatchSize;
     private final int timeout;
 
     private final String targetTableName;
@@ -86,7 +86,6 @@ public class RadonKvpAction implements IActionExecution {
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
         this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
         this.writeBatchSize = parseContextValue(action, "write.batch.size", "10");
-        this.readBatchSize = parseContextValue(action, "read.batch.size", "10");
 
         this.targetTableName = this.radonKvp.getOutputTable();
         this.radonKvpUrl = this.radonKvp.getEndpoint();
@@ -118,9 +117,6 @@ public class RadonKvpAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
-            Thread.sleep(threadSleepTime);
-
             int consumerApiCount = 0;
             CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
             boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
@@ -135,6 +131,17 @@ public class RadonKvpAction implements IActionExecution {
                 consumerApiCount = parseContextValue(action, key, "1");
             }
             log.info(aMarker, "Consumer API count for kvp action is {}", consumerApiCount);
+
+            readBatchSize = parseContextValue(action, "read.batch.size", "10");
+            if (consumerApiCount >= readBatchSize){
+                log.info(aMarker, "Consumer API count {} is greater than read batch size {}, setting read batch size to consumer API count", consumerApiCount, readBatchSize);
+                readBatchSize = consumerApiCount;
+            } else {
+                log.info(aMarker, "Consumer API count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerApiCount, readBatchSize);
+            }
+
+            final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
+            Thread.sleep(threadSleepTime);
 
             final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils,jdbi,providerDataTransformer);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
