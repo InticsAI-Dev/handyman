@@ -122,12 +122,19 @@ public class MultivalueConcatenationAction implements IActionExecution {
       List<MultivalueConcatenationInput> groupList = entry.getValue();
       if (groupList.isEmpty()) continue;
 
+      Integer fallbackPageNo = groupList.stream()
+              .map(MultivalueConcatenationInput::getPaperNo)
+              .filter(Objects::nonNull)
+              .min(Integer::compareTo)
+              .orElse(null);
+
+      Integer selectedPageNoFromValue = null;
+
       MultivalueConcatenationInput firstInput = groupList.get(0);
       log.debug("Processing group: originId={}, sorItemName={}, inputCount={}",
               firstInput.getOriginId(), firstInput.getSorItemName(), groupList.size());
 
       List<String> valuesToConcat = new ArrayList<>();
-      Integer selectedPageNo = firstInput.getPaperNo();
 
       for (MultivalueConcatenationInput input : groupList) {
         String originalValue = input.getPredictedValue();
@@ -145,8 +152,8 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
         value = (value == null) ? "" : value.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
 
-        if (!value.isEmpty() && value.matches(".*\\w.*") && selectedPageNo == null) {
-          selectedPageNo = input.getPaperNo();
+        if (!value.isEmpty() && value.matches(".*\\w.*") && selectedPageNoFromValue == null) {
+          selectedPageNoFromValue = input.getPaperNo();
         }
 
         valuesToConcat.add(value);
@@ -155,6 +162,8 @@ public class MultivalueConcatenationAction implements IActionExecution {
       String concatenatedValue = String.join(",", valuesToConcat)
               .replaceAll("(^,+|,+$)", "")
               .replaceAll(",{2,}", ",");
+
+      Integer selectedPageNo = selectedPageNoFromValue != null ? selectedPageNoFromValue : fallbackPageNo;
 
       log.debug("Concatenated value before encryption for originId={}, sorItemName={}", firstInput.getOriginId(), firstInput.getSorItemName());
 
