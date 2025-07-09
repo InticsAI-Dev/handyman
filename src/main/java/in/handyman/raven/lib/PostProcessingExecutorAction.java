@@ -103,9 +103,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
                     log.info("Decryption and re-encryption enabled for multi_value item: {}", postProcessingExecutorInput.getSorItemName());
                     try {
-                        String updatedValue = encryption.decrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
-                        log.debug("Decrypted value for {}: {}", postProcessingExecutorInput.getSorItemName(), updatedValue);
-                        String[] multivalue = updatedValue.split(",");
+                        String[] multivalue = extractedValue.split(",");
                         List<String> encryptMultiValue = new ArrayList<>();
                         for (int i = 0; i < multivalue.length; i++) {
                             String trimmedValue = multivalue[i].trim();
