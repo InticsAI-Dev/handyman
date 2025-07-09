@@ -66,7 +66,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
       String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
       boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
 
-      Long groupId = Long.valueOf(multivalueConcatenation.getGroupId());
+      Integer groupId = Integer.valueOf(multivalueConcatenation.getGroupId());
       String batchId = multivalueConcatenation.getBatchId();
 
       String outputTableName = multivalueConcatenation.getOutputTable();
@@ -86,14 +86,12 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
       log.info("Multi value concatenation action total rows returned from the query {}", multivalueConcatenationInputs.size());
 
-      multivalueConcatenationInputs.forEach(controlDataComparisonQueryInput -> {
         try {
-          doMultiValueConcatenation(controlDataComparisonQueryInput, jdbi, outputTableName, pipelineEndToEndEncryptionActivator);
+          doMultiValueConcatenation(multivalueConcatenationInputs, jdbi, outputTableName, pipelineEndToEndEncryptionActivator, groupId, batchId, encryption);
         } catch (JsonProcessingException e) {
           HandymanException handymanException = new HandymanException(e);
           HandymanException.insertException("Control data comparison Input table failed :", handymanException, action);
         }
-      });
 
       log.info(aMarker, "Multi value concatenation Action has been completed {}  ", multivalueConcatenation.getName());
 
@@ -106,52 +104,61 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
   }
 
-  private void doMultiValueConcatenation(MultivalueConcatenationInput multivalueConcatenationInput, Jdbi jdbi, String outputTable, Boolean pipelineEndToEndEncryptionActivator) throws JsonProcessingException {
-    String originId = multivalueConcatenationInput.getOriginId();
-    String predictedValue = multivalueConcatenationInput.getPredictedValue();
+  private void doMultiValueConcatenation(List<MultivalueConcatenationInput> multivalueConcatenationInputs,
+                                         Jdbi jdbi,
+                                         String outputTable,
+                                         Boolean pipelineEndToEndEncryptionActivator,
+                                         Integer groupId,
+                                         String batchId,
+                                         InticsIntegrity encryption) throws JsonProcessingException {
 
-    String batchId = multivalueConcatenationInput.getBatchId();
-    Integer groupId = multivalueConcatenationInput.getGroupId();
-    Integer paperNo = multivalueConcatenationInput.getPaperNo();
+    Map<String, List<MultivalueConcatenationInput>> groupedInputs = multivalueConcatenationInputs.stream()
+            .collect(Collectors.groupingBy(input -> input.getOriginId() + "|" + input.getSorItemName()));
 
-    Long tenantId = multivalueConcatenationInput.getTenantId();
+    for (List<MultivalueConcatenationInput> groupList : groupedInputs.values()) {
+      if (groupList.isEmpty()) continue;
 
-    List<MultivalueConcatenationInput> filteredInputs = multivalueConcatenationInputs.stream()
-            .filter(input -> Objects.equals(input.getGroupId(), groupId))
-            .filter(input -> Objects.equals(input.getTenantId(), tenantId))
-            .filter(input -> Objects.equals(input.getBatchId(), batchId))
-            .filter(input -> Objects.equals(input.getRank(), 1L))
-            .collect(Collectors.toList());
+      MultivalueConcatenationInput firstInput = groupList.get(0);
+      List<String> valuesToConcat = new ArrayList<>();
+      Integer selectedPageNo = firstInput.getPaperNo();
 
-    Map<String, MultivalueConcatenationInput> groupedMap = new HashMap<>();
+      for (MultivalueConcatenationInput input : groupList) {
+        String value = input.getPredictedValue();
 
-    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
-    for (MultivalueConcatenationInput input : filteredInputs) {
-      String key = input.getOriginId() + "|" + input.getSorItemName();
+        if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+          value = encryption.decrypt(value, input.getEncryptionPolicy(), input.getSorItemName());
+        }
 
-      if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
-        predictedValue = encryption.decrypt(predictedValue, input.getEncryptionPolicy(), input.getSorItemName());
+        value = (value == null) ? "" : value.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
+
+        if (!value.isEmpty() && value.matches(".*\\w.*") && selectedPageNo == null) {
+          selectedPageNo = input.getPaperNo();
+        }
+
+        valuesToConcat.add(value);
       }
 
-      // Clean predicted value
-      predictedValue = predictedValue == null ? "" :
-              predictedValue.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
+      String concatenatedValue = String.join(",", valuesToConcat)
+              .replaceAll("(^,+|,+$)", "")
+              .replaceAll(",{2,}", ",");
+
+      if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(firstInput.getIsEncrypted())) {
+        concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
+      }
 
       try {
-        if (groupedMap.containsKey(key)) {
-          MultivalueConcatenationInput existing = groupedMap.get(key);
-          String combined = existing.getPredictedValue() + "," + predictedValue;
-          combined = combined.replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
-          existing.setPredictedValue(combined);
-        } else {
-          if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
-            predictedValue = encryption.encrypt(predictedValue, input.getEncryptionPolicy(), input.getSorItemName());
-          }
-        }
-        insertExecutionInfo(jdbi, outputTable, input.getOriginId(), input.getSorItemName(), input.getTenantId(), input.getBatchId(), predictedValue, input.getGroupId(), input.getPaperNo(), input.getVqaScore(), input.getQuestionId(), input.getSynonymId(), input.getModelRegistry(), input.getDocumentId(), input.getBBox(), input.getRootPipelineId(), input.getAggregatedScore(), input.getMaskedScore(), input.getRank(), input.getSorItemAttributionId(), input.getFrequency());
+        insertExecutionInfo(
+                jdbi, outputTable,
+                firstInput.getOriginId(), firstInput.getSorItemName(), firstInput.getTenantId(), batchId, concatenatedValue,
+                groupId, selectedPageNo, firstInput.getVqaScore(), firstInput.getQuestionId(), firstInput.getSynonymId(),
+                firstInput.getModelRegistry(), firstInput.getDocumentId(), firstInput.getBBox(), firstInput.getRootPipelineId(),
+                firstInput.getAggregatedScore(), firstInput.getMaskedScore(), firstInput.getRank(),
+                firstInput.getSorItemAttributionId(), firstInput.getFrequency()
+        );
       } catch (HandymanException e) {
         HandymanException handymanException = new HandymanException(e);
-        HandymanException.insertException("Error while inserting gender type data validation origin Id " + originId + " paper No " + paperNo, handymanException, action);
+        HandymanException.insertException("Error inserting for originId " +
+                firstInput.getOriginId() + ", paperNo " + selectedPageNo, handymanException, null);
       }
     }
   }
