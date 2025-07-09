@@ -112,21 +112,35 @@ public class MultivalueConcatenationAction implements IActionExecution {
                                          String batchId,
                                          InticsIntegrity encryption) throws JsonProcessingException {
 
+    log.info("Starting multi-value concatenation process for batchId: {}, groupId: {}, totalInputs: {}",
+            batchId, groupId, multivalueConcatenationInputs.size());
+
     Map<String, List<MultivalueConcatenationInput>> groupedInputs = multivalueConcatenationInputs.stream()
             .collect(Collectors.groupingBy(input -> input.getOriginId() + "|" + input.getSorItemName()));
 
-    for (List<MultivalueConcatenationInput> groupList : groupedInputs.values()) {
+    for (Map.Entry<String, List<MultivalueConcatenationInput>> entry : groupedInputs.entrySet()) {
+      List<MultivalueConcatenationInput> groupList = entry.getValue();
       if (groupList.isEmpty()) continue;
 
       MultivalueConcatenationInput firstInput = groupList.get(0);
+      log.debug("Processing group: originId={}, sorItemName={}, inputCount={}",
+              firstInput.getOriginId(), firstInput.getSorItemName(), groupList.size());
+
       List<String> valuesToConcat = new ArrayList<>();
       Integer selectedPageNo = firstInput.getPaperNo();
 
       for (MultivalueConcatenationInput input : groupList) {
-        String value = input.getPredictedValue();
+        String originalValue = input.getPredictedValue();
+        String value = originalValue;
 
         if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
-          value = encryption.decrypt(value, input.getEncryptionPolicy(), input.getSorItemName());
+          try {
+            value = encryption.decrypt(value, input.getEncryptionPolicy(), input.getSorItemName());
+            log.debug("Decrypted value for originId={}, sorItemName={}", input.getOriginId(), input.getSorItemName());
+          } catch (Exception e) {
+            log.error("Decryption failed for originId={}, sorItemName={}: {}", input.getOriginId(), input.getSorItemName(), e.getMessage(), e);
+            throw e;
+          }
         }
 
         value = (value == null) ? "" : value.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
@@ -142,9 +156,16 @@ public class MultivalueConcatenationAction implements IActionExecution {
               .replaceAll("(^,+|,+$)", "")
               .replaceAll(",{2,}", ",");
 
+      log.debug("Concatenated value before encryption for originId={}, sorItemName={}", firstInput.getOriginId(), firstInput.getSorItemName());
+
       if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(firstInput.getIsEncrypted())) {
-        log.info("Encryption for the predicted value has been done for the multivalue concatenating logic.");
-        concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
+        try {
+          concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
+          log.info("Encrypted concatenated value for originId={}, sorItemName={}", firstInput.getOriginId(), firstInput.getSorItemName());
+        } catch (Exception e) {
+          log.error("Encryption failed for originId={}, sorItemName={}: {}", firstInput.getOriginId(), firstInput.getSorItemName(), e.getMessage(), e);
+          throw e;
+        }
       }
 
       try {
@@ -156,12 +177,16 @@ public class MultivalueConcatenationAction implements IActionExecution {
                 firstInput.getAggregatedScore(), firstInput.getMaskedScore(), firstInput.getRank(),
                 firstInput.getSorItemAttributionId(), firstInput.getFrequency()
         );
+
+        log.info("Inserted concatenated value for originId={}, sorItemName={}, paperNo={}", firstInput.getOriginId(), firstInput.getSorItemName(), selectedPageNo);
       } catch (HandymanException e) {
         HandymanException handymanException = new HandymanException(e);
+        log.error("Insert failed for originId={}, paperNo={}: {}", firstInput.getOriginId(), selectedPageNo, e.getMessage(), e);
         HandymanException.insertException("Error inserting for originId " +
                 firstInput.getOriginId() + ", paperNo " + selectedPageNo, handymanException, null);
       }
     }
+    log.info("Completed multi-value concatenation for batchId: {}", batchId);
   }
 
   private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId, String batchId, String predictedValue, Integer groupId, Integer paperNo, Double vqaScore, Long questionId, Long synonymId, String modelRegistry, String documentId, String bBox, Long rootPipelineId, Long aggregatedScore, Long maskedScore, Long rank, Long sorItemAttributionId, Long frequency) {
@@ -199,7 +224,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
             .bind("batchId", batchId)
             .bind("frequency", frequency)
             .execute());
-    log.info("Decryption for the predicted value has been done for the multivalue concatenating logic.");
+    log.info("Predicted value has been done for the multivalue concatenating logic.");
   }
 
 

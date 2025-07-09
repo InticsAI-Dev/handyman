@@ -99,19 +99,28 @@ public class PostProcessingExecutorAction implements IActionExecution {
             String extractedValue = postProcessingExecutorInput.getExtractedValue();
             String encryptionPolicy = postProcessingExecutorInput.getEncryptionPolicy();
             if (Objects.equals(postProcessingExecutorInput.getLineItemType(), "multi_value")) {
+                log.debug("Processing multi_value lineItemType for SOR item: {}", postProcessingExecutorInput.getSorItemName());
                 if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
-                    String updatedValue;
-                    updatedValue = encryption.decrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
-                    String[] multivalue = updatedValue.split(",");
-                    List<String> encryptMultiValue = new ArrayList<>();
-                    for (int i = 0; i < multivalue.length; i++) {
-                        String encryptedValue;
-                        encryptedValue = encryption.encrypt(multivalue[i].trim(), encryptionPolicy, postProcessingExecutorInput.getSorItemName());
-                        encryptMultiValue.add(encryptedValue);
+                    log.info("Decryption and re-encryption enabled for multi_value item: {}", postProcessingExecutorInput.getSorItemName());
+                    try {
+                        String updatedValue = encryption.decrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
+                        log.debug("Decrypted value for {}: {}", postProcessingExecutorInput.getSorItemName(), updatedValue);
+                        String[] multivalue = updatedValue.split(",");
+                        List<String> encryptMultiValue = new ArrayList<>();
+                        for (int i = 0; i < multivalue.length; i++) {
+                            String trimmedValue = multivalue[i].trim();
+                            String encryptedValue = encryption.encrypt(trimmedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
+                            encryptMultiValue.add(encryptedValue);
+                        }
+                        String finalOutput = String.join(",", encryptMultiValue);
+                        log.debug("Final re-encrypted multi_value string for {}: ", postProcessingExecutorInput.getSorItemName());
+                        postProcessingExecutorInput.setExtractedValue(finalOutput);
+                    } catch (Exception e) {
+                        log.error("Error processing multi_value encryption for {}: {}", postProcessingExecutorInput.getSorItemName(), e.getMessage(), e);
+                        throw e;
                     }
-                    String finalOutput = String.join(",",encryptMultiValue);
-                    postProcessingExecutorInput.setExtractedValue(finalOutput);
                 } else {
+                    log.info("Encryption not required for multi_value item: {}. Setting original extracted value.", postProcessingExecutorInput.getSorItemName());
                     postProcessingExecutorInput.setExtractedValue(extractedValue);
                 }
             }
