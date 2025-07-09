@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.agentic.paper.filter;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -24,18 +25,20 @@ public class CoproRetryService {
     private static ActionExecutionAudit action;
     private static int maxRetries;
 
-    public static Response callCoproApiWithRetry(Request request, CoproRetryErrorAuditTable retryAudit,
+    public static Response callCoproApiWithRetry(Request request, String requestBody, CoproRetryErrorAuditTable retryAudit,
                                                  ActionExecutionAudit actionAudit, Jdbi jdbi,
                                                  OkHttpClient httpClient) throws IOException {
         action = actionAudit;
         maxRetries = resolveMaxRetries();
-        int attempt = 0;
+        int attempt = 1;
         Response response = null;
         IOException lastException = null;
 
-        while (attempt < maxRetries) {
-            response = executeRequestWithHandling(request, retryAudit, jdbi, httpClient, attempt);
+        while (attempt <= maxRetries) {
+            response = executeRequestWithHandling(request, requestBody,retryAudit, jdbi, httpClient, attempt);
             if (response != null && response.isSuccessful() && response.body() != null) {
+                retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
+                insertAudit(attempt,retryAudit, request, requestBody,response, null, jdbi);
                 return response;
             }
             attempt++;
@@ -52,7 +55,7 @@ public class CoproRetryService {
                 : 1;
     }
 
-    private static Response executeRequestWithHandling(Request request, CoproRetryErrorAuditTable retryAudit,
+    private static Response executeRequestWithHandling(Request request,String requestBody, CoproRetryErrorAuditTable retryAudit,
                                                        Jdbi jdbi, OkHttpClient httpClient, int attempt) {
         Response response = null;
 
@@ -60,10 +63,10 @@ public class CoproRetryService {
             response = httpClient.newCall(request).execute();
             if (isRetryRequired(response)) {
                 logRetryAttempt(attempt, response);
-                insertAudit(retryAudit, request, response, null, jdbi);
+                insertAudit(attempt,retryAudit, request,requestBody, response, null, jdbi);
             }
         } catch (IOException e) {
-            handleIOException(attempt, retryAudit, request, e, jdbi);
+            handleIOException(attempt, retryAudit, request,requestBody, e, jdbi);
         }
         return response;
     }
@@ -78,17 +81,17 @@ public class CoproRetryService {
         log.error("Attempt {}: Unsuccessful response {} - {}", attempt + 1, response.code(), response.message());
     }
 
-    private static void handleIOException(int attempt, CoproRetryErrorAuditTable retryAudit, Request request,
+    private static void handleIOException(int attempt, CoproRetryErrorAuditTable retryAudit, Request request,String requestBody,
                                           IOException e, Jdbi jdbi) {
         log.error("Attempt {}: IOException - {}", attempt + 1, ExceptionUtil.toString(e));
-        insertAudit(retryAudit, request, null, e, jdbi);
+        insertAudit(attempt,retryAudit, request,requestBody, null, e, jdbi);
         HandymanException.insertException("Error inserting into copro retry audit", new HandymanException(e), action);
     }
 
-    private static void insertAudit(CoproRetryErrorAuditTable retryAudit, Request request, Response response,
+    private static void insertAudit(int attempt,CoproRetryErrorAuditTable retryAudit, Request request,String requestBody, Response response,
                                     Exception e, Jdbi jdbi) {
         try {
-            populateAudit(retryAudit, request, response, e);
+            populateAudit(attempt,retryAudit,requestBody,response, e);
             insertAuditToDb(retryAudit, jdbi);
         } catch (Exception exception) {
             log.error("Error inserting into retry audit  {}", ExceptionUtil.toString(exception));
@@ -96,9 +99,10 @@ public class CoproRetryService {
         }
     }
 
-    private static void populateAudit(CoproRetryErrorAuditTable retryAudit, Request request, Response response,
+    private static void populateAudit(int attempt,CoproRetryErrorAuditTable retryAudit,String requestBody,Response response,
                                       Exception e) {
-        retryAudit.setRequest(encryptRequestResponse(request.toString()));
+        retryAudit.setRequest(encryptRequestResponse(requestBody));
+        retryAudit.setAttempt(attempt);
         if (response != null) {
             retryAudit.setMessage(response.message());
             retryAudit.setResponse(encryptRequestResponse(response.toString()));
@@ -112,9 +116,9 @@ public class CoproRetryService {
     private static void insertAuditToDb(CoproRetryErrorAuditTable retryAudit, Jdbi jdbi) {
         jdbi.useTransaction(handle -> {
             Update update = handle.createUpdate("  INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT +
-                    "( origin_id, group_id, tenant_id,process_id, file_path,paper_no,message,status,stage,created_on," +
+                    "( origin_id, group_id, attempt,tenant_id,process_id, file_path,paper_no,message,status,stage,created_on," +
                     "root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
-                    " VALUES(:originId, :groupId, :tenantId, :processId, :filePath,:paperNo,:message,:status,:stage," +
+                    " VALUES(:originId, :groupId,:attempt,:tenantId, :processId, :filePath,:paperNo,:message,:status,:stage," +
                     ":createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
             update.bindBean(retryAudit).execute();
         });
