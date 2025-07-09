@@ -55,7 +55,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
     this.aMarker = MarkerFactory.getMarker(" MultivalueConcatenation:" + this.multivalueConcatenation.getName());
   }
 
-  private List<MultivalueConcatenationInput> multivalueConcatenationInputs = new ArrayList<>();
+  private final List<MultivalueConcatenationInput> multivalueConcatenationInputs = new ArrayList<>();
 
   @Override
   public void execute() throws Exception {
@@ -143,6 +143,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
               .replaceAll(",{2,}", ",");
 
       if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(firstInput.getIsEncrypted())) {
+        log.info("Encryption for the predicted value has been done for the multivalue concatenating logic.");
         concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
       }
 
@@ -198,6 +199,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
             .bind("batchId", batchId)
             .bind("frequency", frequency)
             .execute());
+    log.info("Decryption for the predicted value has been done for the multivalue concatenating logic.");
   }
 
 

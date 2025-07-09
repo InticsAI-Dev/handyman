@@ -96,8 +96,29 @@ public class PostProcessingExecutorAction implements IActionExecution {
         log.info("Updated validator configuration details of size {}", postProcessingExecutorInputs.size());
 
         postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
-            if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
-                postProcessingExecutorInput.setExtractedValue(encryption.encrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
+            String extractedValue = postProcessingExecutorInput.getExtractedValue();
+            String encryptionPolicy = postProcessingExecutorInput.getEncryptionPolicy();
+            if (Objects.equals(postProcessingExecutorInput.getLineItemType(), "multi_value")) {
+                if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
+                    String updatedValue;
+                    updatedValue = encryption.decrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
+                    String[] multivalue = updatedValue.split(",");
+                    List<String> encryptMultiValue = new ArrayList<>();
+                    for (int i = 0; i < multivalue.length; i++) {
+                        String encryptedValue;
+                        encryptedValue = encryption.encrypt(multivalue[i].trim(), encryptionPolicy, postProcessingExecutorInput.getSorItemName());
+                        encryptMultiValue.add(encryptedValue);
+                    }
+                    String finalOutput = String.join(",",encryptMultiValue);
+                    postProcessingExecutorInput.setExtractedValue(finalOutput);
+                } else {
+                    postProcessingExecutorInput.setExtractedValue(extractedValue);
+                }
+            }
+            else {
+                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                    postProcessingExecutorInput.setExtractedValue(encryption.encrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName()));
+                }
             }
         });
 
