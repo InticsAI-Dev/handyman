@@ -30,6 +30,8 @@ public class AgenticPaperFilterInput  implements CoproProcessor.Entity {
     private String userPrompt;
     private String systemPrompt;
     private String base64Img;
+    private String modelName;
+
 
     @Override
     public List<Object> getRowData() {

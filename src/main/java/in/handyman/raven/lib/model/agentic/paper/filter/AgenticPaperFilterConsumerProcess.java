@@ -110,6 +110,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         dataExtractionData.setInputFilePath(filePath);
         dataExtractionData.setBatchId(batchId);
         dataExtractionData.setBase64Img(entity.getBase64Img());
+        dataExtractionData.setModel(entity.getModelName());
 
         String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
 
@@ -259,6 +260,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setSystemPrompt(entity.getSystemPrompt());
         radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
+        radonKvpExtractionRequest.setModelName(entity.getModelName());
 
         return radonKvpExtractionRequest;
     }
