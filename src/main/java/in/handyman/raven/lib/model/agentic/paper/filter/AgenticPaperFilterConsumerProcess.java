@@ -3,6 +3,8 @@ package in.handyman.raven.lib.model.agentic.paper.filter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
@@ -22,13 +24,21 @@ import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.jdbi.v3.core.Jdbi;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -53,7 +63,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
     public static final String AGENTIC_PAPER_FILTER_MODEL_NAME = "preprocess.agentic.paper.filter.model.name";
     private static final MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-
+    private static final String MODEL_TYPE = "OPTIMUS";
     private static final String PROCESS_NAME = "AGENTIC PAPER FILTER";
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
@@ -66,14 +76,14 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private final FileProcessingUtils fileProcessingUtils;
 
 
-    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64,Jdbi jdbi) {
+    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, Jdbi jdbi) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
         this.pageContentMinLength = pageContentMinLength;
-        this.jdbi=jdbi;
+        this.jdbi = jdbi;
     }
 
     @Override
@@ -127,7 +137,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
 
-         getCoproHandlerMethod(endpoint, entity, coproHandlerName, jsonInputRequest, parentObj, originId, groupId, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken, filePath);
+        getCoproHandlerMethod(endpoint, entity, coproHandlerName, jsonInputRequest, parentObj, originId, groupId, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken, filePath);
 
         return parentObj;
     }
@@ -271,9 +281,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        CoproRetryErrorAuditTable auditInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,auditInput,action, jdbi,httpclient)) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
+        CoproRetryErrorAuditTable auditInput = setErrorAudictInputDetails(entity, endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request, auditInput, action, jdbi, httpclient)) {String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
@@ -344,11 +353,31 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         String cleanedJson = stringDataItem.replaceAll("```json", "").replaceAll("```", "").trim();
 
-        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
+        JSONObject json = new JSONObject(cleanedJson);
+        RadonKvpLineItem dataExtractionDataItem = new RadonKvpLineItem();
+        String inferResponseJson="";
+        JsonNode inferResponseNode = null;
+        String formattedInferResponse = "";
+        if (json.has("model")) {
+            String modelValue = json.getString("model");
+            System.out.println(modelValue);
+            if (!MODEL_TYPE.equalsIgnoreCase(modelValue)) {
+                //KRYPTON
+                dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
+                inferResponseJson = dataExtractionDataItem.getInferResponse();
+                inferResponseNode = mapper.readTree(inferResponseJson);
+                //formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
 
-        String inferResponseJson = dataExtractionDataItem.getInferResponse();
-        JsonNode inferResponseNode = mapper.readTree(inferResponseJson);
-        String formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
+            }else{
+                inferResponseJson = json.getString("infer_response");
+                inferResponseNode = TextNode.valueOf(inferResponseJson.trim());
+                //inferResponseNode = mapper.readTree(inferResponseJson);
+                //formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
+            }
+        }
+
+        formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
+        System.out.println(formattedInferResponse);
         String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
@@ -360,39 +389,73 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         String templateId = entity.getTemplateId();
 
+        assert inferResponseNode != null;
         Iterator<Map.Entry<String, JsonNode>> fields = inferResponseNode.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            String containerName = entry.getKey();
-            String containerValue = entry.getValue().asText();
 
+        if(MODEL_TYPE.equalsIgnoreCase(json.getString("model"))){
+            //single insert
             parentObj.add(AgenticPaperFilterOutput.builder()
                     .filePath(entity.getFilePath())
                     .extractedText(extractedContent)
-                    .originId(dataExtractionDataItem.getOriginId())
-                    .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
-                    .paperNo(dataExtractionDataItem.getPaperNo())
+                    .originId(entity.getOriginId())
+                    .groupId(entity.getGroupId()!=null?Math.toIntExact(entity.getGroupId()):0)
+                    .paperNo(entity.getPaperNo())
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message("Agentic Paper Filter macro completed with krypton triton api call")
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .isBlankPage(flag)
-                    .tenantId(dataExtractionDataItem.getTenantId())
+                    .tenantId(entity.getTenantId())
                     .templateId(templateId)
-                    .processId(dataExtractionDataItem.getProcessId())
+                    .processId(entity.getProcessId())
                     .templateName(entity.getTemplateName())
-                    .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
+                    .rootPipelineId(entity.getRootPipelineId())
                     .modelName(modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .request(encryptRequestResponse(request))
                     .response(encryptRequestResponse(response))
                     .endpoint(String.valueOf(endpoint))
-                    .containerName(containerName)
-                    .containerValue(containerValue)
+                    .containerName("emp")
+                    .containerValue("yes".equalsIgnoreCase(inferResponseNode.asText())?"true":"false")
                     .build());
+
+        }else{
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                String containerName = entry.getKey();
+                String containerValue = entry.getValue().asText();
+
+                parentObj.add(AgenticPaperFilterOutput.builder()
+                        .filePath(entity.getFilePath())
+                        .extractedText(extractedContent)
+                        .originId(dataExtractionDataItem.getOriginId())
+                        .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
+                        .paperNo(dataExtractionDataItem.getPaperNo())
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .stage(PROCESS_NAME)
+                        .message("Agentic Paper Filter macro completed with krypton triton api call")
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .isBlankPage(flag)
+                        .tenantId(dataExtractionDataItem.getTenantId())
+                        .templateId(templateId)
+                        .processId(dataExtractionDataItem.getProcessId())
+                        .templateName(entity.getTemplateName())
+                        .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
+                        .modelName(modelName)
+                        .modelVersion(modelVersion)
+                        .batchId(entity.getBatchId())
+                        .request(encryptRequestResponse(request))
+                        .response(encryptRequestResponse(response))
+                        .endpoint(String.valueOf(endpoint))
+                        .containerName(containerName)
+                        .containerValue(containerValue)
+                        .build());
+            }
         }
+
     }
 
     private void extractedArgonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
@@ -421,8 +484,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        CoproRetryErrorAuditTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi, httpclient)) {
+        CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request, audictInput, action, jdbi, httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -486,8 +549,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
     private void replicateResponseBuilder(URL endpoint, Request request, List<AgenticPaperFilterOutput> parentObj, AgenticPaperFilterInput entity, String replicateJsonRequest) {
-        CoproRetryErrorAuditTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi, httpclient)) {
+        CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request, audictInput, action, jdbi, httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -564,8 +627,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-        CoproRetryErrorAuditTable audictInput =  setErrorAudictInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,audictInput,action,jdbi, httpclient)) {
+        CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
+        try (Response response = CoproRetryService.callCoproApiWithRetry(request, audictInput, action, jdbi, httpclient)) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
