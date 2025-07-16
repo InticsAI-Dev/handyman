@@ -31,6 +31,9 @@ public class AgenticPaperFilterInput  implements CoproProcessor.Entity {
     private String systemPrompt;
     private String base64Img;
     private String modelName;
+    private String uniqueName;
+    private Integer uniqueId;
+    private String promptType;
 
 
     @Override

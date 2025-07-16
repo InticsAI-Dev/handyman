@@ -417,8 +417,10 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     .request(encryptRequestResponse(request))
                     .response(encryptRequestResponse(response))
                     .endpoint(String.valueOf(endpoint))
-                    .containerName("emp")
                     .containerValue("yes".equalsIgnoreCase(inferResponseNode.asText())?"true":"false")
+                    .containerName(entity.getUniqueName())
+                    .containerId(entity.getUniqueId())
+                    .promptType(entity.getPromptType())
                     .build());
 
         }else{
