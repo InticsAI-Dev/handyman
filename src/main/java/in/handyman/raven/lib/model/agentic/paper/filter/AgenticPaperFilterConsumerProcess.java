@@ -270,8 +270,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setSystemPrompt(entity.getSystemPrompt());
         radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
-        radonKvpExtractionRequest.setModelName(entity.getModelName());
-
+        radonKvpExtractionRequest.setModelName(action.getContext().get("agentic.paper.filter.activator").equalsIgnoreCase("true")?"KRYPTON":entity.getModelName());
         return radonKvpExtractionRequest;
     }
 
@@ -402,7 +401,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     .paperNo(entity.getPaperNo())
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(PROCESS_NAME)
-                    .message("Agentic Paper Filter macro completed with krypton triton api call")
+                    .message("Agentic Paper Filter macro completed with krypton triton api call "+ entity.getModelName())
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .isBlankPage(flag)
@@ -411,7 +410,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     .processId(entity.getProcessId())
                     .templateName(entity.getTemplateName())
                     .rootPipelineId(entity.getRootPipelineId())
-                    .modelName(modelName)
+                    .modelName(entity.getModelName() != null ? entity.getModelName() : modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
                     .request(encryptRequestResponse(request))
@@ -437,7 +436,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                         .paperNo(dataExtractionDataItem.getPaperNo())
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .stage(PROCESS_NAME)
-                        .message("Agentic Paper Filter macro completed with krypton triton api call")
+                        .message("Agentic Paper Filter macro completed with krypton triton api call "+ entity.getModelName())
                         .createdOn(entity.getCreatedOn())
                         .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                         .isBlankPage(flag)
@@ -446,7 +445,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                         .processId(dataExtractionDataItem.getProcessId())
                         .templateName(entity.getTemplateName())
                         .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
-                        .modelName(modelName)
+                        .modelName(entity.getModelName() != null ? entity.getModelName():modelName)
                         .modelVersion(modelVersion)
                         .batchId(entity.getBatchId())
                         .request(encryptRequestResponse(request))
