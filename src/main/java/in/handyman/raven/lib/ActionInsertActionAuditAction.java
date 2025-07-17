@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -64,34 +65,34 @@ public class ActionInsertActionAuditAction implements IActionExecution {
 
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbSrc);
+      ObjectMapper objectMapper = new ObjectMapper(); // Jackson mapper
+
       jdbi.useTransaction(handle -> {
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(insertActionAudit.getQuerySet());
 
         for (String sqlToExecute : formattedQuery) {
           log.info(aMarker, "Executing SQL: {}", sqlToExecute);
 
-          // Sample values - replace these with actual values as needed
           String transactionId = action.getContext().get("transaction_id");
           String processLoadType = action.getProcessName();
           String pipelineName = contextNode.getOrDefault("pipelineName", action.getPipelineName());
-          String context = contextNode.toString();
+          String context = objectMapper.writeValueAsString(contextNode);  // Serialize as JSON string
           Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
-          Long rootpipelineId=Long.valueOf(action.getRootPipelineId());
-
+          Long rootpipelineId = Long.valueOf(action.getRootPipelineId());
 
           handle.createUpdate(
                           "INSERT INTO audit.pipeline_plugin_audit " +
-                                  "(transaction_id, process_load_type, pipeline_name, start_time, end_time, context, tenant_id,rootpipeline_id) " +
-                                  "VALUES (:transactionId, :processLoadType, :pipelineName, :startTime, :endTime, :context, :tenantId,:rootpipelineId)"
-                  )
+                                  "(transaction_id, process_load_type, pipeline_name, start_time, end_time, context, tenant_id, rootpipeline_id) " +
+                                  "VALUES (:transactionId, :processLoadType, :pipelineName, :startTime, :endTime, :context::jsonb, :tenantId, :rootpipelineId)"
+                  ) // Note ::jsonb cast
                   .bind("transactionId", transactionId)
                   .bind("processLoadType", processLoadType)
                   .bind("pipelineName", pipelineName)
                   .bind("startTime", LocalDateTime.now())
                   .bind("endTime", LocalDateTime.now())
-                  .bind("context", context)
+                  .bind("context", context) // Bound as String, cast as jsonb
                   .bind("tenantId", tenantId)
-                  .bind("rootpipelineId",rootpipelineId)
+                  .bind("rootpipelineId", rootpipelineId)
                   .execute();
         }
       });
@@ -103,25 +104,10 @@ public class ActionInsertActionAuditAction implements IActionExecution {
       throw new HandymanException("Failed to execute", e, String.valueOf(insertActionAudit));
     }
 
-}
+  }
 
   @Override
   public boolean executeIf() throws Exception {
     return insertActionAudit.getCondition();
-  }
-
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @Data
-  @Builder
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class PluginNameActionAudit {
-    private String transactionId;
-    private String processLoadType;
-    private String pipelineName;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-    private String context;
-    private Long tenantId;
   }
 }
