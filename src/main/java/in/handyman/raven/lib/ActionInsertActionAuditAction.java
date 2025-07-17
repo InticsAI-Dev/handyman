@@ -74,19 +74,17 @@ public class ActionInsertActionAuditAction implements IActionExecution {
           log.info(aMarker, "Executing SQL: {}", sqlToExecute);
 
           String transactionId = action.getContext().get("transaction_id");
-          String processLoadType = action.getProcessName();
           String pipelineName = contextNode.getOrDefault("pipelineName", action.getPipelineName());
-          String context = objectMapper.writeValueAsString(contextNode);  // Serialize as JSON string
+          String context = objectMapper.writeValueAsString(contextNode);
           Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
           Long rootpipelineId = Long.valueOf(action.getRootPipelineId());
 
           handle.createUpdate(
                           "INSERT INTO audit.pipeline_plugin_audit " +
-                                  "(transaction_id, process_load_type, pipeline_name, start_time, end_time, context, tenant_id, rootpipeline_id) " +
-                                  "VALUES (:transactionId, :processLoadType, :pipelineName, :startTime, :endTime, :context::jsonb, :tenantId, :rootpipelineId)"
+                                  "(transaction_id, pipeline_name, start_time, end_time, context, tenant_id, rootpipeline_id) " +
+                                  "VALUES (:transactionId, :pipelineName, :startTime, :endTime, :context::jsonb, :tenantId, :rootpipelineId)"
                   ) // Note ::jsonb cast
                   .bind("transactionId", transactionId)
-                  .bind("processLoadType", processLoadType)
                   .bind("pipelineName", pipelineName)
                   .bind("startTime", LocalDateTime.now())
                   .bind("endTime", LocalDateTime.now())
