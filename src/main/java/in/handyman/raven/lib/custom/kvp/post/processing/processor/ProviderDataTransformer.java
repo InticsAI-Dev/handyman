@@ -238,6 +238,7 @@ public class ProviderDataTransformer {
         return new LlmJsonParserKvpKrypton(
                 (String) data.get("key"),
                 (String) data.get("value"),
+                (String) data.get("label"),
                 (Double) data.get("confidence"),
                 objectMapper.convertValue(data.get("boundingBox"), JsonNode.class)
         );
