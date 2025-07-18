@@ -16,6 +16,7 @@ import okhttp3.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -75,6 +76,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     private String callProtegrityApi(String value, String policy, String key, String endpoint) throws HandymanException {
         long auditId = -1;
         String uuid = UUID.randomUUID().toString();
+        long startTime = System.currentTimeMillis();
 
         try {
             auditId = REPO.insertProtegrityAuditRecord(
@@ -101,13 +103,25 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
+                long endTime = System.currentTimeMillis();
+                long tat = endTime - startTime;
+
                 String responseBody = response.body().string();
 
                 if (!response.isSuccessful()) {
-                    String errorMessage = String.format("Protegrity API error [auditId=%d, uuid=%s, key=%s]: %s (Code: %d)",
-                            auditId, uuid, key, response.message(), response.code());
-                    logger.error(errorMessage);
+                    String errorMessage = String.format(
+                            "FAILURE | uuid=%s | time=%s | auditId=%d | key=%s | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms",
+                            uuid,
+                            Instant.now(),
+                            auditId,
+                            key,
+                            endpoint,
+                            response.code(),
+                            response.message(),
+                            tat
+                    );
 
+                    logger.error(errorMessage);
                     REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
                     HandymanException exception = new HandymanException(response.message());
                     HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
@@ -117,20 +131,43 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                 JsonNode jsonResponse = objectMapper.readTree(responseBody);
                 String encryptedValue = jsonResponse.get(0).get("value").asText();
 
-                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", "API call successful for uuid=" + uuid);
-                logger.info("Protegrity API call SUCCESS [auditId={}, uuid={}, key={}]", auditId, uuid, key);
+                String successMessage = String.format(
+                        "SUCCESS | uuid=%s | time=%s | auditId=%d | key=%s | endpoint=%s | TAT=%d ms",
+                        uuid,
+                        Instant.now(),
+                        auditId,
+                        key,
+                        endpoint,
+                        tat
+                );
+
+                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
+                logger.info("Protegrity API call SUCCESS [auditId={}, uuid={}, key={}, TAT={} ms]", auditId, uuid, key, tat);
                 return encryptedValue;
             }
 
         } catch (IOException e) {
-            String errMsg = String.format("Protegrity API IO Error [auditId=%d, uuid=%s, key=%s]: %s",
-                    auditId, uuid, key, e.getMessage());
-            logger.error(errMsg, e);
+            long endTime = System.currentTimeMillis();
+            long tat = endTime - startTime;
 
+            String errMsg = String.format(
+                    "EXCEPTION | uuid=%s | time=%s | auditId=%d | key=%s | endpoint=%s | message=%s | TAT=%d ms",
+                    uuid,
+                    Instant.now(),
+                    auditId,
+                    key,
+                    endpoint,
+                    e.getMessage(),
+                    tat
+            );
+
+            logger.error(errMsg, e);
             HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
+
             if (auditId != -1) {
                 REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
             }
+
             HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
             throw handymanException;
         }

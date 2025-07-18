@@ -353,7 +353,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         String extractedContent = Objects.equals(encryptSotPageContent, "true")
-                ? encryption.encrypt(formattedInferResponse, "AES256", "TEXT_DATA")
+                ? encryption.encrypt(formattedInferResponse, "AES256", "AGENTIC_INFER_OUTPUT")
                 : formattedInferResponse;
 
         String templateId = entity.getTemplateId();
@@ -676,7 +676,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "AP_COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;
