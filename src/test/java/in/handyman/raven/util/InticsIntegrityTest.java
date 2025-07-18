@@ -34,7 +34,7 @@ class InticsIntegrityTest {
         String encryptionUrl = "http://localhost:8199/vulcan/api/encryption/encrypt";
         String decryptionUrl = "http://localhost:8199/vulcan/api/encryption/decrypt";
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.setContext(Collections.singletonMap("protegrity.timeout", "10"));
+        actionExecutionAudit.setContext(Collections.singletonMap("protegrity.timeout.seconds", "10"));
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.setRootPipelineId(1L);
 
@@ -53,7 +53,7 @@ class InticsIntegrityTest {
         String encryptionUrl = "http://localhost:8199/vulcan/api/encryption/encrypt";
         String decryptionUrl = "http://localhost:8199/vulcan/api/encryption/decrypt";
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.setContext(Collections.singletonMap("protegrity.timeout", "10"));
+        actionExecutionAudit.setContext(Collections.singletonMap("protegrity.timeout.seconds", "10"));
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.setRootPipelineId(1L);
 

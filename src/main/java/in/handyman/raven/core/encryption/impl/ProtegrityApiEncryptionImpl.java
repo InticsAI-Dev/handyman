@@ -37,7 +37,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         this.protegrityDecApiUrl = decryptionUrl;
         this.actionExecutionAudit = actionExecutionAudit;
         this.logger = logger;
-         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout", "300"));
+         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout.seconds", "60"));
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(timeout, TimeUnit.SECONDS)
                 .writeTimeout(timeout, TimeUnit.SECONDS)
