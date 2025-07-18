@@ -154,6 +154,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+        radonKvpExtractionRequest.setModelName(entity.getModelName());
 
 
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {

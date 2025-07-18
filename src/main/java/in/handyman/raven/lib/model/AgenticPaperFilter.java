@@ -35,4 +35,5 @@ public class AgenticPaperFilter implements IActionContext {
   private String querySet;
 
   private Boolean condition = true;
+
 }
