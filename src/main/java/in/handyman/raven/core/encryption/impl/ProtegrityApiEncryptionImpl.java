@@ -36,11 +36,11 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         this.protegrityDecApiUrl = decryptionUrl;
         this.actionExecutionAudit = actionExecutionAudit;
         this.logger = logger;
-        int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout", "10"));
+         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout", "300"));
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(timeout, TimeUnit.MINUTES)
-                .writeTimeout(timeout, TimeUnit.MINUTES)
-                .readTimeout(timeout, TimeUnit.MINUTES)
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
                 .build();
     }
 
