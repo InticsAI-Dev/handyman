@@ -36,6 +36,7 @@ public class AgenticPaperFilterInput  implements CoproProcessor.Entity {
     private String promptType;
 
 
+
     @Override
     public List<Object> getRowData() {
         return Collections.emptyList();

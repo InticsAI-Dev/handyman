@@ -352,30 +352,21 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String cleanedJson = stringDataItem.replaceAll("```json", "").replaceAll("```", "").trim();
 
         JSONObject json = new JSONObject(cleanedJson);
-        RadonKvpLineItem dataExtractionDataItem = new RadonKvpLineItem();
-        String inferResponseJson="";
         JsonNode inferResponseNode = null;
         String formattedInferResponse = "";
+        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
+        String inferResponseJson = dataExtractionDataItem.getInferResponse();
+
         if (json.has("model")) {
             String modelValue = json.getString("model");
-            System.out.println(modelValue);
             if (!MODEL_TYPE.equalsIgnoreCase(modelValue)) {
                 //KRYPTON
-                dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
-                inferResponseJson = dataExtractionDataItem.getInferResponse();
                 inferResponseNode = mapper.readTree(inferResponseJson);
-                //formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
-
             }else{
-                inferResponseJson = json.getString("infer_response");
                 inferResponseNode = TextNode.valueOf(inferResponseJson.trim());
-                //inferResponseNode = mapper.readTree(inferResponseJson);
-                //formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
             }
         }
-
         formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
-        System.out.println(formattedInferResponse);
         String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
@@ -395,20 +386,20 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             parentObj.add(AgenticPaperFilterOutput.builder()
                     .filePath(entity.getFilePath())
                     .extractedText(extractedContent)
-                    .originId(entity.getOriginId())
-                    .groupId(entity.getGroupId()!=null?Math.toIntExact(entity.getGroupId()):0)
-                    .paperNo(entity.getPaperNo())
+                    .originId(dataExtractionDataItem.getOriginId())
+                    .groupId(dataExtractionDataItem.getGroupId()!=null?Math.toIntExact(dataExtractionDataItem.getGroupId()):0)
+                    .paperNo(dataExtractionDataItem.getPaperNo())
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message("Agentic Paper Filter macro completed with krypton triton api call "+ entity.getModelName())
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .isBlankPage(flag)
-                    .tenantId(entity.getTenantId())
+                    .tenantId(dataExtractionDataItem.getTenantId())
                     .templateId(templateId)
-                    .processId(entity.getProcessId())
+                    .processId(dataExtractionDataItem.getProcessId())
                     .templateName(entity.getTemplateName())
-                    .rootPipelineId(entity.getRootPipelineId())
+                    .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
                     .modelName(entity.getModelName() != null ? entity.getModelName() : modelName)
                     .modelVersion(modelVersion)
                     .batchId(entity.getBatchId())
