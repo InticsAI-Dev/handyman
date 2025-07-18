@@ -53,17 +53,19 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     public static final String REPLICATE_API_TOKEN_CONTEXT = "replicate.request.api.token";
     public static final String AGENTIC_PAPER_FILTER_MODEL_NAME = "preprocess.agentic.paper.filter.model.name";
     private static final MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-
+    public static final String COPRO_CLIENT_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     private static final String PROCESS_NAME = "AGENTIC PAPER FILTER";
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
     private final int pageContentMinLength;
-    final OkHttpClient httpclient = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.MINUTES).writeTimeout(10, TimeUnit.MINUTES).readTimeout(10, TimeUnit.MINUTES).build();
+    private final OkHttpClient httpclient;
+
     final Jdbi jdbi;
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
+    private final int timeOut;
 
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64,Jdbi jdbi) {
@@ -71,9 +73,12 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.aMarker = aMarker;
         this.action = action;
         this.processBase64 = processBase64;
+        this.timeOut= Integer.parseInt(action.getContext().get(COPRO_CLIENT_SOCKET_TIMEOUT));
         this.fileProcessingUtils = fileProcessingUtils;
         this.pageContentMinLength = pageContentMinLength;
         this.jdbi=jdbi;
+        this.httpclient = new OkHttpClient.Builder().connectTimeout(this.timeOut, TimeUnit.MINUTES).writeTimeout(this.timeOut, TimeUnit.MINUTES).readTimeout(this.timeOut, TimeUnit.MINUTES).build();
+
     }
 
     @Override

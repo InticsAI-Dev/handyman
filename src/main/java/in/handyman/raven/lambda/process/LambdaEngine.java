@@ -17,9 +17,9 @@ import in.handyman.raven.lambda.doa.audit.ExecutionGroup;
 import in.handyman.raven.lambda.doa.audit.ExecutionStatus;
 import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
 import in.handyman.raven.util.UniqueID;
-import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.MessageFormatter;
 import org.slf4j.helpers.SubstituteLogger;
 
@@ -34,13 +34,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-@Slf4j
 public class LambdaEngine {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final HandymanRepo REPO = new HandymanRepoImpl();
     private static final String RAVEN_VM = "RavenVM";
     private static final String THROW_EXCEPTION = "throw_exception";
+    private static final Logger log = LoggerFactory.getLogger(LambdaEngine.class);
 
     static {
         MAPPER.registerModule(new JavaTimeModule());
@@ -245,21 +245,21 @@ public class LambdaEngine {
         try {
             logger.info("Loading context for executing action with id {}", actionId);
             final IActionExecution execution = load(actionContext, actionExecutionAudit);
-            actionName=actionExecutionAudit.getActionName();
+            actionName = actionExecutionAudit.getActionName();
             logger.info("Action execution has been started for action name {} with id {}", actionName, actionId);
             execute(execution, actionExecutionAudit);
             logger.info("Execution has been completed successfully action name {} with id {}", actionName, actionId);
         } catch (Exception e) {
             logger.error("Error executing action " + actionName, e);
             actionExecutionAudit.updateExecutionStatusId(ExecutionStatus.FAILED.getId());
-            throw new HandymanException("Error executing action "+ actionName, e);
+            throw new HandymanException("Error executing action " + actionName, e);
         } finally {
             HandymanActorSystemAccess.update(actionExecutionAudit);
             final StringBuilder stringBuilder = new StringBuilder();
             logger.info("Started collecting Lambda engine logs {}", actionName);
             stringBuilder.append("\n");
             actionExecutionAudit.getEventQueue().forEach(event -> {
-                if(event!=null) {
+                if (event != null) {
                     append(stringBuilder, Instant.ofEpochMilli(event.getTimeStamp()));
                     stringBuilder.append(" ");
                     append(stringBuilder, event.getThreadName());
@@ -282,7 +282,7 @@ public class LambdaEngine {
                 }
             });
             logger.info("\n");
-            log.info("Completed collecting LambdaEngine logs for action "+actionName);
+            log.info("Completed collecting LambdaEngine logs for action " + actionName);
             actionExecutionAudit.setLog(stringBuilder.toString());
             log.info(stringBuilder.toString());
             HandymanActorSystemAccess.update(actionExecutionAudit);

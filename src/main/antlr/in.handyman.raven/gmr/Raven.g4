@@ -183,6 +183,7 @@ action:
     |agenticPaperFilter
     |documentEyeCue
     |multivalueConcatenation
+    |errorResponse
     );
 
 
@@ -1407,6 +1408,7 @@ agenticPaperFilter:
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
 errorResponse:
     'errorResponse' 'as' name=STRING
     'tenantId' tenantId=STRING
