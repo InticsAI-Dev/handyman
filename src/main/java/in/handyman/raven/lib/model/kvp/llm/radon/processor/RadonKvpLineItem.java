@@ -35,5 +35,6 @@ public class RadonKvpLineItem {
     private Long imageWidth;
     private Long imageHeight;
     private String extractedImageUnit;
+    private String processName;
 
 }

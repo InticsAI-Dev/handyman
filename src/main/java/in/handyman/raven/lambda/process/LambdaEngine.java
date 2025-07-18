@@ -29,6 +29,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -260,7 +263,11 @@ public class LambdaEngine {
             stringBuilder.append("\n");
             actionExecutionAudit.getEventQueue().forEach(event -> {
                 if(event!=null) {
-                    append(stringBuilder, Instant.ofEpochMilli(event.getTimeStamp()));
+                    ZonedDateTime localTime = Instant.ofEpochMilli(event.getTimeStamp())
+                            .atZone(ZoneId.systemDefault());
+
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+                    append(stringBuilder, formatter.format(localTime));
                     stringBuilder.append(" ");
                     append(stringBuilder, event.getThreadName());
                     stringBuilder.append(" ");

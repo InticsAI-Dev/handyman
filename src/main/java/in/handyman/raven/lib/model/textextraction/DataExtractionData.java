@@ -22,6 +22,7 @@ public class DataExtractionData {
     private String templateName;
     private String batchId;
     private String base64Img;
+    private String model;
 
 }
 
