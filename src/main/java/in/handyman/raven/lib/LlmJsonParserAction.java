@@ -81,7 +81,7 @@ public class LlmJsonParserAction implements IActionExecution {
                     String jsonResponse;
 
                     String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-                    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+                    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log,jdbi);
 
                     if (Objects.equals(encryptOutputSorItem, "true")) {
                         jsonResponse = encryption.decrypt(extractedContent, "AES256", "LLM_OUTPUT_JSON");

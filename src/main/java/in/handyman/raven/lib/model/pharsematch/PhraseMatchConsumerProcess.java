@@ -62,7 +62,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
 
         String decryptedContent;
 
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
 
@@ -336,7 +336,7 @@ public class PhraseMatchConsumerProcess implements CoproProcessor.ConsumerProces
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

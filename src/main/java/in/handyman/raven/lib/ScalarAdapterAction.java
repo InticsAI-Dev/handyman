@@ -176,7 +176,7 @@ public class ScalarAdapterAction implements IActionExecution {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
             for (ValidatorConfigurationDetail result : listOfDetails) {
 
-                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
                 String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
                 if (Objects.equals(encryptData, "true")) {
                     if (Objects.equals(result.getIsEncrypted(), "t")) {

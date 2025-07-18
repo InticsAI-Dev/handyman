@@ -275,7 +275,7 @@ public class AssetInfoAction implements IActionExecution {
         String encryptReqRes = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

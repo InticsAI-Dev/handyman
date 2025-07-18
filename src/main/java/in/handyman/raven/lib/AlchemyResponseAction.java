@@ -506,7 +506,7 @@ public class AlchemyResponseAction implements IActionExecution {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

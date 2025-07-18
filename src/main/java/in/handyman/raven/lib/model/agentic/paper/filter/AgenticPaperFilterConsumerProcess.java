@@ -350,7 +350,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         String extractedContent = Objects.equals(encryptSotPageContent, "true")
                 ? encryption.encrypt(formattedInferResponse, "AES256", "TEXT_DATA")
@@ -401,7 +401,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         String extractedContent;
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -545,7 +545,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String batchId = entity.getBatchId();
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -601,7 +601,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -676,7 +676,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;
