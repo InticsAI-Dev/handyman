@@ -127,7 +127,7 @@ public class CoproRetryService {
     public static String encryptRequestResponse(String request) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         if ("true".equals(encryptReqRes)) {
-            return SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            return SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
         }
         return request;
     }

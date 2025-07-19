@@ -109,7 +109,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         String lineItemType=controlDataComparisonQueryInputTable.getLineItemType();
 
 
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
         String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         if (Objects.equals(encryptData, "true")) {
             if (Objects.equals(isEncrypted, "t")) {

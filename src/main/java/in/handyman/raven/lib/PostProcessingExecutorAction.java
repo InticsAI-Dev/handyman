@@ -60,7 +60,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
