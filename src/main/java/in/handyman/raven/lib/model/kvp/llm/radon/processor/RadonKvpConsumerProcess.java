@@ -252,7 +252,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .response(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
                         .build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                String errorBody = response.body() != null ? response.body().string() : "No response body or detail found for the request.";
+                String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + errorBody;
+                HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                 log.error(aMarker, "Error in getting response from triton api {}", response.message());
@@ -433,7 +435,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .endpoint(String.valueOf(endpoint))
                         .sorContainerId(entity.getSorContainerId())
                         .build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                String errorBody = response.body() != null ? response.body().string() : "No response body or detail found for the request.";
+                String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + errorBody;
+                HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException("Radon KVP consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
                 log.error(aMarker, "Error in converting response from copro server {} origin Id {} and paper No {}", response.message(), entity.getOriginId(), paperNo);
