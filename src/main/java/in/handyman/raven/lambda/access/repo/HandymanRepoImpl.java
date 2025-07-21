@@ -13,12 +13,10 @@ import in.handyman.raven.lambda.doa.config.*;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -588,12 +586,13 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         JDBI.withHandle(handle -> handle.createUpdate(" UPDATE audit.protegrity_api_audit " +
                         " SET completed_on = :completed_on, status = :status, message = :message" +
                         "            WHERE id = :id")
-                .bind("completed_on", Timestamp.from(Instant.now()))
+                .bind("completed_on", Timestamp.valueOf(LocalDateTime.now()))
                 .bind("status", status)
                 .bind("message", message)
                 .bind("id", id)
                 .execute());
     }
+
     public long insertProtegrityAuditRecord(
             String key,
             String encryptionType,
@@ -612,7 +611,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                         .bind("key", key)
                         .bind("encryption_type", encryptionType)
                         .bind("endpoint", endpoint)
-                        .bind("started_on", Timestamp.from(Instant.now()))
+                        .bind("started_on", Timestamp.valueOf(LocalDateTime.now()))
                         .bind("root_pipeline_id", rootPipelineId)
                         .bind("action_id", actionId)
                         .bind("thread_name", threadName)
@@ -622,7 +621,6 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                         .one()
         );
     }
-
 
 
 }
