@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.AgenticPaperFilterAction;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
@@ -68,7 +69,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
     private final int pageContentMinLength;
-    final OkHttpClient httpclient = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.MINUTES).writeTimeout(10, TimeUnit.MINUTES).readTimeout(10, TimeUnit.MINUTES).build();
+    final OkHttpClient httpclient ;
     final Jdbi jdbi;
     private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -76,13 +77,15 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private final FileProcessingUtils fileProcessingUtils;
 
 
-    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, Jdbi jdbi) {
+    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, Jdbi jdbi) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
         this.pageContentMinLength = pageContentMinLength;
+        int timeOut = aAction.getTimeOut();
+        this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
         this.jdbi = jdbi;
     }
 
