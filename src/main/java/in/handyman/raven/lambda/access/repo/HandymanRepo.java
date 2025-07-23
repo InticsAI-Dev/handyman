@@ -116,4 +116,6 @@ public interface HandymanRepo {
     long insertProtegrityAuditRecord(String key, String encryptionType, String endpoint, Long rootPipelineId, Long actionId, String threadName,String uuid);
 
     void updateProtegrityAuditRecord(long id, String status, String message);
+
+    List<String> getAllInstancesNames();
 }

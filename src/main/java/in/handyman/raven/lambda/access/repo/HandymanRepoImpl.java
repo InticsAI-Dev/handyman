@@ -577,6 +577,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
     }
 
+    @Override
     public void updateProtegrityAuditRecord(
             long id,
             String status,
@@ -593,6 +594,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                 .execute());
     }
 
+    @Override
     public long insertProtegrityAuditRecord(
             String key,
             String encryptionType,
@@ -622,5 +624,13 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         );
     }
 
+    @Override
+    public List<String> getAllInstancesNames() {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(SpwInstanceConfigRepo.class);
+            return repo.findAllInstanceNames();
+        });
+    }
 
 }

@@ -54,4 +54,8 @@ public interface SpwInstanceConfigRepo {
     @SqlQuery("SELECT max(id)+1 FROM  " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SIC_TABLE_NAME + "; ")
     @RegisterBeanMapper(value = SpwInstanceConfig.class)
     Long getId();
+
+    @SqlQuery("SELECT instance FROM " + DoaConstant.CONFIG_SCHEMA_NAME + "." + DoaConstant.SIC_TABLE_NAME + " GROUP BY instance")
+    List<String> findAllInstanceNames();
+
 }

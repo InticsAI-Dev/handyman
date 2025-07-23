@@ -25,12 +25,13 @@ import java.util.concurrent.TimeUnit;
 public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private final OkHttpClient client ;
+    private final OkHttpClient client;
     private final String protegrityEncApiUrl;
     private final String protegrityDecApiUrl;
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger logger;
     private static final HandymanRepo REPO = new HandymanRepoImpl();
+    private final int maxRetries;
 
     public ProtegrityApiEncryptionImpl(String encryptionUrl, String decryptionUrl, ActionExecutionAudit actionExecutionAudit, Logger logger) {
         this.protegrityEncApiUrl = encryptionUrl;
@@ -38,6 +39,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         this.actionExecutionAudit = actionExecutionAudit;
         this.logger = logger;
         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout.seconds", "60"));
+        this.maxRetries = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.retry.count", "3"));
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(timeout, TimeUnit.SECONDS)
                 .writeTimeout(timeout, TimeUnit.SECONDS)
@@ -51,9 +53,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
             logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
             return inputToken;
         }
-
         logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
-        return callProtegrityApi(inputToken, encryptionPolicy, sorItem, protegrityEncApiUrl);
+        return callProtegrityApiWithRetry(inputToken, encryptionPolicy, sorItem, protegrityEncApiUrl);
     }
 
     @Override
@@ -62,9 +63,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
             logger.warn("Decryption skipped: encryptedToken is null or blank for sorItem: {}", sorItem);
             return encryptedToken;
         }
-
         logger.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
-        return callProtegrityApi(encryptedToken, encryptionPolicy, sorItem, protegrityDecApiUrl);
+        return callProtegrityApiWithRetry(encryptedToken, encryptionPolicy, sorItem, protegrityDecApiUrl);
     }
 
     @Override
@@ -73,7 +73,20 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         return "PROTEGRITY_API_ENC";
     }
 
-    private String callProtegrityApi(String value, String policy, String key, String endpoint) throws HandymanException {
+    private String callProtegrityApiWithRetry(String value, String policy, String key, String endpoint) throws HandymanException {
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                logger.info("Attempt {} for key={} with endpoint={}", attempt, key, endpoint);
+                return callProtegrityApi(value, policy, key, endpoint, attempt);
+            } catch (HandymanException e) {
+                logger.error("Attempt {} failed for key={} with error={}", attempt, key, e.getMessage());
+                if (attempt == maxRetries) throw e;
+            }
+        }
+        throw new HandymanException("Unexpected error: all retry attempts failed");
+    }
+
+    private String callProtegrityApi(String value, String policy, String key, String endpoint, int attempt) throws HandymanException {
         long auditId = -1;
         String uuid = UUID.randomUUID().toString();
         long startTime = System.currentTimeMillis();
@@ -89,124 +102,39 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                     uuid
             );
 
-            logger.info("Calling Protegrity API with auditId={}, uuid={}, endpoint={}, key={}", auditId, uuid, endpoint, key);
-
-            List<EncryptionRequest> encryptionPayload = Collections.singletonList(
-                    new EncryptionRequest(policy, value, key)
-            );
+            List<EncryptionRequest> encryptionPayload = Collections.singletonList(new EncryptionRequest(policy, value, key));
             String jsonPayload = objectMapper.writeValueAsString(encryptionPayload);
 
             RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
-            Request request = new Request.Builder()
-                    .url(endpoint)
-                    .post(body)
-                    .build();
+            Request request = new Request.Builder().url(endpoint).post(body).build();
 
             try (Response response = client.newCall(request).execute()) {
-                long endTime = System.currentTimeMillis();
-                long tat = endTime - startTime;
-
+                long tat = System.currentTimeMillis() - startTime;
                 String responseBody = response.body().string();
 
                 if (!response.isSuccessful()) {
-                    String errorMessage = String.format(
-                            "FAILURE | uuid=%s | auditId=%d | key=%s | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms",
-                            uuid,
-                            auditId,
-                            key,
-                            endpoint,
-                            response.code(),
-                            response.message(),
-                            tat
-                    );
-
-                    logger.error(errorMessage);
-                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
-                    HandymanException exception = new HandymanException(response.message());
-                    HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
-                    throw exception;
+                    String errorMsg = String.format("FAILED | attempt=%d | auditId=%d | key=%s | status=%d | message=%s | TAT=%dms", attempt, auditId, key, response.code(), response.message(), tat);
+                    logger.error(errorMsg);
+                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMsg);
+                    throw new HandymanException(response.message());
                 }
 
                 JsonNode jsonResponse = objectMapper.readTree(responseBody);
                 String encryptedValue = jsonResponse.get(0).get("value").asText();
 
-                String successMessage = String.format(
-                        "SUCCESS | uuid=%s | auditId=%d | key=%s | endpoint=%s | TAT=%d ms",
-                        uuid,
-                        auditId,
-                        key,
-                        endpoint,
-                        tat
-                );
-
-                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
-                logger.info("Protegrity API call SUCCESS [auditId={}, uuid={}, key={}, TAT={} ms]", auditId, uuid, key, tat);
+                String successMsg = String.format("SUCCESS | attempt=%d | auditId=%d | key=%s | TAT=%dms", attempt, auditId, key, tat);
+                logger.info(successMsg);
+                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMsg);
                 return encryptedValue;
             }
 
         } catch (IOException e) {
-            long endTime = System.currentTimeMillis();
-            long tat = endTime - startTime;
-
-            String errMsg = String.format(
-                    "EXCEPTION | uuid=%s | auditId=%d | key=%s | endpoint=%s | message=%s | TAT=%d ms",
-                    uuid,
-                    auditId,
-                    key,
-                    endpoint,
-                    e.getMessage(),
-                    tat
-            );
-
-            logger.error(errMsg, e);
-            HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
-
-            if (auditId != -1) {
-                REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
-            }
-
-            HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
-            throw handymanException;
+            long tat = System.currentTimeMillis() - startTime;
+            String errorMsg = String.format("EXCEPTION | attempt=%d | auditId=%d | key=%s | message=%s | TAT=%dms", attempt, auditId, key, e.getMessage(), tat);
+            logger.error(errorMsg, e);
+            if (auditId != -1) REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMsg);
+            throw new HandymanException("Protegrity API call failed", e);
         }
-    }
-
-
-
-    //TODO to increase performance call this method
-    private String callProtegrityApiList(List<EncryptionRequest> encryptionRequestLists, String endpoint) throws HandymanException {
-        UUID uuid = UUID.randomUUID();
-        try {
-            logger.info("Calling Protegrity API with uuid {} at {}", uuid, endpoint);
-
-            String jsonPayload = objectMapper.writeValueAsString(encryptionRequestLists);
-
-            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
-            Request request = new Request.Builder()
-                    .url(endpoint)
-                    .post(body)
-                    .build();
-
-            try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    logger.error("Protegrity API error with uuid {} and message {} (Code: {})", uuid,
-                            response.message(), response.code());
-                    HandymanException.insertException("Protegrity API error: " + response.message(), new HandymanException(response.message()), actionExecutionAudit);
-                }
-
-                String responseBody = String.valueOf(response.body());
-
-                JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                String encryptedValue = jsonResponse.get(0).get("value").asText();
-                logger.info("Protegrity API call successful with uuid {} and message : {}", uuid, response.message());
-                return encryptedValue;
-            }
-
-        } catch (IOException e) {
-            logger.error("Error calling Protegrity with uuid {} and message {}", uuid, e.getMessage(), e);
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Error calling Protegrity API with uuid : " + uuid + " message : " + e.getMessage(), handymanException, actionExecutionAudit);
-        }
-        return "";
     }
 
     @Builder
