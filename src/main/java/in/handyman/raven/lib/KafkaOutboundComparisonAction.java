@@ -65,7 +65,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaOutboundComparison.getResourceConn());
       jdbi.registerColumnMapper(new JsonNodeColumnMapper());
-      InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+      InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
       String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
       boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
       String batchId = kafkaOutboundComparison.getBatchId();
@@ -171,7 +171,6 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
     }
   }
 
-
   private ComparisonResult compareFieldsMapped(KafkaOutboundComparisonInput input, Map<Long, FieldConfig> fieldConfigs,
                                                InticsIntegrity encryption, boolean pipelineEndToEndEncryptionActivator) {
     ComparisonResult result = new ComparisonResult();
@@ -267,6 +266,17 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
     try {
       log.debug(aMarker, "Extracting value for jsonPath: {} (sorItem: {})", jsonPath, sorItemName);
 
+      // Handle special cases for additionalProperties
+      if (jsonPath.contains("additionalProperties") && jsonPath.contains("propName")) {
+        return extractAdditionalProperty(node, jsonPath, sorItemName);
+      }
+
+      // Handle special mapping cases
+      String mappedValue = handleSpecialMappings(node, jsonPath, sorItemName);
+      if (mappedValue != null) {
+        return mappedValue;
+      }
+
       // Try the provided jsonPath
       Object result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(jsonPath);
       String value = parseJsonPathResult(result, jsonPath, sorItemName);
@@ -291,6 +301,103 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
       return null;
     } catch (Exception e) {
       log.warn(aMarker, "Error extracting value for jsonPath: {} (sorItem: {})", jsonPath, sorItemName, e);
+      return null;
+    }
+  }
+
+  /**
+   * Handle special mapping cases for fields that need different treatment
+   */
+  private String handleSpecialMappings(JsonNode node, String jsonPath, String sorItemName) {
+    try {
+      // Handle authId mapping (authId should match authIndicator)
+      if ("authId".equalsIgnoreCase(sorItemName)) {
+        // Try both authId and authIndicator paths
+        String authIdValue = extractSimpleValue(node, "$.aumipayload.authId.value");
+        String authIndicatorValue = extractSimpleValue(node, "$.aumipayload.authIndicator.value");
+
+        // Return the non-null value or concatenate if both exist
+        if (authIdValue != null && authIndicatorValue != null) {
+          return authIdValue.equals(authIndicatorValue) ? authIdValue : authIdValue + "," + authIndicatorValue;
+        }
+        return authIdValue != null ? authIdValue : authIndicatorValue;
+      }
+
+      // Handle levelOfCare mapping (should include AUTH_KEYWORD)
+      if ("levelOfCare".equalsIgnoreCase(sorItemName)) {
+        String levelOfServiceValue = extractSimpleValue(node, "$.aumipayload.levelOfService.value");
+        String authKeywordValue = extractAdditionalProperty(node, "$.additionalProperties[?(@.propName==\"AUTH_KEYWORD\")].propValue", "AUTH_KEYWORD");
+
+        if (levelOfServiceValue != null && authKeywordValue != null) {
+          return levelOfServiceValue + "," + authKeywordValue;
+        }
+        return levelOfServiceValue != null ? levelOfServiceValue : authKeywordValue;
+      }
+
+      // Handle authAdditionalKeywords mapping
+      if ("authAdditionalKeywords".equalsIgnoreCase(sorItemName)) {
+        return extractAdditionalProperty(node, "$.data.additionalProperties[?(@.propName==\"AUTH_ADDL_KEYWORD\")].propValue", "AUTH_ADDL_KEYWORD");
+      }
+
+    } catch (Exception e) {
+      log.warn(aMarker, "Error in special mapping for sorItem: {} with jsonPath: {}", sorItemName, jsonPath, e);
+    }
+    return null;
+  }
+
+  /**
+   * Extract value from additionalProperties array based on propName
+   */
+  private String extractAdditionalProperty(JsonNode node, String jsonPath, String propName) {
+    try {
+      log.debug(aMarker, "Extracting additionalProperty for propName: {}", propName);
+
+      // Extract propName from jsonPath if not provided
+      if (propName == null && jsonPath.contains("propName")) {
+        int start = jsonPath.indexOf("\"") + 1;
+        int end = jsonPath.indexOf("\"", start);
+        if (start > 0 && end > start) {
+          propName = jsonPath.substring(start, end);
+        }
+      }
+
+      // Try different possible paths for additionalProperties
+      String[] possiblePaths = {
+              "$.data.additionalProperties[?(@.propName=='" + propName + "')].propValue",
+              "$.additionalProperties[?(@.propName=='" + propName + "')].propValue",
+              "$.aumipayload.additionalProperties[?(@.propName=='" + propName + "')].propValue"
+      };
+
+      for (String path : possiblePaths) {
+        try {
+          Object result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(path);
+          String value = parseJsonPathResult(result, path, propName);
+          if (value != null && !value.trim().isEmpty()) {
+            log.debug(aMarker, "Found additionalProperty value for {}: {}", propName, value);
+            return value;
+          }
+        } catch (Exception e) {
+          log.debug(aMarker, "Path {} failed for propName {}: {}", path, propName, e.getMessage());
+        }
+      }
+
+      log.debug(aMarker, "No additionalProperty found for propName: {}", propName);
+      return null;
+    } catch (Exception e) {
+      log.warn(aMarker, "Error extracting additionalProperty for propName: {}", propName, e);
+      return null;
+    }
+  }
+
+  /**
+   * Extract simple value using JsonPath
+   */
+  private String extractSimpleValue(JsonNode node, String jsonPath) {
+    try {
+      Object result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(jsonPath);
+      return parseJsonPathResult(result, jsonPath, "simple");
+    } catch (Exception e) {
+      log.debug(aMarker, "Failed to extract simple value for path: {}", jsonPath);
       return null;
     }
   }
