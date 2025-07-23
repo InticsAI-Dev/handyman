@@ -8,10 +8,12 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.KafkaProductionResponse;
 import in.handyman.raven.util.CommonQueryUtil;
+import in.handyman.raven.util.InstanceUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -19,10 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,9 +41,11 @@ public class KafkaProductionResponseAction implements IActionExecution {
   private final Logger log;
   private final KafkaProductionResponse kafkaProductionResponse;
   private final Marker aMarker;
+  private final String URI;
   private static final String SIT_EP_URL = "kafka.production.response.url";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final List<KafkaProductionInput> kafkaProductionInputs = new ArrayList<>();
+  private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
   public KafkaProductionResponseAction(final ActionExecutionAudit action, final Logger log,
                                        final Object kafkaProductionResponse) {
@@ -53,11 +53,14 @@ public class KafkaProductionResponseAction implements IActionExecution {
     this.action = action;
     this.log = log;
     this.aMarker = MarkerFactory.getMarker("KafkaProductionResponse:" + this.kafkaProductionResponse.getName());
+    this.URI = action.getContext().get(SIT_EP_URL);
+
   }
 
   @Override
   public void execute() throws Exception {
     try {
+      final OkHttpClient httpclient = InstanceUtil.createOkHttpClient();
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaProductionResponse.getResourceConn());
 
       jdbi.useTransaction(handle -> {
@@ -87,17 +90,21 @@ public class KafkaProductionResponseAction implements IActionExecution {
           String requestJson = OBJECT_MAPPER.writeValueAsString(requestBody);
 
 
-          HttpClient client = HttpClient.newHttpClient();
-          HttpRequest request = HttpRequest.newBuilder()
-                  .uri(URI.create(SIT_EP_URL))
-                  .header("Content-Type", "application/json")
-                  .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+          Request request = new Request.Builder()
+                  .url(URI)
+                  .post(RequestBody.create(requestJson, MEDIA_TYPE_JSON))
                   .build();
 
-          HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-          int statusCode = response.statusCode();
-          String responseBody = response.body();
+          if (log.isInfoEnabled()) {
+            log.info(aMarker, "The Request Details url: {}", URI);
+          }
 
+          try (Response response = httpclient.newCall(request).execute()) {
+            if (response.body() == null) {
+              log.error(aMarker, "Null response body for requestTxnId: {}", requestTxnId);
+            }
+            String responseBody = response.body().string();
+            int statusCode = response.code();
 
           String status;
           String message;
@@ -114,10 +121,10 @@ public class KafkaProductionResponseAction implements IActionExecution {
                   action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "true");
                   action.getContext().put(kafkaProductionResponse.getName() + ".response", responseBody);
                   break;
-                case "Error in AWS Payload":
-                  log.error(aMarker, "AWS Payload error for requestTxnId: {}", requestTxnId);
-                  message = "AWS Payload error";
-                  throw new HandymanException("Error in AWS Payload for requestTxnId: " + requestTxnId);
+                case "Error in Production Payload":
+                  log.error(aMarker, "Production Payload error for requestTxnId: {}", requestTxnId);
+                  message = "Production Payload error";
+                  throw new HandymanException("Error in Production Payload for requestTxnId: " + requestTxnId);
                 case "No data found":
                   log.warn(aMarker, "No data found for requestTxnId: {}", requestTxnId);
                   message = "No data found";
@@ -149,6 +156,16 @@ public class KafkaProductionResponseAction implements IActionExecution {
           log.error(aMarker, "Error processing requestTxnId: {}", input.getRequestTxnId(), e);
           HandymanException handymanException = new HandymanException(e);
           HandymanException.insertException("KafkaProductionResponse failed for requestTxnId: " + input.getRequestTxnId(), handymanException, action);
+              insertResponseDetails(jdbi, input, "FAILED", null, e.getMessage() != null ? e.getMessage() : "Unknown error");
+          }
+          log.info(aMarker, "KafkaProductionResponse action completed");
+
+        } catch (Exception e) {
+          action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "false");
+          log.error(aMarker, "Error in KafkaProductionResponse action", e);
+          HandymanException handymanException = new HandymanException("KafkaProductionResponse failed", e);
+          HandymanException.insertException("KafkaProductionResponse failed", handymanException, action);
+            insertResponseDetails(jdbi, input, "FAILED", null, e.getMessage() != null ? e.getMessage() : "Unknown error");          throw handymanException;
         }
       }
 
@@ -163,37 +180,37 @@ public class KafkaProductionResponseAction implements IActionExecution {
     }
   }
 
-  private void insertResponseDetails(Jdbi jdbi, KafkaProductionInput input, String responseBody, String status, String message) {
-    jdbi.useHandle(handle -> handle.createUpdate(
-                    "INSERT INTO " + kafkaProductionResponse.getOutputTable() + " (" +
-                            "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
-                            "production_response, document_id, extension, origin_id, tenant_id, transaction_id, " +
-                            "requestTxnId, fileName, batch_id, message) VALUES (" +
-                            ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
-                            ":productionResponse, :documentId, :extension, :originId, :tenantId, :transactionId, " +
-                            ":requestTxnId, :fileName, :batchId, :message)")
-            .bind("createdOn", LocalDateTime.now())
-            .bind("createdUserId", input.getTenantId())
-            .bind("lastUpdatedOn", LocalDateTime.now())
-            .bind("lastUpdatedUserId", input.getTenantId())
-            .bind("status", status)
-            .bind("version", 1)
-            .bind("productionResponse", responseBody)
-            .bind("documentId", input.getDocumentId())
-            .bind("extension", input.getExtension())
-            .bind("originId", input.getOriginId())
-            .bind("tenantId", input.getTenantId())
-            .bind("transactionId", input.getTransactionId())
-            .bind("requestTxnId", input.getRequestTxnId())
-            .bind("fileName", input.getFileName())
-            .bind("batchId", input.getBatchId())
-            .bind("message", message)
-            .execute());
-    log.info(aMarker, "Inserted response details for requestTxnId: {} with status: {} and message: {}",
-            input.getRequestTxnId(), status, message);
-  }
+    private void insertResponseDetails(Jdbi jdbi, KafkaProductionInput input, String status, String responseBody, String message) {
+        jdbi.useHandle(handle -> handle.createUpdate(
+                        "INSERT INTO " + kafkaProductionResponse.getOutputTable() + " (" +
+                                "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
+                                "production_response, document_id, extension, origin_id, tenant_id, transaction_id, " +
+                                "requestTxnId, fileName, batch_id, message) VALUES (" +
+                                ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
+                                ":productionResponse::jsonb, :documentId, :extension, :originId, :tenantId, :transactionId, " +
+                                ":requestTxnId, :fileName, :batchId, :message)")
+                .bind("createdOn", LocalDateTime.now())
+                .bind("createdUserId", input != null ? input.getTenantId() : null)
+                .bind("lastUpdatedOn", LocalDateTime.now())
+                .bind("lastUpdatedUserId", input != null ? input.getTenantId() : null)
+                .bind("status", status)
+                .bind("version", 1)
+                .bind("productionResponse", responseBody != null && !responseBody.isEmpty() ? responseBody : null)
+                .bind("documentId", input != null ? input.getDocumentId() : null)
+                .bind("extension", input != null ? input.getExtension() : null)
+                .bind("originId", input != null ? input.getOriginId() : null)
+                .bind("tenantId", input != null ? input.getTenantId() : null)
+                .bind("transactionId", input != null ? input.getTransactionId() : null)
+                .bind("requestTxnId", input != null ? input.getRequestTxnId() : null)
+                .bind("fileName", input != null ? input.getFileName() : null)
+                .bind("batchId", input != null ? input.getBatchId() : null)
+                .bind("message", message != null ? message : "Unknown ERROR")
+                .execute());
+        log.info(aMarker, "Inserted audit details for requestTxnId: {} with status: {} and message: {}",
+                input != null ? input.getRequestTxnId() : "N/A", status, message);
+    }
 
-  @Override
+    @Override
   public boolean executeIf() throws Exception {
     return kafkaProductionResponse.getCondition();
   }
