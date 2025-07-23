@@ -183,6 +183,7 @@ action:
     |agenticPaperFilter
     |documentEyeCue
     |multivalueConcatenation
+    |contextInsertActionAudit
     );
 
 
@@ -1439,6 +1440,14 @@ multivalueConcatenation:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
+
+contextInsertActionAudit:
+    'contextInsertActionAudit' 'as' name=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
 //rules
 
 resource : STRING;

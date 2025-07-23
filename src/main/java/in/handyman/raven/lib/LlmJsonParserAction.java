@@ -81,7 +81,7 @@ public class LlmJsonParserAction implements IActionExecution {
                     String jsonResponse;
 
                     String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-                    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+                    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
                     if (Objects.equals(encryptOutputSorItem, "true")) {
                         jsonResponse = encryption.decrypt(extractedContent, "AES256", "LLM_OUTPUT_JSON");
@@ -167,6 +167,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     .imageHeight(inputTable.getImageHeight())
                                     .imageWidth(inputTable.getImageWidth())
                                     .sorContainerId(inputTable.getSorContainerId())
+                                    .sorItemLabel(parsedEncryptResponse.getLabel())
                                     .build();
 
                             getInsertIntoKryptonResultTable(handle, insertQueryKrypton, insertData);
@@ -188,22 +189,22 @@ public class LlmJsonParserAction implements IActionExecution {
         }
     }
 
-    @NotNull
     private String buildInsertQueryKrypton() {
         return "INSERT INTO " + llmJsonParser.getOutputTable() +
-                "(created_on,created_user_id, last_updated_on, last_updated_user_id, confidence, sor_item_name, answer, bbox, paper_no,  \n" +
+                "(created_on, created_user_id, last_updated_on, last_updated_user_id, confidence, sor_item_name, answer, bbox, paper_no, \n" +
                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, \n" +
-                "extracted_image_unit, image_dpi, image_height, image_width,sor_container_id) \n" +
-                "  VALUES(?::timestamp,?,?,?,?,?,?,?::jsonb,?,?,?,?,?,? ,?,?,?,?,?,?);";
+                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label) \n" +
+                "VALUES (?::timestamp, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     }
+
 
     @NotNull
     private String buildInsertQueryXenon() {
         return "INSERT INTO " + llmJsonParser.getOutputTable() +
                 "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id) "
-                + " VALUES(?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?,?)";
+                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label) "
+                + " VALUES(?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?,?,?)";
     }
 
     public static List<LlmJsonParsedResponse> encryptJsonAnswers(ActionExecutionAudit action,
@@ -322,6 +323,7 @@ public class LlmJsonParserAction implements IActionExecution {
                 .bind(17, llmJsonQueryOutputTable.getImageHeight())
                 .bind(18, llmJsonQueryOutputTable.getImageWidth())
                 .bind(19, llmJsonQueryOutputTable.getSorContainerId())
+                .bind(20,llmJsonQueryOutputTable.getSorItemLabel())
                 .execute();
     }
 

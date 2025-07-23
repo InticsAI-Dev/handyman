@@ -289,7 +289,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         final String flag = (dataExtractionDataItem.getInferResponse().length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContent = encryption.encrypt(dataExtractionDataItem.getInferResponse(), "AES256", "TEXT_DATA");
@@ -309,7 +309,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String extractedContent;
         String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -466,7 +466,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String batchId = entity.getBatchId();
         String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -559,7 +559,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -587,7 +587,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
         if (Objects.equals(encryptSotPageContent, "true")) {
             extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
@@ -662,7 +662,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

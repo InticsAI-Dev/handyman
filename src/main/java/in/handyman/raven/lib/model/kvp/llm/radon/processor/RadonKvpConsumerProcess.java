@@ -88,7 +88,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
             log.info("Checking if end-to-end encryption is enabled: {}", encryptOutputJsonContent);
 
-            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
             if (Objects.equals(encryptOutputJsonContent, "true")) {
                 log.info("Encrypting input response JSON...");
@@ -154,6 +154,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+        radonKvpExtractionRequest.setModelName(entity.getModelName());
 
 
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
@@ -227,7 +228,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
                 }
             } else {
-                
+                String errorBody = response.body() != null ? response.body().string() : "No response body or detail found for the request.";
+
                 parentObj.add(RadonQueryOutputTable.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                         .paperNo(paperNo)
@@ -248,13 +250,13 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
                         .request(encryptRequestResponse(jsonRequest))
-                        .response(encryptRequestResponse(response.message()))
+                        .response(encryptRequestResponse(errorBody))
                         .endpoint(String.valueOf(endpoint))
                         .build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + errorBody);
                 HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
 
-                log.error(aMarker, "Error in getting response from triton api {}", response.message());
+                log.error(aMarker, "Error in getting response from triton api {}", errorBody);
             }
         } catch (IOException e) {
             handleErrorParentObject(entity, parentObj, e);
@@ -336,7 +338,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
 
         String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
         log.info(aMarker, "checking provider data found for the given input {}", Boolean.TRUE.equals(entity.getPostProcess()));
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
             log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
@@ -508,7 +510,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "KVP_COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

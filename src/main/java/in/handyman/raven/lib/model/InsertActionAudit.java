@@ -19,21 +19,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "AgenticPaperFilter"
+    actionName = "InsertActionAudit"
 )
-public class AgenticPaperFilter implements IActionContext {
+public class InsertActionAudit implements IActionContext {
   private String name;
 
   private String resourceConn;
 
-  private String resultTable;
-
-  private String endPoint;
-
-  private String processId;
-
   private String querySet;
 
   private Boolean condition = true;
-
 }

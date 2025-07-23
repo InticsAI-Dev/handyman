@@ -267,7 +267,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     public String encryptRequestResponse(String data) {
         String encryptReqRes = action.getContext().get(EncryptionConstants.ENCRYPT_REQUEST_RESPONSE);
         if ("true".equals(encryptReqRes)) {
-            return SecurityEngine.getInticsIntegrityMethod(action).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
+            return SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
         }
         return data;
     }
@@ -275,7 +275,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     public String encryptDocEyeBase64(String data) {
         String encryptReqRes = action.getContext().get(EncryptionConstants.DOC_EYECUE_ENCRYPTION);
         if ("true".equals(encryptReqRes)) {
-            return SecurityEngine.getInticsIntegrityMethod(action).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
+            return SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(data, "AES256", "DOCUMENT_EYE_CUE_REQUEST");
         }
         return data;
     }

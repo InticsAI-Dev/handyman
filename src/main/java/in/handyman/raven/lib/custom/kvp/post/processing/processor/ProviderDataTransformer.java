@@ -130,7 +130,7 @@ public class ProviderDataTransformer {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;
@@ -238,6 +238,7 @@ public class ProviderDataTransformer {
         return new LlmJsonParserKvpKrypton(
                 (String) data.get("key"),
                 (String) data.get("value"),
+                (String) data.get("label"),
                 (Double) data.get("confidence"),
                 objectMapper.convertValue(data.get("boundingBox"), JsonNode.class)
         );

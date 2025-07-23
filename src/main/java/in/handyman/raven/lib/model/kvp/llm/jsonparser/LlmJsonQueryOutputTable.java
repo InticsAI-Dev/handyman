@@ -32,4 +32,5 @@ public class LlmJsonQueryOutputTable {
     private Long imageHeight;
     private Long imageWidth;
     private Long sorContainerId;
+    private String sorItemLabel;
 }

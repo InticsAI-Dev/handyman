@@ -81,7 +81,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     @Override
     public List<NerOutputTable> process(URL endpoint, NerInputTable result) throws Exception {
 
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
         String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         if (Objects.equals(encryptData, "true")) {
             if (Objects.equals(result.getIsEncrypted(), "true")) {

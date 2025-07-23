@@ -18,6 +18,16 @@ public class RadonKvpExtractionResponse {
 
     @JsonProperty("model_version")
     private String modelVersion;
+
+    @JsonProperty("statusCode")
+    private Long statusCode;
+
+    @JsonProperty("errorMessage")
+    private String errorMessage;
+
+    @JsonProperty("detail")
+    private String detail;
+
     private List<RadonKvpOutput> outputs;
 
 }

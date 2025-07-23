@@ -76,7 +76,7 @@ public class RadonKvpAction implements IActionExecution {
         this.log = log;
         this.radonKvp = (RadonKvp) radonKvp;
         this.jdbi = ResourceAccess.rdbmsJDBIConn(this.radonKvp.getResourceConn());
-        this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action);
+        this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action,log);
         this.objectMapper = new ObjectMapper();
         this.aMarker = MarkerFactory.getMarker("RadonKvp:" + this.radonKvp.getName());
 

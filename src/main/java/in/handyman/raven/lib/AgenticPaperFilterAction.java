@@ -42,8 +42,13 @@ import java.util.stream.Collectors;
 public class AgenticPaperFilterAction implements IActionExecution {
 
     public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
+    public static final String INSERT_COLUMNS_UPDATED= "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint,container_id,prompt_type";
+    private static final String DEFAULT_SOCKET_TIMEOUT = "100";
+
     public static final String INSERT_INTO = "INSERT INTO ";
     public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?)";
+    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?,?,?)";
+
     public static final String READ_BATCH_SIZE = "read.batch.size";
     public static final String AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT = "agentic.paper.filter.consumer.API.count";
     public static final String WRITE_BATCH_SIZE = "write.batch.size";
@@ -56,12 +61,16 @@ public class AgenticPaperFilterAction implements IActionExecution {
     private final AgenticPaperFilter agenticPaperFilter;
     private final Marker aMarker;
     private final String processBase64;
+    private final int timeout;
+
 
     public AgenticPaperFilterAction(final ActionExecutionAudit action, final Logger log, final Object agenticPaperFilter) {
         this.agenticPaperFilter = (AgenticPaperFilter) agenticPaperFilter;
         this.action = action;
         this.log = log;
         this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
+        this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
+
 
         this.aMarker = MarkerFactory.getMarker(" AgenticPaperFilter:" + this.agenticPaperFilter.getName());
     }
@@ -76,7 +85,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             log.info(aMarker, "Agentic Paper Filter Action for {} has been started", agenticPaperFilter.getName());
 
             String outputTableName = agenticPaperFilter.getResultTable();
-            final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) " + INSERT_INTO_VALUES;
+            final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS_UPDATED+ " ) " + INSERT_INTO_VALUES_UPDATED;
             final List<URL> urls = Optional.ofNullable(agenticPaperFilter.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
@@ -122,7 +131,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
             AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
-                    new AgenticPaperFilterConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64, jdbi);
+                    new AgenticPaperFilterConsumerProcess(log, aMarker, action, this,pageContentMinLength, fileProcessingUtils, processBase64, jdbi);
 
 
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, agenticPaperFilterConsumerProcess);
@@ -134,11 +143,20 @@ public class AgenticPaperFilterAction implements IActionExecution {
         }
 
     }
+    private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
+        String value = action.getContext().getOrDefault(key, defaultValue).trim();
+        return value.isEmpty() ? Integer.parseInt(defaultValue) : Integer.parseInt(value);
+    }
+
 
 
     @Override
     public boolean executeIf() throws Exception {
         return agenticPaperFilter.getCondition();
+    }
+
+    public int getTimeOut() {
+        return this.timeout;
     }
 
     @Data

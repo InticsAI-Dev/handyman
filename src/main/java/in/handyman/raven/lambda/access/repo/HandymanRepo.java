@@ -110,5 +110,10 @@ public interface HandymanRepo {
     List<PipelineExecutionAudit> findAllProcessName(final String processName);
 
     List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId);
+
     List<HandymanExceptionAuditDetails> findAllHandymanExceptions();
+
+    long insertProtegrityAuditRecord(String key, String encryptionType, String endpoint, Long rootPipelineId, Long actionId, String threadName,String uuid);
+
+    void updateProtegrityAuditRecord(long id, String status, String message);
 }

@@ -61,7 +61,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
   public void execute() throws Exception {
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multivalueConcatenation.getResourceConn());
-      InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+      InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
 
       String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
       boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
