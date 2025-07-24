@@ -137,7 +137,8 @@ public class CoproRetryService {
             });
         } catch (Exception e) {
             log.error("Transaction failed for audit insert: {}", e.getMessage(), e);
-            throw new RuntimeException("Transaction failed", e);
+            HandymanException handymanException=new HandymanException(e);
+            HandymanException.insertException("Error in executing prepared batch insert query ", handymanException, action);
         }
     }
 

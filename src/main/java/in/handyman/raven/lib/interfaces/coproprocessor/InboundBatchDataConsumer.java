@@ -222,29 +222,29 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
 
 
-    private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime, Jdbi jdbi) {
+    private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime,Jdbi jdbi) {
         if (nodeCount.get() % writeBatchSize == 0) {
-            jdbi.useTransaction(handle -> {
-                usePreparedBatchToFlush(insertSql, handle, processedEntity);
-            });
-            insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
-            processedEntity.clear();
-        }
-    }
+            try {
+                jdbi.useTransaction(handle -> {
+                    final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
+                    iterateAndAddToBatch(processedEntity, preparedBatch);
 
-    private void usePreparedBatchToFlush(String insertSql, Handle handle, List processedEntity) {
-        try {
-            final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
-            iterateAndAddToBatch(processedEntity, preparedBatch);
-            logger.info("prepared batch insert query input entity size {} ", processedEntity.size());
-            int[] execute = preparedBatch.execute();
-            logger.info("Consumer persisted {}", execute);
-        }catch (Exception e) {
-            logger.error("Error in executing prepared batch insert query {}", e.getMessage());
-            HandymanException handymanException=new HandymanException(e);
-            HandymanException.insertException("Error in executing prepared batch insert query ", handymanException, actionExecutionAudit);
-        }
+                    logger.info("Prepared batch insert query input entity size: {}", processedEntity.size());
 
+                    int[] executeResults = preparedBatch.execute();
+                    logger.info("Batch insert executed successfully. Rows affected: {}", executeResults.length);
+                });
+
+                insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
+                processedEntity.clear();
+
+            } catch (Exception e) {
+                logger.error("Error during batch insert or audit logging. Batch size: {}, Entities: {}, StartTime: {}",
+                        writeBatchSize, processedEntity.size(), startTime, e);
+                HandymanException exception=new HandymanException(e);
+                HandymanException.insertException("Failed to write batch to DB", exception, actionExecutionAudit);
+            }
+        }
     }
 
 
