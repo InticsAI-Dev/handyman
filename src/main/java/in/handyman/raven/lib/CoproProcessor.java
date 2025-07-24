@@ -63,7 +63,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             this.logger.info("Copro processor created for copro coproNodes {}", nodeSize);
         } else {
             this.logger.info("Failed to create Copro processor due to empty copro coproNodes");
-            throw new HandymanException("Failed to create Copro processor due to empty copro coproNodes");
+            HandymanException handymanException=new HandymanException("Failed to create Copro processor due to empty copro coproNodes");
+            HandymanException.insertException("Failed to create Copro processor due to empty copro coproNodes",handymanException,actionExecutionAudit);
         }
         final StatementExecutionAudit audit = StatementExecutionAudit.builder()
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())
@@ -99,7 +100,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                             Thread.sleep(10);
                         } catch (InterruptedException e) {
                             logger.error("Error at Producer sleep", e);
-                            throw new HandymanException("Error at Producer sleep", e, actionExecutionAudit);
+                            HandymanException handymanException=new HandymanException(e);
+                            HandymanException.insertException("Error at Producer sleep", handymanException, actionExecutionAudit);
                         }
                     });
                     logger.info("Total Partition added to the queue: {} ", partitions.size());
