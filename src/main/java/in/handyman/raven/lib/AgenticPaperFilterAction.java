@@ -65,9 +65,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
     @Override
     public void execute() {
         try {
-            Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(filterConfig.getResourceConn());
-            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-
+            log.info(aMarker, "Starting Agentic Paper Filter Action for {}", filterConfig.getName());
             FileProcessingUtils fileUtils = new FileProcessingUtils(log, aMarker, action);
             log.info(aMarker, "Agentic Paper Filter execution started for {}", filterConfig.getName());
 
