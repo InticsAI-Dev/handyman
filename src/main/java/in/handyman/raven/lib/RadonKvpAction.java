@@ -56,9 +56,7 @@ public class RadonKvpAction implements IActionExecution {
     private final Logger log;
     private final RadonKvp radonKvp;
     private final Marker aMarker;
-    private ProviderDataTransformer providerDataTransformer;
     private final ObjectMapper objectMapper;
-    private Jdbi jdbi;
     private final InticsIntegrity securityEngine;
 
     private final int threadSleepTime;
@@ -97,10 +95,9 @@ public class RadonKvpAction implements IActionExecution {
     public void execute() throws Exception {
         try {
 
-            providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
+            ProviderDataTransformer providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
 
 
-            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
 
@@ -136,7 +133,7 @@ public class RadonKvpAction implements IActionExecution {
                 log.info(aMarker, "Consumer API count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerApiCount, readBatchSize);
             }
 
-            final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
+            final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor( urls);
             Thread.sleep(threadSleepTime);
 
             final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, providerDataTransformer,radonKvp);
@@ -151,7 +148,7 @@ public class RadonKvpAction implements IActionExecution {
 
     }
 
-    private @NotNull CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> getTableCoproProcessor(Jdbi jdbi, List<URL> urls) {
+    private @NotNull CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> getTableCoproProcessor(List<URL> urls) {
         RadonQueryInputTable neonQueryInputTable = new RadonQueryInputTable();
         final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor =
                 new CoproProcessor<>(new LinkedBlockingQueue<>(),
