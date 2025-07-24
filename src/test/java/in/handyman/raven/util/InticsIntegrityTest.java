@@ -1,6 +1,9 @@
 package in.handyman.raven.util;
 
+import java.util.Arrays;
+import java.util.List;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.core.encryption.impl.ProtegrityApiEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -8,11 +11,9 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.platform.commons.logging.LoggerFactory;
 import org.mockito.Mockito;
 
 import java.util.Collections;
-import java.util.logging.Logger;
 
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,20 +32,22 @@ class InticsIntegrityTest {
 
     @Test
     void testProtegrityEncryptionApi(){
-        String encryptionUrl = "http://localhost:8199/vulcan/api/encryption/encrypt";
-        String decryptionUrl = "http://localhost:8199/vulcan/api/encryption/decrypt";
+        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.setContext(Collections.singletonMap("protegrity.timeout.seconds", "10"));
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.setRootPipelineId(1L);
-
-
         // Create an instance of ProtegrityApiEncryptionImpl
         // with the necessary parameters
+        List<EncryptionRequestClass> requestList = Arrays.asList(
+                new EncryptionRequestClass("AES256", "value1", "key123"),
+                new EncryptionRequestClass("AES128", "value2", "key456")
+        );
         ProtegrityApiEncryptionImpl protegrityApiEncryption=new ProtegrityApiEncryptionImpl(encryptionUrl,decryptionUrl, actionExecutionAudit, log);
-        String encryptedString = protegrityApiEncryption.encrypt("test-encryption","AES256","COPRO_REQUEST");
+        //String encryptedString = protegrityApiEncryption.encrypt("test-encryption","AES256","COPRO_REQUEST");
+        List<EncryptionRequestClass> encryptedString = protegrityApiEncryption.encrypt(requestList);
         System.out.println(encryptedString);
-
     }
 
 

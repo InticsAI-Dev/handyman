@@ -10,6 +10,7 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
+import java.util.List;
 
 public class AESEncryptionImpl implements InticsDataEncryptionApi {
 
@@ -103,6 +104,16 @@ public class AESEncryptionImpl implements InticsDataEncryptionApi {
             LOGGER.error("Error during AES-256 decryption for sorItem: {} - {}", sorItem, e.getMessage(), e);
             throw new HandymanException("Error during AES-256 decryption.", e);
         }
+    }
+
+    @Override
+    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+        return List.of();
+    }
+
+    @Override
+    public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+        return List.of();
     }
 
     @Override
