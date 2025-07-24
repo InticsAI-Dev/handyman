@@ -284,7 +284,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
         CoproRetryErrorAuditTable auditInput = setErrorAudictInputDetails(entity, endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,jsonRequest, auditInput, action, jdbi, httpclient)) {String responseBody = Objects.requireNonNull(response.body()).string();
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -480,7 +481,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
         CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request, jsonRequest,audictInput, action, jdbi, httpclient)) {
+        try (Response response = httpclient.newCall(request).execute()) {
 
             String responseBody = Objects.requireNonNull(response.body()).string();
 
@@ -546,7 +547,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     private void replicateResponseBuilder(URL endpoint, Request request, List<AgenticPaperFilterOutput> parentObj, AgenticPaperFilterInput entity, String replicateJsonRequest) {
         CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,replicateJsonRequest, audictInput, action, jdbi, httpclient)) {
+        try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {
@@ -624,7 +625,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
         CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,jsonInputRequest, audictInput, action, jdbi, httpclient)) {
+        try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             if (response.isSuccessful()) {

@@ -210,7 +210,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long rootPipelineId = entity.getRootPipelineId();
 
         CoproRetryErrorAuditTable audictInput =  setErrorAuditInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,jsonRequest,audictInput,action,jdbi,httpclient)) {
+        try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
                 String responseBody = response.body().string();
@@ -398,7 +398,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Long rootPipelineId = entity.getRootPipelineId();
 
         CoproRetryErrorAuditTable audictInput =  setErrorAuditInputDetails(entity,endpoint);
-        try (Response response = CoproRetryService.callCoproApiWithRetry(request,jsonInputRequest,audictInput,action,jdbi,httpclient)) {
+        try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 String responseBody = response.body().string();
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
