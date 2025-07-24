@@ -46,15 +46,15 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
 
-    private RadonKvp actionDetails;
+    private String jdbiResourceName;
 
     private final ProviderDataTransformer providerDataTransformer;
 
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, RadonKvp actionDetails) {
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
-        this.actionDetails = actionDetails;
+        this.jdbiResourceName = jdbiResourceName;
         this.providerDataTransformer = providerDataTransformer;
         int timeOut = aAction.getTimeOut();
         this.processBase64 = processBase64;
@@ -344,7 +344,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
             log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
             String providerClassName = action.getContext().get(entity.getPostProcessClassName());
-            Optional<String> sourceCode = fetchBshResultByClassName(actionDetails.getResourceConn(), providerClassName, tenantId);
+            Optional<String> sourceCode = fetchBshResultByClassName(jdbiResourceName, providerClassName, tenantId);
             if (sourceCode.isPresent()) {
                 List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, modelResponse.getInferResponse(), entity, request, response, endpoint);
                 parentObj.addAll(providerParentObj);
