@@ -106,11 +106,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     public static void checkJDBIConnection() {
-        try (var ignored = JDBI.open()) {
-            log.info("Jdbi connection is open, initiating the transaction");
+        try {
+            JDBI.withHandle(handle -> {
+                handle.execute("SELECT 1");
+                log.debug("JDBI connection healthy");
+                return null;
+            });
         } catch (Exception e) {
-            log.error("Jdbi connection is closed, recreating the connection");
-            getDatabaseConnectionByConnectionType();
+            log.error("JDBI connection failed, reconnecting...", e);
+            getDatabaseConnectionByConnectionType(); // if needed
         }
     }
 
@@ -299,7 +303,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     public void insertStatement(final StatementExecutionAudit audit) {
         checkJDBIConnection();
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
+        JDBI.useHandle(handle ->
+                handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
                 .bindBean(audit).execute());
     }
 
