@@ -13,23 +13,13 @@ public class KafkaOutboundComparisonTest {
                 .name("kafka")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("product_outbound.kafka_comparison_results")
-                .querySet("SELECT  \n" +
-                        "                            a.id AS processId, \n" +
-                        "                            NULL AS groupId,  \n" +
-                        "                            a.product_response AS productResponse, \n" +
-                        "                            a.custom_response AS customResponse, \n" +
-                        "                            a.origin_id AS originId, \n" +
-                        "                            a.tenant_id AS tenantId, \n" +
-                        "                            NULL AS rootPipelineId,  \n" +
-                        "                            a.status AS status, \n" +
-                        "                            NULL AS stage,  \n" +
-                        "                            NULL AS message,  \n" +
-                        "                            NULL AS triggeredUrl,  \n" +
-                        "                            NULL AS feature,                              a.batch_id AS batchId, \n" +
-                        "                            a.transaction_id AS inboundTransactionId \n" +
-                        "                        FROM product_outbound.product_response_details a \n" +
-                        "                        where a.origin_id = 'ORIGIN-8292';")
+                .outputTable("product_outbound.kafka_comparison_table")
+                .querySet("SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, status, \n" +
+                        "version, production_response, document_id, extension, origin_id, tenant_id, transaction_id, \n" +
+                        "requesttxnid, filename, batch_id, message \n" +
+                        "FROM product_outbound.kafka_production_response \n" +
+                        "WHERE requesttxnid = 'SI-123' and status='SUCCESS'")
+
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

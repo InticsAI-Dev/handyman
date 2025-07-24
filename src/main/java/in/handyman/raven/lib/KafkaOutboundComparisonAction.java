@@ -15,10 +15,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.KafkaOutboundComparison;
 import in.handyman.raven.util.CommonQueryUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.mapper.ColumnMapper;
 import org.jdbi.v3.core.statement.Query;
@@ -29,11 +26,15 @@ import org.slf4j.MarkerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -47,538 +48,562 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
 public class KafkaOutboundComparisonAction implements IActionExecution {
   private final ActionExecutionAudit action;
   private final Logger log;
-  private final KafkaOutboundComparison kafkaOutboundComparison;
+  private final KafkaOutboundComparison jsonToTableConversion;
   private final Marker aMarker;
   private final Configuration jsonPathConfig = Configuration.defaultConfiguration()
           .addOptions(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL);
 
   public KafkaOutboundComparisonAction(final ActionExecutionAudit action, final Logger log,
-                                       final Object kafkaOutboundComparison) {
-    this.kafkaOutboundComparison = (KafkaOutboundComparison) kafkaOutboundComparison;
+                                       final Object jsonToTableConversion) {
+    this.jsonToTableConversion = (KafkaOutboundComparison) jsonToTableConversion;
     this.action = action;
     this.log = log;
-    this.aMarker = MarkerFactory.getMarker("KafkaOutboundComparison:" + this.kafkaOutboundComparison.getName());
+    this.aMarker = MarkerFactory.getMarker("JsonToTableConversion:" + this.jsonToTableConversion.getName());
   }
 
   @Override
   public void execute() throws Exception {
     try {
-      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaOutboundComparison.getResourceConn());
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jsonToTableConversion.getResourceConn());
       jdbi.registerColumnMapper(new JsonNodeColumnMapper());
       InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
       String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
       boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
-      String batchId = kafkaOutboundComparison.getBatchId();
-      String outputTableName = kafkaOutboundComparison.getOutputTable();
+      String batchId = jsonToTableConversion.getBatchId();
+      String outputTableName = jsonToTableConversion.getOutputTable();
 
       if (outputTableName == null || outputTableName.trim().isEmpty()) {
         log.error(aMarker, "Output table name is empty or null");
         throw new HandymanException("Output table name is required");
       }
 
-      Map<Long, FieldConfig> fieldConfigs = fetchFieldConfigs(jdbi);
-      log.info(aMarker, "Fetched {} field configurations: {}", fieldConfigs.size(), fieldConfigs.values());
+      Map<Long, SorFieldConfig> fieldConfigs = fetchSorFieldConfigs(jdbi);
+      log.info(aMarker, "Fetched {} SOR field configurations", fieldConfigs.size());
 
       if (fieldConfigs.isEmpty()) {
-        log.error(aMarker, "No field configurations found in sor_meta.field_wise_outbound_config");
-        throw new HandymanException("No field configurations found");
+        log.error(aMarker, "No SOR field configurations found in sor_meta.field_wise_outbound_config");
+        throw new HandymanException("No SOR field configurations found");
       }
 
       jdbi.useTransaction(handle -> {
-        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaOutboundComparison.getQuerySet());
+        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(jsonToTableConversion.getQuerySet());
         AtomicInteger queryIndex = new AtomicInteger(0);
+
         for (String sqlToExecute : formattedQuery) {
-          log.info(aMarker, "Executing query {} from index {}: {}", sqlToExecute, queryIndex.getAndIncrement(), sqlToExecute);
+          log.info(aMarker, "Executing query {} from index {}", queryIndex.get(), sqlToExecute);
           Query query = handle.createQuery(sqlToExecute);
-          query.execute((rs, ctx) -> {
-            java.sql.ResultSetMetaData metaData = rs.get().getMetaData();
-            int columnCount = metaData.getColumnCount();
-            for (int i = 1; i <= columnCount; i++) {
-              log.info(aMarker, "Column {}: {}", i, metaData.getColumnName(i));
-            }
-            return null;
-          });
-          List<KafkaOutboundComparisonInput> inputs = query.mapToBean(KafkaOutboundComparisonInput.class)
+
+          List<JsonToTableInput> inputs = query.mapToBean(JsonToTableInput.class)
                   .stream()
+                  .peek(input -> log.debug(aMarker, "Fetched input: {}", input))
                   .collect(Collectors.toList());
-          log.info(aMarker, "Executed query from index {}, fetched {} records", queryIndex.get(), inputs.size());
+          log.info(aMarker, "Executed query from index {}, fetched {} records", queryIndex.getAndIncrement(), inputs.size());
 
           if (inputs.isEmpty()) {
-            log.warn(aMarker, "No records retrieved for query at index {}. Skipping comparison.", queryIndex.get());
-            return;
+            log.warn(aMarker, "No records retrieved for query at index {}. Skipping conversion.", queryIndex.get());
+            continue;
           }
 
-          for (KafkaOutboundComparisonInput input : inputs) {
-            try {
-              log.debug(aMarker, "ProductResponse for processId {}: {}", input.getProcessId(), input.getProductResponse().toString());
-              log.debug(aMarker, "CustomResponse for processId {}: {}", input.getProcessId(), input.getCustomResponse().toString());
-              if (input.getProductResponse() == null || isEmptyJsonNode(input.getProductResponse())) {
-                log.warn(aMarker, "ProductResponse is null or empty for processId: {}. Skipping comparison.", input.getProcessId());
-                saveEmptyResult(handle, outputTableName, input, "ProductResponse is null or empty");
-                continue;
-              }
-              if (input.getCustomResponse() == null || isEmptyJsonNode(input.getCustomResponse())) {
-                log.warn(aMarker, "CustomResponse is null or empty for processId: {}. Skipping comparison.", input.getProcessId());
-                saveEmptyResult(handle, outputTableName, input, "CustomResponse is null or empty");
-                continue;
-              }
-
-              ComparisonResult comparisonResult = compareFieldsMapped(input, fieldConfigs, encryption, pipelineEndToEndEncryptionActivator);
-              saveComparisonResult(handle, outputTableName, comparisonResult);
-            } catch (Exception e) {
-              log.error(aMarker, "Error processing record for processId: {}", input.getProcessId(), e);
-              saveEmptyResult(handle, outputTableName, input, "Error processing record: " + e.getMessage());
-            }
+          for (JsonToTableInput input : inputs) {
+            processJsonRecord(jdbi, input, fieldConfigs, encryption,
+                    pipelineEndToEndEncryptionActivator, batchId, outputTableName);
           }
         }
       });
+
+      log.info(aMarker, "JsonToTableConversion action completed");
+      action.getContext().put(jsonToTableConversion.getName() + ".isSuccessful", "true");
+
     } catch (Exception e) {
-      log.error(aMarker, "Error executing KafkaOutboundComparisonAction", e);
-      throw new HandymanException("Execution failed", e);
+      action.getContext().put(jsonToTableConversion.getName() + ".isSuccessful", "false");
+      log.error(aMarker, "Error in JsonToTableConversion action", e);
+      HandymanException handymanException = new HandymanException("JsonToTableConversion failed", e);
+      HandymanException.insertException("JsonToTableConversion failed", handymanException, action);
+      throw handymanException;
+    }
+  }
+
+  private void processJsonRecord(Jdbi jdbi, JsonToTableInput input, Map<Long, SorFieldConfig> fieldConfigs,
+                                 InticsIntegrity encryption, boolean encryptionActivator, String batchId, String outputTableName) {
+    try {
+      String docId = input.getDocumentId();
+      log.info(aMarker, "Processing JSON to table conversion for docId: {}", docId);
+
+      // Validate JSON response
+      JsonNode jsonResponse = input.getProductionResponse();
+      if (jsonResponse == null) {
+        log.error(aMarker, "Null JSON response for docId: {}", docId);
+        insertTableRecord(jdbi, input, new HashMap<>(), "ERROR", "Null JSON response", batchId, outputTableName);
+        return;
+      }
+
+      // Convert JSON to table format using SOR configuration
+      TableConversionResult conversionResult = convertJsonToTable(jsonResponse, fieldConfigs, encryption, encryptionActivator, docId);
+
+      // Insert converted data into output table
+      insertTableRecord(jdbi, input, conversionResult.getFieldValues(),
+              conversionResult.getStatus(), conversionResult.getMessage(), batchId, outputTableName);
+
+    } catch (Exception e) {
+      log.error(aMarker, "Error processing docId: {}", input != null ? input.getDocumentId() : "N/A", e);
+      insertTableRecord(jdbi, input, new HashMap<>(), "ERROR",
+              e.getMessage() != null ? e.getMessage() : "Unknown error", batchId, outputTableName);
+    }
+  }
+
+  private TableConversionResult convertJsonToTable(JsonNode jsonData, Map<Long, SorFieldConfig> fieldConfigs,
+                                                   InticsIntegrity encryption, boolean encryptionActivator, String docId) {
+    Map<String, Object> fieldValues = new HashMap<>();
+    List<String> validationErrors = new ArrayList<>();
+    String status = "SUCCESS";
+    String message = "Successfully converted JSON to table format";
+
+    // Process special array fields first
+    processSpecialArrayFields(jsonData, fieldValues);
+
+    for (SorFieldConfig fieldConfig : fieldConfigs.values()) {
+      try {
+        String jsonPath = fieldConfig.getJsonPath();
+        String sorItemName = fieldConfig.getSorItemName();
+
+        // Skip if already processed as special field
+        if (fieldValues.containsKey(sorItemName.toLowerCase())) {
+          continue;
+        }
+
+        String encryptionType = fieldConfig.getEncryptionPolicy();
+        boolean shouldEncrypt = fieldConfig.isEncrypt() && encryptionActivator;
+
+        // Extract value using JsonPath
+        Object extractedValue = extractValueByJsonPath(jsonData, jsonPath);
+
+        // Handle array values - convert to comma-separated string
+        if (extractedValue instanceof List) {
+          extractedValue = convertArrayToString((List<?>) extractedValue);
+        }
+
+        // Validate extracted value
+        ValidationResult validation = validateExtractedValue(extractedValue, fieldConfig, docId);
+        if (!validation.isValid()) {
+          validationErrors.add(validation.getErrorMessage());
+          status = "ERROR";
+          message = "Validation failed: " + validation.getErrorMessage();
+          continue;
+        }
+
+        // Process and encrypt if needed
+        String processedValue = processFieldValue(extractedValue, shouldEncrypt, encryption, encryptionType, sorItemName, docId);
+        if (processedValue == null && fieldConfig.isRequired()) {
+          validationErrors.add("Required field missing: " + sorItemName);
+          status = "ERROR";
+          message = "Missing required field: " + sorItemName;
+          continue;
+        }
+
+        fieldValues.put(sorItemName.toLowerCase(), processedValue);
+
+      } catch (Exception e) {
+        log.error(aMarker, "Error processing field {} for docId: {}", fieldConfig.getSorItemName(), docId, e);
+        validationErrors.add("Error processing field " + fieldConfig.getSorItemName() + ": " + e.getMessage());
+        status = "ERROR";
+        message = "Field processing error: " + e.getMessage();
+      }
+    }
+
+    return TableConversionResult.builder()
+            .fieldValues(fieldValues)
+            .validationErrors(validationErrors)
+            .status(status)
+            .message(message)
+            .build();
+  }
+
+  private void processSpecialArrayFields(JsonNode jsonData, Map<String, Object> fieldValues) {
+    try {
+      // Process AUTH_KEYWORD from additionalProperties (mapped to level_of_care)
+      JsonNode additionalProps = jsonData.path("aumipayload").path("additionalProperties");
+      if (!additionalProps.isMissingNode() && additionalProps.isArray()) {
+        List<String> authKeywords = new ArrayList<>();
+        for (JsonNode prop : additionalProps) {
+          if ("AUTH_KEYWORD".equals(prop.path("propName").asText())) {
+            String propValue = prop.path("propValue").asText();
+            if (!propValue.isEmpty()) {
+              authKeywords.add(propValue);
+            }
+          }
+        }
+        if (!authKeywords.isEmpty()) {
+          fieldValues.put("level_of_care", String.join(", ", authKeywords));
+        }
+      }
+
+      // Process AUTH_ADDL_KEYWORD from additionalProperties
+      JsonNode additionalAuthProps = jsonData.path("aumipayload").path("additionalProperties");
+      if (!additionalAuthProps.isMissingNode()) {
+        List<String> addlKeywords = new ArrayList<>();
+        for (JsonNode prop : additionalAuthProps) {
+          if ("AUTH_ADDL_KEYWORD".equals(prop.path("propName").asText())) {
+            String propValue = prop.path("propValue").asText();
+            if (!propValue.isEmpty()) {
+              // Split the comma-separated string if needed
+              if (propValue.contains(",")) {
+                String[] parts = propValue.split(",");
+                for (String part : parts) {
+                  String trimmed = part.trim();
+                  if (!trimmed.isEmpty()) {
+                    addlKeywords.add(trimmed);
+                  }
+                }
+              } else {
+                addlKeywords.add(propValue.trim());
+              }
+            }
+          }
+        }
+        if (!addlKeywords.isEmpty()) {
+          fieldValues.put("auth_addl_keyword", String.join(", ", addlKeywords));
+        }
+      }
+
+      // Process ADDL_MMS_ID from authorizationIndicators (mapped to authid)
+      JsonNode authIndicators = jsonData.path("aumipayload").path("authorizationIndicators");
+      if (!authIndicators.isMissingNode()) {
+        List<String> mmsIds = new ArrayList<>();
+        for (JsonNode indicator : authIndicators) {
+          if ("ADDL_MMS_ID".equals(indicator.path("propName").asText())) {
+            String propValue = indicator.path("propValue").asText();
+            if (!propValue.isEmpty()) {
+              mmsIds.add(propValue);
+            }
+          }
+        }
+        if (!mmsIds.isEmpty()) {
+          fieldValues.put("authid", String.join(", ", mmsIds));
+        }
+      }
+
+      // Process diagnosis codes
+      JsonNode diagnoses = jsonData.path("aumipayload").path("diagnosis");
+      if (!diagnoses.isMissingNode() && diagnoses.isArray()) {
+        List<String> diagnosisCodes = new ArrayList<>();
+        for (JsonNode diagnosis : diagnoses) {
+          String code = diagnosis.path("cd").path("value").asText();
+          if (!code.isEmpty()) {
+            // Handle comma-separated diagnosis codes
+            if (code.contains(",")) {
+              String[] codes = code.split(",");
+              for (String c : codes) {
+                String trimmed = c.trim();
+                if (!trimmed.isEmpty()) {
+                  diagnosisCodes.add(trimmed);
+                }
+              }
+            } else {
+              diagnosisCodes.add(code.trim());
+            }
+          }
+        }
+        if (!diagnosisCodes.isEmpty()) {
+          fieldValues.put("diagnosis_codes", String.join(", ", diagnosisCodes));
+        }
+      }
+
+    } catch (Exception e) {
+      log.error(aMarker, "Error processing special array fields", e);
+    }
+  }
+
+  private String convertArrayToString(List<?> array) {
+    if (array == null || array.isEmpty()) {
+      return null;
+    }
+
+    // Convert each element to string and join with comma
+    return array.stream()
+            .map(Object::toString)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.joining(", "));
+  }
+
+  private Object extractValueByJsonPath(JsonNode jsonData, String jsonPath) {
+    try {
+      Object value = JsonPath.using(jsonPathConfig).parse(jsonData.toString()).read(jsonPath);
+
+      // Handle empty arrays/objects
+      if (value instanceof List && ((List<?>) value).isEmpty()) {
+        return null;
+      }
+      if (value instanceof Map && ((Map<?, ?>) value).isEmpty()) {
+        return null;
+      }
+
+      return value;
+    } catch (Exception e) {
+      log.warn(aMarker, "Failed to extract value using JsonPath: {}", jsonPath, e);
+      return null;
+    }
+  }
+
+  private ValidationResult validateExtractedValue(Object value, SorFieldConfig fieldConfig, String docId) {
+    if (fieldConfig.isRequired() && (value == null || value.toString().trim().isEmpty())) {
+      return ValidationResult.builder()
+              .isValid(false)
+              .errorMessage("Required field '" + fieldConfig.getSorItemName() + "' is missing for docId: " + docId)
+              .build();
+    }
+
+    if (value == null || value.toString().trim().isEmpty()) {
+      return ValidationResult.builder().isValid(true).errorMessage("").build();
+    }
+
+    String stringValue = value.toString();
+
+    if (fieldConfig.getMaxLength() != null && stringValue.length() > fieldConfig.getMaxLength()) {
+      return ValidationResult.builder()
+              .isValid(false)
+              .errorMessage("Field '" + fieldConfig.getSorItemName() + "' exceeds max length of " + fieldConfig.getMaxLength())
+              .build();
+    }
+
+    if (fieldConfig.getAllowedFormat() != null && !fieldConfig.getAllowedFormat().isEmpty()) {
+      try {
+        Pattern pattern = Pattern.compile(fieldConfig.getAllowedFormat());
+        if (!pattern.matcher(stringValue).matches()) {
+          return ValidationResult.builder()
+                  .isValid(false)
+                  .errorMessage("Field '" + fieldConfig.getSorItemName() + "' does not match required format")
+                  .build();
+        }
+      } catch (Exception e) {
+        log.warn(aMarker, "Invalid regex pattern for field {}: {}", fieldConfig.getSorItemName(), e.getMessage());
+      }
+    }
+
+    return ValidationResult.builder().isValid(true).errorMessage("").build();
+  }
+
+  private String processFieldValue(Object value, boolean shouldEncrypt, InticsIntegrity encryption,
+                                   String encryptionType, String sorItemName, String docId) {
+    if (value == null) {
+      return null;
+    }
+
+    String stringValue = value.toString();
+
+    if (shouldEncrypt) {
+      try {
+        return encryption.encrypt(stringValue, encryptionType, sorItemName);
+      } catch (Exception e) {
+        log.error(aMarker, "Encryption failed for field: {} in docId: {}", sorItemName, docId, e);
+        throw new RuntimeException("Encryption failed for field: " + sorItemName, e);
+      }
+    }
+
+    return stringValue;
+  }
+
+  private Map<Long, SorFieldConfig> fetchSorFieldConfigs(Jdbi jdbi) {
+    return jdbi.withHandle(handle -> handle.createQuery(
+                    "SELECT fw.sor_item_config_id AS id, fw.json_path, fw.sor_item_name, " +
+                            "fw.allowed_format, fw.max_length, fw.is_required, " +
+                            "si.is_encrypted AS is_encrypt, ep.encryption_policy " +
+                            "FROM sor_meta.field_wise_outbound_config fw " +
+                            "JOIN sor_meta.sor_item si ON si.sor_item_id = fw.sor_item_id " +
+                            "JOIN sor_meta.encryption_policies ep ON ep.encryption_policy_id = si.encryption_policy_id " +
+                            "WHERE si.status = 'ACTIVE'")
+            .mapToBean(SorFieldConfig.class)
+            .stream()
+            .collect(Collectors.toMap(SorFieldConfig::getId, fc -> fc)));
+  }
+
+  private void ensureTableColumns(Jdbi jdbi, String outputTableName, Map<String, Object> fieldValues) {
+    try {
+      List<String> staticColumns = List.of(
+              "created_on", "created_user_id", "last_updated_on", "last_updated_user_id",
+              "status", "batch_id", "docid", "member_id", "medicaid_id", "message"
+      );
+
+      Set<String> existingColumns = jdbi.withHandle(handle -> {
+        String schema = outputTableName.contains(".") ? outputTableName.split("\\.")[0] : "public";
+        String table = outputTableName.contains(".") ? outputTableName.split("\\.")[1] : outputTableName;
+
+        return handle.createQuery(
+                        "SELECT column_name FROM information_schema.columns " +
+                                "WHERE table_schema = :schema AND table_name = :table")
+                .bind("schema", schema)
+                .bind("table", table)
+                .mapTo(String.class)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+      });
+
+      log.info(aMarker, "Existing columns in {}: {}", outputTableName, existingColumns);
+
+      Set<String> requiredColumns = new HashSet<>(staticColumns);
+      requiredColumns.addAll(fieldValues.keySet().stream().map(String::toLowerCase).collect(Collectors.toSet()));
+
+      List<String> missingColumns = requiredColumns.stream()
+              .filter(column -> !existingColumns.contains(column.toLowerCase()))
+              .collect(Collectors.toList());
+
+      if (!missingColumns.isEmpty()) {
+        log.info(aMarker, "Adding missing columns to {}: {}", outputTableName, missingColumns);
+        jdbi.useHandle(handle -> {
+          for (String column : missingColumns) {
+            String columnType = staticColumns.contains(column) ? getStaticColumnType(column) : "VARCHAR(500)";
+            String alterSql = String.format("ALTER TABLE %s ADD COLUMN \"%s\" %s", outputTableName, column, columnType);
+            log.info(aMarker, "Executing: {}", alterSql);
+            handle.execute(alterSql);
+          }
+        });
+      }
+    } catch (Exception e) {
+      log.error(aMarker, "Failed to ensure columns for table {}: {}", outputTableName, e.getMessage(), e);
+      throw new HandymanException("Failed to modify table schema for " + outputTableName, e);
+    }
+  }
+
+  private String getStaticColumnType(String column) {
+    switch (column) {
+      case "created_on":
+      case "last_updated_on":
+        return "TIMESTAMP";
+      case "created_user_id":
+      case "last_updated_user_id":
+      case "tenant_id":
+        return "BIGINT";
+      case "status":
+      case "batch_id":
+      case "docid":
+      case "member_id":
+      case "medicaid_id":
+        return "VARCHAR(255)";
+      case "message":
+        return "TEXT";
+      default:
+        return "VARCHAR(500)";
+    }
+  }
+
+  private void insertTableRecord(Jdbi jdbi, JsonToTableInput input, Map<String, Object> fieldValues,
+                                 String status, String message, String batchId, String outputTableName) {
+    try {
+      // Ensure all columns exist in the table
+      ensureTableColumns(jdbi, outputTableName, fieldValues);
+
+      jdbi.useHandle(handle -> {
+        // Build column list and placeholders
+        StringBuilder columns = new StringBuilder();
+        StringBuilder values = new StringBuilder();
+
+        // Add static columns
+        columns.append("docid");
+        values.append(":docid");
+
+        // Add dynamic columns from fieldValues
+        for (String column : fieldValues.keySet()) {
+          columns.append(", ").append(column);
+          values.append(", :").append(column);
+        }
+
+        String sql = String.format("INSERT INTO %s (%s) VALUES (%s)",
+                outputTableName, columns.toString(), values.toString());
+
+        var update = handle.createUpdate(sql)
+                .bind("docid", input != null ? input.getDocumentId() : null)
+                .bind("status", status)
+                .bind("batch_id", batchId)
+                .bind("message", message);
+
+        // Bind all dynamic field values
+        for (Map.Entry<String, Object> entry : fieldValues.entrySet()) {
+          update.bind(entry.getKey(), entry.getValue());
+        }
+
+        int rowsInserted = update.execute();
+        log.info(aMarker, "Inserted {} row(s) for docId: {}", rowsInserted,
+                input != null ? input.getDocumentId() : "N/A");
+      });
+    } catch (Exception e) {
+      log.error(aMarker, "Failed to insert record for docId: {}, error: {}",
+              input != null ? input.getDocumentId() : "N/A", e.getMessage(), e);
+      throw new HandymanException("Failed to insert record into " + outputTableName, e);
     }
   }
 
   @Override
   public boolean executeIf() throws Exception {
-    return kafkaOutboundComparison.getCondition();
-  }
-
-  private boolean isEmptyJsonNode(JsonNode node) {
-    return node == null ||
-            (node.isObject() && !node.fields().hasNext()) ||
-            (node.isArray() && node.size() == 0);
-  }
-
-  private Map<Long, FieldConfig> fetchFieldConfigs(Jdbi jdbi) {
-    String sql = "SELECT foc.sor_item_id, foc.sor_item_name, foc.json_path, foc.json_property, " +
-            "si.encryption_policy_id, si.is_encrypted " +
-            "FROM sor_meta.field_wise_outbound_config foc " +
-            "JOIN sor_meta.sor_item si ON foc.sor_item_id = si.sor_item_id";
-    try {
-      Map<Long, FieldConfig> fieldConfigs = jdbi.withHandle(handle -> handle.createQuery(sql)
-              .mapToBean(FieldConfig.class)
-              .stream()
-              .collect(Collectors.toMap(FieldConfig::getSorItemId, config -> config)));
-      if (fieldConfigs.isEmpty()) {
-        log.warn(aMarker, "No field configurations found in sor_meta.field_wise_outbound_config");
-      } else {
-        log.info(aMarker, "Field configurations loaded: {}", fieldConfigs.values());
-      }
-      return fieldConfigs;
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to fetch field configurations", e);
-      return new HashMap<>();
-    }
-  }
-
-  private ComparisonResult compareFieldsMapped(KafkaOutboundComparisonInput input, Map<Long, FieldConfig> fieldConfigs,
-                                               InticsIntegrity encryption, boolean pipelineEndToEndEncryptionActivator) {
-    ComparisonResult result = new ComparisonResult();
-    result.setProcessId(input.getProcessId());
-    result.setGroupId(input.getGroupId());
-    result.setBatchId(input.getBatchId());
-    result.setInboundTransactionId(input.getInboundTransactionId());
-
-    List<ComparisonDetail> details = new ArrayList<>();
-    for (FieldConfig config : fieldConfigs.values()) {
-      try {
-        String jsonPath = config.getJsonPath();
-        String sorItemName = config.getSorItemName();
-        boolean isEncrypted = "t".equalsIgnoreCase(config.getIsEncrypted());
-        String encryptionPolicy = config.getEncryptionPolicy();
-        Long sorItemId = config.getSorItemId();
-
-        String productValue = extractValueFromJson(input.getProductResponse(), jsonPath, sorItemName);
-        String customValue = extractValueFromJson(input.getCustomResponse(), jsonPath, sorItemName);
-
-        if (productValue == null) {
-          log.warn(aMarker, "No product value found for jsonPath: {} (sorItem: {})", jsonPath, sorItemName);
-        }
-        if (customValue == null) {
-          log.warn(aMarker, "No custom value found for jsonPath: {} (sorItem: {})", jsonPath, sorItemName);
-        }
-
-        if (pipelineEndToEndEncryptionActivator && isEncrypted && encryptionPolicy != null) {
-          if (productValue != null) {
-            log.info(aMarker, "Decrypting productValue for sorItem {}: {}", sorItemName, productValue);
-            productValue = encryption.decrypt(productValue, encryptionPolicy, sorItemName);
-            log.info(aMarker, "Decrypted productValue for sorItem {}: {}", sorItemName, productValue);
-          }
-          if (customValue != null) {
-            log.info(aMarker, "Decrypting customValue for sorItem {}: {}", sorItemName, customValue);
-            customValue = encryption.decrypt(customValue, encryptionPolicy, sorItemName);
-            log.info(aMarker, "Decrypted customValue for sorItem {}: {}", sorItemName, customValue);
-          }
-        }
-
-        Long mismatchCount = (productValue == null && customValue == null) ||
-                (productValue != null && productValue.equals(customValue)) ? 0L : 1L;
-        String matchStatus = calculateValidationScores(mismatchCount);
-
-        if (pipelineEndToEndEncryptionActivator && isEncrypted && encryptionPolicy != null) {
-          if (productValue != null) {
-            log.info(aMarker, "Encrypting productValue for sorItem {}: {}", sorItemName, productValue);
-            productValue = encryption.encrypt(productValue, encryptionPolicy, sorItemName);
-            log.info(aMarker, "Encrypted productValue for sorItem {}: {}", sorItemName, productValue);
-          }
-          if (customValue != null) {
-            log.info(aMarker, "Encrypting customValue for sorItem {}: {}", sorItemName, customValue);
-            customValue = encryption.encrypt(customValue, encryptionPolicy, sorItemName);
-            log.info(aMarker, "Encrypted customValue for sorItem {}: {}", sorItemName, customValue);
-          }
-        }
-
-        ComparisonDetail detail = ComparisonDetail.builder()
-                .fieldName(sorItemName)
-                .productValue(productValue)
-                .customValue(customValue)
-                .matches(mismatchCount == 0)
-                .sorItemId(sorItemId)
-                .sorItemName(sorItemName)
-                .matchStatus(matchStatus)
-                .mismatchCount(mismatchCount)
-                .mapped(true)
-                .build();
-        details.add(detail);
-      } catch (Exception e) {
-        log.error(aMarker, "Error processing field {} for processId: {}", config.getSorItemName(), input.getProcessId(), e);
-        ComparisonDetail detail = ComparisonDetail.builder()
-                .fieldName(config.getSorItemName())
-                .productValue(null)
-                .customValue(null)
-                .matches(false)
-                .sorItemId(config.getSorItemId())
-                .sorItemName(config.getSorItemName())
-                .matchStatus("ERROR")
-                .mismatchCount(-1L)
-                .mapped(true)
-                .build();
-        details.add(detail);
-      }
-    }
-
-    result.setDetails(details);
-    result.setAllMatch(details.stream().allMatch(ComparisonDetail::isMatches));
-    return result;
-  }
-
-  private String extractValueFromJson(JsonNode node, String jsonPath, String sorItemName) {
-    try {
-      log.debug(aMarker, "Extracting value for jsonPath: {} (sorItem: {})", jsonPath, sorItemName);
-
-      // Handle special cases for additionalProperties
-      if (jsonPath.contains("additionalProperties") && jsonPath.contains("propName")) {
-        return extractAdditionalProperty(node, jsonPath, sorItemName);
-      }
-
-      // Handle special mapping cases
-      String mappedValue = handleSpecialMappings(node, jsonPath, sorItemName);
-      if (mappedValue != null) {
-        return mappedValue;
-      }
-
-      // Try the provided jsonPath
-      Object result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(jsonPath);
-      String value = parseJsonPathResult(result, jsonPath, sorItemName);
-      if (value != null) {
-        log.debug(aMarker, "Extracted value for jsonPath {}: {}", jsonPath, value);
-        return value;
-      }
-
-      // Fallback: Try appending .value if the path doesn't already end with it
-      if (!jsonPath.endsWith(".value")) {
-        String fallbackPath = jsonPath + ".value";
-        log.debug(aMarker, "Trying fallback jsonPath: {} (sorItem: {})", fallbackPath, sorItemName);
-        result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(fallbackPath);
-        value = parseJsonPathResult(result, fallbackPath, sorItemName);
-        if (value != null) {
-          log.debug(aMarker, "Extracted fallback value for jsonPath {}: {}", fallbackPath, value);
-          return value;
-        }
-      }
-
-      log.debug(aMarker, "No value found for jsonPath: {} (sorItem: {})", jsonPath, sorItemName);
-      return null;
-    } catch (Exception e) {
-      log.warn(aMarker, "Error extracting value for jsonPath: {} (sorItem: {})", jsonPath, sorItemName, e);
-      return null;
-    }
-  }
-
-  /**
-   * Handle special mapping cases for fields that need different treatment
-   */
-  private String handleSpecialMappings(JsonNode node, String jsonPath, String sorItemName) {
-    try {
-      // Handle authId mapping (authId should match authIndicator)
-      if ("authId".equalsIgnoreCase(sorItemName)) {
-        // Try both authId and authIndicator paths
-        String authIdValue = extractSimpleValue(node, "$.aumipayload.authId.value");
-        String authIndicatorValue = extractSimpleValue(node, "$.aumipayload.authIndicator.value");
-
-        // Return the non-null value or concatenate if both exist
-        if (authIdValue != null && authIndicatorValue != null) {
-          return authIdValue.equals(authIndicatorValue) ? authIdValue : authIdValue + "," + authIndicatorValue;
-        }
-        return authIdValue != null ? authIdValue : authIndicatorValue;
-      }
-
-      // Handle levelOfCare mapping (should include AUTH_KEYWORD)
-      if ("levelOfCare".equalsIgnoreCase(sorItemName)) {
-        String levelOfServiceValue = extractSimpleValue(node, "$.aumipayload.levelOfService.value");
-        String authKeywordValue = extractAdditionalProperty(node, "$.additionalProperties[?(@.propName==\"AUTH_KEYWORD\")].propValue", "AUTH_KEYWORD");
-
-        if (levelOfServiceValue != null && authKeywordValue != null) {
-          return levelOfServiceValue + "," + authKeywordValue;
-        }
-        return levelOfServiceValue != null ? levelOfServiceValue : authKeywordValue;
-      }
-
-      // Handle authAdditionalKeywords mapping
-      if ("authAdditionalKeywords".equalsIgnoreCase(sorItemName)) {
-        return extractAdditionalProperty(node, "$.data.additionalProperties[?(@.propName==\"AUTH_ADDL_KEYWORD\")].propValue", "AUTH_ADDL_KEYWORD");
-      }
-
-    } catch (Exception e) {
-      log.warn(aMarker, "Error in special mapping for sorItem: {} with jsonPath: {}", sorItemName, jsonPath, e);
-    }
-    return null;
-  }
-
-  /**
-   * Extract value from additionalProperties array based on propName
-   */
-  private String extractAdditionalProperty(JsonNode node, String jsonPath, String propName) {
-    try {
-      log.debug(aMarker, "Extracting additionalProperty for propName: {}", propName);
-
-      // Extract propName from jsonPath if not provided
-      if (propName == null && jsonPath.contains("propName")) {
-        int start = jsonPath.indexOf("\"") + 1;
-        int end = jsonPath.indexOf("\"", start);
-        if (start > 0 && end > start) {
-          propName = jsonPath.substring(start, end);
-        }
-      }
-
-      // Try different possible paths for additionalProperties
-      String[] possiblePaths = {
-              "$.data.additionalProperties[?(@.propName=='" + propName + "')].propValue",
-              "$.additionalProperties[?(@.propName=='" + propName + "')].propValue",
-              "$.aumipayload.additionalProperties[?(@.propName=='" + propName + "')].propValue"
-      };
-
-      for (String path : possiblePaths) {
-        try {
-          Object result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(path);
-          String value = parseJsonPathResult(result, path, propName);
-          if (value != null && !value.trim().isEmpty()) {
-            log.debug(aMarker, "Found additionalProperty value for {}: {}", propName, value);
-            return value;
-          }
-        } catch (Exception e) {
-          log.debug(aMarker, "Path {} failed for propName {}: {}", path, propName, e.getMessage());
-        }
-      }
-
-      log.debug(aMarker, "No additionalProperty found for propName: {}", propName);
-      return null;
-    } catch (Exception e) {
-      log.warn(aMarker, "Error extracting additionalProperty for propName: {}", propName, e);
-      return null;
-    }
-  }
-
-  /**
-   * Extract simple value using JsonPath
-   */
-  private String extractSimpleValue(JsonNode node, String jsonPath) {
-    try {
-      Object result = JsonPath.using(jsonPathConfig).parse(node.toString()).read(jsonPath);
-      return parseJsonPathResult(result, jsonPath, "simple");
-    } catch (Exception e) {
-      log.debug(aMarker, "Failed to extract simple value for path: {}", jsonPath);
-      return null;
-    }
-  }
-
-  private String parseJsonPathResult(Object result, String jsonPath, String sorItemName) {
-    if (result instanceof List) {
-      List<?> resultList = (List<?>) result;
-      List<String> values = new ArrayList<>();
-      for (Object item : resultList) {
-        if (item instanceof String) {
-          values.add((String) item);
-        } else if (item instanceof Map) {
-          Map<?, ?> resultMap = (Map<?, ?>) item;
-          if (resultMap.containsKey("value")) {
-            Object value = resultMap.get("value");
-            if (value != null) {
-              values.add(value.toString());
-            }
-          }
-        }
-      }
-      if (!values.isEmpty()) {
-        String joinedValue = String.join(",", values);
-        log.debug(aMarker, "Joined array values for jsonPath {}: {}", jsonPath, joinedValue);
-        return joinedValue;
-      }
-    } else if (result instanceof String) {
-      return (String) result;
-    } else if (result instanceof Map) {
-      Map<?, ?> resultMap = (Map<?, ?>) result;
-      if (resultMap.containsKey("value")) {
-        Object value = resultMap.get("value");
-        if (value != null) {
-          return value.toString();
-        }
-      }
-    }
-    return null;
-  }
-
-  private String calculateValidationScores(Long mismatchCount) {
-    String lowTouch = action.getContext().get("control.data.low.touch.threshold");
-    String oneTouch = action.getContext().get("control.data.one.touch.threshold");
-    if (mismatchCount == null || mismatchCount == 0) {
-      return "NO TOUCH";
-    } else if (mismatchCount <= Long.parseLong(oneTouch)) {
-      return "ONE TOUCH";
-    } else if (mismatchCount <= Long.parseLong(lowTouch)) {
-      return "LOW TOUCH";
-    } else {
-      return "HIGH TOUCH";
-    }
-  }
-
-  private void saveComparisonResult(org.jdbi.v3.core.Handle handle, String outputTableName, ComparisonResult result) {
-    if (outputTableName == null || outputTableName.trim().isEmpty()) {
-      log.error(aMarker, "Output table name is empty or null, cannot save comparison result");
-      throw new HandymanException("Output table name is required for saving comparison result");
-    }
-
-    String insertSummarySql = "INSERT INTO " + outputTableName + " (process_id, group_id, batch_id, inbound_transaction_id, all_match) " +
-            "VALUES (:processId, :groupId, :batchId, :inboundTransactionId, :allMatch)";
-    handle.createUpdate(insertSummarySql)
-            .bind("processId", result.getProcessId())
-            .bind("groupId", result.getGroupId())
-            .bind("batchId", result.getBatchId())
-            .bind("inboundTransactionId", result.getInboundTransactionId())
-            .bind("allMatch", result.isAllMatch())
-            .execute();
-
-    String insertDetailSql = "INSERT INTO " + outputTableName + "_details (process_id, field_name, product_value, custom_value, matches, sor_item_id, sor_item_name, match_status, mismatch_count, mapped) " +
-            "VALUES (:processId, :fieldName, :productValue, :customValue, :matches, :sorItemId, :sorItemName, :matchStatus, :mismatchCount, :mapped)";
-    for (ComparisonDetail detail : result.getDetails()) {
-      handle.createUpdate(insertDetailSql)
-              .bind("processId", result.getProcessId())
-              .bind("fieldName", detail.getFieldName())
-              .bind("productValue", detail.getProductValue())
-              .bind("customValue", detail.getCustomValue())
-              .bind("matches", detail.isMatches())
-              .bind("sorItemId", detail.getSorItemId())
-              .bind("sorItemName", detail.getSorItemName())
-              .bind("matchStatus", detail.getMatchStatus())
-              .bind("mismatchCount", detail.getMismatchCount())
-              .bind("mapped", detail.isMapped())
-              .execute();
-    }
-  }
-
-  private void saveEmptyResult(org.jdbi.v3.core.Handle handle, String outputTableName,
-                               KafkaOutboundComparisonInput input, String errorMessage) {
-    if (outputTableName == null || outputTableName.trim().isEmpty()) {
-      log.error(aMarker, "Output table name is empty or null, cannot save empty result");
-      throw new HandymanException("Output table name is required for saving empty result");
-    }
-
-    String insertSummarySql = "INSERT INTO " + outputTableName + " (process_id, group_id, batch_id, inbound_transaction_id, all_match, error_message) " +
-            "VALUES (:processId, :groupId, :batchId, :inboundTransactionId, :allMatch, :errorMessage)";
-    handle.createUpdate(insertSummarySql)
-            .bind("processId", input.getProcessId())
-            .bind("groupId", input.getGroupId())
-            .bind("batchId", input.getBatchId())
-            .bind("inboundTransactionId", input.getInboundTransactionId())
-            .bind("allMatch", false)
-            .bind("errorMessage", errorMessage)
-            .execute();
+    return jsonToTableConversion.getCondition();
   }
 
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class ComparisonResult {
-    private Integer processId;
-    private Long groupId;
-    private String batchId;
-    private String inboundTransactionId;
-    private boolean allMatch;
-    private List<ComparisonDetail> details;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class ComparisonDetail {
-    private String fieldName;
-    private String productValue;
-    private String customValue;
-    private boolean matches;
-    private Long sorItemId;
+  public static class SorFieldConfig {
+    private Long id;
+    private String jsonPath;
     private String sorItemName;
-    private String matchStatus;
-    private Long mismatchCount;
-    private boolean mapped;
+    private String allowedFormat;
+    private Integer maxLength;
+    private boolean isRequired;
+    private boolean isEncrypt;
+    private String encryptionPolicy;
   }
 
-  @AllArgsConstructor
-  @NoArgsConstructor
   @Data
-  @Builder
+  @AllArgsConstructor
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class KafkaOutboundComparisonInput {
-    private Integer processId;
-    private Long groupId;
-    private JsonNode productResponse;
-    private JsonNode customResponse;
+  public static class JsonToTableInput {
+    private LocalDateTime createdOn;
+    private Long createdUserId;
+    private LocalDateTime lastUpdatedOn;
+    private Long lastUpdatedUserId;
+    private String status;
+    private Integer version;
+    private JsonNode productionResponse;
+    private String documentId;
+    private String extension;
     private String originId;
     private Long tenantId;
-    private Long rootPipelineId;
-    private String status;
-    private String stage;
-    private String message;
-    private String triggeredUrl;
-    private String feature;
+    private String transactionId;
+    private String requestTxnId;
+    private String filename;
     private String batchId;
-    private String inboundTransactionId;
+    private String message;
+
+    public JsonToTableInput() {
+    }
   }
 
   @Data
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class FieldConfig {
-    private Long sorItemId;
-    private String sorItemName;
-    private String jsonPath;
-    private String jsonProperty;
-    private String encryptionPolicy;
-    private String isEncrypted;
+  public static class ValidationResult {
+    private boolean isValid;
+    private String errorMessage;
+  }
+
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class TableConversionResult {
+    private Map<String, Object> fieldValues;
+    private List<String> validationErrors;
+    private String status;
+    private String message;
   }
 
   public static class JsonNodeColumnMapper implements ColumnMapper<JsonNode> {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Override
     public JsonNode map(ResultSet rs, int columnNumber, StatementContext ctx) throws SQLException {
       String json = rs.getString(columnNumber);
       try {
-        return json != null ? objectMapper.readTree(json) : null;
+        return json != null ? MAPPER.readTree(json) : null;
       } catch (Exception e) {
         throw new SQLException("Failed to parse JSON for column " + columnNumber, e);
       }
