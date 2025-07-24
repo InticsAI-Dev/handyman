@@ -78,7 +78,7 @@ public class AlchemyInfoAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AlchemyInfoAction.AlchemyInfoOutputTable.class,
                             AlchemyInfoAction.AlchemyInfoInputTable.class,
-                            jdbi, log,
+                            alchemyInfo.getResourceConn(), log,
                             new AlchemyInfoAction.AlchemyInfoInputTable(), urls, action);
             coproProcessor.startProducer(alchemyInfo.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);

@@ -127,7 +127,7 @@ public class FigureDetectionAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             FigureDetectionQueryOutputTable.class,
                             FigureDetectionQueryInputTable.class,
-                            jdbi, log, figureDetectionQueryInputTable, urls, action);
+                            figureDetection.getResourceConn(), log, figureDetectionQueryInputTable, urls, action);
 
             coproProcessor.startProducer(figureDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);

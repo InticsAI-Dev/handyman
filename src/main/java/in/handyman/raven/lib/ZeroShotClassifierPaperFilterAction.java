@@ -76,7 +76,7 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             ZeroShotClassifierOutputTable.class,
                             ZeroShotClassifierInputTable.class,
-                            jdbi, log,
+                            zeroShotClassifierPaperFilter.getResourceConn(), log,
                             new ZeroShotClassifierInputTable(), urls, action);
             coproProcessor.startProducer(zeroShotClassifierPaperFilter.getQuerySet(), Integer.parseInt(zeroShotClassifierPaperFilter.getReadBatchSize()));
             Thread.sleep(1000);

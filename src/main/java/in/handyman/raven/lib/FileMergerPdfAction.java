@@ -95,7 +95,7 @@ public class FileMergerPdfAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             FileMergerpdfOutputEntity.class,
                             FileMergerpdfInputEntity.class,
-                            jdbi, log,
+                            fileMergerPdf.getResourceConn(), log,
                             new FileMergerpdfInputEntity(), urls, action);
 
             log.info(aMarker, "file merger copro coproProcessor initialization  {}", coproProcessor);

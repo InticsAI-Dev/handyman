@@ -87,7 +87,7 @@ public class DrugMatchAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       DrugMatchOutputTable.class,
                       DrugMatchInputTable.class,
-                      jdbi, log,
+                      drugMatch.getResourceConn(), log,
                       new DrugMatchInputTable(), urls, action);
 
       log.info(aMarker, "Drug Match coproProcessor initialization  {}", coproProcessor);

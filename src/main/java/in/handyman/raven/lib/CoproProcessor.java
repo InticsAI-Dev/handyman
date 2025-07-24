@@ -2,11 +2,11 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
 import in.handyman.raven.lib.interfaces.coproprocessor.InboundBatchDataConsumer;
 import in.handyman.raven.util.CommonQueryUtil;
-import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 
@@ -31,7 +31,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     private final Class<O> outputTargetClass;
     private final Class<I> inputTargetClass;
-    private final Jdbi jdbi;
+    private final String jdbiResourceName;
 
     private final Logger logger;
 
@@ -45,7 +45,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     private final ActionExecutionAudit actionExecutionAudit;
 
     public CoproProcessor(final BlockingQueue<I> queue, final Class<O> outputTargetClass,
-                          final Class<I> inputTargetClass, final Jdbi jdbi, final Logger logger,
+                          final Class<I> inputTargetClass, final String jdbiResourceName, final Logger logger,
                           final I stoppingSeed, final List<URL> coproNodes,
                           final ActionExecutionAudit actionExecutionAudit) {
         this.queue = queue;
@@ -54,7 +54,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         this.nodes = coproNodes;
         this.executorService = Executors.newWorkStealingPool();
         this.outputTargetClass = outputTargetClass;
-        this.jdbi = jdbi;
+        this.jdbiResourceName = jdbiResourceName;
         this.logger = logger;
         this.actionExecutionAudit = actionExecutionAudit;
         this.nodeSize = coproNodes.size();
@@ -82,6 +82,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     public void startProducer(final String sqlQuery, final Integer readBatchSize) {
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
@@ -137,7 +138,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
-        if (actionExecutionAudit.getContext().get("copro.processor.thread.creator").equalsIgnoreCase("FIXED_THREAD")){
+        if (actionExecutionAudit.getContext().get("copro.processor.thread.creator").equalsIgnoreCase("FIXED_THREAD")) {
             executorService = Executors.newFixedThreadPool(consumerCount);
             logger.info("Copro processor created with fixed thread pool of size {}", consumerCount);
         } else {
@@ -146,7 +147,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         }
         for (int consumer = 0; consumer < consumerCount; consumer++) {
             executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
-                    startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbi, logger));
+                    startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbiResourceName, logger));
 
             logger.info("Consumer {} submitted the process", consumer);
         }
@@ -163,6 +164,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     public interface Entity {
         List<Object> getRowData();
+
         String getStatus();
     }
 }
