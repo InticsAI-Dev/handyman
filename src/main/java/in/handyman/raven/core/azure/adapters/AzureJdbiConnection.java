@@ -1,10 +1,11 @@
 package in.handyman.raven.core.azure.adapters;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Properties;
 
 @Slf4j
@@ -17,47 +18,40 @@ public class AzureJdbiConnection {
     private final String tokenScope;
     private final String azureUserName;
 
-    private HikariDataSource dataSource;
 
-    public AzureJdbiConnection(String tenantId, String clientId, String clientSecret, String databaseUrl,
-                               String tokenScope, String azureUserName) {
+
+    public AzureJdbiConnection(String tenantId, String clientId, String clientSecret, String databaseUrl,String tokenScope, String azureUserName) {
         this.tenantId = tenantId;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.databaseUrl = databaseUrl;
-        this.tokenScope = tokenScope;
-        this.azureUserName = azureUserName;
-        initDataSource(); // Initialize the Hikari pool
-    }
-
-    private void initDataSource() {
-        String accessToken = AzureAuthTokenSession.getInstance().getToken().get();
-
-        Properties props = new Properties();
-        props.setProperty("accessToken", accessToken);
-
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(databaseUrl);
-        config.setUsername(azureUserName);       // required even for token auth
-        config.setDataSourceProperties(props);
-
-        // Pool tuning for token lifecycle (token is valid ~1 hour)
-        config.setMaximumPoolSize(5);
-        config.setMinimumIdle(1);
-        config.setIdleTimeout(10 * 60 * 1000);     // 10 minutes
-        config.setMaxLifetime(50 * 60 * 1000);     // 50 minutes (before token expires)
-        config.setConnectionTimeout(30_000);       // 30 seconds
-        config.setValidationTimeout(5_000);        // 5 seconds
-        config.setLeakDetectionThreshold(60_000);  // 1 minute
-
-        this.dataSource = new HikariDataSource(config);
-        log.info("Initialized Azure HikariCP connection pool");
+        this.tokenScope=tokenScope;
+        this.azureUserName=azureUserName;
     }
 
     public Jdbi getAzureJdbiConnection() {
-        if (dataSource == null) {
-            throw new IllegalStateException("Hikari DataSource is not initialized");
+
+        String token= AzureAuthTokenSession.getInstance().getToken().get();
+        // Construct connection properties
+        Properties connectionProps = new Properties();
+        connectionProps.put("user", azureUserName);  // Can also use a specific user if applicable
+        connectionProps.put("password",token );
+
+        try {
+            // Establish JDBC connection using the token
+            Connection connection = DriverManager.getConnection(databaseUrl, connectionProps);
+
+            if (connection != null) {
+                log.info("Successfully connected to the database using Azure Authentication.");
+            } else {
+                log.error("Failed to connect to the database connection was null.");
+            }
+
+            // Returning JDBI instance configured with the connection
+            return Jdbi.create(connection);
+        } catch (SQLException e) {
+            log.error("Failed to connect to the database error in the config.");
+            throw new RuntimeException("Failed to connect to the database", e);
         }
-        return Jdbi.create(dataSource);
     }
 }
