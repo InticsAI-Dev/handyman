@@ -96,9 +96,8 @@ public class RadonKvpAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            String resourceConnName = radonKvp.getResourceConn();
-            jdbi = ResourceAccess.rdbmsJDBIConn(resourceConnName);
-            providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, resourceConnName, securityEngine);
+
+            providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
 
 
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
