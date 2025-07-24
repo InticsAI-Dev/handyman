@@ -82,7 +82,7 @@ public class AlchemyKvpResponseAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       AlchemyKvpOutputEntity.class,
                       AlchemyKvpInputEntity.class,
-                      jdbi, log,
+                      alchemyKvpResponse.getResourceConn(), log,
                       new AlchemyKvpInputEntity(), urls, action);
 
       log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);

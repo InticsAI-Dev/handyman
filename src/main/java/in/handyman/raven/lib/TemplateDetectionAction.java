@@ -133,7 +133,7 @@ public class TemplateDetectionAction implements IActionExecution {
                 new CoproProcessor<>(new LinkedBlockingQueue<>(),
                         TemplateDetectionOutputTable.class,
                         TemplateDetectionInputTable.class,
-                        jdbi, log,
+                        templateDetection.getResourceConn(), log,
                         templateDetectionInputTable, urls, action);
 
 

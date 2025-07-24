@@ -1,10 +1,10 @@
 package in.handyman.raven.lib.interfaces.coproprocessor;
 
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -40,14 +40,14 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     private final int nodeSize;
     private final ActionExecutionAudit actionExecutionAudit;
     private final List<URL> nodes;
-    private final Jdbi jdbi;
+    private final String jdbiResourceName;
     private final Logger logger;
 
     public InboundBatchDataConsumer(String insertSql, Integer writeBatchSize,
                                     CoproProcessor.ConsumerProcess<I, O> callable, Predicate<I> tPredicate,
                                     LocalDateTime startTime, CountDownLatch countDownLatch, BlockingQueue<I> queue,
                                     AtomicInteger nodeCount, int nodeSize, ActionExecutionAudit actionExecutionAudit,
-                                    List<URL> nodes, Jdbi jdbi, Logger logger) {
+                                    List<URL> nodes, String jdbiResourceName, Logger logger) {
         this.insertSql = insertSql;
         this.writeBatchSize = writeBatchSize;
         this.callable = callable;
@@ -59,12 +59,14 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         this.nodeSize = nodeSize;
         this.actionExecutionAudit = actionExecutionAudit;
         this.nodes = nodes;
-        this.jdbi = jdbi;
+        this.jdbiResourceName = jdbiResourceName;
         this.logger = logger;
     }
 
     @Override
     public Void call() throws Exception {
+        Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
+        logger.info("Consumer {} started processing with node count {}", countDownLatch.getCount(), nodeCount.get());
         final List<O> processedEntity = new ArrayList<>();
         try {
             while (true) {
@@ -72,8 +74,8 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                     final I take = queue.take();
                     if (tPredicate.test(take)) {
                         final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
-                        takeAndAddRowsBeforeDbFlush(callable, index, take, processedEntity);
-                        writeBatchToDBOnCondition(insertSql, writeBatchSize, processedEntity, startTime);
+                        takeAndAddRowsBeforeDbFlush(callable, index, take, processedEntity, jdbi);
+                        writeBatchToDBOnCondition(insertSql, writeBatchSize, processedEntity, startTime, jdbi);
                     } else {
                         logger.info("Breaking the consumer");
                         queue.add(take);
@@ -87,7 +89,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                     throw new HandymanException("Error at Consumer Process", e, actionExecutionAudit);
                 }
             }
-            checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime);
+            checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime, jdbi);
         } catch (Exception e) {
             logger.error("Final persistence failed", e);
             throw new HandymanException("Final persistence failed ", e, actionExecutionAudit);
@@ -99,7 +101,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         return null;
     }
 
-    private void takeAndAddRowsBeforeDbFlush(CoproProcessor.ConsumerProcess<I, O> callable, int index, I take, List<O> processedEntity) {
+    private void takeAndAddRowsBeforeDbFlush(CoproProcessor.ConsumerProcess<I, O> callable, int index, I take, List<O> processedEntity, Jdbi jdbi) {
         final List<O> results = new ArrayList<>();
         try {
             int nodesSize = nodes.size();
@@ -108,12 +110,11 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                 URL endpoint = nodes.get(index);
                 final List<O> initialResults = callable.process(endpoint, take);
                 String retryFailedFilesActivator = actionExecutionAudit.getContext().getOrDefault(COPRO_PROCESSOR_RETRY_FAILED_FILES, "false");
-                if("true".equals(retryFailedFilesActivator))
-                {
+                if ("true".equals(retryFailedFilesActivator)) {
                     int retryFailedFilesMaxAttempts = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault(COPRO_PROCESSOR_RETRY_FAILED_FILES_MAX_ATTEMPTS, "3"));
-                    final List<O> finalResults = retryFailedFiles(initialResults, callable, endpoint, take, retryFailedFilesMaxAttempts);
+                    final List<O> finalResults = retryFailedFiles(initialResults, callable, endpoint, take, retryFailedFilesMaxAttempts, jdbi);
                     results.addAll(finalResults);
-                }else {
+                } else {
                     results.addAll(initialResults);
                 }
 
@@ -126,15 +127,15 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         processedEntity.addAll(results);
     }
 
-    private List<O> retryFailedFiles(List<O> resultSet, CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts) {
+    private List<O> retryFailedFiles(List<O> resultSet, CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts, Jdbi jdbi) {
         List<O> finalResults = new ArrayList<>(resultSet);
         List<O> failedResults = extractFailedResults(resultSet);
         finalResults.removeAll(failedResults);
 
-        insertFailedCoproProcess(take, failedResults, 0);
+        insertFailedCoproProcess(take, failedResults, 0, jdbi);
 
         for (O failedItem : failedResults) {
-            List<O> retryOutput = retryWithAttempts(callable, endpoint, take, maxAttempts);
+            List<O> retryOutput = retryWithAttempts(callable, endpoint, take, maxAttempts, jdbi);
             processRetryResults(retryOutput, finalResults, take);
         }
 
@@ -147,12 +148,12 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                 .collect(Collectors.toList());
     }
 
-    private List<O> retryWithAttempts(CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts) {
+    private List<O> retryWithAttempts(CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts, Jdbi jdbi) {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 List<O> retryOutput = callable.process(endpoint, take);
                 if (hasSuccess(retryOutput)) return retryOutput;
-                insertFailedCoproProcess(take, retryOutput, attempt);
+                insertFailedCoproProcess(take, retryOutput, attempt, jdbi);
             } catch (Exception e) {
                 logger.error("Retry attempt {} failed for item. Error: {}", attempt, e.getMessage(), e);
                 throw new HandymanException("Error in callable process in consumer ", e, actionExecutionAudit);
@@ -188,8 +189,8 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
 
 
+    private void insertFailedCoproProcess(I failedEntityRequest, List<O> retryOutputResponse, int attemptNumber, Jdbi jdbi) {
 
-    private void insertFailedCoproProcess(I failedEntityRequest,List<O> retryOutputResponse, int attemptNumber) {
         retryOutputResponse.forEach(o -> {
             jdbi.useHandle(handle -> {
                 handle.createUpdate(
@@ -221,7 +222,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
 
 
-    private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime) {
+    private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime, Jdbi jdbi) {
         if (nodeCount.get() % writeBatchSize == 0) {
             jdbi.useTransaction(handle -> {
                 usePreparedBatchToFlush(insertSql, handle, processedEntity);
@@ -231,18 +232,14 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         }
     }
 
-    private void usePreparedBatchToFlush(String insertSql, Handle handle, List<O> processedEntity) {
+    private void usePreparedBatchToFlush(String insertSql, Handle handle, List processedEntity) {
         final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
         iterateAndAddToBatch(processedEntity, preparedBatch);
         logger.info("prepared batch insert query input entity size {} ", processedEntity.size());
-        try {
-            int[] execute = preparedBatch.execute();
-            logger.info("Consumer persisted {}", execute);
-        } catch (Exception e) {
-            logger.error("Exception in prepared batch ", e);
-            throw new HandymanException("Exception in prepared batch {} ", e, actionExecutionAudit);
-        }
+        int[] execute = preparedBatch.execute();
+        logger.info("Consumer persisted {}", execute);
     }
+
 
     private void iterateAndAddToBatch(List<O> processedEntity, PreparedBatch preparedBatch) {
         for (final O output : processedEntity) {
@@ -258,7 +255,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         }
     }
 
-    private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime) {
+    private void checkProcessedEntitySizeForPendingQueue(String insertSql, List<O> processedEntity, LocalDateTime startTime, Jdbi jdbi) {
         if (!processedEntity.isEmpty()) {
             jdbi.useTransaction(handle -> {
                 int rowCount = 0;

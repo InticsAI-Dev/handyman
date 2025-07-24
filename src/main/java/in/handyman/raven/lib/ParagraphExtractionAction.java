@@ -135,7 +135,7 @@ public class ParagraphExtractionAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       ParagraphQueryOutputTable.class,
                       ParagraphQueryInputTable.class,
-                      jdbi, log,
+                      paragraphExtraction.getResourceConn(), log,
                       paragraphQueryInputTable, urls, action);
 
       coproProcessor.startProducer(paragraphExtraction.getQuerySet(), readBatchSize);

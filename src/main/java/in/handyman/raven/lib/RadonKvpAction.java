@@ -56,9 +56,9 @@ public class RadonKvpAction implements IActionExecution {
     private final Logger log;
     private final RadonKvp radonKvp;
     private final Marker aMarker;
-    private final ProviderDataTransformer providerDataTransformer;
+    private ProviderDataTransformer providerDataTransformer;
     private final ObjectMapper objectMapper;
-    private final Jdbi jdbi;
+    private Jdbi jdbi;
     private final InticsIntegrity securityEngine;
 
     private final int threadSleepTime;
@@ -75,22 +75,17 @@ public class RadonKvpAction implements IActionExecution {
         this.action = action;
         this.log = log;
         this.radonKvp = (RadonKvp) radonKvp;
-        this.jdbi = ResourceAccess.rdbmsJDBIConn(this.radonKvp.getResourceConn());
         this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action,log);
         this.objectMapper = new ObjectMapper();
         this.aMarker = MarkerFactory.getMarker("RadonKvp:" + this.radonKvp.getName());
-
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
         this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
         this.writeBatchSize = parseContextValue(action, "write.batch.size", "10");
-
         this.targetTableName = this.radonKvp.getOutputTable();
         this.radonKvpUrl = this.radonKvp.getEndpoint();
-        this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
-
+            this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
         this.insertQuery = INSERT_INTO + " " + targetTableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
 
-        this.providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, jdbi, securityEngine);
     }
 
     private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
@@ -101,6 +96,11 @@ public class RadonKvpAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
+            String resourceConnName = radonKvp.getResourceConn();
+            jdbi = ResourceAccess.rdbmsJDBIConn(resourceConnName);
+            providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, resourceConnName, securityEngine);
+
+
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
@@ -140,7 +140,7 @@ public class RadonKvpAction implements IActionExecution {
             final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
             Thread.sleep(threadSleepTime);
 
-            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, jdbi, providerDataTransformer);
+            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, radonKvp.getResourceConn(), providerDataTransformer);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " LLM kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {
@@ -158,7 +158,7 @@ public class RadonKvpAction implements IActionExecution {
                 new CoproProcessor<>(new LinkedBlockingQueue<>(),
                         RadonQueryOutputTable.class,
                         RadonQueryInputTable.class,
-                        jdbi, log,
+                        radonKvp.getResourceConn(), log,
                         neonQueryInputTable, urls, action);
 
         coproProcessor.startProducer(radonKvp.getQuerySet(), readBatchSize);

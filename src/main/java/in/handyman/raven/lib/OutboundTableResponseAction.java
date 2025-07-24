@@ -88,7 +88,7 @@ public class OutboundTableResponseAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AlchemyTableOutputEntity.class,
                             AlchemyTableInputEntity.class,
-                            jdbi, log,
+                            outboundTableResponse.getResourceConn(), log,
                             new AlchemyTableInputEntity(), urls, action);
 
             log.info(aMarker, "alchemy table copro coproProcessor initialization  {}", coproProcessor);

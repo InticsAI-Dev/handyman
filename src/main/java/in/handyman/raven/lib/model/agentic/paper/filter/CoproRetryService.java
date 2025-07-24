@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.agentic.paper.filter;
 
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
@@ -24,12 +25,15 @@ public class CoproRetryService {
     private static final String COPRO_RETRY_ERROR_AUDIT = "copro_retry_error_audit";
     private static ActionExecutionAudit action;
     private static int maxRetries;
+    private static Jdbi jdbi;
 
     public static Response callCoproApiWithRetry(Request request, String requestBody, CoproRetryErrorAuditTable retryAudit,
-                                                 ActionExecutionAudit actionAudit, Jdbi jdbi,
+                                                 ActionExecutionAudit actionAudit, String jdbiResourceName,
                                                  OkHttpClient httpClient) throws IOException {
         action = actionAudit;
         maxRetries = resolveMaxRetries();
+        jdbi= ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
+
         int attempt = 1;
         Response response = null;
         IOException lastException = null;
@@ -44,7 +48,8 @@ public class CoproRetryService {
             attempt++;
         }
 
-        if (response != null) return response;
+        if (response != null)
+            return response;
         throw lastException != null ? lastException : new IOException("Copro API call failed with no response and no exception.");
     }
 
@@ -114,14 +119,26 @@ public class CoproRetryService {
     }
 
     private static void insertAuditToDb(CoproRetryErrorAuditTable retryAudit, Jdbi jdbi) {
-        jdbi.useTransaction(handle -> {
-            Update update = handle.createUpdate("  INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT +
-                    "( origin_id, group_id, attempt,tenant_id,process_id, file_path,paper_no,message,status,stage,created_on," +
-                    "root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
-                    " VALUES(:originId, :groupId,:attempt,:tenantId, :processId, :filePath,:paperNo,:message,:status,:stage," +
-                    ":createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
-            update.bindBean(retryAudit).execute();
-        });
+        try {
+            jdbi.useTransaction(handle -> {
+                try {
+                    Update update = handle.createUpdate("INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT +
+                            "( origin_id, group_id, attempt,tenant_id,process_id, file_path,paper_no,message,status,stage,created_on," +
+                            "root_pipeline_id,batch_id,last_updated_on,request,response,endpoint) " +
+                            " VALUES(:originId, :groupId,:attempt,:tenantId, :processId, :filePath,:paperNo,:message,:status,:stage," +
+                            ":createdOn,:rootPipelineId,:batchId,NOW(),:request,:response,:endpoint);");
+                    update.bindBean(retryAudit).execute();
+                    // Transaction will be automatically committed here if no exception
+                } catch (Exception e) {
+                    // Transaction will be automatically rolled back due to exception
+                    log.error("Error executing audit insert: {}", e.getMessage(), e);
+                    throw new RuntimeException("Failed to insert audit record", e);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Transaction failed for audit insert: {}", e.getMessage(), e);
+            throw new RuntimeException("Transaction failed", e);
+        }
     }
 
     public static String encryptRequestResponse(String request) {

@@ -34,17 +34,17 @@ public class ProviderDataTransformer {
     private final Marker aMarker;
     private final ObjectMapper objectMapper;
     private final ActionExecutionAudit action;
-    private final Jdbi jdbi;
+    private final String jdbiResourceName;
     private final InticsIntegrity encryption;
 
 
     public ProviderDataTransformer(Logger log, Marker aMarker, ObjectMapper objectMapper,
-                                   ActionExecutionAudit action, Jdbi jdbi, InticsIntegrity encryption) {
+                                   ActionExecutionAudit action, String jdbiResourceName, InticsIntegrity encryption) {
         this.log = log;
         this.aMarker = aMarker;
         this.objectMapper = objectMapper;
         this.action = action;
-        this.jdbi = jdbi;
+        this.jdbiResourceName = jdbiResourceName;
         this.encryption = encryption;
         log.info("ProviderDataTransformer initialized with encryption: {}", encryption != null);
 
@@ -262,7 +262,7 @@ public class ProviderDataTransformer {
                 "sorContainerName", sorContainerName
         );
 
-        return DatabaseUtility.fetchSingleResult(jdbi, query, params);
+        return DatabaseUtility.fetchSingleResult(jdbiResourceName, query, params);
     }
 
     private String encryptIfRequired(String content) {

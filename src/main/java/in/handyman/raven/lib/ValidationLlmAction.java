@@ -130,7 +130,7 @@ public class ValidationLlmAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       ValidationLlmOutputTable.class,
                       ValidationLlmInputTable.class,
-                      jdbi, log,
+                      validationLlm.getResourceConn(), log,
                       validationLlmInputTable, urls, action);
 
       coproProcessor.startProducer( validationLlm.getQuerySet(), readBatchSize);

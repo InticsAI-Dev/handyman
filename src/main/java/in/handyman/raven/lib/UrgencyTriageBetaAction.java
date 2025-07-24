@@ -83,7 +83,7 @@ public class UrgencyTriageBetaAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             UrgencyTriageBetaOutputTable.class,
                             UrgencyTriageInputTable.class,
-                            jdbi, log,
+                            urgencyTriageBeta.getResourceConn(), log,
                             new UrgencyTriageInputTable(), urls, action);
 
             coproProcessor.startProducer(urgencyTriageBeta.getQuerySet(), readBatchSize);

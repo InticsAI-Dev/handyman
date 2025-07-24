@@ -94,7 +94,7 @@ public class HwDetectionAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             HwClassificationOutputTable.class,
                             HwClassificationInputTable.class,
-                            jdbi, log,
+                            hwDetection.getResourceConn(), log,
                             new HwClassificationInputTable(), urls, action);
 
             coproProcessor.startProducer(hwDetection.getQuerySet(), readBatchSize);

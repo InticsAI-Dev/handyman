@@ -92,7 +92,7 @@ public class QrExtractionAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             QrOutputEntity.class,
                             QrInputEntity.class,
-                            jdbi, log,
+                            qrExtraction.getResourceConn(), log,
                             new QrInputEntity(), urls, action);
 
             //4. call the method start producer from coproprocessor

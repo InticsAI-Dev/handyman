@@ -108,7 +108,7 @@ public class DocumentEyeCueAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             DocumentEyeCueOutputTable.class,
                             DocumentEyeCueInputTable.class,
-                            jdbi, log,
+                            documentEyeCue.getResourceConn(), log,
                             new DocumentEyeCueInputTable(), urls, action);
 
             log.info(aMarker, "Document EyeCue copro coproProcessor initialization  {}", coproProcessor);
