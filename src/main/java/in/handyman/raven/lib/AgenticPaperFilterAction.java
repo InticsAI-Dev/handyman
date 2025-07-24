@@ -1,9 +1,7 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -12,26 +10,16 @@ import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterConsum
 import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterInput;
 import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterOutput;
 import in.handyman.raven.lib.utils.CustomBatchWithScaling;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.argument.Arguments;
-import org.jdbi.v3.core.argument.NullArgument;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 @ActionExecution(actionName = "AgenticPaperFilter")
 public class AgenticPaperFilterAction implements IActionExecution {
@@ -83,10 +71,15 @@ public class AgenticPaperFilterAction implements IActionExecution {
                     action
             );
 
-            int consumerCount = determineConsumerCount();
-            int readBatchSize = Math.max(consumerCount, parseContextInt(READ_BATCH_SIZE, "10"));
+            int consumerCount = getConsumerCount();
+
+            int readBatchSize = getReadBatchSize(consumerCount);
+
             int writeBatchSize = parseContextInt(WRITE_BATCH_SIZE, "50");
+            log.info(aMarker, "Parsed write batch size from context: {}", writeBatchSize);
+
             int pageContentMinLength = parseContextInt(PAGE_CONTENT_MIN_LENGTH, "1");
+            log.info(aMarker, "Parsed page content minimum length from context: {}", pageContentMinLength);
 
             processor.startProducer(filterConfig.getQuerySet(), readBatchSize);
 
@@ -104,6 +97,32 @@ public class AgenticPaperFilterAction implements IActionExecution {
         }
     }
 
+    private int getConsumerCount() {
+        int consumerCount = determineConsumerCount();
+        log.info(aMarker, "Initial consumer count determined: {}", consumerCount);
+
+        int contextConsumerCount = parseContextInt(CONSUMER_API_COUNT_KEY, "10");
+        if (consumerCount < contextConsumerCount) {
+            log.info(aMarker, "Consumer count {} is less than context override {}. Using max of both.", consumerCount, contextConsumerCount);
+        }
+        consumerCount = Math.max(consumerCount, contextConsumerCount);
+        log.info(aMarker, "Final consumer count used: {}", consumerCount);
+        return consumerCount;
+    }
+
+    private int getReadBatchSize(int consumerCount) {
+        int readBatchSize = parseContextInt(READ_BATCH_SIZE, "10");
+        log.info(aMarker, "Parsed read batch size from context: {}", readBatchSize);
+
+        if (consumerCount >= readBatchSize) {
+            log.info(aMarker, "Consumer count {} is greater than or equal to read batch size {}. Updating read batch size to match consumer count.", consumerCount, readBatchSize);
+            readBatchSize = consumerCount;
+        } else {
+            log.info(aMarker, "Consumer count {} is less than read batch size {}. Keeping read batch size unchanged.", consumerCount, readBatchSize);
+        }
+        return readBatchSize;
+    }
+
     @Override
     public boolean executeIf() {
         return filterConfig.getCondition();
@@ -115,30 +134,57 @@ public class AgenticPaperFilterAction implements IActionExecution {
 
     private int parseContextInt(String key, String defaultVal) {
         String value = action.getContext().getOrDefault(key, defaultVal).trim();
-        return value.isEmpty() ? Integer.parseInt(defaultVal) : Integer.parseInt(value);
+        int result;
+        if (value.isEmpty()) {
+            result = Integer.parseInt(defaultVal);
+            log.info("Context key '{}' is empty or missing. Using default value: {}", key, defaultVal);
+        } else {
+            result = Integer.parseInt(value);
+            log.info("Context key '{}' found with value: {}. Parsed integer: {}", key, value, result);
+        }
+        return result;
     }
+
 
     private int determineConsumerCount() {
         CustomBatchWithScaling scaling = new CustomBatchWithScaling(action, log);
-        if (scaling.isPodScalingCheckEnabled()) {
+        int consumerCount;
+
+        boolean podScalingCheckEnabled = scaling.isPodScalingCheckEnabled();
+        log.info(aMarker, "Pod scaling check enabled: {}", podScalingCheckEnabled);
+        if (podScalingCheckEnabled) {
             log.info(aMarker, "Using Kubernetes API to determine consumer count");
-            return scaling.computePaperFilterApiCount();
+            consumerCount = scaling.computePaperFilterApiCount();
+        } else {
+            consumerCount = parseContextInt(CONSUMER_API_COUNT_KEY, "1");
         }
-        return parseContextInt(CONSUMER_API_COUNT_KEY, "1");
+        log.info(aMarker, "Determined consumer count: {}", consumerCount);
+        return consumerCount;
     }
 
+
     private List<URL> parseEndpoints(String endpointsStr) {
-        if (endpointsStr == null || endpointsStr.isEmpty()) return Collections.emptyList();
+        if (endpointsStr == null || endpointsStr.isEmpty()) {
+            log.warn("No endpoints provided in context; returning empty endpoint list.");
+            return Collections.emptyList();
+        }
 
         List<URL> urls = new ArrayList<>();
-        for (String endpoint : endpointsStr.split(",")) {
+        String[] rawEndpoints = endpointsStr.split(",");
+        log.debug("Parsing endpoints from context: '{}'", endpointsStr);
+
+        for (String endpoint : rawEndpoints) {
             try {
-                urls.add(new URL(endpoint.trim()));
+                URL url = new URL(endpoint.trim());
+                urls.add(url);
+                log.debug("Parsed valid endpoint URL: {}", url);
             } catch (MalformedURLException e) {
-                log.error("Invalid endpoint URL: {}", endpoint, e);
-                throw new HandymanException("Invalid endpoint URL: " + endpoint, e, action);
+                log.error("Invalid endpoint URL: {}", endpoint.trim(), e);
+                throw new HandymanException("Invalid endpoint URL: " + endpoint.trim(), e, action);
             }
         }
+
+        log.info("Successfully parsed {} endpoint(s).", urls.size());
         return urls;
     }
 
