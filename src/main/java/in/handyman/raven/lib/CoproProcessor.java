@@ -2,6 +2,7 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
 import in.handyman.raven.lib.interfaces.coproprocessor.InboundBatchDataConsumer;
@@ -81,7 +82,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     public void startProducer(final String sqlQuery, final Integer readBatchSize) {
-        final Jdbi jdbi = Jdbi.create(jdbiResourceName);
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
