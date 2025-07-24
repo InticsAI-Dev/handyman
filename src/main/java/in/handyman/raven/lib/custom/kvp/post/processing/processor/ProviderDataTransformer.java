@@ -18,7 +18,6 @@ import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -130,7 +129,7 @@ public class ProviderDataTransformer {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action, log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

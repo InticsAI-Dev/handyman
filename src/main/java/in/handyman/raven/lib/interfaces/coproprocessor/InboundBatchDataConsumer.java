@@ -233,11 +233,18 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
 
     private void usePreparedBatchToFlush(String insertSql, Handle handle, List processedEntity) {
-        final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
-        iterateAndAddToBatch(processedEntity, preparedBatch);
-        logger.info("prepared batch insert query input entity size {} ", processedEntity.size());
-        int[] execute = preparedBatch.execute();
-        logger.info("Consumer persisted {}", execute);
+        try {
+            final PreparedBatch preparedBatch = handle.prepareBatch(insertSql);
+            iterateAndAddToBatch(processedEntity, preparedBatch);
+            logger.info("prepared batch insert query input entity size {} ", processedEntity.size());
+            int[] execute = preparedBatch.execute();
+            logger.info("Consumer persisted {}", execute);
+        }catch (Exception e) {
+            logger.error("Error in executing prepared batch insert query {}", e.getMessage());
+            HandymanException handymanException=new HandymanException(e);
+            HandymanException.insertException("Error in executing prepared batch insert query ", handymanException, actionExecutionAudit);
+        }
+
     }
 
 
