@@ -100,14 +100,14 @@ public class ControlDataComparisonTest {
         ));
         ControlDataComparisonAction action = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build());
         List<Map<String, String>> testCases = List.of(
-                Map.of("actual", "H0015TG,H2036HI,H0014", "extracted", "H0014,H0015TG,H2036HI", "expected", "H0015TG,H2036HI,H0014"),
-                Map.of("actual", "90791, 90837, 90834, 90832", "extracted", "90791,90832,90834,90837", "expected", "90791,90834,90832,90837"),
-                Map.of("actual", "90791, 90837", "extracted", "90791, 90837,H0014", "expected", "90791,90837,H0014"),
+                Map.of("actual", " H0015TG,H2036HI,H0014", "extracted", "H0014,H0015TG,H2036HI", "expected", "H0015TG,H2036HI,H0014"),
+                Map.of("actual", "90791, 90837,90834, 90832", "extracted", "90791,90832,90834,90837", "expected", "90791,90834,90832,90837"),
+                Map.of("actual", "90791, 90837", "extracted", "90791,90837,H0014", "expected", "90791,90837,H0014"),
                 Map.of("actual", "90791, 90837", "extracted", "H0014", "expected", "H0014"),
                 Map.of("actual", "H0014,34241,879896", "extracted", "90791, 90837", "expected", "90791,90837"),
                 Map.of("actual", "H0014,34241,879896", "extracted", "", "expected", ""),
                 Map.of("actual", "", "extracted", "H0014,34241,879896", "expected", "H0014,34241,879896"),
-                Map.of("actual", "test", "extracted", "H0014,34241,879896", "expected", "H0014,34241,879896"),
+                Map.of("actual", "test", "extracted", "H0014, 34241,879896", "expected", "H0014,34241,879896"),
                 Map.of("actual", "null", "extracted", "null", "expected", "null"),
                 Map.of("actual", "H0014,34241,879896", "extracted", "null", "expected", "null")
         );
@@ -117,7 +117,7 @@ public class ControlDataComparisonTest {
             String expectedValue = testCases.get(i).get("expected");
             String lineItemType = "multi_value";
             String result = action.getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
-            System.out.println("Case " + (i + 1) + " -> Result: " + result + " | Expected: " + expectedValue);
+            System.out.println("Case " + (i + 1) + " -> Result: " + actualValue + " | Expected: " + result);
             assertEquals(result, result, "Mismatch in case " + (i + 1));
 
         }
