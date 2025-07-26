@@ -183,6 +183,7 @@ action:
     |agenticPaperFilter
     |documentEyeCue
     |multivalueConcatenation
+    |contextInsertActionAudit
     |kafkaProductionResponse
     |kafkaOutboundComparison
 
@@ -1443,6 +1444,12 @@ multivalueConcatenation:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
+contextInsertActionAudit:
+    'contextInsertActionAudit' 'as' name=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
 
 kafkaProductionResponse:
     'kafkaOutboundComparison' 'as' name=STRING
