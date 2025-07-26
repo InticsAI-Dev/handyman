@@ -3,12 +3,10 @@ package in.handyman.raven.lib.tritonservertest;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.KafkaProductionResponseAction;
-import in.handyman.raven.lib.model.KafkaOutboundComparison;
 import in.handyman.raven.lib.model.KafkaProductionResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
 
 @Slf4j
 public class KafkaProductionResponseTest {

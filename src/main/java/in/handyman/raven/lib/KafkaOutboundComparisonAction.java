@@ -48,35 +48,34 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
 public class KafkaOutboundComparisonAction implements IActionExecution {
   private final ActionExecutionAudit action;
   private final Logger log;
-  private final KafkaOutboundComparison jsonToTableConversion;
+  private final KafkaOutboundComparison kafkaOutboundComparison;
   private final Marker aMarker;
   private final Configuration jsonPathConfig = Configuration.defaultConfiguration()
           .addOptions(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL);
 
   public KafkaOutboundComparisonAction(final ActionExecutionAudit action, final Logger log,
                                        final Object jsonToTableConversion) {
-    this.jsonToTableConversion = (KafkaOutboundComparison) jsonToTableConversion;
+    this.kafkaOutboundComparison = (KafkaOutboundComparison) jsonToTableConversion;
     this.action = action;
     this.log = log;
-    this.aMarker = MarkerFactory.getMarker("JsonToTableConversion:" + this.jsonToTableConversion.getName());
+    this.aMarker = MarkerFactory.getMarker("JsonToTableConversion:" + this.kafkaOutboundComparison.getName());
   }
 
   @Override
   public void execute() throws Exception {
     try {
-      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jsonToTableConversion.getResourceConn());
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaOutboundComparison.getResourceConn());
       jdbi.registerColumnMapper(new JsonNodeColumnMapper());
       InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
       String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
       boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
-      String batchId = jsonToTableConversion.getBatchId();
-      String outputTableName = jsonToTableConversion.getOutputTable();
+      String outputTableName = kafkaOutboundComparison.getOutputTable();
 
       if (outputTableName == null || outputTableName.trim().isEmpty()) {
         log.error(aMarker, "Output table name is empty or null");
         throw new HandymanException("Output table name is required");
       }
-
+      ensureTableExists(jdbi, outputTableName);
       Map<Long, SorFieldConfig> fieldConfigs = fetchSorFieldConfigs(jdbi);
       log.info(aMarker, "Fetched {} SOR field configurations", fieldConfigs.size());
 
@@ -86,7 +85,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
       }
 
       jdbi.useTransaction(handle -> {
-        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(jsonToTableConversion.getQuerySet());
+        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaOutboundComparison.getQuerySet());
         AtomicInteger queryIndex = new AtomicInteger(0);
 
         for (String sqlToExecute : formattedQuery) {
@@ -106,16 +105,16 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
 
           for (JsonToTableInput input : inputs) {
             processJsonRecord(jdbi, input, fieldConfigs, encryption,
-                    pipelineEndToEndEncryptionActivator, batchId, outputTableName);
+                    pipelineEndToEndEncryptionActivator, input.batchId, outputTableName);
           }
         }
       });
 
       log.info(aMarker, "JsonToTableConversion action completed");
-      action.getContext().put(jsonToTableConversion.getName() + ".isSuccessful", "true");
+      action.getContext().put(kafkaOutboundComparison.getName() + ".isSuccessful", "true");
 
     } catch (Exception e) {
-      action.getContext().put(jsonToTableConversion.getName() + ".isSuccessful", "false");
+      action.getContext().put(kafkaOutboundComparison.getName() + ".isSuccessful", "false");
       log.error(aMarker, "Error in JsonToTableConversion action", e);
       HandymanException handymanException = new HandymanException("JsonToTableConversion failed", e);
       HandymanException.insertException("JsonToTableConversion failed", handymanException, action);
@@ -261,7 +260,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
           }
         }
         if (!addlKeywords.isEmpty()) {
-          fieldValues.put("auth_addl_keyword", String.join(", ", addlKeywords));
+          fieldValues.put("additional_auth_properties", String.join(", ", addlKeywords));
         }
       }
 
@@ -278,7 +277,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
           }
         }
         if (!mmsIds.isEmpty()) {
-          fieldValues.put("authid", String.join(", ", mmsIds));
+          fieldValues.put("auth_id", String.join(", ", mmsIds));
         }
       }
 
@@ -304,7 +303,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
           }
         }
         if (!diagnosisCodes.isEmpty()) {
-          fieldValues.put("diagnosis_codes", String.join(", ", diagnosisCodes));
+          fieldValues.put("diagnosis_code", String.join(", ", diagnosisCodes));
         }
       }
 
@@ -419,8 +418,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
   private void ensureTableColumns(Jdbi jdbi, String outputTableName, Map<String, Object> fieldValues) {
     try {
       List<String> staticColumns = List.of(
-              "created_on", "created_user_id", "last_updated_on", "last_updated_user_id",
-              "status", "batch_id", "docid", "member_id", "medicaid_id", "message"
+              "docid"
       );
 
       Set<String> existingColumns = jdbi.withHandle(handle -> {
@@ -450,7 +448,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
         log.info(aMarker, "Adding missing columns to {}: {}", outputTableName, missingColumns);
         jdbi.useHandle(handle -> {
           for (String column : missingColumns) {
-            String columnType = staticColumns.contains(column) ? getStaticColumnType(column) : "VARCHAR(500)";
+            String columnType = staticColumns.contains(column) ? getStaticColumnType(column) : "VARCHAR";
             String alterSql = String.format("ALTER TABLE %s ADD COLUMN \"%s\" %s", outputTableName, column, columnType);
             log.info(aMarker, "Executing: {}", alterSql);
             handle.execute(alterSql);
@@ -465,29 +463,35 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
 
   private String getStaticColumnType(String column) {
     switch (column) {
-      case "created_on":
-      case "last_updated_on":
-        return "TIMESTAMP";
-      case "created_user_id":
-      case "last_updated_user_id":
-      case "tenant_id":
-        return "BIGINT";
-      case "status":
-      case "batch_id":
       case "docid":
-      case "member_id":
-      case "medicaid_id":
-        return "VARCHAR(255)";
-      case "message":
         return "TEXT";
       default:
-        return "VARCHAR(500)";
+        return "VARCHAR";
     }
   }
-
   private void insertTableRecord(Jdbi jdbi, JsonToTableInput input, Map<String, Object> fieldValues,
                                  String status, String message, String batchId, String outputTableName) {
     try {
+      // Check if docid already exists
+      String docId = input != null ? input.getDocumentId() : null;
+      if (docId != null) {
+        boolean docIdExists = jdbi.withHandle(handle -> {
+          return handle.createQuery(
+                          "SELECT COUNT(*) FROM " + outputTableName + " WHERE docid = :docid")
+                  .bind("docid", docId)
+                  .mapTo(Integer.class)
+                  .one() > 0;
+        });
+
+        if (docIdExists) {
+          log.info(aMarker, "Skipping record for docId: {} as it already exists in table {}", docId, outputTableName);
+          return; // Skip insertion without throwing an exception
+        }
+      } else {
+        log.warn(aMarker, "docId is null for input, skipping insertion into {}", outputTableName);
+        return; // Skip insertion if docId is null
+      }
+
       // Ensure all columns exist in the table
       ensureTableColumns(jdbi, outputTableName, fieldValues);
 
@@ -510,10 +514,7 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
                 outputTableName, columns.toString(), values.toString());
 
         var update = handle.createUpdate(sql)
-                .bind("docid", input != null ? input.getDocumentId() : null)
-                .bind("status", status)
-                .bind("batch_id", batchId)
-                .bind("message", message);
+                .bind("docid", docId);
 
         // Bind all dynamic field values
         for (Map.Entry<String, Object> entry : fieldValues.entrySet()) {
@@ -521,19 +522,18 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
         }
 
         int rowsInserted = update.execute();
-        log.info(aMarker, "Inserted {} row(s) for docId: {}", rowsInserted,
-                input != null ? input.getDocumentId() : "N/A");
+        log.info(aMarker, "Inserted {} row(s) for docId: {}", rowsInserted, docId);
       });
     } catch (Exception e) {
-      log.error(aMarker, "Failed to insert record for docId: {}, error: {}",
-              input != null ? input.getDocumentId() : "N/A", e.getMessage(), e);
+      log.error(aMarker, "Failed to insert record for docId: {}, error"
+             , e.getMessage(), e);
       throw new HandymanException("Failed to insert record into " + outputTableName, e);
     }
   }
 
   @Override
   public boolean executeIf() throws Exception {
-    return jsonToTableConversion.getCondition();
+    return kafkaOutboundComparison.getCondition();
   }
 
   @Data
@@ -594,6 +594,41 @@ public class KafkaOutboundComparisonAction implements IActionExecution {
     private List<String> validationErrors;
     private String status;
     private String message;
+  }
+  private void ensureTableExists(Jdbi jdbi, String outputTableName) {
+    try {
+      String schema = outputTableName.contains(".") ? outputTableName.split("\\.")[0] : "public";
+      String table = outputTableName.contains(".") ? outputTableName.split("\\.")[1] : outputTableName;
+
+      // Check if table exists
+      boolean tableExists = jdbi.withHandle(handle -> {
+        return handle.createQuery(
+                        "SELECT COUNT(*) FROM information_schema.tables " +
+                                "WHERE table_schema = :schema AND table_name = :table")
+                .bind("schema", schema)
+                .bind("table", table)
+                .mapTo(Integer.class)
+                .one() > 0;
+      });
+
+      if (!tableExists) {
+        log.info(aMarker, "Output table {} does not exist, creating it", outputTableName);
+        jdbi.useHandle(handle -> {
+          String createTableSql = String.format(
+                  "CREATE TABLE %s (" +
+                          "docid TEXT PRIMARY KEY)",
+                  outputTableName);
+          log.info(aMarker, "Executing table creation: {}", createTableSql);
+          handle.execute(createTableSql);
+        });
+        log.info(aMarker, "Successfully created table {}", outputTableName);
+      } else {
+        log.info(aMarker, "Output table {} already exists", outputTableName);
+      }
+    } catch (Exception e) {
+      log.error(aMarker, "Failed to create or verify table {}: {}", outputTableName, e.getMessage(), e);
+      throw new HandymanException("Failed to ensure table existence for " + outputTableName, e);
+    }
   }
 
   public static class JsonNodeColumnMapper implements ColumnMapper<JsonNode> {

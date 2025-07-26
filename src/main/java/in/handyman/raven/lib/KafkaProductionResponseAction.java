@@ -84,11 +84,22 @@ public class KafkaProductionResponseAction implements IActionExecution {
           String requestTxnId = input.getRequestTxnId();
           log.info(aMarker, "Processing KafkaProductionResponse for requestTxnId: {}", requestTxnId);
 
-          // Prepare request body
+          // Check if requestTxnId already exists in the output table
+          boolean requestExists = jdbi.withHandle(handle -> {
+            return handle.createQuery("SELECT COUNT(*) FROM " + kafkaProductionResponse.getOutputTable() + " WHERE requestTxnId = :requestTxnId")
+                    .bind("requestTxnId", requestTxnId)
+                    .mapTo(Integer.class)
+                    .one() > 0;
+          });
+
+          if (requestExists) {
+            log.info(aMarker, "requestTxnId {} already exists in output table, skipping API call", requestTxnId);
+            continue;
+          }
+
           Map<String, String> requestBody = new HashMap<>();
           requestBody.put("requestTxnId", requestTxnId);
           String requestJson = OBJECT_MAPPER.writeValueAsString(requestBody);
-
 
           Request request = new Request.Builder()
                   .url(URI)
@@ -106,66 +117,65 @@ public class KafkaProductionResponseAction implements IActionExecution {
             String responseBody = response.body().string();
             int statusCode = response.code();
 
-          String status;
-          String message;
-          switch (statusCode) {
-            case 200:
-              Map<String, Object> responseMap = OBJECT_MAPPER.readValue(responseBody, Map.class);
-              String detail = (String) responseMap.get("detail");
+            String status;
+            String message;
+            switch (statusCode) {
+              case 200:
+                Map<String, Object> responseMap = OBJECT_MAPPER.readValue(responseBody, Map.class);
+                String detail = (String) responseMap.get("detail");
 
-              switch (detail) {
-                case "SUCCESS":
-                  log.info(aMarker, "Successfully retrieved payload for requestTxnId: {}", requestTxnId);
-                  status = "SUCCESS";
-                  message = "Successfully retrieved payload";
-                  action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "true");
-                  action.getContext().put(kafkaProductionResponse.getName() + ".response", responseBody);
-                  break;
-                case "Error in Production Payload":
-                  log.error(aMarker, "Production Payload error for requestTxnId: {}", requestTxnId);
-                  message = "Production Payload error";
-                  throw new HandymanException("Error in Production Payload for requestTxnId: " + requestTxnId);
-                case "No data found":
-                  log.warn(aMarker, "No data found for requestTxnId: {}", requestTxnId);
-                  message = "No data found";
-                  throw new HandymanException("No data found for requestTxnId: " + requestTxnId);
-                default:
-                  log.error(aMarker, "Unexpected detail value in response: {}", detail);
-                  message = "Unexpected response detail: " + detail;
-                  throw new HandymanException("Unexpected response detail: " + detail);
-              }
-              break;
-            case 403:
-              log.error(aMarker, "Invalid request for requestTxnId: {}", requestTxnId);
-              message = "Invalid request";
-              throw new HandymanException("Invalid request for requestTxnId: " + requestTxnId);
-            case 500:
-              log.error(aMarker, "Application error for requestTxnId: {}", requestTxnId);
-              message = "Application error";
-              throw new HandymanException("Application error for requestTxnId: " + requestTxnId);
-            default:
-              log.error(aMarker, "Unexpected status code {} for requestTxnId: {}", statusCode, requestTxnId);
-              message = "Unexpected status code: " + statusCode;
-              throw new HandymanException("Unexpected status code: " + statusCode);
+                switch (detail) {
+                  case "SUCCESS":
+                    log.info(aMarker, "Successfully retrieved payload for requestTxnId: {}", requestTxnId);
+                    status = "SUCCESS";
+                    message = "Successfully retrieved payload";
+                    action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "true");
+                    action.getContext().put(kafkaProductionResponse.getName() + ".response", responseBody);
+                    break;
+                  case "Error in Production Payload":
+                    log.error(aMarker, "Production Payload error for requestTxnId: {}", requestTxnId);
+                    message = "Production Payload error";
+                    throw new HandymanException("Error in Production Payload for requestTxnId: " + requestTxnId);
+                  case "No data found":
+                    log.warn(aMarker, "No data found for requestTxnId: {}", requestTxnId);
+                    message = "No data found";
+                    throw new HandymanException("No data found for requestTxnId: " + requestTxnId);
+                  default:
+                    log.error(aMarker, "Unexpected detail value in response: {}", detail);
+                    message = "Unexpected response detail: " + detail;
+                    throw new HandymanException("Unexpected response detail: " + detail);
+                }
+                break;
+              case 403:
+                log.error(aMarker, "Invalid request for requestTxnId: {}", requestTxnId);
+                message = "Invalid request";
+                throw new HandymanException("Invalid request for requestTxnId: " + requestTxnId);
+              case 500:
+                log.error(aMarker, "Application error for requestTxnId: {}", requestTxnId);
+                message = "Application error";
+                throw new HandymanException("Application error for requestTxnId: " + requestTxnId);
+              default:
+                log.error(aMarker, "Unexpected status code {} for requestTxnId: {}", statusCode, requestTxnId);
+                message = "Unexpected status code: " + statusCode;
+                throw new HandymanException("Unexpected status code: " + statusCode);
+            }
+
+            insertResponseDetails(jdbi, input, status, responseBody, message);
+
+          } catch (Exception e) {
+            action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "false");
+            log.error(aMarker, "Error processing requestTxnId: {}", input.getRequestTxnId(), e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("KafkaProductionResponse failed for requestTxnId: " + input.getRequestTxnId(), handymanException, action);
+            insertResponseDetails(jdbi, input, "FAILED", null, e.getMessage() != null ? e.getMessage() : "Unknown error");
           }
-
-          insertResponseDetails(jdbi, input, responseBody, status, message);
 
         } catch (Exception e) {
           action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "false");
           log.error(aMarker, "Error processing requestTxnId: {}", input.getRequestTxnId(), e);
           HandymanException handymanException = new HandymanException(e);
           HandymanException.insertException("KafkaProductionResponse failed for requestTxnId: " + input.getRequestTxnId(), handymanException, action);
-              insertResponseDetails(jdbi, input, "FAILED", null, e.getMessage() != null ? e.getMessage() : "Unknown error");
-          }
-          log.info(aMarker, "KafkaProductionResponse action completed");
-
-        } catch (Exception e) {
-          action.getContext().put(kafkaProductionResponse.getName() + ".isSuccessful", "false");
-          log.error(aMarker, "Error in KafkaProductionResponse action", e);
-          HandymanException handymanException = new HandymanException("KafkaProductionResponse failed", e);
-          HandymanException.insertException("KafkaProductionResponse failed", handymanException, action);
-            insertResponseDetails(jdbi, input, "FAILED", null, e.getMessage() != null ? e.getMessage() : "Unknown error");          throw handymanException;
+          insertResponseDetails(jdbi, input, "FAILED", null, e.getMessage() != null ? e.getMessage() : "Unknown error");
         }
       }
 
@@ -179,7 +189,6 @@ public class KafkaProductionResponseAction implements IActionExecution {
       throw handymanException;
     }
   }
-
     private void insertResponseDetails(Jdbi jdbi, KafkaProductionInput input, String status, String responseBody, String message) {
         jdbi.useHandle(handle -> handle.createUpdate(
                         "INSERT INTO " + kafkaProductionResponse.getOutputTable() + " (" +

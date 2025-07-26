@@ -183,7 +183,9 @@ action:
     |agenticPaperFilter
     |documentEyeCue
     |multivalueConcatenation
-    |contextInsertActionAudit
+    |kafkaProductionResponse
+    |kafkaOutboundComparison
+
     );
 
 
@@ -1441,13 +1443,27 @@ multivalueConcatenation:
     '}'
     ('on-condition' condition=expression)*  ;
 
-contextInsertActionAudit:
-    'contextInsertActionAudit' 'as' name=STRING
-	'resource-conn' resourceConn=STRING
-	'using' '{'
-		querySet=STRING
-	'}' ('on-condition' condition=expression)* ;
+kafkaProductionResponse:
+    'kafkaOutboundComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'shadow-url' endPoint=STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*;
 
+
+kafkaOutboundComparison:
+    'kafkaOutboundComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
 //rules
 
 resource : STRING;
