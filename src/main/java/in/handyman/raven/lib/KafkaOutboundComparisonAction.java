@@ -27,14 +27,8 @@ import org.slf4j.MarkerFactory;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -46,602 +40,514 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
         actionName = "KafkaOutboundComparison"
 )
 public class KafkaOutboundComparisonAction implements IActionExecution {
-  private final ActionExecutionAudit action;
-  private final Logger log;
-  private final KafkaOutboundComparison kafkaOutboundComparison;
-  private final Marker aMarker;
-  private final Configuration jsonPathConfig = Configuration.defaultConfiguration()
-          .addOptions(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL);
+    private final ActionExecutionAudit action;
+    private final Logger log;
+    private final KafkaOutboundComparison kafkaOutboundComparison;
+    private final Marker aMarker;
+    private final Configuration jsonPathConfig = Configuration.defaultConfiguration()
+            .addOptions(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL);
 
-  public KafkaOutboundComparisonAction(final ActionExecutionAudit action, final Logger log,
-                                       final Object jsonToTableConversion) {
-    this.kafkaOutboundComparison = (KafkaOutboundComparison) jsonToTableConversion;
-    this.action = action;
-    this.log = log;
-    this.aMarker = MarkerFactory.getMarker("JsonToTableConversion:" + this.kafkaOutboundComparison.getName());
-  }
-
-  @Override
-  public void execute() throws Exception {
-    try {
-      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaOutboundComparison.getResourceConn());
-      jdbi.registerColumnMapper(new JsonNodeColumnMapper());
-      InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-      String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-      boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
-      String outputTableName = kafkaOutboundComparison.getOutputTable();
-
-      if (outputTableName == null || outputTableName.trim().isEmpty()) {
-        log.error(aMarker, "Output table name is empty or null");
-        throw new HandymanException("Output table name is required");
-      }
-      ensureTableExists(jdbi, outputTableName);
-      Map<Long, SorFieldConfig> fieldConfigs = fetchSorFieldConfigs(jdbi);
-      log.info(aMarker, "Fetched {} SOR field configurations", fieldConfigs.size());
-
-      if (fieldConfigs.isEmpty()) {
-        log.error(aMarker, "No SOR field configurations found in sor_meta.field_wise_outbound_config");
-        throw new HandymanException("No SOR field configurations found");
-      }
-
-      jdbi.useTransaction(handle -> {
-        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaOutboundComparison.getQuerySet());
-        AtomicInteger queryIndex = new AtomicInteger(0);
-
-        for (String sqlToExecute : formattedQuery) {
-          log.info(aMarker, "Executing query {} from index {}", queryIndex.get(), sqlToExecute);
-          Query query = handle.createQuery(sqlToExecute);
-
-          List<JsonToTableInput> inputs = query.mapToBean(JsonToTableInput.class)
-                  .stream()
-                  .peek(input -> log.debug(aMarker, "Fetched input: {}", input))
-                  .collect(Collectors.toList());
-          log.info(aMarker, "Executed query from index {}, fetched {} records", queryIndex.getAndIncrement(), inputs.size());
-
-          if (inputs.isEmpty()) {
-            log.warn(aMarker, "No records retrieved for query at index {}. Skipping conversion.", queryIndex.get());
-            continue;
-          }
-
-          for (JsonToTableInput input : inputs) {
-            processJsonRecord(jdbi, input, fieldConfigs, encryption,
-                    pipelineEndToEndEncryptionActivator, input.batchId, outputTableName);
-          }
-        }
-      });
-
-      log.info(aMarker, "JsonToTableConversion action completed");
-      action.getContext().put(kafkaOutboundComparison.getName() + ".isSuccessful", "true");
-
-    } catch (Exception e) {
-      action.getContext().put(kafkaOutboundComparison.getName() + ".isSuccessful", "false");
-      log.error(aMarker, "Error in JsonToTableConversion action", e);
-      HandymanException handymanException = new HandymanException("JsonToTableConversion failed", e);
-      HandymanException.insertException("JsonToTableConversion failed", handymanException, action);
-      throw handymanException;
+    public KafkaOutboundComparisonAction(final ActionExecutionAudit action, final Logger log,
+                                         final Object jsonToTableConversion) {
+        this.kafkaOutboundComparison = (KafkaOutboundComparison) jsonToTableConversion;
+        this.action = action;
+        this.log = log;
+        this.aMarker = MarkerFactory.getMarker("JsonToTableConversion:" + this.kafkaOutboundComparison.getName());
     }
-  }
-
-  private void processJsonRecord(Jdbi jdbi, JsonToTableInput input, Map<Long, SorFieldConfig> fieldConfigs,
-                                 InticsIntegrity encryption, boolean encryptionActivator, String batchId, String outputTableName) {
-    try {
-      String docId = input.getDocumentId();
-      log.info(aMarker, "Processing JSON to table conversion for docId: {}", docId);
-
-      // Validate JSON response
-      JsonNode jsonResponse = input.getProductionResponse();
-      if (jsonResponse == null) {
-        log.error(aMarker, "Null JSON response for docId: {}", docId);
-        insertTableRecord(jdbi, input, new HashMap<>(), "ERROR", "Null JSON response", batchId, outputTableName);
-        return;
-      }
-
-      // Convert JSON to table format using SOR configuration
-      TableConversionResult conversionResult = convertJsonToTable(jsonResponse, fieldConfigs, encryption, encryptionActivator, docId);
-
-      // Insert converted data into output table
-      insertTableRecord(jdbi, input, conversionResult.getFieldValues(),
-              conversionResult.getStatus(), conversionResult.getMessage(), batchId, outputTableName);
-
-    } catch (Exception e) {
-      log.error(aMarker, "Error processing docId: {}", input != null ? input.getDocumentId() : "N/A", e);
-      insertTableRecord(jdbi, input, new HashMap<>(), "ERROR",
-              e.getMessage() != null ? e.getMessage() : "Unknown error", batchId, outputTableName);
-    }
-  }
-
-  private TableConversionResult convertJsonToTable(JsonNode jsonData, Map<Long, SorFieldConfig> fieldConfigs,
-                                                   InticsIntegrity encryption, boolean encryptionActivator, String docId) {
-    Map<String, Object> fieldValues = new HashMap<>();
-    List<String> validationErrors = new ArrayList<>();
-    String status = "SUCCESS";
-    String message = "Successfully converted JSON to table format";
-
-    // Process special array fields first
-    processSpecialArrayFields(jsonData, fieldValues);
-
-    for (SorFieldConfig fieldConfig : fieldConfigs.values()) {
-      try {
-        String jsonPath = fieldConfig.getJsonPath();
-        String sorItemName = fieldConfig.getSorItemName();
-
-        // Skip if already processed as special field
-        if (fieldValues.containsKey(sorItemName.toLowerCase())) {
-          continue;
-        }
-
-        String encryptionType = fieldConfig.getEncryptionPolicy();
-        boolean shouldEncrypt = fieldConfig.isEncrypt() && encryptionActivator;
-
-        // Extract value using JsonPath
-        Object extractedValue = extractValueByJsonPath(jsonData, jsonPath);
-
-        // Handle array values - convert to comma-separated string
-        if (extractedValue instanceof List) {
-          extractedValue = convertArrayToString((List<?>) extractedValue);
-        }
-
-        // Validate extracted value
-        ValidationResult validation = validateExtractedValue(extractedValue, fieldConfig, docId);
-        if (!validation.isValid()) {
-          validationErrors.add(validation.getErrorMessage());
-          status = "ERROR";
-          message = "Validation failed: " + validation.getErrorMessage();
-          continue;
-        }
-
-        // Process and encrypt if needed
-        String processedValue = processFieldValue(extractedValue, shouldEncrypt, encryption, encryptionType, sorItemName, docId);
-        if (processedValue == null && fieldConfig.isRequired()) {
-          validationErrors.add("Required field missing: " + sorItemName);
-          status = "ERROR";
-          message = "Missing required field: " + sorItemName;
-          continue;
-        }
-
-        fieldValues.put(sorItemName.toLowerCase(), processedValue);
-
-      } catch (Exception e) {
-        log.error(aMarker, "Error processing field {} for docId: {}", fieldConfig.getSorItemName(), docId, e);
-        validationErrors.add("Error processing field " + fieldConfig.getSorItemName() + ": " + e.getMessage());
-        status = "ERROR";
-        message = "Field processing error: " + e.getMessage();
-      }
-    }
-
-    return TableConversionResult.builder()
-            .fieldValues(fieldValues)
-            .validationErrors(validationErrors)
-            .status(status)
-            .message(message)
-            .build();
-  }
-
-  private void processSpecialArrayFields(JsonNode jsonData, Map<String, Object> fieldValues) {
-    try {
-      // Process AUTH_KEYWORD from additionalProperties (mapped to level_of_care)
-      JsonNode additionalProps = jsonData.path("aumipayload").path("additionalProperties");
-      if (!additionalProps.isMissingNode() && additionalProps.isArray()) {
-        List<String> authKeywords = new ArrayList<>();
-        for (JsonNode prop : additionalProps) {
-          if ("AUTH_KEYWORD".equals(prop.path("propName").asText())) {
-            String propValue = prop.path("propValue").asText();
-            if (!propValue.isEmpty()) {
-              authKeywords.add(propValue);
-            }
-          }
-        }
-        if (!authKeywords.isEmpty()) {
-          fieldValues.put("level_of_care", String.join(", ", authKeywords));
-        }
-      }
-
-      // Process AUTH_ADDL_KEYWORD from additionalProperties
-      JsonNode additionalAuthProps = jsonData.path("aumipayload").path("additionalProperties");
-      if (!additionalAuthProps.isMissingNode()) {
-        List<String> addlKeywords = new ArrayList<>();
-        for (JsonNode prop : additionalAuthProps) {
-          if ("AUTH_ADDL_KEYWORD".equals(prop.path("propName").asText())) {
-            String propValue = prop.path("propValue").asText();
-            if (!propValue.isEmpty()) {
-              // Split the comma-separated string if needed
-              if (propValue.contains(",")) {
-                String[] parts = propValue.split(",");
-                for (String part : parts) {
-                  String trimmed = part.trim();
-                  if (!trimmed.isEmpty()) {
-                    addlKeywords.add(trimmed);
-                  }
-                }
-              } else {
-                addlKeywords.add(propValue.trim());
-              }
-            }
-          }
-        }
-        if (!addlKeywords.isEmpty()) {
-          fieldValues.put("additional_auth_properties", String.join(", ", addlKeywords));
-        }
-      }
-
-      // Process ADDL_MMS_ID from authorizationIndicators (mapped to authid)
-      JsonNode authIndicators = jsonData.path("aumipayload").path("authorizationIndicators");
-      if (!authIndicators.isMissingNode()) {
-        List<String> mmsIds = new ArrayList<>();
-        for (JsonNode indicator : authIndicators) {
-          if ("ADDL_MMS_ID".equals(indicator.path("propName").asText())) {
-            String propValue = indicator.path("propValue").asText();
-            if (!propValue.isEmpty()) {
-              mmsIds.add(propValue);
-            }
-          }
-        }
-        if (!mmsIds.isEmpty()) {
-          fieldValues.put("auth_id", String.join(", ", mmsIds));
-        }
-      }
-
-      // Process diagnosis codes
-      JsonNode diagnoses = jsonData.path("aumipayload").path("diagnosis");
-      if (!diagnoses.isMissingNode() && diagnoses.isArray()) {
-        List<String> diagnosisCodes = new ArrayList<>();
-        for (JsonNode diagnosis : diagnoses) {
-          String code = diagnosis.path("cd").path("value").asText();
-          if (!code.isEmpty()) {
-            // Handle comma-separated diagnosis codes
-            if (code.contains(",")) {
-              String[] codes = code.split(",");
-              for (String c : codes) {
-                String trimmed = c.trim();
-                if (!trimmed.isEmpty()) {
-                  diagnosisCodes.add(trimmed);
-                }
-              }
-            } else {
-              diagnosisCodes.add(code.trim());
-            }
-          }
-        }
-        if (!diagnosisCodes.isEmpty()) {
-          fieldValues.put("diagnosis_code", String.join(", ", diagnosisCodes));
-        }
-      }
-
-    } catch (Exception e) {
-      log.error(aMarker, "Error processing special array fields", e);
-    }
-  }
-
-  private String convertArrayToString(List<?> array) {
-    if (array == null || array.isEmpty()) {
-      return null;
-    }
-
-    // Convert each element to string and join with comma
-    return array.stream()
-            .map(Object::toString)
-            .filter(s -> !s.isEmpty())
-            .collect(Collectors.joining(", "));
-  }
-
-  private Object extractValueByJsonPath(JsonNode jsonData, String jsonPath) {
-    try {
-      Object value = JsonPath.using(jsonPathConfig).parse(jsonData.toString()).read(jsonPath);
-
-      // Handle empty arrays/objects
-      if (value instanceof List && ((List<?>) value).isEmpty()) {
-        return null;
-      }
-      if (value instanceof Map && ((Map<?, ?>) value).isEmpty()) {
-        return null;
-      }
-
-      return value;
-    } catch (Exception e) {
-      log.warn(aMarker, "Failed to extract value using JsonPath: {}", jsonPath, e);
-      return null;
-    }
-  }
-
-  private ValidationResult validateExtractedValue(Object value, SorFieldConfig fieldConfig, String docId) {
-    if (fieldConfig.isRequired() && (value == null || value.toString().trim().isEmpty())) {
-      return ValidationResult.builder()
-              .isValid(false)
-              .errorMessage("Required field '" + fieldConfig.getSorItemName() + "' is missing for docId: " + docId)
-              .build();
-    }
-
-    if (value == null || value.toString().trim().isEmpty()) {
-      return ValidationResult.builder().isValid(true).errorMessage("").build();
-    }
-
-    String stringValue = value.toString();
-
-    if (fieldConfig.getMaxLength() != null && stringValue.length() > fieldConfig.getMaxLength()) {
-      return ValidationResult.builder()
-              .isValid(false)
-              .errorMessage("Field '" + fieldConfig.getSorItemName() + "' exceeds max length of " + fieldConfig.getMaxLength())
-              .build();
-    }
-
-    if (fieldConfig.getAllowedFormat() != null && !fieldConfig.getAllowedFormat().isEmpty()) {
-      try {
-        Pattern pattern = Pattern.compile(fieldConfig.getAllowedFormat());
-        if (!pattern.matcher(stringValue).matches()) {
-          return ValidationResult.builder()
-                  .isValid(false)
-                  .errorMessage("Field '" + fieldConfig.getSorItemName() + "' does not match required format")
-                  .build();
-        }
-      } catch (Exception e) {
-        log.warn(aMarker, "Invalid regex pattern for field {}: {}", fieldConfig.getSorItemName(), e.getMessage());
-      }
-    }
-
-    return ValidationResult.builder().isValid(true).errorMessage("").build();
-  }
-
-  private String processFieldValue(Object value, boolean shouldEncrypt, InticsIntegrity encryption,
-                                   String encryptionType, String sorItemName, String docId) {
-    if (value == null) {
-      return null;
-    }
-
-    String stringValue = value.toString();
-
-    if (shouldEncrypt) {
-      try {
-        return encryption.encrypt(stringValue, encryptionType, sorItemName);
-      } catch (Exception e) {
-        log.error(aMarker, "Encryption failed for field: {} in docId: {}", sorItemName, docId, e);
-        throw new RuntimeException("Encryption failed for field: " + sorItemName, e);
-      }
-    }
-
-    return stringValue;
-  }
-
-  private Map<Long, SorFieldConfig> fetchSorFieldConfigs(Jdbi jdbi) {
-    return jdbi.withHandle(handle -> handle.createQuery(
-                    "SELECT fw.sor_item_config_id AS id, fw.json_path, fw.sor_item_name, " +
-                            "fw.allowed_format, fw.max_length, fw.is_required, " +
-                            "si.is_encrypted AS is_encrypt, ep.encryption_policy " +
-                            "FROM sor_meta.field_wise_outbound_config fw " +
-                            "JOIN sor_meta.sor_item si ON si.sor_item_id = fw.sor_item_id " +
-                            "JOIN sor_meta.encryption_policies ep ON ep.encryption_policy_id = si.encryption_policy_id " +
-                            "WHERE si.status = 'ACTIVE'")
-            .mapToBean(SorFieldConfig.class)
-            .stream()
-            .collect(Collectors.toMap(SorFieldConfig::getId, fc -> fc)));
-  }
-
-  private void ensureTableColumns(Jdbi jdbi, String outputTableName, Map<String, Object> fieldValues) {
-    try {
-      List<String> staticColumns = List.of(
-              "docid"
-      );
-
-      Set<String> existingColumns = jdbi.withHandle(handle -> {
-        String schema = outputTableName.contains(".") ? outputTableName.split("\\.")[0] : "public";
-        String table = outputTableName.contains(".") ? outputTableName.split("\\.")[1] : outputTableName;
-
-        return handle.createQuery(
-                        "SELECT column_name FROM information_schema.columns " +
-                                "WHERE table_schema = :schema AND table_name = :table")
-                .bind("schema", schema)
-                .bind("table", table)
-                .mapTo(String.class)
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
-      });
-
-      log.info(aMarker, "Existing columns in {}: {}", outputTableName, existingColumns);
-
-      Set<String> requiredColumns = new HashSet<>(staticColumns);
-      requiredColumns.addAll(fieldValues.keySet().stream().map(String::toLowerCase).collect(Collectors.toSet()));
-
-      List<String> missingColumns = requiredColumns.stream()
-              .filter(column -> !existingColumns.contains(column.toLowerCase()))
-              .collect(Collectors.toList());
-
-      if (!missingColumns.isEmpty()) {
-        log.info(aMarker, "Adding missing columns to {}: {}", outputTableName, missingColumns);
-        jdbi.useHandle(handle -> {
-          for (String column : missingColumns) {
-            String columnType = staticColumns.contains(column) ? getStaticColumnType(column) : "VARCHAR";
-            String alterSql = String.format("ALTER TABLE %s ADD COLUMN \"%s\" %s", outputTableName, column, columnType);
-            log.info(aMarker, "Executing: {}", alterSql);
-            handle.execute(alterSql);
-          }
-        });
-      }
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to ensure columns for table {}: {}", outputTableName, e.getMessage(), e);
-      throw new HandymanException("Failed to modify table schema for " + outputTableName, e);
-    }
-  }
-
-  private String getStaticColumnType(String column) {
-    switch (column) {
-      case "docid":
-        return "TEXT";
-      default:
-        return "VARCHAR";
-    }
-  }
-  private void insertTableRecord(Jdbi jdbi, JsonToTableInput input, Map<String, Object> fieldValues,
-                                 String status, String message, String batchId, String outputTableName) {
-    try {
-      // Check if docid already exists
-      String docId = input != null ? input.getDocumentId() : null;
-      if (docId != null) {
-        boolean docIdExists = jdbi.withHandle(handle -> {
-          return handle.createQuery(
-                          "SELECT COUNT(*) FROM " + outputTableName + " WHERE docid = :docid")
-                  .bind("docid", docId)
-                  .mapTo(Integer.class)
-                  .one() > 0;
-        });
-
-        if (docIdExists) {
-          log.info(aMarker, "Skipping record for docId: {} as it already exists in table {}", docId, outputTableName);
-          return; // Skip insertion without throwing an exception
-        }
-      } else {
-        log.warn(aMarker, "docId is null for input, skipping insertion into {}", outputTableName);
-        return; // Skip insertion if docId is null
-      }
-
-      // Ensure all columns exist in the table
-      ensureTableColumns(jdbi, outputTableName, fieldValues);
-
-      jdbi.useHandle(handle -> {
-        // Build column list and placeholders
-        StringBuilder columns = new StringBuilder();
-        StringBuilder values = new StringBuilder();
-
-        // Add static columns
-        columns.append("docid");
-        values.append(":docid");
-
-        // Add dynamic columns from fieldValues
-        for (String column : fieldValues.keySet()) {
-          columns.append(", ").append(column);
-          values.append(", :").append(column);
-        }
-
-        String sql = String.format("INSERT INTO %s (%s) VALUES (%s)",
-                outputTableName, columns.toString(), values.toString());
-
-        var update = handle.createUpdate(sql)
-                .bind("docid", docId);
-
-        // Bind all dynamic field values
-        for (Map.Entry<String, Object> entry : fieldValues.entrySet()) {
-          update.bind(entry.getKey(), entry.getValue());
-        }
-
-        int rowsInserted = update.execute();
-        log.info(aMarker, "Inserted {} row(s) for docId: {}", rowsInserted, docId);
-      });
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to insert record for docId: {}, error"
-             , e.getMessage(), e);
-      throw new HandymanException("Failed to insert record into " + outputTableName, e);
-    }
-  }
-
-  @Override
-  public boolean executeIf() throws Exception {
-    return kafkaOutboundComparison.getCondition();
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class SorFieldConfig {
-    private Long id;
-    private String jsonPath;
-    private String sorItemName;
-    private String allowedFormat;
-    private Integer maxLength;
-    private boolean isRequired;
-    private boolean isEncrypt;
-    private String encryptionPolicy;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class JsonToTableInput {
-    private LocalDateTime createdOn;
-    private Long createdUserId;
-    private LocalDateTime lastUpdatedOn;
-    private Long lastUpdatedUserId;
-    private String status;
-    private Integer version;
-    private JsonNode productionResponse;
-    private String documentId;
-    private String extension;
-    private String originId;
-    private Long tenantId;
-    private String transactionId;
-    private String requestTxnId;
-    private String filename;
-    private String batchId;
-    private String message;
-
-    public JsonToTableInput() {
-    }
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class ValidationResult {
-    private boolean isValid;
-    private String errorMessage;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class TableConversionResult {
-    private Map<String, Object> fieldValues;
-    private List<String> validationErrors;
-    private String status;
-    private String message;
-  }
-  private void ensureTableExists(Jdbi jdbi, String outputTableName) {
-    try {
-      String schema = outputTableName.contains(".") ? outputTableName.split("\\.")[0] : "public";
-      String table = outputTableName.contains(".") ? outputTableName.split("\\.")[1] : outputTableName;
-
-      // Check if table exists
-      boolean tableExists = jdbi.withHandle(handle -> {
-        return handle.createQuery(
-                        "SELECT COUNT(*) FROM information_schema.tables " +
-                                "WHERE table_schema = :schema AND table_name = :table")
-                .bind("schema", schema)
-                .bind("table", table)
-                .mapTo(Integer.class)
-                .one() > 0;
-      });
-
-      if (!tableExists) {
-        log.info(aMarker, "Output table {} does not exist, creating it", outputTableName);
-        jdbi.useHandle(handle -> {
-          String createTableSql = String.format(
-                  "CREATE TABLE %s (" +
-                          "docid TEXT PRIMARY KEY)",
-                  outputTableName);
-          log.info(aMarker, "Executing table creation: {}", createTableSql);
-          handle.execute(createTableSql);
-        });
-        log.info(aMarker, "Successfully created table {}", outputTableName);
-      } else {
-        log.info(aMarker, "Output table {} already exists", outputTableName);
-      }
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to create or verify table {}: {}", outputTableName, e.getMessage(), e);
-      throw new HandymanException("Failed to ensure table existence for " + outputTableName, e);
-    }
-  }
-
-  public static class JsonNodeColumnMapper implements ColumnMapper<JsonNode> {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Override
-    public JsonNode map(ResultSet rs, int columnNumber, StatementContext ctx) throws SQLException {
-      String json = rs.getString(columnNumber);
-      try {
-        return json != null ? MAPPER.readTree(json) : null;
-      } catch (Exception e) {
-        throw new SQLException("Failed to parse JSON for column " + columnNumber, e);
-      }
+    public void execute() throws Exception {
+        Jdbi jdbi = null;
+        try {
+            jdbi = ResourceAccess.rdbmsJDBIConn(kafkaOutboundComparison.getResourceConn());
+            jdbi.registerColumnMapper(new JsonNodeColumnMapper());
+            String outputTableName = kafkaOutboundComparison.getOutputTable();
+
+            if (outputTableName == null || outputTableName.trim().isEmpty()) {
+                log.error(aMarker, "Output table name is empty or null");
+                logAudit(jdbi, null, null, null, "ERROR", "Output table name is empty or null", null);
+                throw new HandymanException("Output table name is required");
+            }
+            ensureTableExists(jdbi, outputTableName);
+            Map<Long, SorFieldConfig> fieldConfigs = fetchSorFieldConfigs(jdbi);
+            log.info(aMarker, "Fetched {} SOR field configurations", fieldConfigs.size());
+
+            if (fieldConfigs.isEmpty()) {
+                log.error(aMarker, "No SOR field configurations found in sor_meta.field_wise_outbound_config");
+                logAudit(jdbi, null, null, null, "ERROR", "No SOR field configurations found", null);
+                throw new HandymanException("No SOR field configurations found");
+            }
+
+            Jdbi finalJdbi = jdbi;
+            jdbi.useTransaction(handle -> {
+                final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaOutboundComparison.getQuerySet());
+                AtomicInteger queryIndex = new AtomicInteger(0);
+
+                for (String sqlToExecute : formattedQuery) {
+                    log.info(aMarker, "Executing query {} from index {}", queryIndex.get(), sqlToExecute);
+                    Query query = handle.createQuery(sqlToExecute);
+
+                    List<JsonToTableInput> inputs = query.mapToBean(JsonToTableInput.class)
+                            .stream()
+                            .peek(input -> log.debug(aMarker, "Fetched input: {}", input))
+                            .collect(Collectors.toList());
+                    log.info(aMarker, "Executed query from index {}, fetched {} records", queryIndex.getAndIncrement(), inputs.size());
+
+                    if (inputs.isEmpty()) {
+                        log.warn(aMarker, "No records retrieved for query at index {}. Skipping conversion.", queryIndex.get());
+                        logAudit(finalJdbi, null, null, null, "WARNING", "No records retrieved for query at index " + queryIndex.get(), null);
+                        continue;
+                    }
+
+                    for (JsonToTableInput input : inputs) {
+                        processJsonRecord(finalJdbi, input, fieldConfigs,
+                                 input.batchId, outputTableName);
+                    }
+                }
+            });
+
+            log.info(aMarker, "JsonToTableConversion action completed");
+            logAudit(jdbi, null, null, null, "SUCCESS", "JsonToTableConversion action completed", null);
+            action.getContext().put(kafkaOutboundComparison.getName() + ".isSuccessful", "true");
+
+        } catch (Exception e) {
+            action.getContext().put(kafkaOutboundComparison.getName() + ".isSuccessful", "false");
+            log.error(aMarker, "Error in JsonToTableConversion action", e);
+            logAudit(jdbi, null, null, null, "ERROR", "JsonToTableConversion failed", e.getMessage());
+            HandymanException handymanException = new HandymanException("Failed to convert JSON to table", e);
+            HandymanException.insertException("Failed to convert JSON to table", handymanException, action);
+            throw handymanException;
+        }
     }
-  }
+
+    private void processJsonRecord(Jdbi jdbi, JsonToTableInput input, Map<Long, SorFieldConfig> fieldConfigs,
+                                   String batchId, String outputTableName) {
+        try {
+            String docId = input.getDocumentId();
+            log.info(aMarker, "Processing JSON to table conversion for ID: {}", docId);
+
+            JsonNode jsonResponse = input.getProductionResponse();
+            if (jsonResponse == null) {
+                log.error(aMarker, "Null JSON response for ID: {}", docId);
+                logAudit(jdbi, input.getTransactionId(), input.getRequestTxnId(), docId, "ERROR",
+                        "Null JSON response for ID: " + docId, null, batchId, input.getTenantId());
+                return;
+            }
+
+            // Convert JSON to table format using SOR configuration
+            TableConversionResult conversionResult = convertJsonToTable(jsonResponse, fieldConfigs, docId);
+
+            // Insert converted data into output table
+            insertTableRecord(jdbi, input, conversionResult.getFieldValues(),
+                     batchId, outputTableName);
+
+            // Log successful processing
+            logAudit(jdbi, input.getTransactionId(), input.getRequestTxnId(), docId, conversionResult.getStatus(),
+                    conversionResult.getMessage(), null, batchId, input.getTenantId());
+
+        } catch (Exception e) {
+            log.error(aMarker, "Error processing ID: {}", input != null ? input.getDocumentId() : "N/A", e);
+            logAudit(jdbi, input != null ? input.getTransactionId() : null,
+                    input != null ? input.getRequestTxnId() : null,
+                    input != null ? input.getDocumentId() : null,
+                    "ERROR", "Error processing ID: " + (input != null ? input.getDocumentId() : "N/A"),
+                    e.getMessage(), batchId, input != null ? input.getTenantId() : null);
+        }
+    }
+
+    private void logAudit(Jdbi jdbi, String transactionId, String requestTxnId, String documentId,
+                          String status, String message, String errorDetails) {
+        logAudit(jdbi, transactionId, requestTxnId, documentId, status, message, errorDetails, null, null);
+    }
+
+    private void logAudit(Jdbi jdbi, String transactionId, String requestTxnId, String documentId,
+                          String status, String message, String errorDetails, String batchId, Long tenantId) {
+        try {
+            jdbi.useHandle(handle -> {
+                String sql = "INSERT INTO audit.kafka_outbound_comparison_audit " +
+                        "(transaction_id, request_txn_id, document_id, batch_id, status, message, error_details, pipeline_name, tenant_id) " +
+                        "VALUES (:transactionId, :requestTxnId, :documentId, :batchId, :status, :message, :errorDetails, :pipelineName, :tenantId)";
+
+                handle.createUpdate(sql)
+                        .bind("transactionId", transactionId != null ? transactionId : "N/A")
+                        .bind("requestTxnId", requestTxnId != null ? requestTxnId : "N/A")
+                        .bind("documentId", documentId)
+                        .bind("batchId", batchId)
+                        .bind("status", status)
+                        .bind("message", message)
+                        .bind("errorDetails", errorDetails)
+                        .bind("pipelineName", kafkaOutboundComparison.getName())
+                        .bind("tenantId", tenantId)
+                        .execute();
+            });
+            log.debug(aMarker, "Logged audit entry for transaction ID: {}, status: {}", transactionId, status);
+        } catch (Exception e) {
+            log.error(aMarker, "Failed to log audit entry for transaction ID: {}", transactionId, e);
+        }
+    }
+
+    private TableConversionResult convertJsonToTable(JsonNode jsonData, Map<Long, SorFieldConfig> fieldConfigs,
+                                                     String docId) {
+        Map<String, Object> fieldValues = new HashMap<>();
+        List<String> validationErrors = new ArrayList<>();
+        String status = "SUCCESS";
+        String message = "Successfully converted JSON to table format";
+
+        for (SorFieldConfig fieldConfig : fieldConfigs.values()) {
+            try {
+                String sorItemName = fieldConfig.getSorItemName().toLowerCase();
+
+                // Skip if already processed
+                if (fieldValues.containsKey(sorItemName)) {
+                    continue;
+                }
+
+                // Extract value using JsonPath
+                Object extractedValue = extractValueByJsonPath(jsonData, fieldConfig);
+
+                // Handle array values
+                if (fieldConfig.isArray() && extractedValue instanceof List) {
+                    extractedValue = convertArrayToString((List<?>) extractedValue, fieldConfig.getArrayDelimiter());
+                }
+
+                ValidationResult validation = validateExtractedValue(extractedValue);
+                if (!validation.isValid()) {
+                    validationErrors.add(validation.getErrorMessage());
+                    status = "ERROR";
+                    message = "Validation failed: " + validation.getErrorMessage();
+                    continue;
+                }
+
+                fieldValues.put(sorItemName, extractedValue);
+
+            } catch (Exception e) {
+                log.error(aMarker, "Error processing field {} for ID: {}", fieldConfig.getSorItemName(), docId, e);
+                validationErrors.add("Error processing field " + fieldConfig.getSorItemName() + ": " + e.getMessage());
+                status = "ERROR";
+                message = "Field processing error: " + e.getMessage();
+            }
+        }
+
+        return TableConversionResult.builder()
+                .fieldValues(fieldValues)
+                .validationErrors(validationErrors)
+                .status(status)
+                .message(message)
+                .build();
+    }
+
+    private Object extractValueByJsonPath(JsonNode jsonData, SorFieldConfig fieldConfig) {
+        try {
+            List<Object> allValues = new ArrayList<>();
+            String[] jsonPaths = fieldConfig.getJsonPath().split("\\|");
+
+            for (String jsonPath : jsonPaths) {
+                jsonPath = jsonPath.trim();
+                log.debug(aMarker, "Evaluating JsonPath: {} for field: {}", jsonPath, fieldConfig.getSorItemName());
+                Object value = JsonPath.using(jsonPathConfig).parse(jsonData.toString()).read(jsonPath);
+
+                if (value instanceof List) {
+                    allValues.addAll((List<?>) value);
+                } else if (value != null && !value.toString().trim().isEmpty()) {
+                    allValues.add(value);
+                }
+            }
+
+            // Remove empty or null values
+            allValues.removeIf(v -> v == null || v.toString().trim().isEmpty());
+            log.debug(aMarker, "Extracted values for {}: {}", fieldConfig.getSorItemName(), allValues);
+
+            if (allValues.isEmpty()) {
+                log.debug(aMarker, "No valid values extracted for {}: returning empty string", fieldConfig.getSorItemName());
+                return "";
+            }
+
+            // Convert all values to a single string, joining with delimiter
+            String delimiter = fieldConfig.isArray() && fieldConfig.getArrayDelimiter() != null
+                    ? fieldConfig.getArrayDelimiter() : ",";
+            String result = allValues.stream()
+                    .map(Object::toString)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.joining(delimiter));
+
+            log.debug(aMarker, "Final extracted value for {}: {}", fieldConfig.getSorItemName(), result);
+            return result.isEmpty() ? "" : result;
+
+        } catch (Exception e) {
+            log.warn(aMarker, "Failed to extract value using JsonPath: {} for field: {}", fieldConfig.getJsonPath(), fieldConfig.getSorItemName(), e);
+            return "";
+        }
+    }
+
+    private String convertArrayToString(List<?> array, String delimiter) {
+        if (array == null || array.isEmpty()) {
+            return "";
+        }
+        return array.stream()
+                .map(Object::toString)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.joining(delimiter != null ? delimiter : ","));}
+
+    private ValidationResult validateExtractedValue(Object value) {
+        // Allow empty string for all fields, including required ones
+        if (value == null || value.toString().trim().isEmpty()) {
+            return ValidationResult.builder()
+                    .isValid(true)
+                    .errorMessage("")
+                    .build();
+        }
+
+        return ValidationResult.builder().isValid(true).errorMessage("").build();
+    }
+
+    private Map<Long, SorFieldConfig> fetchSorFieldConfigs(Jdbi jdbi) {
+        return jdbi.withHandle(handle -> handle.createQuery(
+                        "SELECT fw.sor_item_config_id AS id, fw.json_path, fw.sor_item_name, " +
+                                "fw.is_required, fw.is_array, fw.array_delimiter, " +
+                                "si.is_encrypted AS is_encrypt, ep.encryption_policy " +
+                                "FROM sor_meta.field_wise_outbound_config fw " +
+                                "JOIN sor_meta.sor_item si ON si.sor_item_id = fw.sor_item_id " +
+                                "JOIN sor_meta.encryption_policies ep ON ep.encryption_policy_id = si.encryption_policy_id " +
+                                "WHERE si.status = 'ACTIVE'")
+                .mapToBean(SorFieldConfig.class)
+                .stream()
+                .collect(Collectors.toMap(SorFieldConfig::getId, fc -> fc)));
+    }
+
+    private void ensureTableColumns(Jdbi jdbi, String outputTableName, Map<String, Object> fieldValues) {
+        try {
+            List<String> staticColumns = List.of("docid");
+
+            Set<String> existingColumns = jdbi.withHandle(handle -> {
+                String schema = outputTableName.contains(".") ? outputTableName.split("\\.")[0] : "public";
+                String table = outputTableName.contains(".") ? outputTableName.split("\\.")[1] : outputTableName;
+
+                return handle.createQuery(
+                                "SELECT column_name FROM information_schema.columns " +
+                                        "WHERE table_schema = :schema AND table_name = :table")
+                        .bind("schema", schema)
+                        .bind("table", table)
+                        .mapTo(String.class)
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toSet());
+            });
+
+            log.info(aMarker, "Existing columns in {}: {}", outputTableName, existingColumns);
+
+            Set<String> requiredColumns = new HashSet<>(staticColumns);
+            requiredColumns.addAll(fieldValues.keySet().stream().map(String::toLowerCase).collect(Collectors.toSet()));
+
+            List<String> missingColumns = requiredColumns.stream()
+                    .filter(column -> !existingColumns.contains(column.toLowerCase()))
+                    .collect(Collectors.toList());
+
+            if (!missingColumns.isEmpty()) {
+                log.info(aMarker, "Adding missing columns to {}: {}", outputTableName, missingColumns);
+                jdbi.useHandle(handle -> {
+                    for (String column : missingColumns) {
+                        String columnType = staticColumns.contains(column) ? getStaticColumnType(column) : "VARCHAR";
+                        String alterSql = String.format("ALTER TABLE %s ADD COLUMN \"%s\" %s", outputTableName, column, columnType);
+                        log.info(aMarker, "Executing: {}", alterSql);
+                        handle.execute(alterSql);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            log.error(aMarker, "Failed to ensure columns for table {}: {}", outputTableName, e.getMessage(), e);
+            logAudit(jdbi, null, null, null, "ERROR", "Failed to modify table schema for " + outputTableName, e.getMessage());
+            throw new HandymanException("Failed to modify table schema for " + outputTableName, e);
+        }
+    }
+
+    private String getStaticColumnType(String column) {
+        switch (column) {
+            case "docid":
+                return "TEXT";
+            default:
+                return "VARCHAR";
+        }
+    }
+
+    private void insertTableRecord(Jdbi jdbi, JsonToTableInput input, Map<String, Object> fieldValues,
+                                  String batchId, String outputTableName) {
+        String docId = null;
+        try {
+            docId = input != null ? input.getDocumentId() : null;
+            if (docId != null) {
+                String finalDocId1 = docId;
+                boolean docIdExists = jdbi.withHandle(handle -> {
+                    return handle.createQuery(
+                                    "SELECT COUNT(*) FROM " + outputTableName + " WHERE docid = :docid")
+                            .bind("docid", finalDocId1)
+                            .mapTo(Integer.class)
+                            .one() > 0;
+                });
+
+                if (docIdExists) {
+                    log.info(aMarker, "Skipping record for ID: {} as it already exists in table {}", docId, outputTableName);
+                    logAudit(jdbi, input.getTransactionId(), input.getRequestTxnId(), docId, "SKIPPED",
+                            "Record already exists for ID: " + docId, null, batchId, input.getTenantId());
+                    return;
+                }
+            } else {
+                log.warn(aMarker, "ID is null for input, skipping insertion into {}", outputTableName);
+                logAudit(jdbi, input != null ? input.getTransactionId() : null,
+                        input != null ? input.getRequestTxnId() : null,
+                        null, "WARNING", "ID is null, skipping insertion into " + outputTableName,
+                        null, batchId, input != null ? input.getTenantId() : null);
+                return;
+            }
+
+            ensureTableColumns(jdbi, outputTableName, fieldValues);
+
+            String finalDocId = docId;
+            jdbi.useHandle(handle -> {
+                StringBuilder columns = new StringBuilder();
+                StringBuilder values = new StringBuilder();
+
+                columns.append("docid");
+                values.append(":docid");
+
+                for (String column : fieldValues.keySet()) {
+                    columns.append(", ").append(column);
+                    values.append(", :").append(column);
+                }
+
+                String sql = String.format("INSERT INTO %s (%s) VALUES (%s)",
+                        outputTableName, columns.toString(), values.toString());
+
+                var update = handle.createUpdate(sql)
+                        .bind("docid", finalDocId);
+
+                for (Map.Entry<String, Object> entry : fieldValues.entrySet()) {
+                    update.bind(entry.getKey(), entry.getValue());
+                }
+
+                int rowsInserted = update.execute();
+                log.info(aMarker, "Inserted {} row(s) for ID: {}", rowsInserted, finalDocId);
+            });
+        } catch (Exception e) {
+            log.error(aMarker, "Failed to insert record for ID: {}, error", docId != null ? docId : "N/A", e);
+            logAudit(jdbi, input != null ? input.getTransactionId() : null,
+                    input != null ? input.getRequestTxnId() : null,
+                    docId, "ERROR", "Failed to insert record for ID: " + (docId != null ? docId : "N/A"),
+                    e.getMessage(), batchId, input != null ? input.getTenantId() : null);
+            throw new HandymanException("Failed to insert record into " + outputTableName, e);
+        }
+    }
+
+    @Override
+    public boolean executeIf() throws Exception {
+        return kafkaOutboundComparison.getCondition();
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SorFieldConfig {
+        private Long id;
+        private String jsonPath;
+        private String sorItemName;
+        private boolean isRequired;
+        private boolean isArray;
+        private String arrayDelimiter;
+        private boolean isEncrypt;
+        private String encryptionPolicy;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class JsonToTableInput {
+        private LocalDateTime createdOn;
+        private Long createdUserId;
+        private LocalDateTime lastUpdatedOn;
+        private Long lastUpdatedUserId;
+        private String status;
+        private Integer version;
+        private JsonNode productionResponse;
+        private String documentId;
+        private String extension;
+        private String originId;
+        private Long tenantId;
+        private String transactionId;
+        private String requestTxnId;
+        private String filename;
+        private String batchId;
+        private String message;
+
+        public JsonToTableInput() {
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ValidationResult {
+        private boolean isValid;
+        private String errorMessage;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TableConversionResult {
+        private Map<String, Object> fieldValues;
+        private List<String> validationErrors;
+        private String status;
+        String message;
+    }
+
+    private void ensureTableExists(Jdbi jdbi, String outputTableName) {
+        try {
+            String schema = outputTableName.contains(".") ? outputTableName.split("\\.")[0] : "public";
+            String table = outputTableName.contains(".") ? outputTableName.split("\\.")[1] : outputTableName;
+
+            boolean tableExists = jdbi.withHandle(handle -> {
+                return handle.createQuery(
+                                "SELECT COUNT(*) FROM information_schema.tables " +
+                                        "WHERE table_schema = :schema AND table_name = :table")
+                        .bind("schema", schema)
+                        .bind("table", table)
+                        .mapTo(Integer.class)
+                        .one() > 0;
+            });
+
+            if (!tableExists) {
+                log.info(aMarker, "Output table {} does not exist, creating it", outputTableName);
+                jdbi.useHandle(handle -> {
+                    String createTableSql = String.format(
+                            "CREATE TABLE %s (" +
+                                    "docid TEXT PRIMARY KEY)",
+                            outputTableName);
+                    log.info(aMarker, "Executing table creation: {}", createTableSql);
+                    handle.execute(createTableSql);
+                });
+                log.info(aMarker, "Successfully created table {}", outputTableName);
+            } else {
+                log.info(aMarker, "Output table {} already exists", outputTableName);
+            }
+        } catch (Exception e) {
+            log.error(aMarker, "Failed to create or verify table {}: {}", outputTableName, e.getMessage(), e);
+            logAudit(jdbi, null, null, null, "ERROR", "Failed to ensure table existence for " + outputTableName, e.getMessage());
+            throw new HandymanException("Failed to ensure table existence for " + outputTableName, e);
+        }
+    }
+
+    public static class JsonNodeColumnMapper implements ColumnMapper<JsonNode> {
+        private static final ObjectMapper MAPPER = new ObjectMapper();
+
+        @Override
+        public JsonNode map(ResultSet rs, int columnNumber, StatementContext ctx) throws SQLException {
+            String json = rs.getString(columnNumber);
+            try {
+                return json != null ? MAPPER.readTree(json) : null;
+            } catch (Exception e) {
+                throw new SQLException("Failed to parse JSON for column " + columnNumber, e);
+            }
+        }
+    }
 }
