@@ -300,7 +300,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     log.error(aMarker, errorMessage);
                 }
             } else {
-                String errorBody = response.body() != null ? response.body().string() : "No response body or detail found for the request.";
+                String errorBody = responseBody;
                 String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + errorBody;
                 handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
                 HandymanException handymanException = new HandymanException(errorMessage);
