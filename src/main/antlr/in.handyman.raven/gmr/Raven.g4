@@ -1452,7 +1452,7 @@ contextInsertActionAudit:
 	'}' ('on-condition' condition=expression)* ;
 
 kafkaProductionResponse:
-    'kafkaOutboundComparison' 'as' name=STRING
+    'kafkaProductionResponse' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'output-table' outputTable=STRING
     'shadow-url' endPoint=STRING
