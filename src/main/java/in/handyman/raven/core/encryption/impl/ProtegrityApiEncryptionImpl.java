@@ -37,7 +37,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         this.protegrityDecApiUrl = decryptionUrl;
         this.actionExecutionAudit = actionExecutionAudit;
         this.logger = logger;
-         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout.seconds", "60"));
+        int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout.seconds", "60"));
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(timeout, TimeUnit.SECONDS)
                 .writeTimeout(timeout, TimeUnit.SECONDS)
@@ -110,9 +110,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
                 if (!response.isSuccessful()) {
                     String errorMessage = String.format(
-                            "FAILURE | uuid=%s | time=%s | auditId=%d | key=%s | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms",
+                            "FAILURE | uuid=%s | auditId=%d | key=%s | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms",
                             uuid,
-                            Instant.now(),
                             auditId,
                             key,
                             endpoint,
@@ -132,9 +131,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                 String encryptedValue = jsonResponse.get(0).get("value").asText();
 
                 String successMessage = String.format(
-                        "SUCCESS | uuid=%s | time=%s | auditId=%d | key=%s | endpoint=%s | TAT=%d ms",
+                        "SUCCESS | uuid=%s | auditId=%d | key=%s | endpoint=%s | TAT=%d ms",
                         uuid,
-                        Instant.now(),
                         auditId,
                         key,
                         endpoint,
@@ -151,9 +149,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
             long tat = endTime - startTime;
 
             String errMsg = String.format(
-                    "EXCEPTION | uuid=%s | time=%s | auditId=%d | key=%s | endpoint=%s | message=%s | TAT=%d ms",
+                    "EXCEPTION | uuid=%s | auditId=%d | key=%s | endpoint=%s | message=%s | TAT=%d ms",
                     uuid,
-                    Instant.now(),
                     auditId,
                     key,
                     endpoint,

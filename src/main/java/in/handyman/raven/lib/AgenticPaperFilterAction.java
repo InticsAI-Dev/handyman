@@ -24,168 +24,131 @@ import java.util.concurrent.LinkedBlockingQueue;
 @ActionExecution(actionName = "AgenticPaperFilter")
 public class AgenticPaperFilterAction implements IActionExecution {
 
-    private static final String DEFAULT_SOCKET_TIMEOUT = "100";
-    private static final String INSERT_COLUMNS_UPDATED = "origin_id,group_id,tenant_id,template_id,process_id,file_path,extracted_text,container_name,container_value,paper_no,file_name,status,stage,message,is_blank_page,created_on,root_pipeline_id,template_name,model_name,model_version,batch_id,last_updated_on,request,response,endpoint,container_id,prompt_type";
-    private static final String INSERT_QUERY_TEMPLATE = "INSERT INTO %s (%s) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+  public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
+  public static final String INSERT_COLUMNS_UPDATED= "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint,container_id,prompt_type";
+  private static final String DEFAULT_SOCKET_TIMEOUT = "100";
 
-    private static final String READ_BATCH_SIZE = "read.batch.size";
-    private static final String WRITE_BATCH_SIZE = "write.batch.size";
-    private static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
-    private static final String CONSUMER_API_COUNT_KEY = "agentic.paper.filter.consumer.API.count";
-    private static final String FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
+  public static final String INSERT_INTO = "INSERT INTO ";
+  public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?)";
+  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?,?,?)";
 
-    private final ActionExecutionAudit action;
-    private final Logger log;
-    private final Marker aMarker;
-    private final AgenticPaperFilter filterConfig;
-    private final String processBase64;
-    private final int timeout;
+  public static final String READ_BATCH_SIZE = "read.batch.size";
+  public static final String AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT = "agentic.paper.filter.consumer.API.count";
+  public static final String WRITE_BATCH_SIZE = "write.batch.size";
+  public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
+  private final ActionExecutionAudit action;
+  public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
-    public AgenticPaperFilterAction(ActionExecutionAudit action, Logger log, Object config) {
-        this.action = action;
-        this.log = log;
-        this.filterConfig = (AgenticPaperFilter) config;
-        this.aMarker = MarkerFactory.getMarker("AgenticPaperFilter:" + filterConfig.getName());
-        this.processBase64 = action.getContext().get(FILE_PROCESS_FORMAT);
-        this.timeout = parseContextInt("copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
-    }
+  private final Logger log;
 
-    @Override
-    public void execute() {
+  private final AgenticPaperFilter agenticPaperFilter;
+  private final Marker aMarker;
+  private final String processBase64;
+  private final int timeout;
+
+
+  public AgenticPaperFilterAction(final ActionExecutionAudit action, final Logger log, final Object agenticPaperFilter) {
+    this.agenticPaperFilter = (AgenticPaperFilter) agenticPaperFilter;
+    this.action = action;
+    this.log = log;
+    this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
+    this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
+
+
+    this.aMarker = MarkerFactory.getMarker(" AgenticPaperFilter:" + this.agenticPaperFilter.getName());
+  }
+
+  @Override
+  public void execute() throws Exception {
+    try {
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(agenticPaperFilter.getResourceConn());
+      FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
+
+      jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+      log.info(aMarker, "Agentic Paper Filter Action for {} has been started", agenticPaperFilter.getName());
+
+      String outputTableName = agenticPaperFilter.getResultTable();
+      final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS_UPDATED+ " ) " + INSERT_INTO_VALUES_UPDATED;
+      final List<URL> urls = Optional.ofNullable(agenticPaperFilter.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
-            log.info(aMarker, "Starting Agentic Paper Filter Action for {}", filterConfig.getName());
-            FileProcessingUtils fileUtils = new FileProcessingUtils(log, aMarker, action);
-            log.info(aMarker, "Agentic Paper Filter execution started for {}", filterConfig.getName());
-
-            String insertQuery = String.format(INSERT_QUERY_TEMPLATE, filterConfig.getResultTable(), INSERT_COLUMNS_UPDATED);
-            List<URL> endpoints = parseEndpoints(filterConfig.getEndPoint());
-
-            CoproProcessor<AgenticPaperFilterInput, AgenticPaperFilterOutput> processor = new CoproProcessor<>(
-                    new LinkedBlockingQueue<>(),
-                    AgenticPaperFilterOutput.class,
-                    AgenticPaperFilterInput.class,
-                    filterConfig.getResourceConn(),
-                    log,
-                    new AgenticPaperFilterInput(),
-                    endpoints,
-                    action
-            );
-
-            int consumerCount = getConsumerCount();
-
-            int readBatchSize = getReadBatchSize(consumerCount);
-
-            int writeBatchSize = parseContextInt(WRITE_BATCH_SIZE, "50");
-            log.info(aMarker, "Parsed write batch size from context: {}", writeBatchSize);
-
-            int pageContentMinLength = parseContextInt(PAGE_CONTENT_MIN_LENGTH, "1");
-            log.info(aMarker, "Parsed page content minimum length from context: {}", pageContentMinLength);
-
-            processor.startProducer(filterConfig.getQuerySet(), readBatchSize);
-
-            AgenticPaperFilterConsumerProcess consumerProcess = new AgenticPaperFilterConsumerProcess(
-                    log, aMarker, action, this, pageContentMinLength, fileUtils, processBase64, filterConfig.getResourceConn()
-            );
-
-            processor.startConsumer(insertQuery, consumerCount, writeBatchSize, consumerProcess);
-
-            log.info(aMarker, "Agentic Paper Filter Action completed for {}", filterConfig.getName());
-        } catch (Exception e) {
-            log.error(aMarker, "Execution failed in Agentic Paper Filter", e);
-            action.getContext().put(filterConfig.getName() + ".isSuccessful", "false");
-            throw new HandymanException("Execution failed in Agentic Paper Filter", e, action);
+          return new URL(s1);
+        } catch (MalformedURLException e) {
+          log.error("Error in processing the URL ", e);
+          throw new HandymanException("Error in processing the URL", e, action);
         }
+      }).collect(Collectors.toList())).orElse(Collections.emptyList());
+
+      final CoproProcessor<AgenticPaperFilterInput, AgenticPaperFilterOutput> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), AgenticPaperFilterOutput.class, AgenticPaperFilterInput.class, jdbi, log, new AgenticPaperFilterInput(), urls, action);
+
+      int consumerApiCount = 0;
+      CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
+      boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
+      if (isPodScalingCheckEnabled) {
+        log.info(aMarker, "Pod Scaling Check is enabled, computing consumer API count using CustomBatchWithScaling");
+        consumerApiCount = customBatchWithScaling.computePaperFilterApiCount();
+      }
+
+      String apiCountValue = (agenticPaperFilter.getForkBatchSize() != null && !agenticPaperFilter.getForkBatchSize().isEmpty()) ? agenticPaperFilter.getForkBatchSize().trim():"1";
+      int apiCount = Integer.parseInt(apiCountValue);
+
+      if (consumerApiCount < apiCount) {
+        consumerApiCount = apiCount;
+      }
+
+      log.info(aMarker, "Consumer API count for Agentic Paper Filter is {}", consumerApiCount);
+
+      String readBatchSizeDefaultValue = "10";
+      String value = action.getContext().getOrDefault(READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
+      int readBatchSize = value.isEmpty() ? Integer.parseInt(readBatchSizeDefaultValue) : Integer.parseInt(value);
+
+      if (consumerApiCount >= readBatchSize) {
+        log.info(aMarker, "Consumer API count {} is greater than read batch size {}, setting read batch size to consumer API count", consumerApiCount, readBatchSize);
+        readBatchSize = consumerApiCount;
+      } else {
+        log.info(aMarker, "Consumer API count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerApiCount, readBatchSize);
+      }
+
+      coproProcessor.startProducer(agenticPaperFilter.getQuerySet(), readBatchSize);
+      Thread.sleep(1000);
+
+      Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+      Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
+      AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
+              new AgenticPaperFilterConsumerProcess(log, aMarker, action, this,pageContentMinLength, fileProcessingUtils, processBase64, jdbi);
+
+
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, agenticPaperFilterConsumerProcess);
+      log.info(aMarker, " Agentic Paper Filter Action has been completed {}  ", agenticPaperFilter.getName());
+    } catch (Exception e) {
+      action.getContext().put(agenticPaperFilter.getName() + ".isSuccessful", "false");
+      log.error(aMarker, "error in execute method in Agentic Paper Filter", e);
+      throw new HandymanException("error in execute method in Agentic Paper Filter", e, action);
     }
 
-    private int getConsumerCount() {
-        int consumerCount = determineConsumerCount();
-        log.info(aMarker, "Initial consumer count determined: {}", consumerCount);
-
-        int contextConsumerCount = parseContextInt(CONSUMER_API_COUNT_KEY, "10");
-        if (consumerCount < contextConsumerCount) {
-            log.info(aMarker, "Consumer count {} is less than context override {}. Using max of both.", consumerCount, contextConsumerCount);
-        }
-        consumerCount = Math.max(consumerCount, contextConsumerCount);
-        log.info(aMarker, "Final consumer count used: {}", consumerCount);
-        return consumerCount;
-    }
-
-    private int getReadBatchSize(int consumerCount) {
-        int readBatchSize = parseContextInt(READ_BATCH_SIZE, "10");
-        log.info(aMarker, "Parsed read batch size from context: {}", readBatchSize);
-
-        if (consumerCount >= readBatchSize) {
-            log.info(aMarker, "Consumer count {} is greater than or equal to read batch size {}. Updating read batch size to match consumer count.", consumerCount, readBatchSize);
-            readBatchSize = consumerCount;
-        } else {
-            log.info(aMarker, "Consumer count {} is less than read batch size {}. Keeping read batch size unchanged.", consumerCount, readBatchSize);
-        }
-        return readBatchSize;
-    }
-
-    @Override
-    public boolean executeIf() {
-        return filterConfig.getCondition();
-    }
-
-    public int getTimeOut() {
-        return this.timeout;
-    }
-
-    private int parseContextInt(String key, String defaultVal) {
-        String value = action.getContext().getOrDefault(key, defaultVal).trim();
-        int result;
-        if (value.isEmpty()) {
-            result = Integer.parseInt(defaultVal);
-            log.info("Context key '{}' is empty or missing. Using default value: {}", key, defaultVal);
-        } else {
-            result = Integer.parseInt(value);
-            log.info("Context key '{}' found with value: {}. Parsed integer: {}", key, value, result);
-        }
-        return result;
-    }
+  }
+  private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
+    String value = action.getContext().getOrDefault(key, defaultValue).trim();
+    return value.isEmpty() ? Integer.parseInt(defaultValue) : Integer.parseInt(value);
+  }
 
 
-    private int determineConsumerCount() {
-        CustomBatchWithScaling scaling = new CustomBatchWithScaling(action, log);
-        int consumerCount;
 
-        boolean podScalingCheckEnabled = scaling.isPodScalingCheckEnabled();
-        log.info(aMarker, "Pod scaling check enabled: {}", podScalingCheckEnabled);
-        if (podScalingCheckEnabled) {
-            log.info(aMarker, "Using Kubernetes API to determine consumer count");
-            consumerCount = scaling.computePaperFilterApiCount();
-        } else {
-            consumerCount = parseContextInt(CONSUMER_API_COUNT_KEY, "1");
-        }
-        log.info(aMarker, "Determined consumer count: {}", consumerCount);
-        return consumerCount;
-    }
+  @Override
+  public boolean executeIf() throws Exception {
+    return agenticPaperFilter.getCondition();
+  }
 
+  public int getTimeOut() {
+    return this.timeout;
+  }
 
-    private List<URL> parseEndpoints(String endpointsStr) {
-        if (endpointsStr == null || endpointsStr.isEmpty()) {
-            log.warn("No endpoints provided in context; returning empty endpoint list.");
-            return Collections.emptyList();
-        }
-
-        List<URL> urls = new ArrayList<>();
-        String[] rawEndpoints = endpointsStr.split(",");
-        log.debug("Parsing endpoints from context: '{}'", endpointsStr);
-
-        for (String endpoint : rawEndpoints) {
-            try {
-                URL url = new URL(endpoint.trim());
-                urls.add(url);
-                log.debug("Parsed valid endpoint URL: {}", url);
-            } catch (MalformedURLException e) {
-                log.error("Invalid endpoint URL: {}", endpoint.trim(), e);
-                throw new HandymanException("Invalid endpoint URL: " + endpoint.trim(), e, action);
-            }
-        }
-
-        log.info("Successfully parsed {} endpoint(s).", urls.size());
-        return urls;
-    }
+  @Data
+  @AllArgsConstructor
+  @Builder
+  @NoArgsConstructor
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class AssetAttributionResponse {
+    private String pageContent;
+  }
 
 }
