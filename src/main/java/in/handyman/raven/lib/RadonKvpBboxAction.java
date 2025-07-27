@@ -109,7 +109,7 @@ public class RadonKvpBboxAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             RadonBboxOutputEntity.class,
                             RadonBboxInputEntity.class,
-                            jdbi, log,
+                            radonKvpBbox.getResourceConn(), log,
                             new RadonBboxInputEntity(), urls, action);
 
             callStartproducer(coproProcessor, readBatchSizeInt);

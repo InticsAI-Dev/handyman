@@ -87,7 +87,7 @@ public class BlankPageRemoverAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             BlankPageRemoverAction.BlankPageRemoverOutputTable.class,
                             BlankPageRemoverAction.BlankPageRemoverInputTable.class,
-                            jdbi, log,
+                            blankPageRemover.getResourceConn(), log,
                             new BlankPageRemoverAction.BlankPageRemoverInputTable(), urls, action);
 
             //4. call the method start producer from coproprocessor

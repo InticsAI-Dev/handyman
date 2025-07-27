@@ -86,7 +86,7 @@ public class UrgencyTriageModelAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             UrgencyTriageOutputTable.class,
                             UrgencyTriageInputTable.class,
-                            jdbi, log,
+                            urgencyTriageModel.getResourceConn(), log,
                             new UrgencyTriageInputTable(), urls, action);
 
             coproProcessor.startProducer(urgencyTriageModel.getQuerySet(), readBatchSize);
