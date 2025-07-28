@@ -24,6 +24,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -189,32 +191,40 @@ public class ControlDataComparisonAction implements IActionExecution {
     }
     public String getNormalizedExtractedValue(String actualValue, String extractedValue, String lineItemType) {
         if ("multi_value".equals(lineItemType) && actualValue != null && extractedValue != null) {
-            final List<String> actualList = Arrays.stream(actualValue.split(","))
+            // Step 1: Extract value including leading space, and map to trimmed version
+            List<String> originalParts = new ArrayList<>();
+            Map<String, String> valueWithLeadingSpaceMap = new HashMap<>();
+
+            // Match values with optional leading space
+            Matcher matcher = Pattern.compile("\\s*[^,]+").matcher(actualValue);
+            while (matcher.find()) {
+                String fullToken = matcher.group(); // includes leading space
+                String trimmed = fullToken.trim();
+                originalParts.add(trimmed);
+                valueWithLeadingSpaceMap.put(trimmed, fullToken); // map "H0015TG" -> "  H0015TG"
+            }
+
+            // Step 2: Build extracted list in order
+            List<String> extractedList = Arrays.stream(extractedValue.split(","))
                     .map(String::trim)
                     .collect(Collectors.toList());
 
-            final List<String> extractedList = Arrays.stream(extractedValue.split(","))
-                    .map(String::trim)
-                    .collect(Collectors.toList());
+            // Step 3: Build output preserving leading spaces
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < extractedList.size(); i++) {
+                String key = extractedList.get(i);
+                String originalValue = valueWithLeadingSpaceMap.getOrDefault(key, key);
+                if (i > 0) result.append(","); // add comma between values
+                result.append(originalValue);
+            }
 
-            final Set<String> extractedSet = new HashSet<>(extractedList);
-
-            List<String> reorderedExtracted = actualList.stream()
-                    .filter(extractedSet::contains)
-                    .collect(Collectors.toList());
-
-            Set<String> actualSet = new HashSet<>(actualList);
-            extractedList.stream()
-                    .filter(value -> !actualSet.contains(value))
-                    .forEach(reorderedExtracted::add);
-
-            log.info("Reordered Extracted value.");
-            return String.join(",", reorderedExtracted);
+            return result.toString();
         }
+
         return extractedValue;
     }
 
-    private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
+        private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
         String normalizedExtracted = extractedValue == null ? "" : extractedValue.trim();
 
