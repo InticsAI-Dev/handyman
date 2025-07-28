@@ -104,9 +104,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                             String key = originId + "|" + decrypted.getKey();
                             decryptedActualMap.put(key, decrypted.getValue());
                         });
-                        log.info("✅ Actual value decryption successful for originId: {}", originId);
+                        log.info(" Actual value decryption successful for originId: {}", originId);
                     } catch (Exception e) {
-                        log.error("❌ Actual value decryption failed for originId: {}", originId, e);
+                        log.error(" Actual value decryption failed for originId: {}", originId, e);
                     }
                 }
 
@@ -195,7 +195,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                     if (record != null) {
                         String originId = record.getOriginId();
                         String paperNo = String.valueOf(record.getPaperNo());
-                        log.info("✅ Encryption completed for sorItem: {}, type: {}", sorItemName, valueType);
+                        log.info("Encryption completed for sorItem: {}, type: {}", sorItemName, valueType);
                         // Update the database with encrypted values
                         String column = "actual".equals(valueType) ? "actual_value" : "extracted_value";
                         jdbi.useHandle(handle -> handle.createUpdate("UPDATE " + outputTable + " SET " + column + " = :value " +
@@ -207,9 +207,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                                 .execute());
                     }
                 });
-                log.info("✅ Batch encryption successful for {} items", encryptedResults.size());
+                log.info("Batch encryption successful for {} items", encryptedResults.size());
             } catch (Exception e) {
-                log.error("❌ Batch encryption failed", e);
+                log.error("Batch encryption failed", e);
             }
         }
     }
