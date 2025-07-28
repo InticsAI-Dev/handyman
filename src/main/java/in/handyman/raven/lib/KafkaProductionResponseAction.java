@@ -85,14 +85,17 @@ public class KafkaProductionResponseAction implements IActionExecution {
           log.info(aMarker, "Processing KafkaProductionResponse for requestTxnId: {}", requestTxnId);
 
           // Check if requestTxnId already exists in the output table
-          boolean requestExists = jdbi.withHandle(handle -> {
-            return handle.createQuery("SELECT COUNT(*) FROM " + kafkaProductionResponse.getOutputTable() + " WHERE requestTxnId = :requestTxnId")
+          boolean requestExistsWithSuccess = jdbi.withHandle(handle -> {
+            return handle.createQuery(
+                            "SELECT COUNT(*) FROM " + kafkaProductionResponse.getOutputTable() +
+                                    " WHERE requestTxnId = :requestTxnId AND status = :status")
                     .bind("requestTxnId", requestTxnId)
+                    .bind("status", "SUCCESS")
                     .mapTo(Integer.class)
                     .one() > 0;
           });
 
-          if (requestExists) {
+          if (requestExistsWithSuccess) {
             log.info(aMarker, "requestTxnId {} already exists in output table, skipping API call", requestTxnId);
             continue;
           }

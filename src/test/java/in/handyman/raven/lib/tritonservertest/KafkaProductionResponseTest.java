@@ -41,14 +41,14 @@ public class KafkaProductionResponseTest {
                         "    ON pozfi.file_name = a.file_name\n" +
                         "    AND ifd.file_name = a.file_name\n" +
                         "    AND ab.tenant_id = ifd.tenant_id\n" +
-                        "WHERE ab.group_id = 892\n" +
+                        "WHERE ab.group_id = 64\n" +
                         "  AND ab.tenant_id = 1\n" +
-                        "  AND ab.batch_id = 'BATCH-892_0'\n" +
-                        "  AND ifd.transaction_id = 'TRZ-4883';\n")
+                        "  AND ab.batch_id = 'BATCH-64_0'\n" +
+                        "  AND ifd.transaction_id = 'TRZ-68';\n")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("kafka.production.response.url", "http://localhost:5000/aumiextractionapi/getAumiPayloadByTxnId");
+        actionExecutionAudit.getContext().put("kafka.production.response.url", "http://localhost:8080/aumiextractionapi/getAumiPayloadByTxnId");
 
 
         KafkaProductionResponseAction deliveryNotifyAction = new KafkaProductionResponseAction(actionExecutionAudit, log, kafkaPublish);
