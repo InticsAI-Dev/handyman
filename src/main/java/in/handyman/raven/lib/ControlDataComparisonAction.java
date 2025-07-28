@@ -104,9 +104,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                             String key = originId + "|" + decrypted.getKey();
                             decryptedActualMap.put(key, decrypted.getValue());
                         });
-                        log.info(" Actual value decryption successful for originId: {}", originId);
+                        log.info("Actual value decryption successful for originId: {}", originId);
                     } catch (Exception e) {
-                        log.error(" Actual value decryption failed for originId: {}", originId, e);
+                        log.error("Actual value decryption failed for originId: {}", originId, e);
                     }
                 }
 
@@ -118,9 +118,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                             String key = originId + "|" + decrypted.getKey();
                             decryptedExtractedMap.put(key, decrypted.getValue());
                         });
-                        log.info("✅ Extracted value decryption successful for originId: {}", originId);
+                        log.info("Extracted value decryption successful for originId: {}", originId);
                     } catch (Exception e) {
-                        log.error("❌ Extracted value decryption failed for originId: {}", originId, e);
+                        log.error("Extracted value decryption failed for originId: {}", originId, e);
                     }
                 }
             }
@@ -166,6 +166,9 @@ public class ControlDataComparisonAction implements IActionExecution {
             String extractedValue = record.getExtractedValue();
             String actualValue = record.getActualValue();
 
+            // Perform validation with decrypted values
+            doControlDataValidation(record, jdbi, outputTable, kafkaComparison, encryption, encryptionRequests, recordMap);
+
             // Prepare for re-encryption if item-wise encryption is enabled and record is marked as encrypted
             if ("true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false")) && "t".equalsIgnoreCase(record.getIsEncrypted())) {
                 if (actualValue != null && !actualValue.trim().isEmpty()) {
@@ -177,9 +180,6 @@ public class ControlDataComparisonAction implements IActionExecution {
                     recordMap.put(sorItemName + "|extracted", record);
                 }
             }
-
-            // Perform validation with decrypted values
-            doControlDataValidation(record, jdbi, outputTable, kafkaComparison, encryption, encryptionRequests, recordMap);
         }
 
         // Perform batch encryption
