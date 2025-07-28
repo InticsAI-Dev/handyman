@@ -287,26 +287,30 @@ public class ControlDataComparisonAction implements IActionExecution {
 
     public String getNormalizedExtractedValue(String actualValue, String extractedValue, String lineItemType) {
         if ("multi_value".equals(lineItemType) && actualValue != null && extractedValue != null) {
+            // Step 1: Extract value including leading space, and map to trimmed version
             List<String> originalParts = new ArrayList<>();
             Map<String, String> valueWithLeadingSpaceMap = new HashMap<>();
 
+            // Match values with optional leading space
             Matcher matcher = Pattern.compile("\\s*[^,]+").matcher(actualValue);
             while (matcher.find()) {
-                String fullToken = matcher.group();
+                String fullToken = matcher.group(); // includes leading space
                 String trimmed = fullToken.trim();
                 originalParts.add(trimmed);
-                valueWithLeadingSpaceMap.put(trimmed, fullToken);
+                valueWithLeadingSpaceMap.put(trimmed, fullToken); // map "H0015TG" -> "  H0015TG"
             }
 
+            // Step 2: Build extracted list in order
             List<String> extractedList = Arrays.stream(extractedValue.split(","))
                     .map(String::trim)
                     .collect(Collectors.toList());
 
+            // Step 3: Build output preserving leading spaces
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < extractedList.size(); i++) {
                 String key = extractedList.get(i);
                 String originalValue = valueWithLeadingSpaceMap.getOrDefault(key, key);
-                if (i > 0) result.append(",");
+                if (i > 0) result.append(","); // add comma between values
                 result.append(originalValue);
             }
 
@@ -315,6 +319,8 @@ public class ControlDataComparisonAction implements IActionExecution {
 
         return extractedValue;
     }
+
+
 
     private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
