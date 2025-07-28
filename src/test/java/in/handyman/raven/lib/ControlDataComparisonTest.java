@@ -86,42 +86,72 @@ public class ControlDataComparisonTest {
         System.out.println(validationResults);
         log.info("Data validation completed");
     }
+
     @Test
-    void testGetNormalizedExtractedValue_MultiValue() {
-        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().putAll(Map.ofEntries(
-                Map.entry("read.batch.size", "1"),
-                Map.entry("outbound.doc.delivery.notify.url", ""),
-                Map.entry("gen_group_id.group_id", "1"),
-                Map.entry("agadia.secretKey", ""),
-                Map.entry("outbound.context.condition", "Product"),
-                Map.entry("consumer.API.count", "1"),
-                Map.entry("write.batch.size", "1")
-        ));
-        ControlDataComparisonAction action = new ControlDataComparisonAction(actionExecutionAudit, log, ControlDataComparison.builder().build());
-        List<Map<String, String>> testCases = List.of(
-                Map.of("actual", " H0015TG,H2036HI,H0014", "extracted", "H0014,H0015TG,H2036HI", "expected", "H0015TG,H2036HI,H0014"),
-                Map.of("actual", "90791, 90837,90834, 90832", "extracted", "90791,90832,90834,90837", "expected", "90791,90834,90832,90837"),
-                Map.of("actual", "90791, 90837", "extracted", "90791,90837,H0014", "expected", "90791,90837,H0014"),
-                Map.of("actual", "90791, 90837", "extracted", "H0014", "expected", "H0014"),
-                Map.of("actual", "H0014,34241,879896", "extracted", "90791, 90837", "expected", "90791,90837"),
-                Map.of("actual", "H0014,34241,879896", "extracted", "", "expected", ""),
-                Map.of("actual", "", "extracted", "H0014,34241,879896", "expected", "H0014,34241,879896"),
-                Map.of("actual", "test", "extracted", "H0014, 34241,879896", "expected", "H0014,34241,879896"),
-                Map.of("actual", "null", "extracted", "null", "expected", "null"),
-                Map.of("actual", "H0014,34241,879896", "extracted", "null", "expected", "null")
-        );
-        for (int i = 0; i < testCases.size(); i++) {
-            String actualValue = testCases.get(i).get("actual");
-            String extractedValue = testCases.get(i).get("extracted");
-            String expectedValue = testCases.get(i).get("expected");
-            String lineItemType = "multi_value";
-            String result = action.getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
-            System.out.println("Case " + (i + 1) + " -> Result: " + actualValue + " | Expected: " + result);
-            assertEquals(result, result, "Mismatch in case " + (i + 1));
-
-        }
-
+    void testCase1() {
+        assertNormalizedExtractedValue("H0015TG , H2036HI ,H0014", "H0014,H0015TG,H2036HI", "H0015TG,H2036HI,H0014");
     }
 
+    @Test
+    void testCase2() {
+        assertNormalizedExtractedValue("90791, 90837,90834, 90832", "90791,90832,90834,90837", "90791,90834,90832,90837");
+    }
+
+    @Test
+    void testCase3() {
+        assertNormalizedExtractedValue("90791, 90837", "90791,90837,H0014", "90791,90837,H0014");
+    }
+
+    @Test
+    void testCase4() {
+        assertNormalizedExtractedValue("90791, 90837", "H0014", "H0014");
+    }
+
+    @Test
+    void testCase5() {
+        assertNormalizedExtractedValue("H0014,34241,879896", "90791, 90837", "90791,90837");
+    }
+
+    @Test
+    void testCase6() {
+        assertNormalizedExtractedValue("H0014,34241,879896", "", "");
+    }
+
+    @Test
+    void testCase7() {
+        assertNormalizedExtractedValue("", "H0014,34241,879896", "H0014,34241,879896");
+    }
+
+    @Test
+    void testCase8() {
+        assertNormalizedExtractedValue("test", "H0014, 34241,879896", "H0014,34241,879896");
+    }
+
+    @Test
+    void testCase9() {
+        assertNormalizedExtractedValue("null", "null", "null");
+    }
+
+    @Test
+    void testCase10() {
+        assertNormalizedExtractedValue("H0014,34241,879896", "null", "null");
+    }
+
+    private void assertNormalizedExtractedValue(String actual, String extracted, String expected) {
+        ActionExecutionAudit audit = new ActionExecutionAudit();
+        audit.getContext().putAll(Map.of(
+                "read.batch.size", "1",
+                "outbound.doc.delivery.notify.url", "",
+                "gen_group_id.group_id", "1",
+                "agadia.secretKey", "",
+                "outbound.context.condition", "Product",
+                "consumer.API.count", "1",
+                "write.batch.size", "1"
+        ));
+        ControlDataComparisonAction action = new ControlDataComparisonAction(audit, log, ControlDataComparison.builder().build());
+        String result = action.getNormalizedExtractedValue(actual, extracted, "multi_value");
+        System.out.println("Case  -> Result: " + actual + " | Expected: " + result);
+        assertEquals(result, result, "Mismatch in case " );
+    }
 }
+
