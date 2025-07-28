@@ -123,7 +123,7 @@ public class AutoRotationAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AutoRotationOutputTable.class,
                             AutoRotationInputTable.class,
-                            jdbi, log,
+                            autoRotation.getResourceConn(), log,
                             autoRotationInputTable, urls, action);
 
             coproProcessor.startProducer(autoRotation.getQuerySet(), readBatchSize);

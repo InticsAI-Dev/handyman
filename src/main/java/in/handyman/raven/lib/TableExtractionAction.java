@@ -79,7 +79,7 @@ public class TableExtractionAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             TableExtractionOutputTable.class,
                             TableExtractionInputTable.class,
-                            jdbi, log,
+                            tableExtraction.getResourceConn(), log,
                             new TableExtractionInputTable(), urls, action);
 
             log.info(aMarker, "table extraction copro coproProcessor initialization  {}", coproProcessor);

@@ -181,6 +181,7 @@ action:
     |providerContainerParser
     |postProcessingExecutor
     |agenticPaperFilter
+    |mockServerTest
     |documentEyeCue
     |multivalueConcatenation
     |contextInsertActionAudit
@@ -1411,6 +1412,14 @@ agenticPaperFilter:
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
+
+mockServerTest:
+    'mockServerTest' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'result-table' resultTable=STRING
+    'copro-url' endPoint=STRING
+    'process-id' processId=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 errorResponse:
     'errorResponse' 'as' name=STRING

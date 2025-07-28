@@ -95,7 +95,7 @@ public class IntellimatchAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       IntellimatchOutputTable.class,
                       IntellimatchInputTable.class,
-                      jdbi, log,
+                      intellimatch.getResourceConn(), log,
                       new IntellimatchInputTable(), urls, action);
       log.info(aMarker, "intelli match copro Processor initialization  {}", coproProcessor);
 
