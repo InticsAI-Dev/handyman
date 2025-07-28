@@ -20,16 +20,24 @@ public class ControlDataComparisonTest {
                 .name("ControlDataComparison")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("coverage_report_output.auth_id_result")
+                .outputTable("coverage_report_output.final_result_field_summary_kafka_comparison")
                 .inputTable("control_data_output.auth_id_input")
-                .querySet("select a.root_pipeline_id ,now(),a.group_id ,a.file_name ,a.origin_id ,a.paper_no, \n" +
-                        "                        a.actual_value as  actual_value , a.extracted_value as extracted_value,  \n" +
-                        "                          a.tenant_id, si.allowed_adapter, si.char_limit, si.restricted_adapter, si.sor_item_name, si.is_encrypted, ep.encryption_policy,si.line_item_type\n" +
-                        "                        from control_data_output.auth_id_input a  \n" +
-                        "                        join sor_meta.sor_container sc on sc.document_type = a.document_type and sc.tenant_id = a.tenant_id and sc.status = 'ACTIVE' \n" +
-                        "                        join sor_meta.sor_item si on si.sor_container_id = sc.sor_container_id and si.tenant_id = sc.tenant_id and si.status = 'ACTIVE' and si.sor_item_name = 'auth_id' \n" +
-                        "            JOIN sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id\n" +
-                        "                        where a.root_pipeline_id = 71667  and a.tenant_id = 1;")
+                .querySet("select a.root_pipeline_id ,now(),a.group_id ,a.file_name ,a.origin_id ,a.paper_no,   \n" +
+                        "a.actual_value as  actual_value , a.extracted_value as extracted_value,    \n" +
+                        "a.tenant_id, \n" +
+                        "si.allowed_adapter, si.char_limit, si.restricted_adapter, \n" +
+                        "si.sor_item_name, \n" +
+                        "si.is_encrypted, ep.encryption_policy,si.line_item_type  \n" +
+                        "from control_data_output.consolidated_coverage_input  a    \n" +
+                        "inner join sor_meta.sor_container sc on sc.document_type = a.document_type \n" +
+                        "and sc.tenant_id = a.tenant_id and sc.status = 'ACTIVE'   \n" +
+                        "inner join sor_meta.sor_item si on si.sor_container_id = sc.sor_container_id \n" +
+                        "and si.tenant_id = sc.tenant_id and si.status = 'ACTIVE'  and si.sor_item_id = a.sor_item_id \n" +
+                        "inner JOIN sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id  \n" +
+                        "where a.root_pipeline_id = 21141  and a.tenant_id = 1\n" +
+                        "            \n" +
+                        "            \n" +
+                        "            ")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
