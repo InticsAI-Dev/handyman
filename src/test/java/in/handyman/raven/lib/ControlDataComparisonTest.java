@@ -34,7 +34,7 @@ public class ControlDataComparisonTest {
                         "inner join sor_meta.sor_item si on si.sor_container_id = sc.sor_container_id \n" +
                         "and si.tenant_id = sc.tenant_id and si.status = 'ACTIVE'  and si.sor_item_id = a.sor_item_id \n" +
                         "inner JOIN sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id  \n" +
-                        "where a.root_pipeline_id = 21141  and a.tenant_id = 1\n" +
+                        "where a.root_pipeline_id = 23500  and a.tenant_id = 1\n" +
                         "            \n" +
                         "            \n" +
                         "            ")
@@ -53,6 +53,7 @@ public class ControlDataComparisonTest {
                 Map.entry("control.data.one.touch.threshold", "1"),
                 Map.entry("control.data.low.touch.threshold", "3"),
                 Map.entry("control.data.date.comparison.format", "yyyy/MM/dd"),
+                Map.entry("pipeline.end.to.end.encryption", "true"),
                 Map.entry("date.input.formats", "M/d/yy"),
                 Map.entry("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt"),
                 Map.entry("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt"),

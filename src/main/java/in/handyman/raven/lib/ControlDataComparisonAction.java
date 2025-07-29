@@ -77,52 +77,77 @@ public class ControlDataComparisonAction implements IActionExecution {
 
             Map<String, String> decryptedActualMap = new HashMap<>();
             Map<String, String> decryptedExtractedMap = new HashMap<>();
+            boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
+            boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
 
-            Map<String, List<ControlDataComparisonQueryInputTable>> groupedByOrigin = controlDataComparisonQueryInputTables.stream()
-                    .filter(r -> "t".equalsIgnoreCase(r.getIsEncrypted()))
-                    .collect(Collectors.groupingBy(ControlDataComparisonQueryInputTable::getOriginId));
+            // Decryption logic
+            if (itemWiseEncryption) {
+                Map<String, List<ControlDataComparisonQueryInputTable>> groupedByOrigin = controlDataComparisonQueryInputTables.stream()
+                        .filter(r -> "t".equalsIgnoreCase(r.getIsEncrypted()))
+                        .collect(Collectors.groupingBy(ControlDataComparisonQueryInputTable::getOriginId));
 
-            for (Map.Entry<String, List<ControlDataComparisonQueryInputTable>> entry : groupedByOrigin.entrySet()) {
-                String originId = entry.getKey();
-                List<ControlDataComparisonQueryInputTable> encryptedItems = entry.getValue();
+                for (Map.Entry<String, List<ControlDataComparisonQueryInputTable>> entry : groupedByOrigin.entrySet()) {
+                    String originId = entry.getKey();
+                    List<ControlDataComparisonQueryInputTable> encryptedItems = entry.getValue();
 
-                List<EncryptionRequestClass> actualValueFields = encryptedItems.stream()
-                        .filter(r -> r.getActualValue() != null && !r.getActualValue().trim().isEmpty())
-                        .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getActualValue(), r.getSorItemName()))
-                        .collect(Collectors.toList());
+                    // Decrypt actual values if actualEncryption is true
+                    if (actualEncryption) {
+                        List<EncryptionRequestClass> actualValueFields = encryptedItems.stream()
+                                .filter(r -> {
+                                    if (r.getActualValue() == null || r.getActualValue().trim().isEmpty()) {
+                                        log.info(aMarker, "Skipping decryption for actualValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
+                                                originId, r.getSorItemName());
+                                        return false;
+                                    }
+                                    return true;
+                                })
+                                .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getActualValue(), r.getSorItemName()))
+                                .collect(Collectors.toList());
 
-                List<EncryptionRequestClass> extractedValueFields = encryptedItems.stream()
-                        .filter(r -> r.getExtractedValue() != null && !r.getExtractedValue().trim().isEmpty())
-                        .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
-                        .collect(Collectors.toList());
+                        if (!actualValueFields.isEmpty()) {
+                            try {
+                                log.info(aMarker, "Decrypting ACTUAL values for originId: {}", originId);
+                                List<EncryptionRequestClass> decryptedActuals = encryption.decrypt(actualValueFields);
+                                decryptedActuals.forEach(decrypted -> {
+                                    String key = originId + "|" + decrypted.getKey();
+                                    decryptedActualMap.put(key, decrypted.getValue());
+                                });
+                                log.info(aMarker, "Actual value decryption successful for originId: {}", originId);
+                            } catch (Exception e) {
+                                log.error(aMarker, "Actual value decryption failed for originId: {}", originId, e);
+                            }
+                        }
+                    }
 
-                if (!actualValueFields.isEmpty()) {
-                    try {
-                        log.info("Decrypting ACTUAL values for originId: {}", originId);
-                        List<EncryptionRequestClass> decryptedActuals = encryption.decrypt(actualValueFields);
-                        decryptedActuals.forEach(decrypted -> {
-                            String key = originId + "|" + decrypted.getKey();
-                            decryptedActualMap.put(key, decrypted.getValue());
-                        });
-                        log.info("Actual value decryption successful for originId: {}", originId);
-                    } catch (Exception e) {
-                        log.error("Actual value decryption failed for originId: {}", originId, e);
+                    // Decrypt extracted values
+                    List<EncryptionRequestClass> extractedValueFields = encryptedItems.stream()
+                            .filter(r -> {
+                                if (r.getExtractedValue() == null || r.getExtractedValue().trim().isEmpty()) {
+                                    log.info(aMarker, "Skipping decryption for extractedValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
+                                            originId, r.getSorItemName());
+                                    return false;
+                                }
+                                return true;
+                            })
+                            .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
+                            .collect(Collectors.toList());
+
+                    if (!extractedValueFields.isEmpty()) {
+                        try {
+                            log.info(aMarker, "Decrypting EXTRACTED values for originId: {}", originId);
+                            List<EncryptionRequestClass> decryptedExtracted = encryption.decrypt(extractedValueFields);
+                            decryptedExtracted.forEach(decrypted -> {
+                                String key = originId + "|" + decrypted.getKey();
+                                decryptedExtractedMap.put(key, decrypted.getValue());
+                            });
+                            log.info(aMarker, "Extracted value decryption successful for originId: {}", originId);
+                        } catch (Exception e) {
+                            log.error(aMarker, "Extracted value decryption failed for originId: {}", originId, e);
+                        }
                     }
                 }
-
-                if (!extractedValueFields.isEmpty()) {
-                    try {
-                        log.info("Decrypting EXTRACTED values for originId: {}", originId);
-                        List<EncryptionRequestClass> decryptedExtracted = encryption.decrypt(extractedValueFields);
-                        decryptedExtracted.forEach(decrypted -> {
-                            String key = originId + "|" + decrypted.getKey();
-                            decryptedExtractedMap.put(key, decrypted.getValue());
-                        });
-                        log.info("Extracted value decryption successful for originId: {}", originId);
-                    } catch (Exception e) {
-                        log.error("Extracted value decryption failed for originId: {}", originId, e);
-                    }
-                }
+            } else {
+                log.info(aMarker, "Skipping decryption as itemWiseEncryption is false");
             }
 
             invokeValidationPerRecord(controlDataComparisonQueryInputTables, decryptedActualMap,
@@ -149,43 +174,64 @@ public class ControlDataComparisonAction implements IActionExecution {
                                           InticsIntegrity encryption) throws JsonProcessingException {
         List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
         Map<String, ControlDataComparisonQueryInputTable> recordMap = new HashMap<>();
+        boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
+        boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
 
         for (ControlDataComparisonQueryInputTable record : originalRecords) {
             String originId = record.getOriginId();
             String sorItemName = record.getSorItemName();
             String key = originId + "|" + sorItemName;
 
+            // Apply decrypted values if available
             if (decryptedActualMap.containsKey(key)) {
                 record.setActualValue(decryptedActualMap.get(key));
             }
-
             if (decryptedExtractedMap.containsKey(key)) {
                 record.setExtractedValue(decryptedExtractedMap.get(key));
             }
 
             String extractedValue = record.getExtractedValue();
             String actualValue = record.getActualValue();
+            String isEncrypted = record.getIsEncrypted();
 
             // Perform validation with decrypted values
             doControlDataValidation(record, jdbi, outputTable, kafkaComparison, encryption, encryptionRequests, recordMap);
 
-            // Prepare for re-encryption if item-wise encryption is enabled and record is marked as encrypted
-            if ("true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false")) && "t".equalsIgnoreCase(record.getIsEncrypted())) {
-                if (actualValue != null && !actualValue.trim().isEmpty()) {
-                    encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), actualValue, sorItemName + "|actual"));
-                    recordMap.put(sorItemName + "|actual", record);
-                }
-                if (extractedValue != null && !extractedValue.trim().isEmpty()) {
-                    encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
-                    recordMap.put(sorItemName + "|extracted", record);
+            // Prepare for re-encryption based on conditions
+            if (itemWiseEncryption && "t".equalsIgnoreCase(isEncrypted)) {
+                if (actualEncryption) {
+                    // Re-encrypt both actual and extracted values
+                    if (actualValue != null && !actualValue.trim().isEmpty()) {
+                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), actualValue, sorItemName + "|actual"));
+                        recordMap.put(sorItemName + "|actual", record);
+                        log.info(aMarker, "Preparing re-encryption for actualValue for sorItemName: {}, originId: {}", sorItemName, originId);
+                    } else {
+                        log.info(aMarker, "Skipping re-encryption for actualValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
+                    }
+                    if (extractedValue != null && !extractedValue.trim().isEmpty()) {
+                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
+                        recordMap.put(sorItemName + "|extracted", record);
+                        log.info(aMarker, "Preparing re-encryption for extractedValue for sorItemName: {}, originId: {}", sorItemName, originId);
+                    } else {
+                        log.info(aMarker, "Skipping re-encryption for extractedValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
+                    }
+                } else {
+                    // Re-encrypt only extracted values
+                    if (extractedValue != null && !extractedValue.trim().isEmpty()) {
+                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
+                        recordMap.put(sorItemName + "|extracted", record);
+                        log.info(aMarker, "Preparing re-encryption for extractedValue for sorItemName: {}, originId: {}", sorItemName, originId);
+                    } else {
+                        log.info(aMarker, "Skipping re-encryption for extractedValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
+                    }
                 }
             }
         }
 
-        // Perform batch encryption
+        // Perform batch encryption/re-encryption
         if (!encryptionRequests.isEmpty()) {
             try {
-                log.info("Starting batch encryption for {} items", encryptionRequests.size());
+                log.info(aMarker, "Starting batch encryption/re-encryption for {} items", encryptionRequests.size());
                 List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptionRequests);
                 encryptedResults.forEach(result -> {
                     String[] keyParts = result.getKey().split("\\|");
@@ -195,8 +241,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                     if (record != null) {
                         String originId = record.getOriginId();
                         String paperNo = String.valueOf(record.getPaperNo());
-                        log.info("Encryption completed for sorItem: {}, type: {}", sorItemName, valueType);
-                        // Update the database with encrypted values
+                        log.info(aMarker, "Re-encryption completed for sorItemName: {}, type: {}, originId: {}",
+                                sorItemName, valueType, originId);
+                        // Update the database with re-encrypted values
                         String column = "actual".equals(valueType) ? "actual_value" : "extracted_value";
                         jdbi.useHandle(handle -> handle.createUpdate("UPDATE " + outputTable + " SET " + column + " = :value " +
                                         "WHERE origin_id = :originId AND sor_item_name = :sorItemName AND paper_no = :paperNo")
@@ -207,9 +254,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                                 .execute());
                     }
                 });
-                log.info("Batch encryption successful for {} items", encryptedResults.size());
+                log.info(aMarker, "Batch encryption/re-encryption successful for {} items", encryptedResults.size());
             } catch (Exception e) {
-                log.error("Batch encryption failed", e);
+                log.error(aMarker, "Batch encryption/re-encryption failed", e);
             }
         }
     }
@@ -288,7 +335,6 @@ public class ControlDataComparisonAction implements IActionExecution {
     public String getNormalizedExtractedValue(String actualValue, String extractedValue, String lineItemType) {
         if ("multi_value".equals(lineItemType) && actualValue != null && extractedValue != null) {
 
-            // Step 1: Extract and map original tokens from actualValue (preserving formatting)
             List<String> orderedTokens = new ArrayList<>();
             Map<String, String> trimmedToOriginalMap = new LinkedHashMap<>();
 
@@ -302,12 +348,10 @@ public class ControlDataComparisonAction implements IActionExecution {
                 }
             }
 
-            // Step 2: Convert extractedValue to Set of trimmed strings
             Set<String> extractedSet = Arrays.stream(extractedValue.split(","))
                     .map(String::trim)
                     .collect(Collectors.toSet());
 
-            // Step 3: Reconstruct result preserving order and formatting from actualValue
             StringBuilder result = new StringBuilder();
             boolean first = true;
             for (String token : orderedTokens) {
@@ -323,7 +367,6 @@ public class ControlDataComparisonAction implements IActionExecution {
 
         return extractedValue;
     }
-
 
     private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
@@ -507,7 +550,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             return 1L;
         }
 
-        return formattedExtractedGender.equalsIgnoreCase(formattedGeneratedGender) ? 0L  // No mismatch
+        return formattedExtractedGender.equalsIgnoreCase(formattedGeneratedGender) ? 0L
                 : (long) formattedExtractedGender.length();
     }
 
