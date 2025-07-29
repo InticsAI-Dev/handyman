@@ -382,8 +382,8 @@ public class LlmJsonParserAction implements IActionExecution {
                 return null;
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            log.info("json not found {}", e);
+            HandymanException exception=new HandymanException(e);
+            HandymanException.insertException("Error in convertFormattedJsonStringToJsonNode method for Llm json parser action", exception, action);
             return null;
         }
     }
