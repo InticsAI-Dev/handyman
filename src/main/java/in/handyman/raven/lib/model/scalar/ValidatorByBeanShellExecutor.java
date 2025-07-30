@@ -69,20 +69,22 @@ public class ValidatorByBeanShellExecutor {
         String customMapperClassOrder = actionExecutionAudit.getContext().get(customMapperClassOrderVariable);
 
         final List<String> outboundClassMapperOrders = Optional.ofNullable(customMapperClassOrder)
-                .map(s -> Arrays.stream(s.split(",")).collect(Collectors.toList()))
+                .map(s -> Arrays.stream(s.trim().split(","))
+                .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());
 
         log.info("Total class found for post processing validation by bsh is: {}", outboundClassMapperOrders.size());
 
         updatedPostProcessingDetailsMap = postProcessingDetailsMap;
         for (String className : outboundClassMapperOrders) {
-            String sourceCode = actionExecutionAudit.getContext().get(className);
-            log.info("Found source code for class {}", className);
+            String trimmedClassName = className.trim();
+            String sourceCode = actionExecutionAudit.getContext().get(trimmedClassName);
+            log.info("Found source code for class {}", trimmedClassName);
             LocalDateTime customMappingClassStartTime = LocalDateTime.now();
-            getPostProcessedValidatorMap(className, sourceCode, updatedPostProcessingDetailsMap, rootPipelineId);
+            getPostProcessedValidatorMap(trimmedClassName, sourceCode, updatedPostProcessingDetailsMap, rootPipelineId);
             LocalDateTime customMappingClassEndTime = LocalDateTime.now();
             int totalTime = (int) ChronoUnit.MILLIS.between(customMappingClassStartTime, customMappingClassEndTime);
-            log.info("{} mapper started at {}, and ended at {}, and took {} ms", className, customMappingClassStartTime, customMappingClassEndTime, totalTime);
+            log.info("{} mapper started at {}, and ended at {}, and took {} ms", trimmedClassName, customMappingClassStartTime, customMappingClassEndTime, totalTime);
         }
         log.info("Total entries found from all custom mapping with {} entries for originId: {} and pageNo: {}", updatedPostProcessingDetailsMap.size(), originId, pageNo);
         updatePostProcessingInputDetailsByPage(postProcessingDetailsByPageNo, updatedPostProcessingDetailsMap);

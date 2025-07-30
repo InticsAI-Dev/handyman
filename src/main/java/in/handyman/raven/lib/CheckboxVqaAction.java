@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.CheckboxVqa;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -75,7 +76,7 @@ public class CheckboxVqaAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             CheckboxVqaOutputTable.class,
                             CheckboxVqaInputTable.class,
-                            jdbi, log,
+                            checkboxVqa.getResourceConn(), log,
                             new CheckboxVqaInputTable(), urls, action);
             coproProcessor.startProducer(checkboxVqa.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
@@ -242,6 +243,10 @@ public class CheckboxVqaAction implements IActionExecution {
         @Override
         public List<Object> getRowData() {
             return null;
+        }
+        @Override
+        public String getStatus() {
+            return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
         }
     }
 

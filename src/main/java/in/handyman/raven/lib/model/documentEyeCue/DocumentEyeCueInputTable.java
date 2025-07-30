@@ -30,4 +30,9 @@ public class DocumentEyeCueInputTable implements CoproProcessor.Entity {
     public List<Object> getRowData() {
         return null;
     }
+
+    @Override
+    public String getStatus() {
+        return null;
+    }
 }

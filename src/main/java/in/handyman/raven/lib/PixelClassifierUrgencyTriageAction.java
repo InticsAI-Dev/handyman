@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PixelClassifierUrgencyTriage;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -75,7 +76,7 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       HwUrgencyTriageOutputTable.class,
                       HwUrgencyTriageInputTable.class,
-                      jdbi, log,
+                      pixelClassifierUrgencyTriage.getResourceConn(), log,
                       new HwUrgencyTriageInputTable(), urls, action);
       coproProcessor.startProducer(pixelClassifierUrgencyTriage.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       Thread.sleep(1000);
@@ -238,6 +239,10 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
     @Override
     public List<Object> getRowData() {
       return null;
+    }
+    @Override
+    public String getStatus() {
+      return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
   }
 

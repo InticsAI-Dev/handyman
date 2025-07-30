@@ -2,34 +2,23 @@ package in.handyman.raven.lambda.access.repo;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.*;
-import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
-import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
-import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
-import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
-import in.handyman.raven.lib.azure.adapters.AzureJdbiConnection;
-import in.handyman.raven.lib.encryption.impl.AESEncryptionImpl;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
-import in.handyman.raven.lib.utils.ConfigEncryptionUtils;
+import in.handyman.raven.lambda.doa.config.*;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -63,9 +52,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         getDatabaseConnectionByConnectionType();
     }
 
-    public static Jdbi getDatabaseConnectionByConnectionType(){
+    public static Jdbi getDatabaseConnectionByConnectionType() {
         String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
-        if(legacyResourceConnection.equals(AZURE)){
+        if (legacyResourceConnection.equals(AZURE)) {
 
             String azureTenantId = PropertyHandler.get(AZURE_TENANT_ID);
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
@@ -115,11 +104,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     public static void checkJDBIConnection() {
-        try (var ignored = JDBI.open()) {
-            log.info("Jdbi connection is open, initiating the transaction");
+        try {
+            JDBI.withHandle(handle -> {
+                handle.execute("SELECT 1");
+                log.debug("JDBI connection healthy");
+                return null;
+            });
         } catch (Exception e) {
-            log.error("Jdbi connection is closed, recreating the connection");
-            getDatabaseConnectionByConnectionType();
+            log.error("JDBI connection failed, reconnecting...", e);
+            getDatabaseConnectionByConnectionType(); // if needed
         }
     }
 
@@ -185,9 +178,18 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
+    public List<DatumDriftConfig> findAllDatumDrifts() {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(DatumDriftConfigRepo.class);
+            return repo.findAll();
+        });
+    }
+
+    @Override
     public SpwResourceConfig getResourceConfig(final String name) {
         checkJDBIConnection();
-        SpwResourceConfig resourceConfig=findOneResourceConfig(name).orElseThrow();
+        SpwResourceConfig resourceConfig = findOneResourceConfig(name).orElseThrow();
         resourceConfig.setPassword(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getPassword()));
         resourceConfig.setResourceUrl(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getResourceUrl()));
         resourceConfig.setUserName(ConfigEncryptionUtils.fromEnv().decryptProperty(resourceConfig.getUserName()));
@@ -299,7 +301,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     public void insertStatement(final StatementExecutionAudit audit) {
         checkJDBIConnection();
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
+        JDBI.useHandle(handle ->
+                handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
                 .bindBean(audit).execute());
     }
 
@@ -532,7 +535,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
-    public List<HandymanExceptionAuditDetails> findAllHandymanExceptions(){
+    public List<HandymanExceptionAuditDetails> findAllHandymanExceptions() {
         checkJDBIConnection();
         return JDBI.withHandle(handle -> {
             var repo = handle.attach(HandymanExceptionRepo.class);
@@ -541,7 +544,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
-    public List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId){
+    public List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId) {
         checkJDBIConnection();
         return JDBI.withHandle(handle -> {
             var repo = handle.attach(HandymanExceptionRepo.class);
@@ -549,16 +552,17 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         });
     }
 
-    public String encryptString(String message){
+    public String encryptString(String message) {
         InticsIntegrity inticsIntegrity = new InticsIntegrity(new AESEncryptionImpl());
 
         String messageEncrypted = inticsIntegrity.encrypt(message, "AES256", "SQL_DATA");
         return messageEncrypted;
     }
+
     public void insertExceptionLog(ActionExecutionAudit actionExecutionAudit, Throwable exception, String message) {
         checkJDBIConnection();
         HandymanExceptionAuditDetails exceptionAuditDetails = HandymanExceptionAuditDetails.builder()
-          //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
+                //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())
                 .rootPipelineName(actionExecutionAudit.getParentPipelineName())
                 .pipelineName(actionExecutionAudit.getPipelineName())
@@ -578,6 +582,50 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
     }
 
+    public void updateProtegrityAuditRecord(
+            long id,
+            String status,
+            String message
+    ) {
+        checkJDBIConnection();
+        JDBI.withHandle(handle -> handle.createUpdate(" UPDATE audit.protegrity_api_audit " +
+                        " SET completed_on = :completed_on, status = :status, message = :message" +
+                        "            WHERE id = :id")
+                .bind("completed_on", Timestamp.valueOf(LocalDateTime.now()))
+                .bind("status", status)
+                .bind("message", message)
+                .bind("id", id)
+                .execute());
+    }
+
+    public long insertProtegrityAuditRecord(
+            String key,
+            String encryptionType,
+            String endpoint,
+            Long rootPipelineId,
+            Long actionId,
+            String threadName,
+            String uuid
+    ) {
+        checkJDBIConnection();
+
+        return JDBI.withHandle(handle ->
+                handle.createUpdate("INSERT INTO audit.protegrity_api_audit " +
+                                "(key, encryption_type, endpoint, started_on, root_pipeline_id, action_id, thread_name, uuid) " +
+                                "VALUES (:key, :encryption_type, :endpoint, :started_on, :root_pipeline_id, :action_id, :thread_name, :uuid)")
+                        .bind("key", key)
+                        .bind("encryption_type", encryptionType)
+                        .bind("endpoint", endpoint)
+                        .bind("started_on", Timestamp.valueOf(LocalDateTime.now()))
+                        .bind("root_pipeline_id", rootPipelineId)
+                        .bind("action_id", actionId)
+                        .bind("thread_name", threadName)
+                        .bind("uuid", uuid)
+                        .executeAndReturnGeneratedKeys("id")
+                        .mapTo(Long.class)
+                        .one()
+        );
+    }
 
 
 }

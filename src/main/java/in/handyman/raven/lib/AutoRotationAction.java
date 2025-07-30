@@ -1,6 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -10,7 +9,7 @@ import in.handyman.raven.lib.model.AutoRotation;
 import in.handyman.raven.lib.model.autorotation.AutoRotationConsumerProcess;
 import in.handyman.raven.lib.model.autorotation.AutoRotationInputTable;
 import in.handyman.raven.lib.model.autorotation.AutoRotationOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -124,7 +123,7 @@ public class AutoRotationAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             AutoRotationOutputTable.class,
                             AutoRotationInputTable.class,
-                            jdbi, log,
+                            autoRotation.getResourceConn(), log,
                             autoRotationInputTable, urls, action);
 
             coproProcessor.startProducer(autoRotation.getQuerySet(), readBatchSize);

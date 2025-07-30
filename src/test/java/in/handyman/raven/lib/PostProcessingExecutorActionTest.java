@@ -5,8 +5,6 @@ import in.handyman.raven.lib.model.PostProcessingExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
-import static in.handyman.raven.lib.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
-
 @Slf4j
 class PostProcessingExecutorActionTest {
 
@@ -15,11 +13,11 @@ class PostProcessingExecutorActionTest {
 
         PostProcessingExecutor postProcessingExecutor = PostProcessingExecutor.builder()
                 .name("Post Processing executor")
-                .batchId("BATCH-22_0")
-                .groupId("22")
+                .batchId("BATCH-2014_0_new")
+                .groupId("2014")
                 .condition(true)
                 .outputTable("score.aggregation_evaluator")
-                .resourceConn("intics_zio_db_conn")
+                .resourceConn("intics_zio_db_conn_hera")
                 .querySet("SELECT\n" +
                         "                                            a.tenant_id as tenant_id,\n" +
                         "                                            a.confidence_score as aggregated_score,\n" +
@@ -51,136 +49,231 @@ class PostProcessingExecutorActionTest {
                         "                                            JOIN sor_transaction.sor_transaction_payload_queue_archive st ON st.origin_id = a.origin_id\n" +
                         "                                                            AND st.batch_id = a.batch_id\n" +
                         "                                                            AND st.tenant_id = b.tenant_id\n" +
-                        "                        WHERE a.origin_id ='ORIGIN-99' and b.synonym_id in (23548);\n")
+                        "                        WHERE a.origin_id ='ORIGIN-8736';\n")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("  SELECT DISTINCT\n" +
+                        "          b.tenant_id,\n" +
+                        "          b.aggregated_score,\n" +
+                        "          b.masked_score,\n" +
+                        "          b.origin_id,\n" +
+                        "          b.paper_no,\n" +
+                        "          b.predicted_value as extracted_value ,\n" +
+                        "          b.vqa_score,\n" +
+                        "          b.rank,\n" +
+                        "          smca.sor_item_attribution_id as sor_item_attribution_id,\n" +
+                        "          b.sor_item_name,\n" +
+                        "          'TMP-AGD-001' as documentId,\n" +
+                        "  1 as acc_transaction_id,\n" +
+                        "  b.b_box,\n" +
+                        "  b.root_pipeline_id as root_pipeline_id,\n" +
+                        "  b.frequency,\n" +
+                        "  b.question_id,\n" +
+                        "  b.synonym_id,\n" +
+                        "  b.model_registry,\n" +
+                        "  smca.is_encrypted,\n" +
+                        "  smca.encryption_policy,\n" +
+                        "  'multi_value' as line_item_type\n" +
+                        "   from macro.multi_value_sor_item_audit b\n" +
+                        "      JOIN macro.sor_meta_consolidated_audit smca ON smca.tenant_id = b.tenant_id\n" +
+                        "                      AND smca.root_pipeline_id = b.root_pipeline_id\n" +
+                        "                      AND smca.synonym_id = b.synonym_id\n" +
+                        "                      AND smca.sor_item_name = b.sor_item_name\n" +
+                        "      JOIN sor_transaction.sor_transaction_payload_queue_archive st ON st.origin_id = b.origin_id\n" +
+                        "                      AND st.batch_id = b.batch_id\n" +
+                        "                      AND st.tenant_id = b.tenant_id\n" +
+                        "    WHERE\n" +
+                        "          b.group_id = '2014'\n" +
+                        "      AND b.tenant_id = 1\n" +
+                        "      AND b.batch_id = 'BATCH-2014_0'\n" +
+                        "      AND b.root_pipeline_id = '275569'\n" +
+                        "      AND smca.line_item_type = 'multi_value'\n" +
+                        "      and b.sor_item_name = 'auth_id';")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.getContext().put("tenant_id", "1");
-        action.getContext().put("group_id", "22");
-        action.getContext().put("batch_id", "BATCH-22_0");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-2014_0_new");
         action.getContext().put("created_user_id", "1");
-                action.getContext().put("outbound.mapper.bsh.class.order", "ServiceDetailsMapper");
+                action.getContext().put("outbound.mapper.bsh.class.order", "AuthIdValidator");
+                action.getContext().put("outbound.mapper.bsh.class.order", "MedicaidMemberIdValidator");
         action.getContext().put("pipeline.end.to.end.encryption", "false");
-        action.getContext().put("ServiceDetailsMapper", "import org.slf4j.Logger;\n" +
-                "import java.util.Map;\n" +
-                "import java.util.regex.Pattern;\n" +
-                "import java.util.ArrayList;\n" +
-                "import java.util.List;\n" +
+        action.getContext().put("AuthIdValidator", "import org.slf4j.Logger;\n" +
+                "import java.util.*;\n" +
                 "\n" +
-                "public class ServiceDetailsMapper {\n" +
+                "public class AuthIdValidator {\n" +
                 "\n" +
                 "    private Logger logger;\n" +
-                "    private Pattern serviceCodePattern;\n" +
-                "    private Pattern diagnosisCodePattern;\n" +
                 "\n" +
-                "    public ServiceDetailsMapper(Logger logger) {\n" +
+                "    public AuthIdValidator(Logger logger) {\n" +
                 "        this.logger = logger;\n" +
-                "        this.serviceCodePattern = Pattern.compile(\"^[9HGJTS][0-9A-Za-z]{3}[0-9]{1}$|^[0-9A-Za-z]{5}$|^[0-9A-Za-z]{7}$\");\n" +
-                "        this.diagnosisCodePattern = Pattern.compile(\"^[FR].*\");\n" +
                 "    }\n" +
                 "\n" +
                 "    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {\n" +
-                "        logger.info(\"[RootPipelineID: {}] Entered ServiceDetailsMapper doCustomPredictionMapping method\", rootPipelineId);\n" +
+                "        logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Starting Auth ID mapping process\");\n" +
                 "\n" +
-                "        if (shouldProcess(predictionKeyMap)) {\n" +
-                "            serviceCodeValidation(predictionKeyMap, rootPipelineId);\n" +
-                "            diagnosisCodeValidation(predictionKeyMap, rootPipelineId);\n" +
+                "        if (predictionKeyMap != null) {\n" +
+                "            processAuthAndMemberIds(predictionKeyMap, rootPipelineId);\n" +
                 "        } else {\n" +
-                "            logger.info(\"[RootPipelineID: {}] No fields to process.\", rootPipelineId);\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Input map is null\");\n" +
+                "            Map result = new HashMap();\n" +
+                "            result.put(\"auth_id\", \"\");\n" +
+                "            result.put(\"member_id\", \"\");\n" +
+                "            return new MappingResult(result);\n" +
                 "        }\n" +
                 "\n" +
                 "        return new MappingResult(predictionKeyMap);\n" +
                 "    }\n" +
                 "\n" +
-                "    private boolean shouldProcess(Map predictionKeyMap) {\n" +
-                "        return (predictionKeyMap.containsKey(\"service_code\") && predictionKeyMap.get(\"service_code\") != null) ||\n" +
-                "               (predictionKeyMap.containsKey(\"diagnosis_code\") && predictionKeyMap.get(\"diagnosis_code\") != null);\n" +
-                "    }\n" +
+                "    private void processAuthAndMemberIds(Map data, Long rootPipelineId) {\n" +
+                "        // Handle null inputs explicitly\n" +
+                "        String authId = data.containsKey(\"auth_id\") && data.get(\"auth_id\") != null ? String.valueOf(data.get(\"auth_id\")) : \"\";\n" +
+                "        String memberId = data.containsKey(\"member_id\") && data.get(\"member_id\") != null ? String.valueOf(data.get(\"member_id\")) : \"\";\n" +
+                "        String additionalAuthProperties = data.containsKey(\"additional_auth_properties\") && data.get(\"additional_auth_properties\") != null ? String.valueOf(data.get(\"additional_auth_properties\")) : \"\";\n" +
                 "\n" +
-                "    public String serviceCodeValidation(Map extractedData, Long rootPipelineId) {\n" +
-                "        if (extractedData == null || !extractedData.containsKey(\"service_code\")) {\n" +
-                "            logger.info(\"[RootPipelineID: {}] No value found for the service code field.\", rootPipelineId);\n" +
-                "            return \"\";\n" +
-                "        }\n" +
-                "\n" +
-                "        String serviceCode = String.valueOf(extractedData.get(\"service_code\"));\n" +
-                "        if (serviceCode == null || serviceCode.trim().length() == 0) {\n" +
-                "            logger.info(\"[RootPipelineID: {}] service_code is null or empty.\", rootPipelineId);\n" +
-                "            return \"\";\n" +
-                "        }\n" +
-                "\n" +
-                "        // Split service codes\n" +
-                "        String[] serviceCodes;\n" +
-                "        serviceCodes = serviceCode.split(\",\");\n" +
-                "        List validCodes = new ArrayList(); // Use ArrayList instead of HashSet\n" +
-                "\n" +
-                "        // Traditional for loop\n" +
-                "        for (int i = 0; i < serviceCodes.length; i++) {\n" +
-                "            String trimmedCode = serviceCodes[i].trim();\n" +
-                "            if (isValidServiceCode(trimmedCode)) {\n" +
-                "                if (!validCodes.contains(trimmedCode)) { // Ensure uniqueness\n" +
-                "                    validCodes.add(trimmedCode);\n" +
+                "        // Validate auth_id\n" +
+                "        boolean authIdValid = false;\n" +
+                "        String firstValidAuthId = null;\n" +
+                "        ArrayList remainingValidAuthIds = new ArrayList();\n" +
+                "        if (!authId.equals(\"\")) {\n" +
+                "            String[] authIds = authId.split(\",\");\n" +
+                "            HashSet uniqueAuthIds = new HashSet();\n" +
+                "            for (String id : authIds) {\n" +
+                "                id = id.trim();\n" +
+                "                if (!id.equals(\"\") && !uniqueAuthIds.contains(id) && isValidAuthId(id)) {\n" +
+                "                    uniqueAuthIds.add(id);\n" +
+                "                    if (firstValidAuthId == null) {\n" +
+                "                        firstValidAuthId = id;\n" +
+                "                        authIdValid = true;\n" +
+                "                    } else {\n" +
+                "                        remainingValidAuthIds.add(id);\n" +
+                "                    }\n" +
+                "                } else if (!id.equals(\"\")) {\n" +
+                "                    logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Invalid auth_id (must be UM + 8 digits or greater than 8 digits)\");\n" +
                 "                }\n" +
+                "            }\n" +
+                "        } else {\n" +
+                "            data.put(\"auth_id\", \"\");\n" +
+                "        }\n" +
+                "\n" +
+                "        // Handle member_id\n" +
+                "        if (!memberId.equals(\"\")) {\n" +
+                "            String[] memberIds = memberId.split(\",\");\n" +
+                "            HashSet uniqueMemberIds = new HashSet();\n" +
+                "            ArrayList validMemberIds = new ArrayList();\n" +
+                "            String umId = null;\n" +
+                "            ArrayList validUmIds = new ArrayList();\n" +
+                "\n" +
+                "            for (String id : memberIds) {\n" +
+                "                id = id.trim();\n" +
+                "                if (!id.equals(\"\") && !uniqueMemberIds.contains(id)) {\n" +
+                "                    uniqueMemberIds.add(id);\n" +
+                "                    if (id.toUpperCase().startsWith(\"UM\")) {\n" +
+                "                        if (isValidAuthId(id)) {\n" +
+                "                            if (!authIdValid && umId == null) {\n" +
+                "                                umId = id;\n" +
+                "                            } else {\n" +
+                "                                validUmIds.add(id);\n" +
+                "                            }\n" +
+                "                        } else {\n" +
+                "                            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Invalid UM member_id (must be UM + 8 digits or greater than 8 digits)\");\n" +
+                "                        }\n" +
+                "                    } else {\n" +
+                "                        if (isValidMemberId(id)) {\n" +
+                "                            validMemberIds.add(id);\n" +
+                "                        } else {\n" +
+                "                            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Invalid member_id (length 9-13 or non-alphanumeric)\");\n" +
+                "                        }\n" +
+                "                    }\n" +
+                "                }\n" +
+                "            }\n" +
+                "\n" +
+                "            if (umId != null || !validUmIds.isEmpty()) {\n" +
+                "                logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] member_id starts with UM, reassigning to auth_id\");\n" +
+                "                if (umId != null) {\n" +
+                "                    data.put(\"auth_id\", umId);\n" +
+                "                    authIdValid = true;\n" +
+                "                }\n" +
+                "                if (!validUmIds.isEmpty()) {\n" +
+                "                    String newAdditional = join(validUmIds, \",\");\n" +
+                "                    additionalAuthProperties = additionalAuthProperties.equals(\"\") ? newAdditional : additionalAuthProperties + \",\" + newAdditional;\n" +
+                "                }\n" +
+                "                data.put(\"member_id\", validMemberIds.isEmpty() ? \"\" : join(validMemberIds, \",\"));\n" +
                 "            } else {\n" +
-                "                logger.warn(\"[RootPipelineID: {}] Invalid service code: {}\", rootPipelineId, trimmedCode);\n" +
+                "                data.put(\"member_id\", validMemberIds.isEmpty() ? \"\" : join(validMemberIds, \",\"));\n" +
                 "            }\n" +
+                "        } else {\n" +
+                "            data.put(\"member_id\", \"\");\n" +
                 "        }\n" +
                 "\n" +
-                "        if (validCodes.isEmpty()) {\n" +
-                "            logger.warn(\"[RootPipelineID: {}] No valid service codes found.\", rootPipelineId);\n" +
-                "            extractedData.remove(\"service_code\");\n" +
-                "            return \"\";\n" +
-                "        }\n" +
-                "\n" +
-                "        // Manual concatenation for Java 1.5 and BeanShell\n" +
-                "        StringBuffer result = new StringBuffer();\n" +
-                "        for (int i = 0; i < validCodes.size(); i++) {\n" +
-                "            if (i > 0) {\n" +
-                "                result.append(\",\");\n" +
+                "        // Handle auth_id if it contains valid IDs and hasn't been overridden\n" +
+                "        if (authIdValid && firstValidAuthId != null && data.get(\"auth_id\").equals(authId)) {\n" +
+                "            data.put(\"auth_id\", firstValidAuthId);\n" +
+                "            if (!remainingValidAuthIds.isEmpty()) {\n" +
+                "                String newAdditional = join(remainingValidAuthIds, \",\");\n" +
+                "                additionalAuthProperties = additionalAuthProperties.equals(\"\") ? newAdditional : additionalAuthProperties + \",\" + newAdditional;\n" +
                 "            }\n" +
-                "            result.append(validCodes.get(i).toString());\n" +
+                "        } else if (!authIdValid && data.get(\"auth_id\").equals(authId)) {\n" +
+                "            data.put(\"auth_id\", \"\");\n" +
                 "        }\n" +
                 "\n" +
-                "        String resultString = result.toString();\n" +
-                "        extractedData.put(\"service_code\", resultString);\n" +
-                "        return resultString;\n" +
+                "        // Update additional_auth_properties without clearing existing values\n" +
+                "        data.put(\"additional_auth_properties\", additionalAuthProperties);\n" +
                 "    }\n" +
                 "\n" +
-                "    private boolean isValidServiceCode(String code) {\n" +
-                "        if (code == null || code.length() == 0) {\n" +
+                "    private boolean isValidAuthId(String id) {\n" +
+                "        if (id == null || id.equals(\"\")) {\n" +
                 "            return false;\n" +
                 "        }\n" +
-                "        return serviceCodePattern.matcher(code).matches();\n" +
+                "        // Check for UM followed by 8 or more digits (case-insensitive)\n" +
+                "        if (!id.toUpperCase().startsWith(\"UM\")) {\n" +
+                "            return false;\n" +
+                "        }\n" +
+                "        if (id.length() < 10) { // UM + 8 digits = 10 characters minimum\n" +
+                "            return false;\n" +
+                "        }\n" +
+                "        // Check if remaining characters after UM are digits\n" +
+                "        for (int i = 2; i < id.length(); i++) {\n" +
+                "            if (!Character.isDigit(id.charAt(i))) {\n" +
+                "                return false;\n" +
+                "            }\n" +
+                "        }\n" +
+                "        return true;\n" +
                 "    }\n" +
                 "\n" +
-                "    public String diagnosisCodeValidation(Map extractedData, Long rootPipelineId) {\n" +
-                "        if (extractedData == null || !extractedData.containsKey(\"diagnosis_code\")) {\n" +
-                "            logger.info(\"[RootPipelineID: {}] No value found for the diagnosis code field.\", rootPipelineId);\n" +
-                "            return \"\";\n" +
+                "    private boolean isValidMemberId(String id) {\n" +
+                "        if (id == null || id.equals(\"\")) {\n" +
+                "            return false;\n" +
                 "        }\n" +
-                "\n" +
-                "        String diagnosisCode = String.valueOf(extractedData.get(\"diagnosis_code\"));\n" +
-                "        if (diagnosisCode == null || diagnosisCode.trim().length() == 0) {\n" +
-                "            logger.info(\"[RootPipelineID: {}] diagnosis_code is null or empty.\", rootPipelineId);\n" +
-                "            return \"\";\n" +
+                "        // Check length between 9 and 13\n" +
+                "        int length = id.length();\n" +
+                "        if (length < 9 || length > 13) {\n" +
+                "            return false;\n" +
                 "        }\n" +
-                "\n" +
-                "        if (diagnosisCodePattern.matcher(diagnosisCode).matches()) {\n" +
-                "            extractedData.put(\"diagnosis_code\", diagnosisCode);\n" +
-                "            return diagnosisCode;\n" +
-                "        } else {\n" +
-                "            logger.warn(\"[RootPipelineID: {}] Invalid diagnosis code: {}. Must start with F or R.\", rootPipelineId, diagnosisCode);\n" +
-                "            extractedData.remove(\"diagnosis_code\");\n" +
-                "            return \"\";\n" +
+                "        // Check if id contains only alphanumeric characters\n" +
+                "        for (int i = 0; i < id.length(); i++) {\n" +
+                "            char c = id.charAt(i);\n" +
+                "            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {\n" +
+                "                return false;\n" +
+                "            }\n" +
                 "        }\n" +
+                "        return true;\n" +
                 "    }\n" +
                 "\n" +
-                "    public class MappingResult {\n" +
+                "    private String join(List list, String separator) {\n" +
+                "        StringJoiner joiner = new StringJoiner(separator);\n" +
+                "        for (Object item : list) {\n" +
+                "            joiner.add(item.toString());\n" +
+                "        }\n" +
+                "        return joiner.toString();\n" +
+                "    }\n" +
+                "\n" +
+                "    public static class MappingResult {\n" +
                 "        private Map mappedData;\n" +
                 "\n" +
                 "        public MappingResult(Map mappedData) {\n" +
-                "            this.mappedData = mappedData;\n" +
+                "            this.mappedData = mappedData != null ? mappedData : new HashMap();\n" +
                 "        }\n" +
                 "\n" +
                 "        public Map getMappedData() {\n" +
@@ -188,6 +281,8 @@ class PostProcessingExecutorActionTest {
                 "        }\n" +
                 "    }\n" +
                 "}");
+        action.getContext().put("MedicaidMemberIdValidator", "");
+
         action.setRootPipelineId(929L);
 
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, postProcessingExecutor);

@@ -9,6 +9,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.BlankPageRemover;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -86,7 +87,7 @@ public class BlankPageRemoverAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             BlankPageRemoverAction.BlankPageRemoverOutputTable.class,
                             BlankPageRemoverAction.BlankPageRemoverInputTable.class,
-                            jdbi, log,
+                            blankPageRemover.getResourceConn(), log,
                             new BlankPageRemoverAction.BlankPageRemoverInputTable(), urls, action);
 
             //4. call the method start producer from coproprocessor
@@ -212,6 +213,10 @@ public class BlankPageRemoverAction implements IActionExecution {
         @Override
         public List<Object> getRowData() {
             return null;
+        }
+        @Override
+        public String getStatus() {
+            return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
         }
     }
 

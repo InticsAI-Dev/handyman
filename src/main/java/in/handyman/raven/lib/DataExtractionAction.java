@@ -10,7 +10,7 @@ import in.handyman.raven.lib.model.DataExtraction;
 import in.handyman.raven.lib.model.textextraction.DataExtractionConsumerProcess;
 import in.handyman.raven.lib.model.textextraction.DataExtractionInputTable;
 import in.handyman.raven.lib.model.textextraction.DataExtractionOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -83,7 +83,7 @@ public class DataExtractionAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<DataExtractionInputTable, DataExtractionOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DataExtractionOutputTable.class, DataExtractionInputTable.class, jdbi, log, new DataExtractionInputTable(), urls, action);
+            final CoproProcessor<DataExtractionInputTable, DataExtractionOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DataExtractionOutputTable.class, DataExtractionInputTable.class, dataExtraction.getResourceConn(), log, new DataExtractionInputTable(), urls, action);
 
             Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));

@@ -10,7 +10,7 @@ import in.handyman.raven.lib.model.FileMergerPdf;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerPdfConsumerProcess;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerpdfInputEntity;
 import in.handyman.raven.lib.model.filemergerpdf.FileMergerpdfOutputEntity;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -95,7 +95,7 @@ public class FileMergerPdfAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             FileMergerpdfOutputEntity.class,
                             FileMergerpdfInputEntity.class,
-                            jdbi, log,
+                            fileMergerPdf.getResourceConn(), log,
                             new FileMergerpdfInputEntity(), urls, action);
 
             log.info(aMarker, "file merger copro coproProcessor initialization  {}", coproProcessor);

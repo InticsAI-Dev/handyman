@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -23,7 +24,6 @@ import java.util.stream.Collectors;
 import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueConsumerProcess;
 import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueInputTable;
 import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -108,7 +108,7 @@ public class DocumentEyeCueAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             DocumentEyeCueOutputTable.class,
                             DocumentEyeCueInputTable.class,
-                            jdbi, log,
+                            documentEyeCue.getResourceConn(), log,
                             new DocumentEyeCueInputTable(), urls, action);
 
             log.info(aMarker, "Document EyeCue copro coproProcessor initialization  {}", coproProcessor);

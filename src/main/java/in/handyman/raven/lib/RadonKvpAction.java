@@ -1,35 +1,19 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
+import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
-import in.handyman.raven.lib.encryption.SecurityEngine;
-import in.handyman.raven.lib.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.RadonKvp;
-import java.lang.Exception;
-import java.lang.Object;
-import java.lang.Override;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.sql.Types;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
-
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpConsumerProcess;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
-import in.handyman.raven.lib.utils.FileProcessingUtils;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.argument.Arguments;
-import org.jdbi.v3.core.argument.NullArgument;
+import in.handyman.raven.lib.utils.CustomBatchWithScaling;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -37,7 +21,6 @@ import org.slf4j.MarkerFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -68,15 +51,12 @@ public class RadonKvpAction implements IActionExecution {
     private final Logger log;
     private final RadonKvp radonKvp;
     private final Marker aMarker;
-    private final ProviderDataTransformer providerDataTransformer;
     private final ObjectMapper objectMapper;
-    private final Jdbi jdbi;
     private final InticsIntegrity securityEngine;
 
     private final int threadSleepTime;
-    private final int consumerApiCount;
     private final int writeBatchSize;
-    private final int readBatchSize;
+    private int readBatchSize;
     private final int timeout;
 
     private final String targetTableName;
@@ -88,35 +68,40 @@ public class RadonKvpAction implements IActionExecution {
         this.action = action;
         this.log = log;
         this.radonKvp = (RadonKvp) radonKvp;
-        this.jdbi = ResourceAccess.rdbmsJDBIConn(this.radonKvp.getResourceConn());
-        this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action);
+        this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action, log);
         this.objectMapper = new ObjectMapper();
         this.aMarker = MarkerFactory.getMarker("RadonKvp:" + this.radonKvp.getName());
-
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
         this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
-        this.consumerApiCount = parseContextValue(action, "Radon.kvp.consumer.API.count", "1");
         this.writeBatchSize = parseContextValue(action, "write.batch.size", "10");
-        this.readBatchSize = parseContextValue(action, "read.batch.size", "10");
-
         this.targetTableName = this.radonKvp.getOutputTable();
         this.radonKvpUrl = this.radonKvp.getEndpoint();
         this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
-
         this.insertQuery = INSERT_INTO + " " + targetTableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
 
-        this.providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, jdbi, securityEngine);
     }
 
     private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
         String value = action.getContext().getOrDefault(key, defaultValue).trim();
-        return value.isEmpty() ? Integer.parseInt(defaultValue) : Integer.parseInt(value);
+        int result;
+
+        if (value.isEmpty()) {
+            result = Integer.parseInt(defaultValue);
+            log.debug("Context key '{}' is empty or missing. Using default value: {}", key, defaultValue);
+        } else {
+            result = Integer.parseInt(value);
+            log.debug("Context key '{}' found with value: '{}'. Parsed as integer: {}", key, value, result);
+        }
+        return result;
     }
 
     @Override
     public void execute() throws Exception {
         try {
-            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+
+            ProviderDataTransformer providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
+
+
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
 
@@ -129,9 +114,33 @@ public class RadonKvpAction implements IActionExecution {
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(jdbi, urls);
+            int consumerApiCount = 0;
+            CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
+            boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
+            if (isPodScalingCheckEnabled) {
+                log.info(aMarker, "Pod Scaling Check is enabled, computing consumer API count using CustomBatchWithScaling");
+                consumerApiCount = customBatchWithScaling.computeSorTransactionApiCount();
+            }
+
+            if (consumerApiCount <= 0) {
+                log.info(aMarker, "No kvp consumer API count found using kube client, using existing context value");
+                String key = "Radon.kvp.consumer.API.count";
+                consumerApiCount = parseContextValue(action, key, "1");
+            }
+            log.info(aMarker, "Consumer API count for kvp action is {}", consumerApiCount);
+
+            readBatchSize = parseContextValue(action, "read.batch.size", "10");
+            if (consumerApiCount >= readBatchSize) {
+                log.info(aMarker, "Consumer API count {} is greater than read batch size {}, setting read batch size to consumer API count", consumerApiCount, readBatchSize);
+                readBatchSize = consumerApiCount;
+            } else {
+                log.info(aMarker, "Consumer API count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerApiCount, readBatchSize);
+            }
+
+            final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(urls);
             Thread.sleep(threadSleepTime);
-            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils,jdbi,providerDataTransformer);
+
+            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, providerDataTransformer, radonKvp.getResourceConn());
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " LLM kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {
@@ -143,13 +152,13 @@ public class RadonKvpAction implements IActionExecution {
 
     }
 
-    private @NotNull CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> getTableCoproProcessor(Jdbi jdbi, List<URL> urls) {
+    private @NotNull CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> getTableCoproProcessor(List<URL> urls) {
         RadonQueryInputTable neonQueryInputTable = new RadonQueryInputTable();
         final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor =
                 new CoproProcessor<>(new LinkedBlockingQueue<>(),
                         RadonQueryOutputTable.class,
                         RadonQueryInputTable.class,
-                        jdbi, log,
+                        radonKvp.getResourceConn(), log,
                         neonQueryInputTable, urls, action);
 
         coproProcessor.startProducer(radonKvp.getQuerySet(), readBatchSize);

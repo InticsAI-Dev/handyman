@@ -79,7 +79,7 @@ public class NerAdapterAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             NerOutputTable.class,
                             NerInputTable.class,
-                            jdbi, log,
+                            nerAdapter.getResourceConn(), log,
                             new NerInputTable(), urls, action);
 
             log.info(aMarker, "ner adapter copro coproProcessor initialization  {}", coproProcessor);

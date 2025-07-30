@@ -181,7 +181,13 @@ action:
     |providerContainerParser
     |postProcessingExecutor
     |agenticPaperFilter
+    |mockServerTest
     |documentEyeCue
+    |multivalueConcatenation
+    |contextInsertActionAudit
+    |kafkaProductionResponse
+    |kafkaOutboundComparison
+
     );
 
 
@@ -1405,7 +1411,26 @@ agenticPaperFilter:
   	'result-table' resultTable=STRING
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
-  	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+  	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
+
+mockServerTest:
+    'mockServerTest' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'result-table' resultTable=STRING
+    'copro-url' endPoint=STRING
+    'process-id' processId=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+errorResponse:
+    'errorResponse' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'result-table' resultTable=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
+
 
 documentEyeCue:
 	'documentEyeCue' 'as' name=STRING
@@ -1418,7 +1443,44 @@ documentEyeCue:
 		querySet=STRING
 	'}' ('on-condition' condition=expression)* ;
 
+multivalueConcatenation:
+    'multivalueConcatenation' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'group-id' groupId = STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
+contextInsertActionAudit:
+    'contextInsertActionAudit' 'as' name=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
 
+kafkaProductionResponse:
+    'kafkaProductionResponse' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'shadow-url' endPoint=STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*;
+
+
+kafkaOutboundComparison:
+    'kafkaOutboundComparison' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'batch-id' batchId = STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
 //rules
 
 resource : STRING;

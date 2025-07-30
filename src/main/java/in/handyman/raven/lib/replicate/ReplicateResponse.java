@@ -27,4 +27,10 @@ public class ReplicateResponse {
     @JsonProperty("created_at")
     private String createdAt;
     private JsonNode urls;
+    @JsonProperty("statusCode")
+    private Long statusCode;
+    @JsonProperty("errorMessage")
+    private String errorMessage;
+    @JsonProperty("detail")
+    private String detail;
 }

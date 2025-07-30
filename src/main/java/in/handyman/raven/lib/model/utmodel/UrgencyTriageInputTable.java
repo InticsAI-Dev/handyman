@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.utmodel;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,7 +29,10 @@ public class UrgencyTriageInputTable implements CoproProcessor.Entity {
     private String batchId;
     private String prompt;
     private Timestamp createdOn;
-
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
     @Override
     public List<Object> getRowData() {
         return null;
