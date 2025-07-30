@@ -374,16 +374,17 @@ public class LlmJsonParserAction implements IActionExecution {
                     jsonResponse = repairJson(jsonResponse);
                     return objectMapper.readTree(jsonResponse);
                 }
-            } else if ((jsonResponse.contains("{")) | (jsonResponse.contains("["))) {
+            } else if ((jsonResponse.contains("{")) || (jsonResponse.contains("["))) {
                 log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
-                return objectMapper.readTree(jsonResponse);
+                return objectMapper.readTree(jsonResponse.trim());
             } else {
                 log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
                 return null;
             }
         } catch (Exception e) {
-            HandymanException exception=new HandymanException(e);
-            HandymanException.insertException("Error in convertFormattedJsonStringToJsonNode method for Llm json parser action", exception, action);
+            log.error("json not found with exception: ", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in convertFormattedJsonStringToJsonNode method for Llm json parser action", handymanException, action);
             return null;
         }
     }
