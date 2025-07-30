@@ -76,6 +76,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
+        boolean isGuidedJsonActive = entity.getIsGuidedJsonActive();
+        String guidedJson = entity.getGuidedJson();
 
         if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
                 && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")) {
@@ -155,6 +157,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
+
+        log.info("Checking if guidedJson is active: {}", isGuidedJsonActive);
+        if (isGuidedJsonActive && guidedJson != null && !guidedJson.isEmpty()) {
+            radonKvpExtractionRequest.setJsonFormat(guidedJson);
+            log.info(aMarker, "Guided JSON is active and provided for the request - {}", radonKvpExtractionRequest.getJsonFormat());
+        }
 
 
         if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {

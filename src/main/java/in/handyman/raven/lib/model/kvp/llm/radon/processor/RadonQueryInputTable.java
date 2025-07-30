@@ -36,6 +36,8 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Boolean postProcess;
     private String postProcessClassName;
     private String modelName;
+    private Boolean isGuidedJsonActive;
+    private String guidedJson;
 
     @Override
     public String getStatus() {

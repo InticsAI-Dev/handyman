@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,4 +25,6 @@ public class RadonKvpExtractionRequest {
     private String batchId;
     private String base64Img;
     private String modelName;
+    @JsonProperty("json_format")
+    private String jsonFormat;
 }
