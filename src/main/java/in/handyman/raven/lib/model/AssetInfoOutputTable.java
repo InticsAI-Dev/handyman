@@ -7,8 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Data
 @AllArgsConstructor
@@ -33,7 +34,10 @@ public class AssetInfoOutputTable implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return Collections.emptyList();
+        return Stream.of(this.fileId, this.processId, this.tenantId, this.rootPipelineId,
+                this.fileChecksum, this.fileExtension, this.fileName, this.decodedFileName,
+                this.filePath, this.fileSize, this.encode, this.width, this.height, this.dpi,
+                this.batchId).collect(Collectors.toList());
     }
 
     @Override
