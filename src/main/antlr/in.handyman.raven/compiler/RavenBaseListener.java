@@ -1027,6 +1027,18 @@ public class RavenBaseListener implements RavenListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterDeepSift(RavenParser.DeepSiftContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitDeepSift(RavenParser.DeepSiftContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterEpisodeOfCoverage(RavenParser.EpisodeOfCoverageContext ctx) { }
 	/**
 	 * {@inheritDoc}
