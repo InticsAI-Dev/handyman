@@ -1,7 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.TestDataExtractor;
+import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorInput;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -14,9 +14,12 @@ import org.slf4j.Logger;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 
 public class TestDataExtractorActionTest {
@@ -42,18 +45,19 @@ public class TestDataExtractorActionTest {
         MultipartFile mockFile = createMockPdf("Text Extraction Content By implementing the recommendations above (especially JSON serialization, thread safety, and validation), the code can be made robust and reliable. Without these fixes, it will likely fail in production or with invalid inputs.\n" +
                 "If you have additional details (e.g., expected file types, concurrency requirements, or deployment environment), I can refine the analysis further. Would you like me to provide a specific code patch, focus on a particular issue, or suggest tests for the system?");
 
-        TestDataExtractor model = new TestDataExtractor();
-        model.setName("TextExtractionTest");
-        model.setCondition(true);
-        model.setFiles(Collections.singletonList(mockFile));
-        model.setMode("text");
-        model.setOutputPath(tempDir.resolve("text_output.json").toString());
-        model.setKeywords(null);
+        TestDataExtractorInput model = TestDataExtractorInput.builder()
+                .name("TextExtractionTest")
+                .condition(true)
+                .files(Collections.singletonList(mockFile))
+                .mode("text")
+                .outputPath(tempDir.toString())
+                .keywords(null)
+                .build();
 
         TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
         action.execute();
 
-        File outputFile = new File(model.getOutputPath());
+        File outputFile = new File(tempDir.toString() + File.separator + "mock_input.pdf.txt");
         System.out.println("Output file exists: " + outputFile.exists());
 
         String outputContent = Files.readString(outputFile.toPath());
@@ -61,27 +65,48 @@ public class TestDataExtractorActionTest {
     }
 
     @Test
-    public void testInvalidMode() throws Exception {
-        try {
-            TestDataExtractor model = new TestDataExtractor();
-            model.setName("InvalidModeTest");
-            model.setCondition(true);
-            model.setFiles(Collections.emptyList());
-            model.setMode("invalid");
-            model.setOutputPath(tempDir.resolve("invalid_output.json").toString());
+    public void testKeywordExtractionMode() throws Exception {
+        MultipartFile mockFile = createMockPdf("This document contains important keywords like robust, reliable, and validation. The system should ensure thread safety and proper JSON serialization.");
 
-            TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
-            action.execute();
-        } catch (IllegalArgumentException e) {
-            System.out.println("Caught expected exception for invalid mode: " + e.getMessage());
-        }
+        TestDataExtractorInput model = TestDataExtractorInput.builder()
+                .name("KeywordExtractionTest")
+                .condition(true)
+                .files(Collections.singletonList(mockFile))
+                .mode("keywords")
+                .outputPath(tempDir.toString())
+                .keywords(Arrays.asList("robust", "reliable", "validation"))
+                .build();
+
+        TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
+        action.execute();
+
+        File outputFile = new File(tempDir.toString() + File.separator + "mock_input.pdf.txt");
+        System.out.println("Output file exists: " + outputFile.exists());
+
+        String outputContent = Files.readString(outputFile.toPath());
+        System.out.println("Output Content:\n" + outputContent);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidMode() throws Exception {
+        TestDataExtractorInput model = TestDataExtractorInput.builder()
+                .name("InvalidModeTest")
+                .condition(true)
+                .files(Collections.emptyList())
+                .mode("invalid")
+                .outputPath(tempDir.toString())
+                .build();
+
+        TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
+        action.execute();
     }
 
     @Test
     public void testExecuteIfConditionFalse() throws Exception {
-        TestDataExtractor model = new TestDataExtractor();
-        model.setName("ConditionFalseTest");
-        model.setCondition(false);
+        TestDataExtractorInput model = TestDataExtractorInput.builder()
+                .name("ConditionFalseTest")
+                .condition(false)
+                .build();
 
         TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
         boolean result = action.executeIf();
@@ -116,7 +141,6 @@ public class TestDataExtractorActionTest {
         FileInputStream fis = new FileInputStream(file);
         return new MockMultipartFile("file", "mock_input.pdf", "application/pdf", fis);
     }
-
 
     private void deleteDirectory(File directory) {
         if (directory.isDirectory()) {

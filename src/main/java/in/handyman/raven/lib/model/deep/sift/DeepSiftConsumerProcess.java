@@ -16,7 +16,7 @@ import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.lib.TestDataExtractorAction;
-import in.handyman.raven.lib.model.TestDataExtractor;
+import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorInput;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import okhttp3.*;
@@ -206,7 +206,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             }
 
             try {
-                // Prepare file for TestDataExtractor
+                // Prepare file for TestDataExtractorInput
                 File inputFile = new File(filePath);
                 if (!inputFile.exists()) {
                     throw new HandymanException("Input file does not exist: " + filePath);
@@ -219,21 +219,38 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         fileContent
                 );
 
-                // Create TestDataExtractor instance
-                TestDataExtractor testDataExtractor = TestDataExtractor.builder()
+                // Create TestDataExtractorInput instance
+                TestDataExtractorInput.TestDataExtractorInputBuilder builder = TestDataExtractorInput.builder()
                         .name("DeepSiftTest4J")
                         .mode("keywords")
                         .files(Collections.singletonList(multipartFile))
                         .outputPath(System.getProperty("java.io.tmpdir"))
-                        .condition(true)
-                        .build();
+                        .condition(true);
+
+                // Set keywords from userPrompt or systemPrompt if available
+                List<String> keywords = new ArrayList<>();
+                if (test4jRequest.getUserPrompt() != null && !test4jRequest.getUserPrompt().isEmpty()) {
+                    keywords.addAll(Arrays.asList(test4jRequest.getUserPrompt().split("\\s*,\\s*")));
+                } else if (test4jRequest.getSystemPrompt() != null && !test4jRequest.getSystemPrompt().isEmpty()) {
+                    keywords.addAll(Arrays.asList(test4jRequest.getSystemPrompt().split("\\s*,\\s*")));
+                }
+                builder.keywords(keywords.isEmpty() ? null : keywords);
+
+                // Set other fields (use defaults or context values if available)
+                builder.processId(processId);
+                builder.endPoint(endpoint.toString());
+                builder.resourceConn(action.getContext().getOrDefault("resource.connection", ""));
+                builder.resultTable(action.getContext().getOrDefault("result.table", ""));
+                builder.querySet(action.getContext().getOrDefault("query.set", ""));
+
+                TestDataExtractorInput testDataExtractorInput = builder.build();
 
                 // Execute TestDataExtractorAction
-                TestDataExtractorAction extractorAction = new TestDataExtractorAction(action, log, testDataExtractor);
+                TestDataExtractorAction extractorAction = new TestDataExtractorAction(action, log, testDataExtractorInput);
                 extractorAction.execute();
 
                 // Read the extracted text from the output file
-                String outputFilePath = testDataExtractor.getOutputPath() + File.separator + inputFile.getName() + ".txt";
+                String outputFilePath = testDataExtractorInput.getOutputPath() + File.separator + inputFile.getName() + ".txt";
                 File outputFile = new File(outputFilePath);
                 if (!outputFile.exists()) {
                     throw new HandymanException("Output file not generated: " + outputFilePath);

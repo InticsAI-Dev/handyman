@@ -3,7 +3,7 @@ package in.handyman.raven.lib;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.TestDataExtractor;
+import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorInput;
 import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorService;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -21,27 +21,27 @@ import java.util.List;
 public class TestDataExtractorAction implements IActionExecution {
   private final ActionExecutionAudit action;
   private final Logger log;
-  private final TestDataExtractor testDataExtractor;
+  private final TestDataExtractorInput testDataExtractorInput;
   private final Marker aMarker;
   private final TestDataExtractorService service;
 
   public TestDataExtractorAction(final ActionExecutionAudit action, final Logger log,
-                                 final Object testDataExtractor) {
-    this.testDataExtractor = (TestDataExtractor) testDataExtractor;
+                                 final Object testDataExtractorInput) {
+    this.testDataExtractorInput = (TestDataExtractorInput) testDataExtractorInput;
     this.action = action;
     this.log = log;
-    this.aMarker = MarkerFactory.getMarker("TestDataExtractor:" + this.testDataExtractor.getName());
+    this.aMarker = MarkerFactory.getMarker("TestDataExtractor:" + this.testDataExtractorInput.getName());
     this.service = new TestDataExtractorService();
   }
 
   @Override
   public void execute() throws Exception {
-    log.info(aMarker, "Starting TestDataExtractor action for {}", testDataExtractor.getName());
+    log.info(aMarker, "Starting TestDataExtractor action for {}", testDataExtractorInput.getName());
 
-    String mode = testDataExtractor.getMode();
-    List<MultipartFile> files = testDataExtractor.getFiles();
-    String outputPath = testDataExtractor.getOutputPath();
-    List<String> keywords = testDataExtractor.getKeywords();
+    String mode = testDataExtractorInput.getMode();
+    List<MultipartFile> files = testDataExtractorInput.getFiles();
+    String outputPath = testDataExtractorInput.getOutputPath();
+    List<String> keywords = testDataExtractorInput.getKeywords();
 
     log.debug(aMarker, "Mode: {}, Files: {}, OutputPath: {}", mode, files != null ? files.size() : 0, outputPath);
 
@@ -64,6 +64,6 @@ public class TestDataExtractorAction implements IActionExecution {
 
   @Override
   public boolean executeIf() throws Exception {
-    return testDataExtractor.getCondition();
+    return testDataExtractorInput.getCondition();
   }
 }
