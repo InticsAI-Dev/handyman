@@ -224,10 +224,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                       "AND batch_id = :batchId"
       );
 
-      for (MultiValueMemberQueryInputTable row : inputRows) {
-        batch
-                .bind("predictedValue", thresholdResult);
-      }
+        batch.bind("predictedValue", thresholdResult);
 
       batch.execute();
     });
