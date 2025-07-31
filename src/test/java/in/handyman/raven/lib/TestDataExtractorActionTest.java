@@ -40,6 +40,7 @@ public class TestDataExtractorActionTest {
         deleteDirectory(tempDir.toFile());
     }
 
+
     @Test
     public void testTextExtractionMode() throws Exception {
         MultipartFile mockFile = createMockPdf("Text Extraction Content By implementing the recommendations above (especially JSON serialization, thread safety, and validation), the code can be made robust and reliable. Without these fixes, it will likely fail in production or with invalid inputs.\n" +
