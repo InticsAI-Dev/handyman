@@ -216,7 +216,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                 .bind("minScoreId", 0)
                 .bind("originId", row.getOriginId())
                 .bind("paperNo", row.getPaperNo())
-                .bind("sorItemName", "")
+                .bind("sorItemName", "multiple_member_indicator")
                 .bind("weightScore", 0)
                 .bind("predictedValue", thresholdResult)
                 .bind("bBox", "")
