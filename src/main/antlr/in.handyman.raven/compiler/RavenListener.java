@@ -840,6 +840,16 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitDataExtraction(RavenParser.DataExtractionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#testDataExtractor}.
+	 * @param ctx the parse tree
+	 */
+	void enterTestDataExtractor(RavenParser.TestDataExtractorContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#testDataExtractor}.
+	 * @param ctx the parse tree
+	 */
+	void exitTestDataExtractor(RavenParser.TestDataExtractorContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#episodeOfCoverage}.
 	 * @param ctx the parse tree
 	 */
@@ -1250,6 +1260,26 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitMultipartDelete(RavenParser.MultipartDeleteContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#multipartFolderDelete}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultipartFolderDelete(RavenParser.MultipartFolderDeleteContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multipartFolderDelete}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultipartFolderDelete(RavenParser.MultipartFolderDeleteContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#folderDeleteByProcess}.
+	 * @param ctx the parse tree
+	 */
+	void enterFolderDeleteByProcess(RavenParser.FolderDeleteByProcessContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#folderDeleteByProcess}.
+	 * @param ctx the parse tree
+	 */
+	void exitFolderDeleteByProcess(RavenParser.FolderDeleteByProcessContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#systemkeyTable}.
 	 * @param ctx the parse tree
 	 */
@@ -1429,6 +1459,186 @@ public interface RavenListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitConvertExcelToDatabase(RavenParser.ConvertExcelToDatabaseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#dbBackupEase}.
+	 * @param ctx the parse tree
+	 */
+	void enterDbBackupEase(RavenParser.DbBackupEaseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#dbBackupEase}.
+	 * @param ctx the parse tree
+	 */
+	void exitDbBackupEase(RavenParser.DbBackupEaseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#dbDataDart}.
+	 * @param ctx the parse tree
+	 */
+	void enterDbDataDart(RavenParser.DbDataDartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#dbDataDart}.
+	 * @param ctx the parse tree
+	 */
+	void exitDbDataDart(RavenParser.DbDataDartContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#createExactZip}.
+	 * @param ctx the parse tree
+	 */
+	void enterCreateExactZip(RavenParser.CreateExactZipContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#createExactZip}.
+	 * @param ctx the parse tree
+	 */
+	void exitCreateExactZip(RavenParser.CreateExactZipContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#radonKvpBbox}.
+	 * @param ctx the parse tree
+	 */
+	void enterRadonKvpBbox(RavenParser.RadonKvpBboxContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#radonKvpBbox}.
+	 * @param ctx the parse tree
+	 */
+	void exitRadonKvpBbox(RavenParser.RadonKvpBboxContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#dockerInspect}.
+	 * @param ctx the parse tree
+	 */
+	void enterDockerInspect(RavenParser.DockerInspectContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#dockerInspect}.
+	 * @param ctx the parse tree
+	 */
+	void exitDockerInspect(RavenParser.DockerInspectContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#kafkaPublish}.
+	 * @param ctx the parse tree
+	 */
+	void enterKafkaPublish(RavenParser.KafkaPublishContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#kafkaPublish}.
+	 * @param ctx the parse tree
+	 */
+	void exitKafkaPublish(RavenParser.KafkaPublishContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#decryptInticsEnc}.
+	 * @param ctx the parse tree
+	 */
+	void enterDecryptInticsEnc(RavenParser.DecryptInticsEncContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#decryptInticsEnc}.
+	 * @param ctx the parse tree
+	 */
+	void exitDecryptInticsEnc(RavenParser.DecryptInticsEncContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#controlDataComparison}.
+	 * @param ctx the parse tree
+	 */
+	void enterControlDataComparison(RavenParser.ControlDataComparisonContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#controlDataComparison}.
+	 * @param ctx the parse tree
+	 */
+	void exitControlDataComparison(RavenParser.ControlDataComparisonContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#providerContainerParser}.
+	 * @param ctx the parse tree
+	 */
+	void enterProviderContainerParser(RavenParser.ProviderContainerParserContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#providerContainerParser}.
+	 * @param ctx the parse tree
+	 */
+	void exitProviderContainerParser(RavenParser.ProviderContainerParserContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#postProcessingExecutor}.
+	 * @param ctx the parse tree
+	 */
+	void enterPostProcessingExecutor(RavenParser.PostProcessingExecutorContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#postProcessingExecutor}.
+	 * @param ctx the parse tree
+	 */
+	void exitPostProcessingExecutor(RavenParser.PostProcessingExecutorContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#agenticPaperFilter}.
+	 * @param ctx the parse tree
+	 */
+	void enterAgenticPaperFilter(RavenParser.AgenticPaperFilterContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#agenticPaperFilter}.
+	 * @param ctx the parse tree
+	 */
+	void exitAgenticPaperFilter(RavenParser.AgenticPaperFilterContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#mockServerTest}.
+	 * @param ctx the parse tree
+	 */
+	void enterMockServerTest(RavenParser.MockServerTestContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#mockServerTest}.
+	 * @param ctx the parse tree
+	 */
+	void exitMockServerTest(RavenParser.MockServerTestContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#errorResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterErrorResponse(RavenParser.ErrorResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#errorResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitErrorResponse(RavenParser.ErrorResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#documentEyeCue}.
+	 * @param ctx the parse tree
+	 */
+	void enterDocumentEyeCue(RavenParser.DocumentEyeCueContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#documentEyeCue}.
+	 * @param ctx the parse tree
+	 */
+	void exitDocumentEyeCue(RavenParser.DocumentEyeCueContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#multivalueConcatenation}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultivalueConcatenation(RavenParser.MultivalueConcatenationContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multivalueConcatenation}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultivalueConcatenation(RavenParser.MultivalueConcatenationContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#contextInsertActionAudit}.
+	 * @param ctx the parse tree
+	 */
+	void enterContextInsertActionAudit(RavenParser.ContextInsertActionAuditContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#contextInsertActionAudit}.
+	 * @param ctx the parse tree
+	 */
+	void exitContextInsertActionAudit(RavenParser.ContextInsertActionAuditContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#kafkaProductionResponse}.
+	 * @param ctx the parse tree
+	 */
+	void enterKafkaProductionResponse(RavenParser.KafkaProductionResponseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#kafkaProductionResponse}.
+	 * @param ctx the parse tree
+	 */
+	void exitKafkaProductionResponse(RavenParser.KafkaProductionResponseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#kafkaOutboundComparison}.
+	 * @param ctx the parse tree
+	 */
+	void enterKafkaOutboundComparison(RavenParser.KafkaOutboundComparisonContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#kafkaOutboundComparison}.
+	 * @param ctx the parse tree
+	 */
+	void exitKafkaOutboundComparison(RavenParser.KafkaOutboundComparisonContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree
