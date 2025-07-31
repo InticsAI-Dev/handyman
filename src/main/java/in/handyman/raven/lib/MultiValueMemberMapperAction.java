@@ -141,7 +141,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
         log.info(aMarker, "Multivalue result for originId {}: {}", originId, result);
 
         // Insert into output table
-        bulkInsertOutputTable(jdbi, outputTable, groupRows, result);
+        bulkUpdateOutputTable(jdbi, outputTable, groupRows, result);
       }
 
       log.info(aMarker, "Control Data Comparison Action has been completed {}", multiValueMemberMapper.getName());
@@ -160,7 +160,6 @@ public class MultiValueMemberMapperAction implements IActionExecution {
           Marker marker
   ) {
     Map<String, Set<String>> valuesPerSorItem = new HashMap<>();
-
     Set<String> presentSorItems = new HashSet<>();
 
     for (MultiValueMemberQueryInputTable row : inputRows) {
@@ -183,41 +182,54 @@ public class MultiValueMemberMapperAction implements IActionExecution {
       return "N";
     }
 
-    for (String sorItem : targetSorItems) {
-      Set<String> values = valuesPerSorItem.getOrDefault(sorItem, Collections.emptySet());
-
-      if (values.size() <= 1) {
-        log.info(marker, "SOR item '{}' does not have multiple unique values. Found: {}", sorItem, values);
-        return "N";
+    // Commercial: requires all 3 (ID, Name, DOB) with more than 1 unique value each
+    if (targetSorItems.containsAll(Set.of("member_id", "member_last_name", "member_date_of_birth"))) {
+      boolean allHaveMultiple = true;
+      for (String key : List.of("member_id", "member_last_name", "member_date_of_birth")) {
+        int count = valuesPerSorItem.getOrDefault(key, Collections.emptySet()).size();
+        log.info(marker, "Commercial - SOR item '{}' has {} unique values", key, count);
+        if (count <= 1) {
+          allHaveMultiple = false;
+          break;
+        }
       }
+      return allHaveMultiple ? "Y" : "N";
     }
 
-    return "Y";
+    // GBD: requires at least one of Member ID or Member Name to have >1 unique value (DOB is ignored)
+    if (targetSorItems.contains("member_id") || targetSorItems.contains("member_last_name")) {
+      int idCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
+      int nameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
+
+      log.info(marker, "GBD - Member ID count: {}, Member Name count: {}", idCount, nameCount);
+
+      return (idCount > 1 || nameCount > 1) ? "Y" : "N";
+    }
+
+    log.info(marker, "Unknown plan type. SOR items: {}", targetSorItems);
+    return "N";
   }
 
-  private void bulkInsertOutputTable(Jdbi jdbi, String outputTable,
+
+  private void bulkUpdateOutputTable(Jdbi jdbi, String outputTable,
                                      List<MultiValueMemberQueryInputTable> inputRows,
                                      String thresholdResult) {
     jdbi.useHandle(handle -> {
       var batch = handle.prepareBatch(
-              "INSERT INTO " + outputTable + " (" +
-                      "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, " +
-                      "confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, " +
-                      "model_registry, root_pipeline_id, batch_id" +
-                      ") VALUES (" +
-                      ":minScoreId, :originId, :paperNo, :sorItemName, :weightScore, :predictedValue, :bBox, " +
-                      ":confidenceScore, :frequency, :cummulativeScore, :questionId, :synonymId, :tenantId, " +
-                      ":modelRegistry, :rootPipelineId, :batchId" +
-                      ")"
+              "UPDATE " + outputTable + " SET " +
+                      "predicted_value = :predictedValue, " +
+                      "confidence_score = :confidenceScore, " +
+                      "frequency = :frequency, " +
+                      "cummulative_score = :cummulativeScore, " +
+                      "model_registry = :modelRegistry " +
+                      "WHERE origin_id = :originId " +
+                      "AND sor_item_name = 'multiple_member_indicator' " +
+                      "AND tenant_id = :tenantId " +
+                      "AND batch_id = :batchId"
       );
 
       for (MultiValueMemberQueryInputTable row : inputRows) {
         batch
-                .bind("minScoreId", 0)
-                .bind("originId", row.getOriginId())
-                .bind("paperNo", row.getPaperNo())
-                .bind("sorItemName", "multiple_member_indicator")
-                .bind("weightScore", 0)
                 .bind("predictedValue", thresholdResult)
                 .bind("bBox", "")
                 .bind("confidenceScore", 100)
