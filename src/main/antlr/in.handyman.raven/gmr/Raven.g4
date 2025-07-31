@@ -184,6 +184,7 @@ action:
     |documentEyeCue
     |multivalueConcatenation
     |contextInsertActionAudit
+    |outboundResponse
     );
 
 
@@ -1447,6 +1448,12 @@ contextInsertActionAudit:
 	'using' '{'
 		querySet=STRING
 	'}' ('on-condition' condition=expression)* ;
+
+ outboundResponse:
+	'outboundResponse' 'as' name=STRING
+	'on-resource-conn' resourceConn=STRING
+	'result-table' productResponseDetails=STRING
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 //rules
 
