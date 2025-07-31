@@ -187,6 +187,7 @@ action:
     |contextInsertActionAudit
     |kafkaProductionResponse
     |kafkaOutboundComparison
+    |multiValueMemberMapper
 
     );
 
@@ -1481,6 +1482,15 @@ kafkaOutboundComparison:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
+
+multiValueMemberMapper:
+    'multiValueMemberMapper' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'batch-id' batchId=STRING
+    'using' '{'
+    	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;
