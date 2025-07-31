@@ -141,7 +141,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
         log.info(aMarker, "Multivalue result for originId {}: {}", originId, result);
 
         // Insert into output table
-        bulkUpdateOutputTable(jdbi, outputTable, groupRows, result);
+        bulkInsertOutputTable(jdbi, outputTable, groupRows, result);
       }
 
       log.info(aMarker, "Control Data Comparison Action has been completed {}", multiValueMemberMapper.getName());
@@ -211,26 +211,40 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   }
 
 
-  private void bulkUpdateOutputTable(Jdbi jdbi, String outputTable,
+  private void bulkInsertOutputTable(Jdbi jdbi, String outputTable,
                                      List<MultiValueMemberQueryInputTable> inputRows,
                                      String thresholdResult) {
     jdbi.useHandle(handle -> {
       var batch = handle.prepareBatch(
-              "UPDATE " + outputTable + " SET " +
-                      "predicted_value = :predictedValue " +
-                      "WHERE origin_id = :originId " +
-                      "AND sor_item_name = 'multiple_member_indicator' " +
-                      "AND tenant_id = :tenantId " +
-                      "AND batch_id = :batchId"
+              "INSERT INTO " + outputTable + " (" +
+                      "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, " +
+                      "confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, " +
+                      "model_registry, root_pipeline_id, batch_id" +
+                      ") VALUES (" +
+                      ":minScoreId, :originId, :paperNo, :sorItemName, :weightScore, :predictedValue, :bBox, " +
+                      ":confidenceScore, :frequency, :cummulativeScore, :questionId, :synonymId, :tenantId, " +
+                      ":modelRegistry, :rootPipelineId, :batchId" +
+                      ")"
       );
 
       for (MultiValueMemberQueryInputTable row : inputRows) {
         batch
-                .bind("predictedValue", thresholdResult)
+                .bind("minScoreId", row.getScoreId())
                 .bind("originId", row.getOriginId())
+                .bind("paperNo", row.getPaperNo())
+                .bind("sorItemName", "multiple_member_indicator")
+                .bind("weightScore", row.getWeightScore())
+                .bind("predictedValue", thresholdResult)
+                .bind("bBox", row.getBBox())
+                .bind("confidenceScore", row.getVqaScore())
+                .bind("frequency", row.getFrequency())
+                .bind("cummulativeScore", row.getCummulativeScore())
+                .bind("questionId", row.getQuestionId())
+                .bind("synonymId", row.getSynonymId())
                 .bind("tenantId", row.getTenantId())
-                .bind("batchId", row.getBatchId())
-                .add(); // IMPORTANT: add this batch statement
+                .bind("modelRegistry", row.getModelRegistry())
+                .bind("rootPipelineId", row.getRootPipelineId())
+                .bind("batchId", row.getBatchId());
       }
 
       batch.execute();
@@ -261,5 +275,14 @@ public class MultiValueMemberMapperAction implements IActionExecution {
     private String encryptionPolicy;
     private String isEncrypted;
     private String lineItemType;
+    private Long synonymId;
+    private Long questionId;
+    private Long frequency;
+    private double vqaScore;
+    private String bBox;
+    private String modelRegistry;
+    private Long scoreId;
+    private Long cummulativeScore;
+    private Long weightScore;
   }
 }
