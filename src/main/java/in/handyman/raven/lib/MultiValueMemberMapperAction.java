@@ -217,11 +217,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
     jdbi.useHandle(handle -> {
       var batch = handle.prepareBatch(
               "UPDATE " + outputTable + " SET " +
-                      "predicted_value = :predictedValue, " +
-                      "confidence_score = :confidenceScore, " +
-                      "frequency = :frequency, " +
-                      "cummulative_score = :cummulativeScore, " +
-                      "model_registry = :modelRegistry " +
+                      "predicted_value = :predictedValue " +
                       "WHERE origin_id = :originId " +
                       "AND sor_item_name = 'multiple_member_indicator' " +
                       "AND tenant_id = :tenantId " +
@@ -230,17 +226,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       for (MultiValueMemberQueryInputTable row : inputRows) {
         batch
-                .bind("predictedValue", thresholdResult)
-                .bind("bBox", "")
-                .bind("confidenceScore", 100)
-                .bind("frequency", 1)
-                .bind("cummulativeScore", 150)
-                .bind("questionId", 0)
-                .bind("synonymId", 0)
-                .bind("tenantId", row.getTenantId())
-                .bind("modelRegistry", "KRYPTON")
-                .bind("rootPipelineId", row.getRootPipelineId())
-                .bind("batchId", row.getBatchId());
+                .bind("predictedValue", thresholdResult);
       }
 
       batch.execute();
