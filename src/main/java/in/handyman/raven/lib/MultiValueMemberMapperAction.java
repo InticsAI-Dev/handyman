@@ -225,7 +225,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                 .bind("cummulativeScore", 150)
                 .bind("questionId", 0)
                 .bind("synonymId", 0)
-                .bind("tenantId", row.getTenantId() != null ? row.getTenantId() : 0)
+                .bind("tenantId", row.getTenantId())
                 .bind("modelRegistry", "KRYPTON")
                 .bind("rootPipelineId", row.getRootPipelineId())
                 .bind("batchId", row.getBatchId());
