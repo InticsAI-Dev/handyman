@@ -15,9 +15,13 @@ import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.*;
+import in.handyman.raven.lib.TestDataExtractorAction;
+import in.handyman.raven.lib.model.TestDataExtractor;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
+import okhttp3.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -187,28 +191,11 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
                 tritonRequestKryptonExecutor(entity, request, parentObj, jsonRequestTritonKrypton, endpoint);
             }
-        }
-        else if (Objects.equals("TEST4J", coproHandlerName)) {
+        } else if (Objects.equals("TEST4J", coproHandlerName)) {
             log.info(aMarker, "Executing TEST4J handler for endpoint: {} and model: {}", endpoint, DeepSiftModelName);
-
-            // Validate endpoint
-            if (!endpoint.toString().endsWith("/api/tesseract/extract")) {
-                log.warn(aMarker, "TEST4J handler expected endpoint '/api/tesseract/extract', but got: {}", endpoint);
-            }
 
             // Build DeepSiftRequest from entity
             DeepSiftRequest test4jRequest = getKryptonRequestPayloadFromQuery(entity);
-
-            if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-                try {
-                    test4jRequest.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-                } catch (IOException e) {
-                    log.error(aMarker, "Failed to convert file to Base64 for filePath: {}", filePath, e);
-                    throw new HandymanException("Error converting file to Base64 for TEST4J", e, action);
-                }
-            } else {
-                test4jRequest.setBase64Img("");
-            }
 
             String deepSiftPayloadString;
             try {
@@ -218,104 +205,89 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 throw new HandymanException("Error serializing request for TEST4J", e, action);
             }
 
-            // Build and send request
-            Request request = new Request.Builder()
-                    .url(endpoint)
-                    .post(RequestBody.create(deepSiftPayloadString, mediaType))
-                    .build();
+            try {
+                // Prepare file for TestDataExtractor
+                File inputFile = new File(filePath);
+                if (!inputFile.exists()) {
+                    throw new HandymanException("Input file does not exist: " + filePath);
+                }
+                byte[] fileContent = Files.readAllBytes(inputFile.toPath());
+                MultipartFile multipartFile = new MockMultipartFile(
+                        inputFile.getName(),
+                        inputFile.getName(),
+                        "application/pdf",
+                        fileContent
+                );
 
-            try (Response response = httpclient.newCall(request).execute()) {
-                String jsonResponse = Objects.requireNonNull(response.body()).string();
-                if (!response.isSuccessful()) {
-                    parentObj.add(DeepSiftOutputTable.builder()
-                            .batchId(entity.getBatchId())
-                            .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                            .groupId(entity.getGroupId())
-                            .paperNo(entity.getPaperNo())
-                            .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                            .stage(PROCESS_NAME)
-                            .tenantId(entity.getTenantId())
-                            .templateId(entity.getTemplateId())
-                            .processId(entity.getProcessId())
-                            .message("TEST4J API call failed: " + response.code() + " - " + response.message())
-                            .createdOn(entity.getCreatedOn())
-                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .rootPipelineId(entity.getRootPipelineId())
-                            .templateName(entity.getTemplateName())
-                            .request(encryptRequestResponse(deepSiftPayloadString))
-                            .response(encryptRequestResponse(jsonResponse))
-                            .endpoint(endpoint.toString())
-                            .build());
-                    log.error(aMarker, "TEST4J API call failed with code: {}, message: {}", response.code(), response.message());
-                    throw new HandymanException("TEST4J API call failed: " + response.code() + " - " + response.message());
+                // Create TestDataExtractor instance
+                TestDataExtractor testDataExtractor = TestDataExtractor.builder()
+                        .name("DeepSiftTest4J")
+                        .mode("keywords")
+                        .files(Collections.singletonList(multipartFile))
+                        .outputPath(System.getProperty("java.io.tmpdir"))
+                        .condition(true)
+                        .build();
+
+                // Execute TestDataExtractorAction
+                TestDataExtractorAction extractorAction = new TestDataExtractorAction(action, log, testDataExtractor);
+                extractorAction.execute();
+
+                // Read the extracted text from the output file
+                String outputFilePath = testDataExtractor.getOutputPath() + File.separator + inputFile.getName() + ".txt";
+                File outputFile = new File(outputFilePath);
+                if (!outputFile.exists()) {
+                    throw new HandymanException("Output file not generated: " + outputFilePath);
+                }
+                String extractedText = Files.readString(outputFile.toPath());
+
+                // Process the extracted text as a single page (assuming single-page output for simplicity)
+                int pageNumber = paperNumber != null ? paperNumber : 1;
+                String flag = (extractedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+                String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
+                String extractedContentEnc = extractedText;
+                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+
+                if (Objects.equals(encryptSotPageContent, "true")) {
+                    extractedContentEnc = encryption.encrypt(extractedText, "AES256", "TEXT_DATA");
                 }
 
-                // Parse response for per-page text
-                JsonNode jsonNode = convertFormattedJsonStringToJsonNode(jsonResponse, mapper);
-                if (jsonNode == null) {
-                    throw new HandymanException("Invalid JSON response from TEST4J API");
-                }
+                // Build JSON response to mimic original API response structure
+                String jsonResponse = String.format(
+                        "{\"payload\":{\"documents\":[{\"fileName\":\"%s\",\"textByPage\":{\"page%d\":\"%s\"}}]}}",
+                        inputFile.getName(),
+                        pageNumber,
+                        extractedText.replace("\"", "\\\"")
+                );
 
-                JsonNode documentsNode = jsonNode.path("payload").path("documents");
-                if (!documentsNode.isArray() || documentsNode.size() == 0) {
-                    throw new HandymanException("No documents found in TEST4J API response");
-                }
+                parentObj.add(DeepSiftOutputTable.builder()
+                        .filePath(entity.getFilePath())
+                        .extractedText(extractedContentEnc)
+                        .originId(entity.getOriginId())
+                        .groupId(entity.getGroupId())
+                        .paperNo(pageNumber)
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .stage(PROCESS_NAME)
+                        .message("TEST4J processing completed for page " + pageNumber)
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .isBlankPage(flag)
+                        .tenantId(entity.getTenantId())
+                        .templateId(entity.getTemplateId())
+                        .processId(entity.getProcessId())
+                        .templateName(entity.getTemplateName())
+                        .rootPipelineId(entity.getRootPipelineId())
+                        .modelName(DeepSiftModelName)
+                        .modelVersion("")
+                        .batchId(entity.getBatchId())
+                        .request(encryptRequestResponse(deepSiftPayloadString))
+                        .response(encryptRequestResponse(jsonResponse))
+                        .endpoint(endpoint.toString())
+                        .build());
 
-                JsonNode documentNode = documentsNode.get(0); // Assume single document
-                String fileName = documentNode.path("fileName").asText("");
-                JsonNode textByPageNode = documentNode.path("textByPage");
-                if (textByPageNode.isObject()) {
-                    Iterator<Map.Entry<String, JsonNode>> pages = textByPageNode.fields();
-                    while (pages.hasNext()) {
-                        Map.Entry<String, JsonNode> page = pages.next();
-                        String pageKey = page.getKey(); // e.g., "page1"
-                        String extractedText = page.getValue().asText("");
-                        int pageNumber;
-                        try {
-                            pageNumber = Integer.parseInt(pageKey.replace("page", ""));
-                        } catch (NumberFormatException e) {
-                            log.error(aMarker, "Invalid page key format: {}", pageKey, e);
-                            throw new HandymanException("Invalid page key format in TEST4J response: " + pageKey, e, action);
-                        }
+                // Clean up temporary output file
+                outputFile.delete();
 
-                        String flag = (extractedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-                        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-                        String extractedContentEnc = extractedText;
-                        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-
-                        if (Objects.equals(encryptSotPageContent, "true")) {
-                            extractedContentEnc = encryption.encrypt(extractedText, "AES256", "TEXT_DATA");
-                        }
-
-                        parentObj.add(DeepSiftOutputTable.builder()
-                                .filePath(entity.getFilePath())
-                                .extractedText(extractedContentEnc)
-                                .originId(entity.getOriginId())
-                                .groupId(entity.getGroupId())
-                                .paperNo(pageNumber) // Use page number from response
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .stage(PROCESS_NAME)
-                                .message("TEST4J API call completed for page " + pageNumber)
-                                .createdOn(entity.getCreatedOn())
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .isBlankPage(flag)
-                                .tenantId(entity.getTenantId())
-                                .templateId(entity.getTemplateId())
-                                .processId(entity.getProcessId())
-                                .templateName(entity.getTemplateName())
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .modelName(DeepSiftModelName)
-                                .modelVersion("") // Unknown for TEST4J
-                                .batchId(entity.getBatchId())
-                                .request(encryptRequestResponse(deepSiftPayloadString))
-                                .response(encryptRequestResponse(jsonResponse))
-                                .endpoint(endpoint.toString())
-                                .build());
-                    }
-                } else {
-                    throw new HandymanException("Invalid textByPage structure in TEST4J API response");
-                }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 parentObj.add(DeepSiftOutputTable.builder()
                         .batchId(entity.getBatchId())
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
@@ -332,11 +304,11 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         .rootPipelineId(entity.getRootPipelineId())
                         .templateName(entity.getTemplateName())
                         .request(encryptRequestResponse(deepSiftPayloadString))
-                        .response("Error in TEST4J response processing")
+                        .response("Error in TEST4J processing")
                         .endpoint(endpoint.toString())
                         .build());
                 log.error(aMarker, "Exception in TEST4J handler", e);
-                HandymanException handymanException = new HandymanException("TEST4J API processing failed", e, action);
+                HandymanException handymanException = new HandymanException("TEST4J processing failed", e, action);
                 HandymanException.insertException("Deep sift TEST4J failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
                 throw handymanException;
             }
