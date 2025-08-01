@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Data
 @AllArgsConstructor
@@ -16,27 +18,26 @@ import java.util.List;
 @Builder
 public class DeepSiftInputTable implements CoproProcessor.Entity {
     private Long id;
-    private Long rootPipelineId;
     private String originId;
-    private String batchId;
-    private String filePath;
-    private Long tenantId;
     private Integer groupId;
-    private Long processId;
-    private String templateId;
+    private String inputFilePath;
+    private Timestamp createdOn;
+    private String createdBy;
+    private Long rootPipelineId;
+    private Long tenantId;
+    private String batchId;
+    private Integer paperNo;
+    private String sourceDocumentType;
     private Long sorItemId;
     private String sorItemName;
-    private Long sorContainerId;
-    private Integer paperNo;
-    private String status;
-    private String stage;
-    private Long modelId;
-    private Long searchId;
-    private String userPrompt;
-    private String templateName;
+    private Integer sorContainerId;
+    private String containerDocumentType;
+    private String sorContainerName;
+    private Integer modelId;
+    private String modelName;
+    private String searchName;
+    private String basePrompt;
     private String systemPrompt;
-    private Timestamp createdOn;
-    private String base64Img;
 
     @Override
     public String getStatus() {

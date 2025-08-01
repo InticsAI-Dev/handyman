@@ -17,43 +17,56 @@ import java.util.stream.Stream;
 @Builder
 public class DeepSiftOutputTable implements CoproProcessor.Entity {
 
+    private Long id;
     private String originId;
     private Integer groupId;
-    private Long tenantId;
-    private String templateId;
-    private Long processId;
-    private String filePath;
-    private String extractedText;
-    private String fileName;
-    private Integer paperNo;
-    private String status;
-    private String stage;
-    private String message;
-    private String isBlankPage;
+    private String inputFilePath;
     private Timestamp createdOn;
+    private String createdBy;
     private Long rootPipelineId;
-    private String templateName;
-    private String modelName;
-    private String modelVersion;
+    private Long tenantId;
     private String batchId;
-    private Timestamp lastUpdatedOn;
-    private String request;
-    private String response;
-    private String endpoint;
-    private Long id;
+    private String extractedText;
+    private Integer paperNo;
+    private String sourceDocumentType;
     private Long sorItemId;
     private String sorItemName;
     private String sorContainerId;
-    private Long extractedScore;
+    private String containerDocumentType;
+    private String sorContainerName;
+    private Integer modelId;
+    private String modelName;
+    private String searchName;
+    private String status;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.tenantId,this.templateId
-                        ,this.processId,this.filePath, this.extractedText,this.paperNo,this.fileName
-                        ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
-                        ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion,
-                        this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint, this.id,
-                        this.sorItemId, this.sorItemName, this.sorContainerId, this.extractedScore)
-                .collect(Collectors.toList());
+        return Stream.of(
+                this.originId,
+                this.groupId,
+                this.inputFilePath,
+                this.createdOn,
+                this.createdBy,
+                this.rootPipelineId,
+                this.tenantId,
+                this.batchId,
+                this.extractedText,
+                this.paperNo,
+                this.sourceDocumentType,
+                this.sorItemId,
+                this.sorItemName,
+                this.sorContainerId,
+                this.containerDocumentType,
+                this.sorContainerName,
+                this.modelId,
+                this.modelName,
+                this.searchName,
+                this.status
+        ).collect(Collectors.toList());
+    }
+
+    @Override
+    public String getStatus() {
+        return this.status != null ? this.status : "ABSENT";
     }
 }

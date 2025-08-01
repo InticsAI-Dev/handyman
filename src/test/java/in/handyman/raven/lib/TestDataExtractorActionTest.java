@@ -46,19 +46,21 @@ public class TestDataExtractorActionTest {
         MultipartFile mockFile = createMockPdf("Text Extraction Content By implementing the recommendations above (especially JSON serialization, thread safety, and validation), the code can be made robust and reliable. Without these fixes, it will likely fail in production or with invalid inputs.\n" +
                 "If you have additional details (e.g., expected file types, concurrency requirements, or deployment environment), I can refine the analysis further. Would you like me to provide a specific code patch, focus on a particular issue, or suggest tests for the system?");
 
+        String outputFilePath = tempDir.resolve("output.txt").toString(); // Specify a file path
+
         TestDataExtractorInput model = TestDataExtractorInput.builder()
                 .name("TextExtractionTest")
                 .condition(true)
                 .files(Collections.singletonList(mockFile))
                 .mode("text")
-                .outputPath(tempDir.toString())
+                .outputPath(outputFilePath) // Use file path
                 .keywords(null)
                 .build();
 
         TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
         action.execute();
 
-        File outputFile = new File(tempDir.toString() + File.separator + "mock_input.pdf.txt");
+        File outputFile = new File(outputFilePath);
         System.out.println("Output file exists: " + outputFile.exists());
 
         String outputContent = Files.readString(outputFile.toPath());
@@ -66,8 +68,10 @@ public class TestDataExtractorActionTest {
     }
 
     @Test
-    public void testKeywordExtractionMode() throws Exception {
-        MultipartFile mockFile = createMockPdf("This document contains important keywords like robust, reliable, and validation. The system should ensure thread safety and proper JSON serialization.");
+    public void  testKeywordExtractionMode() throws Exception {
+        MultipartFile mockFile = createMockPdf("This Wood County Human Services document contains important keywords like robust, reliable, and validation. The system should ensure thread safety and proper JSON serialization.");
+
+        String outputFilePath = tempDir.resolve("output.txt").toString(); // Specify a file path
 
         TestDataExtractorInput model = TestDataExtractorInput.builder()
                 .name("KeywordExtractionTest")
@@ -75,13 +79,12 @@ public class TestDataExtractorActionTest {
                 .files(Collections.singletonList(mockFile))
                 .mode("keywords")
                 .outputPath(tempDir.toString())
-                .keywords(Arrays.asList("robust", "reliable", "validation"))
                 .build();
 
         TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
         action.execute();
 
-        File outputFile = new File(tempDir.toString() + File.separator + "mock_input.pdf.txt");
+        File outputFile = new File(outputFilePath);
         System.out.println("Output file exists: " + outputFile.exists());
 
         String outputContent = Files.readString(outputFile.toPath());
