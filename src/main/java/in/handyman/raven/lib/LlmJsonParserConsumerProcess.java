@@ -53,9 +53,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     .list());
 
             jdbi.useTransaction(handle -> {
-                for (LlmJsonQueryInputTable inputTable : inputTableList) {
                     String boundingBox = "";
-                    String extractedContent = inputTable.getResponse();
+                    String extractedContent = input.getResponse();
                     String jsonResponse;
 
                     String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
@@ -67,7 +66,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         jsonResponse = extractedContent;
                     }
 
-                    List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(inputTable.getSorMetaDetail(), new TypeReference<>() {
+                    List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(input.getSorMetaDetail(), new TypeReference<>() {
                     });
                     JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
                     if (stringObjectMap != null && stringObjectMap.isObject()) {
@@ -84,9 +83,9 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
                         for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
 
-                            getInsertIntoXenonResultTable(handle, inputTable, parsedResponse, insertQueryXenon);
+                            getInsertIntoXenonResultTable(handle, input, parsedResponse, insertQueryXenon);
 
-                            log.info("\n insert processing for process {} :\n", inputTable.getProcess());
+                            log.info("\n insert processing for process {} :\n", input.getProcess());
 
                         }
                     } else if (stringObjectMap != null && stringObjectMap.isArray()) {
@@ -108,7 +107,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         } catch (Exception e) {
                             action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + inputTable.getOriginId() + " paper No " + inputTable.getPaperNo(), handymanException, action);
+                            HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + input.getOriginId() + " paper No " + input.getPaperNo(), handymanException, action);
 
                         }
 
@@ -126,25 +125,25 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                             LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
 
                             LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                                    .createdOn(String.valueOf(inputTable.getCreatedOn()))
-                                    .tenantId(inputTable.getTenantId())
+                                    .createdOn(String.valueOf(input.getCreatedOn()))
+                                    .tenantId(input.getTenantId())
                                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                    .lastUpdatedUserId(inputTable.getTenantId())
+                                    .lastUpdatedUserId(input.getTenantId())
                                     .confidenceScore(confidenceScore)
                                     .sorItemName(parsedEncryptResponse.getKey())
                                     .answer(parsedEncryptResponse.getValue())
                                     .boundingBox(boundingBox)
-                                    .paperNo(inputTable.getPaperNo())
-                                    .originId(inputTable.getOriginId())
-                                    .groupId(inputTable.getGroupId())
-                                    .rootPipelineId(inputTable.getRootPipelineId())
-                                    .batchId(inputTable.getBatchId())
-                                    .modelRegistry(inputTable.getModelRegistry())
-                                    .extractedImageUnit(inputTable.getExtractedImageUnit())
-                                    .imageDpi(inputTable.getImageDpi())
-                                    .imageHeight(inputTable.getImageHeight())
-                                    .imageWidth(inputTable.getImageWidth())
-                                    .sorContainerId(inputTable.getSorContainerId())
+                                    .paperNo(input.getPaperNo())
+                                    .originId(input.getOriginId())
+                                    .groupId(input.getGroupId())
+                                    .rootPipelineId(input.getRootPipelineId())
+                                    .batchId(input.getBatchId())
+                                    .modelRegistry(input.getModelRegistry())
+                                    .extractedImageUnit(input.getExtractedImageUnit())
+                                    .imageDpi(input.getImageDpi())
+                                    .imageHeight(input.getImageHeight())
+                                    .imageWidth(input.getImageWidth())
+                                    .sorContainerId(input.getSorContainerId())
                                     .sorItemLabel(parsedEncryptResponse.getLabel())
                                     .build();
 
@@ -153,8 +152,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         }
 
                     }
-
-                }
             });
 
             log.info(marker, " Llm json parser action has been completed {}  ", llmJsonParser.getName());
