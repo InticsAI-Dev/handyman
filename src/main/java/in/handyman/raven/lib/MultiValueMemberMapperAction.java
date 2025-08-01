@@ -214,6 +214,17 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   private void bulkInsertOutputTable(Jdbi jdbi, String outputTable,
                                      List<MultiValueMemberQueryInputTable> inputRows,
                                      String thresholdResult) {
+    Optional<MultiValueMemberQueryInputTable> mmIndicatorRowOpt = inputRows.stream()
+            .filter(row -> "multiple_member_indicator".equalsIgnoreCase(row.getSorItemName()))
+            .findFirst();
+
+    if (mmIndicatorRowOpt.isEmpty()) {
+      throw new IllegalStateException("No row found with sor_item_name = 'multiple_member_indicator'");
+    }
+
+    Long questionId = mmIndicatorRowOpt.get().getQuestionId();
+    Long synonymId = mmIndicatorRowOpt.get().getSynonymId();
+
     jdbi.useHandle(handle -> {
       var batch = handle.prepareBatch(
               "INSERT INTO " + outputTable + " (" +
@@ -239,8 +250,8 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                 .bind("confidenceScore", row.getVqaScore())
                 .bind("frequency", row.getFrequency())
                 .bind("cummulativeScore", row.getCummulativeScore())
-                .bind("questionId", row.getQuestionId())
-                .bind("synonymId", row.getSynonymId())
+                .bind("questionId", questionId)
+                .bind("synonymId", synonymId)
                 .bind("tenantId", row.getTenantId())
                 .bind("modelRegistry", row.getModelRegistry())
                 .bind("rootPipelineId", row.getRootPipelineId())
