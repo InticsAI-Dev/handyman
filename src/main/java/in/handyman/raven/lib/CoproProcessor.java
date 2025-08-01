@@ -140,7 +140,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
-        if (actionExecutionAudit.getContext().get("copro.processor.thread.creator").equalsIgnoreCase("FIXED_THREAD")) {
+        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
             executorService = Executors.newFixedThreadPool(consumerCount);
             logger.info("Copro processor created with fixed thread pool of size {}", consumerCount);
         } else {
