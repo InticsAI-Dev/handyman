@@ -182,7 +182,7 @@ public class ValidatorByBeanShellExecutor {
         for (PostProcessingExecutorAction.PostProcessingExecutorInput input : inputs) {
             String postProcessingOutputValue = resultMap.get(input.getSorItemName());
             if (postProcessingOutputValue != null && !postProcessingOutputValue.equals(input.getExtractedValue())) {
-                log.info("Updating {} from {} to {}", input.getSorItemName(), input.getExtractedValue(), postProcessingOutputValue);
+                log.info("Updating {}", input.getSorItemName());
                 input.setExtractedValue(postProcessingOutputValue);
             }
         }

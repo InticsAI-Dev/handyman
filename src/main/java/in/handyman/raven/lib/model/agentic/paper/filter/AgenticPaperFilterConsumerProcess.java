@@ -93,64 +93,27 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     public List<AgenticPaperFilterOutput> process(URL endpoint, AgenticPaperFilterInput entity) throws IOException {
         List<AgenticPaperFilterOutput> parentObj = new ArrayList<>();
 
-        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
-        String replicateApiToken = action.getContext().get(REPLICATE_API_TOKEN_CONTEXT);
         String textExtractionModelName = action.getContext().get(AGENTIC_PAPER_FILTER_MODEL_NAME);
 
         String inputFilePath = entity.getFilePath();
-        Long rootPipelineId = entity.getRootPipelineId();
         String filePath = String.valueOf(entity.getFilePath());
-        ObjectMapper objectMapper = new ObjectMapper();
-        String originId = entity.getOriginId();
-        Integer groupId = entity.getGroupId();
-        Integer paperNumber = entity.getPaperNo();
-        String processId = String.valueOf(entity.getProcessId());
-        Long tenantId = entity.getTenantId();
-        Long actionId = action.getActionId();
-        String batchId = entity.getBatchId();
 
-        //payload
-        DataExtractionData dataExtractionData = new DataExtractionData();
-        dataExtractionData.setOriginId(originId);
-        dataExtractionData.setGroupId(groupId);
-        dataExtractionData.setProcessId(Long.valueOf(processId));
-        dataExtractionData.setTenantId(tenantId);
-        dataExtractionData.setRootPipelineId(rootPipelineId);
-        dataExtractionData.setActionId(actionId);
-        dataExtractionData.setPaperNumber(paperNumber);
-        dataExtractionData.setTemplateName(entity.getTemplateName());
-        dataExtractionData.setProcess(PROCESS_NAME);
-        dataExtractionData.setInputFilePath(filePath);
-        dataExtractionData.setBatchId(batchId);
-        dataExtractionData.setBase64Img(entity.getBase64Img());
-        dataExtractionData.setModel(entity.getModelName());
-
-        String jsonInputRequest = objectMapper.writeValueAsString(dataExtractionData);
-
-        TritonRequest requestBody = new TritonRequest();
-        requestBody.setName(AGENTIC_PAPER_FILTER_START);
-        requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype(TritonDataTypes.BYTES.name());
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-        TritonInputRequest tritonInputRequest = new TritonInputRequest();
-        tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
         }
 
-        getCoproHandlerMethod(endpoint, entity, coproHandlerName, jsonInputRequest, parentObj, originId, groupId, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken, filePath);
+        getCoproHandlerMethod(endpoint, entity, parentObj, textExtractionModelName, filePath);
 
         return parentObj;
     }
 
-    private void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, String coproHandlerName, String jsonInputRequest, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId, String textExtractionModelName, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken, String filePath) throws IOException {
+    private void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, String filePath) throws IOException {
         log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
-        getTritonHandlerMethod(endpoint, entity, parentObj, textExtractionModelName, filePath);
+        getTritonHandlerMethod(endpoint, entity, parentObj, filePath);
     }
 
-    private void getTritonHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, String filePath) throws IOException {
+    private void getTritonHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String filePath) throws IOException {
         RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
         getTritonKryptonHandlerName(endpoint, entity, parentObj, filePath, kryptonRequestPayloadFromQuery);
     }
@@ -162,91 +125,12 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             kryptonRequestPayloadFromQuery.setBase64Img("");
         }
         String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
-
+        kryptonRequestPayloadFromQuery.setBase64Img("");
+        String textExtractionInsertPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
         String jsonRequestTritonKrypton = getTritonRequestPayload(textExtractionPayloadString, KRYPTON_START, mapper);
 
         Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
-        tritonRequestKryptonExecutor(entity, request, parentObj, jsonRequestTritonKrypton, endpoint);
-    }
-
-    private void getTritonArgonHandlerName(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String filePath) throws IOException {
-        DataExtractionData dataExtractionPayload = getArgonRequestPayloadFromEntity(entity);
-        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-            dataExtractionPayload.setBase64Img(fileProcessingUtils.convertFileToBase64(filePath));
-        } else {
-            dataExtractionPayload.setBase64Img("");
-        }
-        String dataExtractionPayloadString = mapper.writeValueAsString(dataExtractionPayload);
-
-        String jsonRequestTritonArgon = getTritonRequestPayload(dataExtractionPayloadString, AGENTIC_PAPER_FILTER_START, mapper);
-
-        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonArgon, mediaType)).build();
-        tritonRequestArgonExecutor(entity, request, parentObj, jsonRequestTritonArgon, endpoint);
-    }
-
-    private void getReplicateHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken) throws IOException {
-        if (textExtractionModelName.equals(ModelRegistry.ARGON.name())) {
-            getReplicateArgonMethod(endpoint, entity, parentObj, textExtractionModelName, dataExtractionData, objectMapper, replicateApiToken);
-        } else if (textExtractionModelName.equals(ModelRegistry.KRYPTON.name())) {
-            if (log.isInfoEnabled()) {
-                log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
-            }
-            getReplicateKryptonMethod(endpoint, entity, parentObj, dataExtractionData, objectMapper, replicateApiToken);
-        }
-    }
-
-    private void getReplicateKryptonMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken) throws IOException {
-        String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
-
-        RadonKvpExtractionRequest kryptonRequestPayloadFromQuery = getKryptonRequestPayloadFromQuery(entity);
-        kryptonRequestPayloadFromQuery.setBase64Img(base64ForPath);
-
-        String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
-
-        ReplicateRequest replicateRequest = new ReplicateRequest();
-        replicateRequest.setInput(textExtractionPayloadString);
-
-        String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
-
-        Request request = new Request.Builder()
-                .url(endpoint)
-                .post(RequestBody.create(replicateJsonRequest, mediaType))
-                .addHeader("Authorization", "Bearer " + replicateApiToken)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Prefer", "wait")
-                .build();
-        tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionPayloadString, endpoint);
-    }
-
-    private void getReplicateArgonMethod(URL endpoint, AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, DataExtractionData dataExtractionData, ObjectMapper objectMapper, String replicateApiToken) throws IOException {
-        if (log.isInfoEnabled()) {
-            log.info(aMarker, "Executing REPLICATE handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
-        }
-        String base64ForPath = getBase64ForPath(dataExtractionData.getInputFilePath());
-        dataExtractionData.setBase64Img(base64ForPath);
-
-        ReplicateRequest replicateRequest = new ReplicateRequest();
-        replicateRequest.setInput(dataExtractionData);
-
-        String replicateJsonRequest = objectMapper.writeValueAsString(replicateRequest);
-        Request request = new Request.Builder()
-                .url(endpoint)
-                .post(RequestBody.create(replicateJsonRequest, mediaType))
-                .addHeader("Authorization", "Bearer " + replicateApiToken)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Prefer", "wait")
-                .build();
-
-        replicateResponseBuilder(endpoint, request, parentObj, entity, replicateJsonRequest);
-    }
-
-    private void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput entity, String jsonInputRequest, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId) {
-        if (log.isInfoEnabled()) {
-            log.info(aMarker, "Executing COPRO handler for endpoint: {}", endpoint);
-        }
-
-        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, mediaType)).build();
-        coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
+        tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
     }
 
     private RadonKvpExtractionRequest getKryptonRequestPayloadFromQuery(AgenticPaperFilterInput entity) {
@@ -445,67 +329,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     }
 
-    private void extractedArgonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint) throws JsonProcessingException {
-        DataExtractionDataItem dataExtractionDataItem = mapper.readValue(stringDataItem, DataExtractionDataItem.class);
-
-        final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
-        final String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-
-        String extractedContent;
-        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
-
-        if (Objects.equals(encryptSotPageContent, "true")) {
-            extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
-        } else {
-            extractedContent = contentString;
-        }
-
-        String templateId = entity.getTemplateId();
-        parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).filePath(dataExtractionDataItem.getInputFilePath()).extractedText(extractedContent).originId(dataExtractionDataItem.getOriginId()).groupId(dataExtractionDataItem.getGroupId()).paperNo(dataExtractionDataItem.getPaperNumber()).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(dataExtractionDataItem.getTenantId()).templateId(templateId).processId(dataExtractionDataItem.getProcessId()).templateName(dataExtractionDataItem.getTemplateName()).rootPipelineId(dataExtractionDataItem.getRootPipelineId()).modelName(modelName).modelVersion(modelVersion).batchId(dataExtractionDataItem.getBatchId()).request(encryptRequestResponse(request)).response(encryptRequestResponse(response)).endpoint(String.valueOf(endpoint)).build());
-    }
-
-    private void tritonRequestArgonExecutor(AgenticPaperFilterInput entity, Request request, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint) {
-        Long tenantId = entity.getTenantId();
-        String templateId = entity.getTemplateId();
-        Long processId = entity.getProcessId();
-        Long rootPipelineId = entity.getRootPipelineId();
-        String templateName = entity.getTemplateName();
-        CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
-
-        try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
-
-            if (response.isSuccessful()) {
-                ObjectMapper objectMappers = new ObjectMapper();
-                DataExtractionResponse modelResponse = objectMappers.readValue(responseBody, DataExtractionResponse.class);
-                if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                    modelResponse.getOutputs().forEach(o -> {
-                        o.getData().forEach(s -> {
-                            try {
-                                extractedArgonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
-                            } catch (JsonProcessingException e) {
-                                throw new HandymanException("Exception in extracted output Data request {}", e);
-                            }
-                        });
-                    });
-                }
-            } else {
-                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId() + "origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
-
-                log.error(aMarker, "The Exception occurred in getting response {}", response.message());
-            }
-        } catch (Exception e) {
-            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In getting Response").endpoint(String.valueOf(endpoint)).build());
-
-            log.error(aMarker, "The Exception occurred ", e);
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Agentic paper filter extraction consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
-        }
-    }
-
     private static String getTritonRequestPayload(String dataExtractionPayloadString, String name, ObjectMapper objectMapper) throws JsonProcessingException {
         TritonRequest tritonRequestPayload = new TritonRequest();
         tritonRequestPayload.setName(name);
@@ -517,157 +340,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         tritonInputRequest.setInputs(Collections.singletonList(tritonRequestPayload));
 
         return objectMapper.writeValueAsString(tritonInputRequest);
-    }
-
-    private DataExtractionData getArgonRequestPayloadFromEntity(AgenticPaperFilterInput entity) {
-        DataExtractionData dataExtractionData = new DataExtractionData();
-        dataExtractionData.setOriginId(entity.getOriginId());
-        dataExtractionData.setGroupId(entity.getGroupId());
-        dataExtractionData.setProcessId(entity.getProcessId());
-        dataExtractionData.setTenantId(entity.getTenantId());
-        dataExtractionData.setRootPipelineId(entity.getRootPipelineId());
-        dataExtractionData.setActionId(action.getActionId());
-        dataExtractionData.setPaperNumber(entity.getPaperNo());
-        dataExtractionData.setTemplateName(entity.getTemplateName());
-        dataExtractionData.setProcess(PROCESS_NAME);
-        dataExtractionData.setInputFilePath(entity.getFilePath());
-        dataExtractionData.setBatchId(entity.getBatchId());
-
-        return dataExtractionData;
-    }
-
-    private void replicateResponseBuilder(URL endpoint, Request request, List<AgenticPaperFilterOutput> parentObj, AgenticPaperFilterInput entity, String replicateJsonRequest) {
-        CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
-
-        try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
-
-            if (response.isSuccessful()) {
-                ReplicateResponse replicateResponse = mapper.readValue(responseBody, ReplicateResponse.class);
-                if (!replicateResponse.getOutput().isEmpty() && !replicateResponse.getOutput().isNull()) {
-                    extractedReplicateOutputResponse(endpoint, entity, replicateResponse, parentObj, replicateJsonRequest, responseBody);
-                } else {
-                    handleKryptonErrorResponse(entity, parentObj, replicateJsonRequest, endpoint, entity.getTenantId(), entity.getTemplateId(), entity.getProcessId(), response, entity.getRootPipelineId(), entity.getTemplateName(), responseBody);
-                    log.error(aMarker, "The replicate response has empty output {}", replicateResponse.getOutput());
-                }
-            } else {
-                handleKryptonErrorResponse(entity, parentObj, replicateJsonRequest, endpoint, entity.getTenantId(), entity.getTemplateId(), entity.getProcessId(), response, entity.getRootPipelineId(), entity.getTemplateName(), responseBody);
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo(), handymanException, this.action);
-                log.error(aMarker, "The replicate response status {}", response.message());
-            }
-        } catch (Exception e) {
-            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).request(encryptRequestResponse(request.toString())).response("Error In getting replicate Response").endpoint(String.valueOf(endpoint)).build());
-
-            log.error(aMarker, "The Exception occurred in replicate {} ", e.toString());
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Agentic paper Filter consumer failed for replicate batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
-        }
-    }
-
-    public String getBase64ForPath(String imagePath) throws IOException {
-        String base64Image = new String();
-        try {
-            // Read the image file into a byte array
-            byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
-
-            // Encode the byte array to Base64
-            base64Image = Base64.getEncoder().encodeToString(imageBytes);
-
-            // Print the Base64 encoded string
-            log.info(aMarker, "base 64 created for this file {}", imagePath);
-
-        } catch (Exception e) {
-            log.error(aMarker, "error occurred in creating base 64 {}", ExceptionUtil.toString(e));
-            throw new HandymanException("error occurred in creating base 64 {} ", e, action);
-        }
-
-        return base64Image;
-    }
-
-    private void extractedReplicateOutputResponse(URL endpoint, AgenticPaperFilterInput entity, ReplicateResponse replicateResponse, List<AgenticPaperFilterOutput> parentObj, String replicateJsonRequest, String replicateJsonResponse) throws JsonProcessingException {
-        DataExtractionDataItem dataExtractionDataItem = mapper.treeToValue(replicateResponse.getOutput(), DataExtractionDataItem.class);
-        final String contentString = Optional.of(dataExtractionDataItem.getPageContent()).map(String::valueOf).orElse(null);
-        final String flag = (!Objects.isNull(contentString) && contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-        Integer paperNo = entity.getPaperNo();
-        String filePath = entity.getFilePath();
-        Long tenantId = entity.getTenantId();
-        String templateId = entity.getTemplateId();
-        Long processId = entity.getProcessId();
-        String templateName = entity.getTemplateName();
-        Long rootPipelineId = entity.getRootPipelineId();
-        String batchId = entity.getBatchId();
-        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
-        String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
-
-        if (Objects.equals(encryptSotPageContent, "true")) {
-            extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
-        } else {
-            extractedContentEnc = contentString;
-        }
-
-        parentObj.add(AgenticPaperFilterOutput.builder().filePath(new File(filePath).getAbsolutePath()).extractedText(extractedContentEnc).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Text extraction action api call completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(replicateResponse.getModel()).modelVersion(replicateResponse.getVersion()).batchId(batchId).request(encryptRequestResponse(replicateJsonRequest)).response(encryptRequestResponse(replicateJsonResponse)).endpoint(endpoint.toString()).build());
-    }
-
-    private void coproRequestBuilder(AgenticPaperFilterInput entity, Request request, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId, String jsonInputRequest, URL endpoint) {
-        Long tenantId = entity.getTenantId();
-        String templateId = entity.getTemplateId();
-        Long processId = entity.getProcessId();
-        Long rootPipelineId = entity.getRootPipelineId();
-        String templateName = entity.getTemplateName();
-
-        CoproRetryErrorAuditTable audictInput = setErrorAudictInputDetails(entity, endpoint);
-        try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
-
-            if (response.isSuccessful()) {
-                extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "", jsonInputRequest, responseBody, endpoint.toString());
-            } else {
-                parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).message(response.message()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonInputRequest)).response(encryptRequestResponse(responseBody)).endpoint(String.valueOf(endpoint)).build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + response.message());
-                HandymanException.insertException("Agentic paper filter consumer failed for batch/group " + entity.getGroupId(), handymanException, this.action);
-
-                log.error(aMarker, "The Exception occurred in response {}", response.message());
-            }
-        } catch (Exception e) {
-            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(ExceptionUtil.toString(e)).rootPipelineId(rootPipelineId).templateName(templateName).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
-
-            log.error(aMarker, "The Exception occurred in Copro {} ", e.toString());
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Agentic paper filter extraction consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
-        }
-    }
-
-
-    private void extractedCoproOutputResponse(AgenticPaperFilterInput entity, String stringDataItem, List<AgenticPaperFilterOutput> parentObj, String originId, Integer groupId, String modelName, String modelVersion, String request, String response, String endpoint) {
-
-        String parentResponseObject = extractPageContent(stringDataItem);
-        final String contentString = Optional.of(parentResponseObject).map(String::valueOf).orElse(null);
-        final String flag = (!Objects.isNull(contentString) && contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-        Integer paperNo = entity.getPaperNo();
-        String filePath = entity.getFilePath();
-        Long tenantId = entity.getTenantId();
-        String templateId = entity.getTemplateId();
-        Long processId = entity.getProcessId();
-        String templateName = entity.getTemplateName();
-        Long rootPipelineId = entity.getRootPipelineId();
-        String batchId = entity.getBatchId();
-
-        String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
-        String extractedContentEnc;
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
-
-        if (Objects.equals(encryptSotPageContent, "true")) {
-            extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
-        } else {
-            extractedContentEnc = contentString;
-        }
-
-
-        parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).filePath(new File(filePath).getAbsolutePath()).extractedText(extractedContentEnc).originId(Optional.ofNullable(originId).map(String::valueOf).orElse(null)).groupId(groupId).paperNo(paperNo).status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription()).stage(PROCESS_NAME).message("Data extraction macro completed").createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).isBlankPage(flag).tenantId(tenantId).templateId(templateId).processId(processId).templateName(templateName).rootPipelineId(rootPipelineId).modelName(modelName).modelVersion(modelVersion).batchId(batchId).request(encryptRequestResponse(request)).response(encryptRequestResponse(response)).endpoint(endpoint).build());
-
-
     }
 
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {

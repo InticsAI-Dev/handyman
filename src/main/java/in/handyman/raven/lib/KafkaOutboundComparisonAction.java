@@ -89,7 +89,7 @@
 
                         List<JsonToTableInput> inputs = query.mapToBean(JsonToTableInput.class)
                                 .stream()
-                                .peek(input -> log.debug(aMarker, "Fetched input: {}", input))
+                                .peek(input -> log.debug(aMarker, "Fetched input: {}", input.getOriginId()))
                                 .collect(Collectors.toList());
                         log.info(aMarker, "Executed query from index {}, fetched {} records", queryIndex.getAndIncrement(), inputs.size());
 
@@ -249,7 +249,7 @@
 
                 // Remove empty or null values
                 allValues.removeIf(v -> v == null || v.toString().trim().isEmpty());
-                log.debug(aMarker, "Extracted values for {}: {}", fieldConfig.getSorItemName(), allValues);
+                log.debug(aMarker, "Extracted values for {}", fieldConfig.getSorItemName());
 
                 if (allValues.isEmpty()) {
                     log.debug(aMarker, "No valid values extracted for {}: returning empty string", fieldConfig.getSorItemName());
@@ -266,7 +266,7 @@
                         .filter(s -> !s.isEmpty())
                         .collect(Collectors.joining(delimiter));
 
-                log.debug(aMarker, "Final extracted value for {}: {}", fieldConfig.getSorItemName(), result);
+                log.debug(aMarker, "Final extracted value for {}", fieldConfig.getSorItemName());
                 return result.isEmpty() ? "" : result;
 
             } catch (Exception e) {

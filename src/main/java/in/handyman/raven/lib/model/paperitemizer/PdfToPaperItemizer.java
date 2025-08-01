@@ -143,7 +143,7 @@ public class PdfToPaperItemizer {
                 }
 
                 executor.shutdown();
-                executor.awaitTermination(10, TimeUnit.MINUTES);
+                executor.awaitTermination(1, TimeUnit.MINUTES);
 
                 long endTime = System.currentTimeMillis();
                 System.out.println("Total elapsed time for paperItemizer: {} ms"+ (endTime - startTime));
