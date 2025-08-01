@@ -11,6 +11,8 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
+import in.handyman.raven.lib.model.documentEyeCue.StoreContent;
 
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -182,6 +184,40 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .endpoint(endpoint.toString())
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
                     .build();
+
+            String processedPdfPath = outputRecord.getProcessedFilePath();
+            log.info(aMarker, "Calling StoreContent macro for file: {}", processedPdfPath);
+
+            try {
+                String repository = "FilenetCE"; // TODO: make configurable via context
+                String applicationId = "SMARTINTAKE"; // TODO: make configurable via context
+                String dcn = entity.getOriginId(); // Or use actual DCN from pipeline if different
+                String envUrl = action.getContext().getOrDefault("storecontent.env.url", "https://dev.api.anthem.com");
+                String apiKey = action.getContext().get("storecontent.api.key");
+                String bearerToken = action.getContext().get("storecontent.bearer.token");
+
+                StoreContent storeContentMacro = new StoreContent();
+                StoreContentResponseDto storeResponse = storeContentMacro.execute(
+                        processedPdfPath,
+                        repository,
+                        applicationId,
+                        dcn,
+                        envUrl,
+                        apiKey,
+                        bearerToken
+                );
+
+                if (storeResponse != null) {
+                    log.info(aMarker, "StoreContent Upload Status: {}", storeResponse.getStatus());
+                    log.info(aMarker, "Content ID: {}", storeResponse.getContentID());
+                    outputRecord.setContentId(storeResponse.getContentID());
+                } else {
+                    log.warn(aMarker, "StoreContent macro returned null for file {}", processedPdfPath);
+                }
+
+            } catch (Exception e) {
+                log.error(aMarker, "StoreContent macro failed for file {}: {}", processedPdfPath, e.getMessage(), e);
+            }
 
             // Handle base64 response if needed
             if (processBase64.equals(ProcessFileFormatE.BASE64.name()) &&
