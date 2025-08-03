@@ -28,10 +28,16 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.nio.file.FileAlreadyExistsException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
@@ -95,7 +101,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         String batchId = entity.getBatchId();
         String sourceDocumentType = entity.getSourceDocumentType();
         String sorItemName = entity.getSorItemName();
-        String containerDocumentType = entity.getContainerDocumentType();
         String sorContainerName = entity.getSorContainerName();
         Integer modelId = entity.getModelId();
         String modelName = entity.getModelName();
@@ -220,19 +225,48 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 if (!inputFile.exists()) {
                     throw new HandymanException("Input file does not exist: " + inputFilePath);
                 }
+                log.info(aMarker, "Input file: {}, exists: {}", inputFilePath, inputFile.exists());
+
                 byte[] fileContent = Files.readAllBytes(inputFile.toPath());
+                // Dynamically set content type based on file extension
+                String contentType = inputFile.getName().endsWith(".pdf") ? "application/pdf" : "image/jpeg";
                 MultipartFile multipartFile = new MockMultipartFile(
                         inputFile.getName(),
                         inputFile.getName(),
-                        "application/pdf",
+                        contentType,
                         fileContent
                 );
+
+                // Use a subdirectory to avoid conflicts and ensure valid file path
+                String outputDir = System.getProperty("java.io.tmpdir") + File.separator + "test4j_output";
+                try {
+                    Path outputPath = Paths.get(outputDir);
+                    if (Files.exists(outputPath) && !Files.isDirectory(outputPath)) {
+                        throw new HandymanException("Path exists but is not a directory: " + outputDir);
+                    }
+                    Files.createDirectories(outputPath);
+                    log.info(aMarker, "Output directory created or already exists: {}", outputDir);
+                } catch (FileAlreadyExistsException e) {
+                    log.warn(aMarker, "Directory already exists, continuing: {}", outputDir, e);
+                } catch (IOException e) {
+                    log.error(aMarker, "Failed to create output directory: {}", outputDir, e);
+                    throw new HandymanException("Cannot create output directory: " + outputDir, e);
+                }
+
+                // Verify directory is writable
+                if (!Files.isWritable(Paths.get(outputDir))) {
+                    throw new HandymanException("Output directory is not writable: " + outputDir);
+                }
+
+                // Construct full output file path early
+                String outputFilePath = outputDir + File.separator + inputFile.getName() + ".txt";
+                log.info(aMarker, "Output file path: {}", outputFilePath);
 
                 TestDataExtractorInput.TestDataExtractorInputBuilder builder = TestDataExtractorInput.builder()
                         .name("DeepSiftTest4J")
                         .mode("keywords")
                         .files(Collections.singletonList(multipartFile))
-                        .outputPath(System.getProperty("java.io.tmpdir"))
+                        .outputPath(outputFilePath) // Pass full file path
                         .condition(true);
 
                 List<String> keywords = new ArrayList<>();
@@ -240,6 +274,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     keywords.addAll(Arrays.asList(test4jRequest.getSystemPrompt().split("\\s*,\\s*")));
                 }
                 builder.keywords(keywords.isEmpty() ? null : keywords);
+                log.info(aMarker, "Keywords: {}, Mode: {}", keywords, "keywords");
 
                 builder.endPoint(endpoint.toString());
                 builder.resourceConn(action.getContext().getOrDefault("resource.connection", ""));
@@ -249,10 +284,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 TestDataExtractorInput testDataExtractorInput = builder.build();
 
                 TestDataExtractorAction extractorAction = new TestDataExtractorAction(action, log, testDataExtractorInput);
+                log.info(aMarker, "Starting extraction for file: {}", inputFile.getName());
                 extractorAction.execute();
+                // Workaround for logging issue: Use simple log or System.out to avoid ArrayDeque error
+                System.out.println("Extraction completed for file: " + inputFile.getName()); // Replace log.info to bypass SLF4J issue
 
-                String outputFilePath = testDataExtractorInput.getOutputPath() + File.separator + inputFile.getName() + ".txt";
                 File outputFile = new File(outputFilePath);
+                log.info(aMarker, "Checking output file: {}, exists: {}", outputFilePath, outputFile.exists());
                 if (!outputFile.exists()) {
                     throw new HandymanException("Output file not generated: " + outputFilePath);
                 }
@@ -275,6 +313,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         extractedText.replace("\"", "\\\"")
                 );
 
+                log.info(aMarker, "Json Output: {}", jsonResponse);
                 parentObj.add(DeepSiftOutputTable.builder()
                         .inputFilePath(inputFilePath)
                         .extractedText(extractedContentEnc)
@@ -282,15 +321,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         .groupId(groupId)
                         .paperNo(pageNumber)
                         .createdOn(entity.getCreatedOn())
-                        .createdBy(entity.getCreatedBy())
                         .rootPipelineId(entity.getRootPipelineId())
                         .tenantId(tenantId)
                         .batchId(batchId)
                         .sourceDocumentType(sourceDocumentType)
                         .sorItemId(entity.getSorItemId())
                         .sorItemName(sorItemName)
-                        .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                        .containerDocumentType(containerDocumentType)
+                        .sorContainerId((entity.getSorContainerId()))
                         .sorContainerName(sorContainerName)
                         .modelId(modelId)
                         .modelName(modelName)
@@ -298,29 +335,28 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         .build());
 
                 outputFile.delete();
+                log.info(aMarker, "Output file deleted: {}", outputFilePath);
 
             } catch (Exception e) {
+                log.error(aMarker, "Exception in TEST4J handler for file: {}", inputFilePath, e);
                 parentObj.add(DeepSiftOutputTable.builder()
                         .inputFilePath(inputFilePath)
                         .originId(originId)
                         .groupId(groupId)
                         .paperNo(paperNumber)
                         .createdOn(entity.getCreatedOn())
-                        .createdBy(entity.getCreatedBy())
                         .rootPipelineId(entity.getRootPipelineId())
                         .tenantId(tenantId)
                         .batchId(batchId)
                         .sourceDocumentType(sourceDocumentType)
                         .sorItemId(entity.getSorItemId())
                         .sorItemName(sorItemName)
-                        .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                        .containerDocumentType(containerDocumentType)
+                        .sorContainerId((entity.getSorContainerId()))
                         .sorContainerName(sorContainerName)
                         .modelId(modelId)
                         .modelName(modelName)
                         .searchName(searchName)
                         .build());
-                log.error(aMarker, "Exception in TEST4J handler", e);
                 HandymanException handymanException = new HandymanException("TEST4J processing failed", e, action);
                 HandymanException.insertException("Deep sift TEST4J failed for origin Id " + originId + " paper no " + paperNumber, handymanException, action);
                 throw handymanException;
@@ -401,15 +437,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .groupId(Math.toIntExact(deepSiftDataItem.getGroupId()))
                 .paperNo(deepSiftDataItem.getPaperNo())
                 .createdOn(entity.getCreatedOn())
-                .createdBy(entity.getCreatedBy())
                 .rootPipelineId(deepSiftDataItem.getRootPipelineId())
                 .tenantId(deepSiftDataItem.getTenantId())
                 .batchId(entity.getBatchId())
                 .sourceDocumentType(entity.getSourceDocumentType())
                 .sorItemId(entity.getSorItemId())
                 .sorItemName(entity.getSorItemName())
-                .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                .containerDocumentType(entity.getContainerDocumentType())
+                .sorContainerId((entity.getSorContainerId()))
                 .sorContainerName(entity.getSorContainerName())
                 .modelId(entity.getModelId())
                 .modelName(modelName)
@@ -438,15 +472,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .groupId(deepSiftDataItem.getGroupId())
                 .paperNo(deepSiftDataItem.getPaperNumber())
                 .createdOn(entity.getCreatedOn())
-                .createdBy(entity.getCreatedBy())
                 .rootPipelineId(deepSiftDataItem.getRootPipelineId())
                 .tenantId(deepSiftDataItem.getTenantId())
                 .batchId(deepSiftDataItem.getBatchId())
                 .sourceDocumentType(entity.getSourceDocumentType())
                 .sorItemId(entity.getSorItemId())
                 .sorItemName(entity.getSorItemName())
-                .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                .containerDocumentType(entity.getContainerDocumentType())
+                .sorContainerId((entity.getSorContainerId()))
                 .sorContainerName(entity.getSorContainerName())
                 .modelId(entity.getModelId())
                 .modelName(modelName)
@@ -590,15 +622,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .groupId(entity.getGroupId())
                 .paperNo(entity.getPaperNo())
                 .createdOn(entity.getCreatedOn())
-                .createdBy(entity.getCreatedBy())
                 .rootPipelineId(entity.getRootPipelineId())
                 .tenantId(entity.getTenantId())
                 .batchId(entity.getBatchId())
                 .sourceDocumentType(entity.getSourceDocumentType())
                 .sorItemId(entity.getSorItemId())
                 .sorItemName(entity.getSorItemName())
-                .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                .containerDocumentType(entity.getContainerDocumentType())
+                .sorContainerId((entity.getSorContainerId()))
                 .sorContainerName(entity.getSorContainerName())
                 .modelId(entity.getModelId())
                 .modelName(replicateResponse.getModel())
@@ -654,15 +684,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .groupId(groupId)
                 .paperNo(entity.getPaperNo())
                 .createdOn(entity.getCreatedOn())
-                .createdBy(entity.getCreatedBy())
                 .rootPipelineId(entity.getRootPipelineId())
                 .tenantId(entity.getTenantId())
                 .batchId(entity.getBatchId())
                 .sourceDocumentType(entity.getSourceDocumentType())
                 .sorItemId(entity.getSorItemId())
                 .sorItemName(entity.getSorItemName())
-                .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                .containerDocumentType(entity.getContainerDocumentType())
+                .sorContainerId((entity.getSorContainerId()))
                 .sorContainerName(entity.getSorContainerName())
                 .modelId(entity.getModelId())
                 .modelName(modelName)
@@ -703,15 +731,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .groupId(entity.getGroupId())
                 .paperNo(entity.getPaperNo())
                 .createdOn(entity.getCreatedOn())
-                .createdBy(entity.getCreatedBy())
                 .rootPipelineId(entity.getRootPipelineId())
                 .tenantId(entity.getTenantId())
                 .batchId(entity.getBatchId())
                 .sourceDocumentType(entity.getSourceDocumentType())
                 .sorItemId(entity.getSorItemId())
                 .sorItemName(entity.getSorItemName())
-                .sorContainerId(String.valueOf(entity.getSorContainerId()))
-                .containerDocumentType(entity.getContainerDocumentType())
+                .sorContainerId((entity.getSorContainerId()))
                 .sorContainerName(entity.getSorContainerName())
                 .modelId(entity.getModelId())
                 .modelName(entity.getModelName())

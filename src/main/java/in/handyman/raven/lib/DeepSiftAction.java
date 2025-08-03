@@ -38,9 +38,9 @@ import java.util.stream.Collectors;
 @ActionExecution(actionName = "DeepSift")
 public class DeepSiftAction implements IActionExecution {
 
-  public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,tenant_id, batch_id, extracted_text, paper_no, source_document_type, sor_item_id, sor_item_name, sor_container_id, container_document_type, sor_container_name,model_id, model_name, search_name";
+  public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,tenant_id, batch_id, extracted_text, paper_no, source_document_type, sor_item_id, sor_item_name, sor_container_id, sor_container_name,model_id, model_name, search_name ";
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_VALUES = "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";

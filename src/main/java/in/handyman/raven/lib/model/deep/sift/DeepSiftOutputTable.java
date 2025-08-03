@@ -31,7 +31,7 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private String sourceDocumentType;
     private Long sorItemId;
     private String sorItemName;
-    private String sorContainerId;
+    private Integer sorContainerId;
     private String containerDocumentType;
     private String sorContainerName;
     private Integer modelId;
@@ -46,7 +46,7 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.groupId,
                 this.inputFilePath,
                 this.createdOn,
-                this.createdBy,
+                this.createdBy != null ? this.createdBy : "system",
                 this.rootPipelineId,
                 this.tenantId,
                 this.batchId,
@@ -56,12 +56,10 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.sorItemId,
                 this.sorItemName,
                 this.sorContainerId,
-                this.containerDocumentType,
                 this.sorContainerName,
                 this.modelId,
                 this.modelName,
-                this.searchName,
-                this.status
+                this.searchName
         ).collect(Collectors.toList());
     }
 
