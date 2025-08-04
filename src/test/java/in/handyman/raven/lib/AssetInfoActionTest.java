@@ -5,7 +5,6 @@ import in.handyman.raven.lib.model.AssetInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
 @Slf4j
 class AssetInfoActionTest {
 
@@ -13,16 +12,25 @@ class AssetInfoActionTest {
     void testingAssetInfo() throws Exception {
         AssetInfo assetInfo= AssetInfo.builder()
                 .name("info")
-                .resourceConn("intics_agadia_db_conn")
-                .assetTable("macro.file_details_truth_138978990615970048")
-                .auditTable("info.sanitizer_summary_audit_138978990615970048")
-                .values("select '/home/anandh.andrews@zucisystems.com/W-space/pr1-lambdas/agadia-gatekeeper/test.jpg' as file_path;")
+                .resourceConn("intics_zio_db_conn")
+                .assetTable("macro.file_details_truth_audit")
+                .auditTable("info.sanitizer_summary_audit")
+                .values("SELECT a.file_path, b.batch_id\n" +
+                        "FROM info.data_extraction a\n" +
+                        "join preprocess.preprocess_payload_queue_archive b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
+                        "where a.status='COMPLETED'\n" +
+                        "and a.is_blank_page='no' and a.group_id='55' and a.tenant_id = 1 and b.batch_id ='BATCH-55_0';\n")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
-        action.setRootPipelineId(11011L);
-        action.getContext().put("process-id","1234567");
-        AssetInfoAction assetInfoAction=new AssetInfoAction(action ,log,assetInfo);
+        action.setRootPipelineId(1L);
+        action.getContext().put("asset.info.consumer.API.count","10");
+        action.getContext().put("read.batch.size","100");
+        action.getContext().put("write.batch.size","100");
+        action.getContext().put("tenant_id","1");
+        action.getContext().put("copro.processor.thread.creator","FIXED_THREAD");
+        action.getContext().put("pipeline.text.extraction.encryption", "false");
+        AssetInfoAction assetInfoAction=new AssetInfoAction(action, log, assetInfo);
         assetInfoAction.execute();
     }
 
