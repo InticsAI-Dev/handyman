@@ -180,12 +180,25 @@ public class ValidatorByBeanShellExecutor {
 
     private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, String> resultMap) {
         for (PostProcessingExecutorAction.PostProcessingExecutorInput input : inputs) {
-            String postProcessingOutputValue = resultMap.get(input.getSorItemName());
-            if (postProcessingOutputValue != null && !postProcessingOutputValue.equals(input.getExtractedValue())) {
-                log.info("Updating {}", input.getSorItemName());
-                input.setExtractedValue(postProcessingOutputValue);
+            String sorItemValue = resultMap.get(input.getSorItemName());
+            String extractedValue = resultMap.get(input.getExtractedValue());
+            {
+                log.info("PostProcessing input exists for sorItem {}, updating value", sorItemValue);
+                if(Objects.equals(extractedValue, sorItemValue)){
+                    log.info("Extracted value and the PostProcessing value are same for the sorItem {}, so no record has been updated.", sorItemValue);
+                } else if (!Objects.equals(sorItemValue, "")) {
+                    log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItemValue);
+                    input.setSorItemName(sorItemValue);
+                    input.setExtractedValue(extractedValue);
+                } else {
+                    log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItemValue);
+                    input.setBbox("{}");
+                    input.setVqaScore(0);
+                    input.setAggregatedScore(0);
+                    input.setSorItemName(sorItemValue);
+                    input.setExtractedValue(extractedValue);
+                }
             }
-        }
+       }
     }
-
 }
