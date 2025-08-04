@@ -178,6 +178,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
 
+        radonKvpExtractionRequest.setBase64Img("");
+        String jsonInsertRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
 
         log.info(aMarker, " Input variables id : {}", action.getActionId());
 
@@ -195,7 +197,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         } else {
             log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj, jsonRequest, endpoint);
+            tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
         }
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
