@@ -11,11 +11,14 @@ import org.slf4j.Logger;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ValidatorByBeanShellExecutor {
 
     private final List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs;
+
+    private final List<PostProcessingExecutorAction.PostProcessingExecutorInput> updatedPostProcessingExecutorInputs = new ArrayList<>();
 
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
@@ -179,13 +182,32 @@ public class ValidatorByBeanShellExecutor {
     }
 
     private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, String> resultMap) {
-        for (PostProcessingExecutorAction.PostProcessingExecutorInput input : inputs) {
-            String postProcessingOutputValue = resultMap.get(input.getSorItemName());
-            if (postProcessingOutputValue != null && !postProcessingOutputValue.equals(input.getExtractedValue())) {
-                log.info("Updating {}", input.getSorItemName());
-                input.setExtractedValue(postProcessingOutputValue);
-            }
-        }
-    }
+        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputMap =
+                inputs.stream()
+                        .collect(Collectors.toMap(
+                                PostProcessingExecutorAction.PostProcessingExecutorInput::getSorItemName,
+                                Function.identity()));
 
+        resultMap.forEach((sorItem, sorItemValue) -> {
+            PostProcessingExecutorAction.PostProcessingExecutorInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
+            if (postProcessingExecutorInput != null) {
+                log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
+                if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), sorItemValue)){
+                    log.info("Extracted value and the PostProcessing value are same for the sorItem {}, so no record has been updated.", sorItem);
+                } else if (!Objects.equals(sorItemValue, "")) {
+                    log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItem);
+                    postProcessingExecutorInput.setExtractedValue(sorItemValue);
+                } else {
+                    log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
+                    postProcessingExecutorInput.setBbox("{}");
+                    postProcessingExecutorInput.setVqaScore(0);
+                    postProcessingExecutorInput.setAggregatedScore(0);
+                    postProcessingExecutorInput.setExtractedValue(sorItemValue);
+                }
+            } else {
+                log.info("PostProcessing input does exists for sorItem {},", sorItem);
+
+            }
+        });
+    }
 }
