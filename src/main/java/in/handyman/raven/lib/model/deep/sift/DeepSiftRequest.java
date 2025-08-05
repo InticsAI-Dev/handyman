@@ -24,4 +24,5 @@ public class DeepSiftRequest {
     private String batchId;
     private String base64Img;
     private String modelName;
+    private String templateName;
 }

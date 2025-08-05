@@ -1,320 +1,129 @@
 package in.handyman.raven.lib;
 
-import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lib.model.DeepSift;
-import in.handyman.raven.lib.model.deep.sift.DeepSiftConsumerProcess;
-import in.handyman.raven.lib.model.deep.sift.DeepSiftInputTable;
-import in.handyman.raven.lib.model.deep.sift.DeepSiftOutputTable;
-import in.handyman.raven.core.utils.FileProcessingUtils;
-import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.argument.Arguments;
-import org.jdbi.v3.core.statement.PreparedBatch;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.slf4j.Logger;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Test;
 
-import java.net.URL;
-import java.sql.Timestamp;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
 
-import static in.handyman.raven.lib.DeepSiftAction.*;
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
-@RunWith(MockitoJUnitRunner.class)
+@Slf4j
 public class DeepSiftActionTest {
 
-    @Mock
-    private ActionExecutionAudit action;
-
-    @Mock
-    private Logger log;
-
-    @Mock
-    private Jdbi jdbi;
-
-    @Mock
-    private Handle handle;
-
-    @Mock
-    private PreparedBatch preparedBatch;
-
-    @Mock
-    private FileProcessingUtils fileProcessingUtils;
-
-    @Mock
-    private CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor;
-
-    @Mock
-    private DeepSiftConsumerProcess deepSiftConsumerProcess;
-
-    @Mock
-    private Arguments arguments;
-
-    @Mock
-    private Object sqlObject; // Mock for HandymanRepoImpl's SQL object
-
-    private DeepSift deepSift;
-    private DeepSiftAction deepSiftAction;
-    private Map<String, String> context;
-    private Marker marker;
-    private static final String TEST_FILE_PATH = "/tmp/test.pdf";
-    private static final String PAGE_CONTENT_MIN_LENGTH_KEY = "page.content.min.length";
-
-    @Before
-    public void setUp() throws Exception {
-        // Initialize DeepSift
-        deepSift = DeepSift.builder()
-                .name("TestDeepSift")
-                .resourceConn("testConnection")
-                .resultTable("test_output_table")
-                .endPoint("http://localhost:8080/test4j")
-                .processId("12345")
-                .querySet("SELECT * FROM test_input_table")
+    @Test
+    void tritonServer() throws Exception {
+        DeepSift deepSift = DeepSift.builder()
+                .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
+                .resourceConn("intics_zio_db_conn")
                 .condition(true)
+                .endPoint("http://172.202.112.23:8000/predict")
+                .processId("2036")
+                .resultTable("transit_data.deep_sift_output_2036")
+                .querySet("SELECT\n" +
+                        "    dsi.origin_id,\n" +
+                        "    dsi.group_id,\n" +
+                        "    dsi.created_on,\n" +
+                        "    dsi.created_by,\n" +
+                        "    dsi.input_file_path,\n" +
+                        "    dsi.root_pipeline_id,\n" +
+                        "    dsi.tenant_id,\n" +
+                        "    dsi.batch_id,\n" +
+                        "    dsi.paper_no,\n" +
+                        "    dsi.source_document_type,\n" +
+                        "    dsi.sor_item_id,\n" +
+                        "    dsi.sor_item_name,\n" +
+                        "    dsi.sor_container_id,\n" +
+                        "    dsi.sor_container_name,\n" +
+                        "    dsi.model_id,\n" +
+                        "    dsi.model_name,\n" +
+                        "    dsi.search_name,\n" +
+                        "    dsi.base_prompt,\n" +
+                        "    dsi.system_prompt\n" +
+                        "FROM transit_data.deep_sift_input_2036 dsi\n" +
+                        "JOIN deep_sift.deep_sift_payload_queue dspq\n" +
+                        "ON dspq.origin_id = dsi.origin_id\n" +
+                        "WHERE\n" +
+                        "    dsi.batch_id = 'BATCH-52_0'\n" +
+                        "    AND dsi.tenant_id = 1\n" +
+                        "    AND dsi.group_id = '52';")
                 .build();
-
-        // Initialize context
-        context = new HashMap<>();
-        context.put(READ_BATCH_SIZE, "10");
-        context.put(TEXT_EXTRACTION_CONSUMER_API_COUNT, "2");
-        context.put(WRITE_BATCH_SIZE, "5");
-        context.put(PAGE_CONTENT_MIN_LENGTH_KEY, "100");
-        context.put("pipeline.copro.api.process.file.format", "BASE64");
-        context.put("copro.request.deep.sift.handler.name", "TEST4J");
-        context.put("preprocess.deep.sift.model.name", "KRYPTON");
-        context.put("encrypt.text.extraction.output", "true");
-        context.put("encrypt.request.response", "true");
-        when(action.getContext()).thenReturn(context);
-
-        // Mock ResourceAccess and JDBI interactions
-        try (MockedStatic<ResourceAccess> resourceAccess = mockStatic(ResourceAccess.class)) {
-            resourceAccess.when(() -> ResourceAccess.rdbmsJDBIConn(anyString())).thenReturn(jdbi);
-            when(jdbi.getConfig(Arguments.class)).thenReturn(arguments);
-            when(jdbi.open()).thenReturn(handle);
-            when(handle.prepareBatch(anyString())).thenReturn(preparedBatch);
-            when(preparedBatch.execute()).thenReturn(new int[]{1});
-            doNothing().when(arguments).setUntypedNullArgument(any());
-            // Mock SQL object used by HandymanRepoImpl
-            when(jdbi.onDemand(any(Class.class))).thenReturn(sqlObject);
-            when(sqlObject.getClass().getMethod("findOne", String.class).invoke(sqlObject, anyString())).thenReturn(null);
-
-            // Initialize marker
-            marker = MarkerFactory.getMarker(" DeepSift:" + deepSift.getName());
-
-            // Initialize DeepSiftAction
-            deepSiftAction = new DeepSiftAction(action, log, deepSift);
-        }
-    }
-
-    @Test
-    public void testExecuteWithTest4JHandlerSuccess() throws Exception {
-        // Arrange
-        String expectedInsertQuery = INSERT_INTO + deepSift.getResultTable() + " ( origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, tenant_id, batch_id, extracted_text, paper_no, source_document_type, sor_item_id, sor_item_name, sor_container_id, container_document_type, sor_container_name, model_id, model_name, search_name, status ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
-        URL expectedUrl = new URL(deepSift.getEndPoint());
-
-        // Sample DeepSiftInputTable
-        DeepSiftInputTable inputTable = DeepSiftInputTable.builder()
-                .id(1L)
-                .rootPipelineId(100L)
-                .originId("ORIG123")
-                .batchId("BATCH001")
-                .inputFilePath(TEST_FILE_PATH)
-                .tenantId(200L)
-                .groupId(300)
-                .paperNo(1)
-                .sourceDocumentType("PDF")
-                .sorItemId(500L)
-                .sorItemName("ItemName")
-                .sorContainerId(600)
-                .sorContainerName("ContainerName")
-                .modelId(700)
-                .modelName("KRYPTON")
-                .searchName("TestSearch")
-                .systemPrompt("System prompt")
-                .createdOn(new Timestamp(System.currentTimeMillis()))
-                .build();
-
-        // Sample DeepSiftOutputTable
-        String extractedText = "This is a sample extracted text that exceeds the minimum length threshold.";
-        DeepSiftOutputTable outputTable = DeepSiftOutputTable.builder()
-                .inputFilePath(TEST_FILE_PATH)
-                .extractedText("encrypted_" + extractedText)
-                .originId("ORIG123")
-                .groupId(300)
-                .paperNo(1)
-                .status("COMPLETED")
-                .tenantId(200L)
-                .rootPipelineId(100L)
-                .batchId("BATCH001")
-                .sourceDocumentType("PDF")
-                .sorItemId(500L)
-                .sorItemName("ItemName")
-                .sorContainerId(600)
-                .sorContainerName("ContainerName")
-                .modelId(700)
-                .modelName("KRYPTON")
-                .searchName("TestSearch")
-                .createdOn(inputTable.getCreatedOn())
-                .build();
-
-        // Mock CoproProcessor
-        doAnswer(invocation -> {
-            LinkedBlockingQueue<DeepSiftInputTable> queue = new LinkedBlockingQueue<>();
-            queue.add(inputTable);
-            return null;
-        }).when(coproProcessor).startProducer(anyString(), anyInt());
-        doAnswer(invocation -> {
-            when(deepSiftConsumerProcess.process(eq(expectedUrl), eq(inputTable))).thenReturn(Collections.singletonList(outputTable));
-            return null;
-        }).when(coproProcessor).startConsumer(anyString(), anyInt(), anyInt(), eq(deepSiftConsumerProcess));
-
-        // Act
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://172.202.112.23:8000/predict");
+        actionExecutionAudit.setProcessId(2036L);
+        actionExecutionAudit.setActionId(21352L);
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "5"),
+                Map.entry("okhttp.client.timeout", "20"),
+                Map.entry("text.extraction.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "true"),
+                Map.entry("copro.request.deep.sift.handler.name", "TRITON"),
+                Map.entry("replicate.request.api.token", ""),
+                Map.entry("actionId", "21352"),
+                Map.entry("write.batch.size", "5"),
+                Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("deep.sift.extraction.activator", "true")
+        ));
+        DeepSiftAction deepSiftAction = new DeepSiftAction(actionExecutionAudit, log, deepSift);
         deepSiftAction.execute();
-
-        // Assert
-        verify(log).info(eq(marker), eq("Data Extraction Action for {} has been started"), eq(deepSift.getName()));
-        verify(jdbi).getConfig(Arguments.class);
-        verify(jdbi).open();
-        verify(handle).prepareBatch(eq(expectedInsertQuery));
-        verify(preparedBatch).execute();
-        verify(arguments).setUntypedNullArgument(any());
-        verify(coproProcessor).startProducer(deepSift.getQuerySet(), 10);
-        verify(coproProcessor).startConsumer(eq(expectedInsertQuery), eq(2), eq(5), eq(deepSiftConsumerProcess));
-        verify(deepSiftConsumerProcess).process(eq(expectedUrl), eq(inputTable));
-        verify(log).info(eq(marker), eq(" Data Extraction Action has been completed {}  "), eq(deepSift.getName()));
-        verify(action, never()).getContext().put(eq(deepSift.getName() + ".isSuccessful"), eq("false"));
     }
 
     @Test
-    public void testExecuteWithTest4JHandlerFileNotFound() throws Exception {
-        // Arrange
-        String expectedInsertQuery = INSERT_INTO + deepSift.getResultTable() + " ( origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, tenant_id, batch_id, extracted_text, paper_no, source_document_type, sor_item_id, sor_item_name, sor_container_id, container_document_type, sor_container_name, model_id, model_name, search_name, status ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
-        URL expectedUrl = new URL(deepSift.getEndPoint());
-
-        // Sample DeepSiftInputTable
-        DeepSiftInputTable inputTable = DeepSiftInputTable.builder()
-                .id(1L)
-                .rootPipelineId(100L)
-                .originId("ORIG123")
-                .batchId("BATCH001")
-                .inputFilePath(TEST_FILE_PATH)
-                .tenantId(200L)
-                .groupId(300)
-                .paperNo(1)
-                .sourceDocumentType("PDF")
-                .sorItemId(500L)
-                .sorItemName("ItemName")
-                .sorContainerId(600)
-                .modelId(700)
-                .modelName("KRYPTON")
-                .searchName("TestSearch")
-                .systemPrompt("System prompt")
-                .createdOn(new Timestamp(System.currentTimeMillis()))
+    void tritonKryptonServer() throws Exception {
+        String filePath = "/data/multipart-files/vulcan_data/output/1/transaction/TRZ-1321/a22eba72-856f-4046-91db-15e5a62c6fb2/139737009524220116/processed_images/05-08-2025_09_08_53/tenant_1/group_52/preprocess/paper_itemizer/pdf_to_image/FM202505091418000/FM202505091418000_3.jpg";
+        DeepSift deepSift = DeepSift.builder()
+                .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
+                .resourceConn("intics_zio_db_conn")
+                .condition(true)
+                .endPoint("http://172.202.112.23:8000/predict")
+                .processId("138980184199100180")
+                .resultTable("transit_data.deep_sift_output_2036")
+                .querySet("SELECT\n" +
+                        "    dsi.origin_id,\n" +
+                        "    dsi.group_id,\n" +
+                        "    dsi.created_on,\n" +
+                        "    dsi.created_by,\n" +
+                        "    '" + filePath + "' as input_file_path,\n" +
+                        "    dsi.root_pipeline_id,\n" +
+                        "    dsi.tenant_id,\n" +
+                        "    dsi.batch_id,\n" +
+                        "    dsi.paper_no,\n" +
+                        "    dsi.source_document_type,\n" +
+                        "    dsi.sor_item_id,\n" +
+                        "    dsi.sor_item_name,\n" +
+                        "    dsi.sor_container_id,\n" +
+                        "    dsi.sor_container_name,\n" +
+                        "    dsi.model_id,\n" +
+                        "    dsi.model_name,\n" +
+                        "    dsi.search_name,\n" +
+                        "    'Extract all the page content and return as text and dont add preambles' as base_prompt,\n" +
+                        "    dsi.system_prompt\n" +
+                        "FROM transit_data.deep_sift_input_2036 dsi\n" +
+                        "JOIN deep_sift.deep_sift_payload_queue dspq\n" +
+                        "ON dspq.origin_id = dsi.origin_id\n" +
+                        "WHERE\n" +
+                        "    dsi.batch_id = 'BATCH-52_0'\n" +
+                        "    AND dsi.tenant_id = 1\n" +
+                        "    AND dsi.group_id = '52';")
                 .build();
-
-        // Sample DeepSiftOutputTable for failure
-        DeepSiftOutputTable outputTable = DeepSiftOutputTable.builder()
-                .batchId("BATCH001")
-                .originId("ORIG123")
-                .groupId(300)
-                .paperNo(1)
-                .status("FAILED")
-                .tenantId(200L)
-                .rootPipelineId(100L)
-                .sourceDocumentType("PDF")
-                .sorItemId(500L)
-                .sorItemName("ItemName")
-                .sorContainerId(600)
-                .sorContainerName("ContainerName")
-                .modelId(700)
-                .modelName("KRYPTON")
-                .searchName("TestSearch")
-                .createdOn(inputTable.getCreatedOn())
-                .build();
-
-        // Mock CoproProcessor
-        doAnswer(invocation -> {
-            LinkedBlockingQueue<DeepSiftInputTable> queue = new LinkedBlockingQueue<>();
-            queue.add(inputTable);
-            return null;
-        }).when(coproProcessor).startProducer(anyString(), anyInt());
-        doAnswer(invocation -> {
-            when(deepSiftConsumerProcess.process(eq(expectedUrl), eq(inputTable))).thenReturn(Collections.singletonList(outputTable));
-            return null;
-        }).when(coproProcessor).startConsumer(anyString(), anyInt(), anyInt(), eq(deepSiftConsumerProcess));
-
-        // Act
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://172.202.112.23:8000/predict");
+        actionExecutionAudit.setProcessId(2036L);
+        actionExecutionAudit.setActionId(21352L);
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "5"),
+                Map.entry("okhttp.client.timeout", "20"),
+                Map.entry("replicate.request.api.token", "API_TOKEN"),
+                Map.entry("replicate.deep.sift.version", "1"),
+                Map.entry("text.extraction.consumer.API.count", "1"),
+                Map.entry("copro.request.deep.sift.handler.name", "TRITON"),
+                Map.entry("deep.sift.consumer.API.count", "1"),
+                Map.entry("triton.request.activator", "true"),
+                Map.entry("preprocess.deep.sift.model.name", "KRYPTON"),
+                Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("write.batch.size", "5"),
+                Map.entry("deep.sift.extraction.activator", "true")
+        ));
+        DeepSiftAction deepSiftAction = new DeepSiftAction(actionExecutionAudit, log, deepSift);
         deepSiftAction.execute();
-
-        // Assert
-        verify(log).info(eq(marker), eq("Data Extraction Action for {} has been started"), eq(deepSift.getName()));
-        verify(jdbi).getConfig(Arguments.class);
-        verify(jdbi).open();
-        verify(handle).prepareBatch(eq(expectedInsertQuery));
-        verify(preparedBatch).execute();
-        verify(arguments).setUntypedNullArgument(any());
-        verify(coproProcessor).startProducer(deepSift.getQuerySet(), 10);
-        verify(coproProcessor).startConsumer(eq(expectedInsertQuery), eq(2), eq(5), eq(deepSiftConsumerProcess));
-        verify(deepSiftConsumerProcess).process(eq(expectedUrl), eq(inputTable));
-        verify(log).info(eq(marker), eq(" Data Extraction Action has been completed {}  "), eq(deepSift.getName()));
-        verify(action, never()).getContext().put(eq(deepSift.getName() + ".isSuccessful"), eq("false"));
-    }
-
-    @Test
-    public void testExecuteWithInvalidUrl() {
-        // Arrange
-        deepSift.setEndPoint("invalid-url");
-
-        // Act & Assert
-        try {
-            deepSiftAction.execute();
-            fail("Expected HandymanException for invalid URL");
-        } catch (HandymanException e) {
-            assertTrue(e.getMessage().contains("Error in processing the URL"));
-            verify(log).error(eq(marker), eq("Error in processing the URL"), any(java.net.MalformedURLException.class));
-            verify(action).getContext().put(deepSift.getName() + ".isSuccessful", "false");
-            verify(coproProcessor, never()).startProducer(anyString(), anyInt());
-            verify(coproProcessor, never()).startConsumer(anyString(), anyInt(), anyInt(), any());
-        } catch (Exception e) {
-            fail("Unexpected exception: " + e.getMessage());
-        }
-    }
-
-    @Test
-    public void testExecuteIfWhenConditionTrue() throws Exception {
-        // Act
-        boolean result = deepSiftAction.executeIf();
-
-        // Assert
-        assertTrue(result);
-    }
-
-    @Test
-    public void testExecuteIfWhenConditionFalse() throws Exception {
-        // Arrange
-        deepSift.setCondition(false);
-
-        // Act
-        boolean result = deepSiftAction.executeIf();
-
-        // Assert
-        assertFalse(result);
     }
 }

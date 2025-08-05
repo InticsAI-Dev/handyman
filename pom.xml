@@ -16,7 +16,7 @@
         <google.cal.version>v3-rev20220422-1.32.1</google.cal.version>
         <junit.version>5.9.0</junit.version>
         <jackson.version>2.14.0</jackson.version>
-        <jdbi.version>3.36.0</jdbi.version>
+        <jdbi.version>3.45.0</jdbi.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <java.version>11</java.version>
@@ -75,7 +75,7 @@
         <dependency>
             <groupId>org.jdbi</groupId>
             <artifactId>jdbi3-core</artifactId>
-            <version>3.27.0</version>
+            <version>3.45.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.azure/azure-identity -->
         <dependency>

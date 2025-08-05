@@ -21,4 +21,5 @@ public class DeepSiftDataItem {
     private Long rootPipelineId;
     private String batchId;
     private String base64Img;
+    private String processName;
 }

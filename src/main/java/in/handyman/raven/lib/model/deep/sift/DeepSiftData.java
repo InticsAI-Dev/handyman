@@ -22,5 +22,7 @@ public class DeepSiftData {
     private String templateName;
     private String batchId;
     private String base64Img;
-    private String model;
+    private String userPrompt;
+    private String systemPrompt;
+    private String modelName;
 }
