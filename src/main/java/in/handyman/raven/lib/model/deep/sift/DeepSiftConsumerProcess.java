@@ -106,7 +106,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         String modelName = entity.getModelName();
         String searchName = entity.getSearchName();
 
-        // Payload
         DeepSiftData deepSiftData = new DeepSiftData();
         deepSiftData.setOriginId(originId);
         deepSiftData.setGroupId(groupId);
@@ -248,19 +247,18 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     throw new HandymanException("Cannot create output directory: " + outputDir, e);
                 }
 
-                // Verify directory is writable
                 if (!Files.isWritable(Paths.get(outputDir))) {
                     throw new HandymanException("Output directory is not writable: " + outputDir);
                 }
 
-                // Construct full output file path early
-                String outputFilePath = outputDir + File.separator + inputFile.getName() + ".txt";
+                String baseFileName = inputFile.getName().replaceAll("(?i)\\.jpg|\\.jpeg$", "");
+                String outputFilePath = outputDir + File.separator + baseFileName + ".txt";
                 log.info(aMarker, "Output file path: {}", outputFilePath);
 
                 TestDataExtractorInput.TestDataExtractorInputBuilder builder = TestDataExtractorInput.builder()
                         .name("DeepSiftTest4J")
                         .mode("text")
-                        .inputFilePaths(Collections.singletonList(inputFilePath)) // Pass the JPEG file path directly
+                        .inputFilePaths(Collections.singletonList(inputFilePath))
                         .outputPath(outputFilePath)
                         .condition(true);
 
@@ -281,8 +279,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 TestDataExtractorAction extractorAction = new TestDataExtractorAction(action, log, testDataExtractorInput);
                 log.info(aMarker, "Starting extraction for file: {}", inputFile.getName());
                 extractorAction.execute();
-                // Workaround for logging issue: Use simple log or System.out to avoid ArrayDeque error
-                System.out.println("Extraction completed for file: " + inputFile.getName()); // Replace log.info to bypass SLF4J issue
 
                 File outputFile = new File(outputFilePath);
                 log.info(aMarker, "Checking output file: {}, exists: {}", outputFilePath, outputFile.exists());
