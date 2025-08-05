@@ -7,7 +7,6 @@ import org.ahocorasick.trie.Emit;
 import org.ahocorasick.trie.Trie;
 import in.handyman.raven.lib.model.*;
 import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorUtil;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,17 +25,19 @@ public class TestDataExtractorService {
         this.util = new TestDataExtractorUtil();
     }
 
-    public void processTextExtraction(List<MultipartFile> files, String outputPath) throws IOException, TesseractException {
+    public void processTextExtraction(List<String> inputFilePaths, String outputPath) throws IOException, TesseractException {
         List<TesseractResponseDto> documentResults = new ArrayList<>();
 
-        for (MultipartFile file : files) {
-            if (file.isEmpty()) {
-                continue;
+        for (String filePath : inputFilePaths) {
+            File file = new File(filePath);
+            if (!file.exists()) {
+                throw new IOException("File does not exist: " + filePath);
             }
-            File tempFile = convertToFile(file);
-            TesseractResponseDto result = processDocument(tempFile);
+            if (!filePath.toLowerCase().endsWith(".jpg") && !filePath.toLowerCase().endsWith(".jpeg")) {
+                throw new IllegalArgumentException("Input file is not a JPEG: " + filePath);
+            }
+            TesseractResponseDto result = processDocument(file);
             documentResults.add(result);
-            tempFile.delete(); // Clean up temporary file
         }
 
         TesseractBatchResponseDto response = TesseractBatchResponseDto.builder()
@@ -46,7 +47,7 @@ public class TestDataExtractorService {
         util.saveOutput(response, outputPath);
     }
 
-    public void processKeywordExtraction(List<MultipartFile> files, List<String> keywords, String outputPath)
+    public void processKeywordExtraction(List<String> inputFilePaths, List<String> keywords, String outputPath)
             throws IOException, TesseractException {
         List<String> effectiveKeywords = keywords != null ? keywords : getPredefinedKeywords();
         Trie trie = Trie.builder()
@@ -57,12 +58,15 @@ public class TestDataExtractorService {
 
         List<DocumentMatchResultDto> matchedDocs = new ArrayList<>();
 
-        for (MultipartFile file : files) {
-            if (file.isEmpty()) {
-                continue;
+        for (String filePath : inputFilePaths) {
+            File file = new File(filePath);
+            if (!file.exists()) {
+                throw new IOException("File does not exist: " + filePath);
             }
-            File tempFile = convertToFile(file);
-            TesseractResponseDto result = processDocument(tempFile);
+            if (!filePath.toLowerCase().endsWith(".jpg") && !filePath.toLowerCase().endsWith(".jpeg")) {
+                throw new IllegalArgumentException("Input file is not a JPEG: " + filePath);
+            }
+            TesseractResponseDto result = processDocument(file);
 
             Map<Integer, List<KeywordMatchDto>> groupedMatches = new LinkedHashMap<>();
 
@@ -102,7 +106,6 @@ public class TestDataExtractorService {
             }
 
             matchedDocs.add(docBuilder.build());
-            tempFile.delete(); // Clean up temporary file
         }
 
         KeywordMatchResponsePayload response = KeywordMatchResponsePayload.builder()
@@ -117,25 +120,16 @@ public class TestDataExtractorService {
         Map<String, String> extractedTexts;
         String fileName = file.getName();
 
-        if (fileName.endsWith(".pdf")) {
-            extractedTexts = util.extractTextFromPdf(file, tesseract);
-        } else {
-            String text = tesseract.doOCR(file);
-            extractedTexts = new LinkedHashMap<>();
-            extractedTexts.put("page1", text);
-        }
+        // Only process JPEG files
+        String text = tesseract.doOCR(file);
+        extractedTexts = new LinkedHashMap<>();
+        extractedTexts.put("page1", text);
 
         return TesseractResponseDto.builder()
                 .fileName(fileName)
                 .pages(extractedTexts.size())
                 .textByPage(extractedTexts)
                 .build();
-    }
-
-    private File convertToFile(MultipartFile multipartFile) throws IOException {
-        File file = File.createTempFile("upload_", multipartFile.getOriginalFilename());
-        multipartFile.transferTo(file);
-        return file;
     }
 
     private List<String> getPredefinedKeywords() {

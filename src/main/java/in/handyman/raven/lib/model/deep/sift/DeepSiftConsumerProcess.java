@@ -228,16 +228,11 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 log.info(aMarker, "Input file: {}, exists: {}", inputFilePath, inputFile.exists());
 
                 byte[] fileContent = Files.readAllBytes(inputFile.toPath());
-                // Dynamically set content type based on file extension
-                String contentType = inputFile.getName().endsWith(".pdf") ? "application/pdf" : "image/jpeg";
-                MultipartFile multipartFile = new MockMultipartFile(
-                        inputFile.getName(),
-                        inputFile.getName(),
-                        contentType,
-                        fileContent
-                );
+                String contentType = inputFile.getName().endsWith(".jpg") || inputFile.getName().endsWith(".jpeg") ? "image/jpeg" : null;
+                if (contentType == null) {
+                    throw new HandymanException("Input file is not a JPEG: " + inputFilePath);
+                }
 
-                // Use a subdirectory to avoid conflicts and ensure valid file path
                 String outputDir = System.getProperty("java.io.tmpdir") + File.separator + "test4j_output";
                 try {
                     Path outputPath = Paths.get(outputDir);
@@ -264,9 +259,9 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
                 TestDataExtractorInput.TestDataExtractorInputBuilder builder = TestDataExtractorInput.builder()
                         .name("DeepSiftTest4J")
-                        .mode("keywords")
-                        .files(Collections.singletonList(multipartFile))
-                        .outputPath(outputFilePath) // Pass full file path
+                        .mode("text")
+                        .inputFilePaths(Collections.singletonList(inputFilePath)) // Pass the JPEG file path directly
+                        .outputPath(outputFilePath)
                         .condition(true);
 
                 List<String> keywords = new ArrayList<>();

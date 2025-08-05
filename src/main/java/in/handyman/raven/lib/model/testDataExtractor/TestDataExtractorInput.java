@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -15,7 +14,7 @@ import java.util.List;
 public class TestDataExtractorInput {
     private Boolean condition = true;
     private String name;
-    private List<MultipartFile> files;
+    private List<String> inputFilePaths;
     private String mode;
     private String outputPath;
     private List<String> keywords;

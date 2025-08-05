@@ -7,9 +7,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -20,10 +20,19 @@ public class TestDataExtractorController {
     private TestDataExtractorService service;
 
     @PostMapping("/extract-text")
-    public ResponseEntity<String> extractText(@RequestParam("files") MultipartFile[] files,
+    public ResponseEntity<String> extractText(@RequestParam("filePaths") List<String> filePaths,
                                               @RequestParam("outputPath") String outputPath) {
         try {
-            service.processTextExtraction(Arrays.asList(files), outputPath);
+            // Validate file paths
+            for (String filePath : filePaths) {
+                if (!Files.exists(Paths.get(filePath))) {
+                    return ResponseEntity.status(400).body("File does not exist: " + filePath);
+                }
+                if (!filePath.toLowerCase().endsWith(".jpg") && !filePath.toLowerCase().endsWith(".jpeg")) {
+                    return ResponseEntity.status(400).body("File is not a JPEG: " + filePath);
+                }
+            }
+            service.processTextExtraction(filePaths, outputPath);
             return ResponseEntity.ok("Text extraction completed successfully");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
@@ -31,11 +40,20 @@ public class TestDataExtractorController {
     }
 
     @PostMapping("/extract-keywords")
-    public ResponseEntity<String> extractKeywords(@RequestParam("files") MultipartFile[] files,
+    public ResponseEntity<String> extractKeywords(@RequestParam("filePaths") List<String> filePaths,
                                                   @RequestParam("keywords") List<String> keywords,
                                                   @RequestParam("outputPath") String outputPath) {
         try {
-            service.processKeywordExtraction(Arrays.asList(files), keywords, outputPath);
+            // Validate file paths
+            for (String filePath : filePaths) {
+                if (!Files.exists(Paths.get(filePath))) {
+                    return ResponseEntity.status(400).body("File does not exist: " + filePath);
+                }
+                if (!filePath.toLowerCase().endsWith(".jpg") && !filePath.toLowerCase().endsWith(".jpeg")) {
+                    return ResponseEntity.status(400).body("File is not a JPEG: " + filePath);
+                }
+            }
+            service.processKeywordExtraction(filePaths, keywords, outputPath);
             return ResponseEntity.ok("Keyword extraction completed successfully");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());

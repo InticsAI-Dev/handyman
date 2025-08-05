@@ -2,20 +2,16 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorInput;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,20 +36,19 @@ public class TestDataExtractorActionTest {
         deleteDirectory(tempDir.toFile());
     }
 
-
     @Test
     public void testTextExtractionMode() throws Exception {
-        MultipartFile mockFile = createMockPdf("Text Extraction Content By implementing the recommendations above (especially JSON serialization, thread safety, and validation), the code can be made robust and reliable. Without these fixes, it will likely fail in production or with invalid inputs.\n" +
+        String inputFilePath = createMockJpeg("Text Extraction Content By implementing the recommendations above (especially JSON serialization, thread safety, and validation), the code can be made robust and reliable. Without these fixes, it will likely fail in production or with invalid inputs.\n" +
                 "If you have additional details (e.g., expected file types, concurrency requirements, or deployment environment), I can refine the analysis further. Would you like me to provide a specific code patch, focus on a particular issue, or suggest tests for the system?");
 
-        String outputFilePath = tempDir.resolve("output.txt").toString(); // Specify a file path
+        String outputFilePath = tempDir.resolve("output.txt").toString();
 
         TestDataExtractorInput model = TestDataExtractorInput.builder()
                 .name("TextExtractionTest")
                 .condition(true)
-                .files(Collections.singletonList(mockFile))
+                .inputFilePaths(Collections.singletonList(inputFilePath))
                 .mode("text")
-                .outputPath(outputFilePath) // Use file path
+                .outputPath(outputFilePath)
                 .keywords(null)
                 .build();
 
@@ -68,17 +63,18 @@ public class TestDataExtractorActionTest {
     }
 
     @Test
-    public void  testKeywordExtractionMode() throws Exception {
-        MultipartFile mockFile = createMockPdf("This Wood County Human Services document contains important keywords like robust, reliable, and validation. The system should ensure thread safety and proper JSON serialization.");
+    public void testKeywordExtractionMode() throws Exception {
+        String inputFilePath = createMockJpeg("This Wood County Human Services document contains important keywords like robust, reliable, and validation. The system should ensure thread safety and proper JSON serialization.");
 
-        String outputFilePath = tempDir.resolve("output.txt").toString(); // Specify a file path
+        String outputFilePath = tempDir.resolve("output.txt").toString();
 
         TestDataExtractorInput model = TestDataExtractorInput.builder()
                 .name("KeywordExtractionTest")
                 .condition(true)
-                .files(Collections.singletonList(mockFile))
+                .inputFilePaths(Collections.singletonList(inputFilePath))
                 .mode("keywords")
-                .outputPath(tempDir.toString())
+                .outputPath(outputFilePath)
+                .keywords(Arrays.asList("robust", "reliable", "validation"))
                 .build();
 
         TestDataExtractorAction action = new TestDataExtractorAction(actionAudit, mockLogger, model);
@@ -96,7 +92,7 @@ public class TestDataExtractorActionTest {
         TestDataExtractorInput model = TestDataExtractorInput.builder()
                 .name("InvalidModeTest")
                 .condition(true)
-                .files(Collections.emptyList())
+                .inputFilePaths(Collections.emptyList())
                 .mode("invalid")
                 .outputPath(tempDir.toString())
                 .build();
@@ -121,29 +117,37 @@ public class TestDataExtractorActionTest {
     // 📄 Utility Methods
     // -----------------------
 
-    private MultipartFile createMockPdf(String text) throws IOException {
-        File file = tempDir.resolve("mock_input.pdf").toFile();
-        try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage();
-            document.addPage(page);
-            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                contentStream.beginText();
-                contentStream.setFont(PDType1Font.HELVETICA, 12);
-                contentStream.setLeading(14.5f); // spacing between lines
-                contentStream.newLineAtOffset(50, 700);
+    private String createMockJpeg(String text) throws IOException {
+        File file = tempDir.resolve("mock_input.jpg").toFile();
 
-                for (String line : text.split("\\R")) { // \R handles \r, \n, or \r\n
-                    contentStream.showText(line);
-                    contentStream.newLine(); // move to the next line
-                }
+        // Create a simple image with text
+        int width = 800;
+        int height = 600;
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = image.createGraphics();
 
-                contentStream.endText();
-            }
-            document.save(file);
+        // Set background to white
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, width, height);
+
+        // Set text properties
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        int x = 50;
+        int y = 50;
+        int lineHeight = 15;
+
+        // Draw text line by line
+        for (String line : text.split("\\R")) {
+            g.drawString(line, x, y);
+            y += lineHeight;
         }
 
-        FileInputStream fis = new FileInputStream(file);
-        return new MockMultipartFile("file", "mock_input.pdf", "application/pdf", fis);
+        g.dispose();
+
+        // Save as JPEG
+        ImageIO.write(image, "jpg", file);
+        return file.getAbsolutePath();
     }
 
     private void deleteDirectory(File directory) {

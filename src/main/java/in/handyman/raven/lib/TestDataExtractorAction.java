@@ -8,8 +8,9 @@ import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorService;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
-import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -39,21 +40,33 @@ public class TestDataExtractorAction implements IActionExecution {
     log.info(aMarker, "Starting TestDataExtractor action for {}", testDataExtractorInput.getName());
 
     String mode = testDataExtractorInput.getMode();
-    List<MultipartFile> files = testDataExtractorInput.getFiles();
+    List<String> inputFilePaths = testDataExtractorInput.getInputFilePaths();
     String outputPath = testDataExtractorInput.getOutputPath();
     List<String> keywords = testDataExtractorInput.getKeywords();
 
-    log.debug(aMarker, "Mode: {}, Files: {}, OutputPath: {}", mode, files != null ? files.size() : 0, outputPath);
+    log.debug(aMarker, "Mode: {}, InputFilePaths: {}, OutputPath: {}", mode, inputFilePaths != null ? inputFilePaths.size() : 0, outputPath);
 
-    if (files == null || files.isEmpty()) {
-      log.error(aMarker, "No files provided for processing");
-      throw new IllegalArgumentException("No files provided");
+    if (inputFilePaths == null || inputFilePaths.isEmpty()) {
+      log.error(aMarker, "No input file paths provided for processing");
+      throw new IllegalArgumentException("No input file paths provided");
+    }
+
+    // Validate that all input files are JPEGs
+    for (String filePath : inputFilePaths) {
+      if (!filePath.toLowerCase().endsWith(".jpg") && !filePath.toLowerCase().endsWith(".jpeg")) {
+        log.error(aMarker, "Input file is not a JPEG: {}", filePath);
+        throw new IllegalArgumentException("Input file is not a JPEG: " + filePath);
+      }
+      if (!Files.exists(Paths.get(filePath))) {
+        log.error(aMarker, "Input file does not exist: {}", filePath);
+        throw new IllegalArgumentException("Input file does not exist: " + filePath);
+      }
     }
 
     if ("text".equalsIgnoreCase(mode)) {
-      service.processTextExtraction(files, outputPath);
+      service.processTextExtraction(inputFilePaths, outputPath);
     } else if ("keywords".equalsIgnoreCase(mode)) {
-      service.processKeywordExtraction(files, keywords, outputPath);
+      service.processKeywordExtraction(inputFilePaths, keywords, outputPath);
     } else {
       log.error(aMarker, "Invalid mode: {}. Supported modes: text, keywords", mode);
       throw new IllegalArgumentException("Invalid mode: " + mode);
