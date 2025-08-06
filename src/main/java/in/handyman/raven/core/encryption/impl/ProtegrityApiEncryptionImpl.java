@@ -1,6 +1,7 @@
 package in.handyman.raven.core.encryption.impl;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
@@ -223,6 +224,8 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
                 String responseBody = response.body().string();
 
+                List<EncryptionRequestClass> encryptedValues = objectMapper.readValue(responseBody, new TypeReference<List<EncryptionRequestClass>>(){});
+
                 if (!response.isSuccessful()) {
                     String errorMessage = String.format(
                             "FAILURE | uuid=%s | auditId=%d | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | jsonSize=%d",
@@ -233,25 +236,6 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                     HandymanException exception = new HandymanException(response.message());
                     HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
                     throw exception;
-                }
-
-                // Parse the JSON response from the Protegrity API
-                JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                List<EncryptionRequestClass> encryptedValues = new ArrayList<>();
-
-                // Iterate over the response JSON array and map to EncryptionRequestClass
-                for (int i = 0; i < jsonResponse.size(); i++) {
-                    JsonNode responseItem = jsonResponse.get(i);
-                    String encryptedValue = responseItem.get("value").asText();
-
-                    // Map the encrypted value back to EncryptionRequestClass
-                    EncryptionRequestClass encryptedRequest = new EncryptionRequestClass(
-                            responseItem.get("policy").asText(), // Assuming policy is in the response
-                            encryptedValue,
-                            responseItem.get("key").asText() // Assuming key is in the response
-                    );
-
-                    encryptedValues.add(encryptedRequest);
                 }
 
                 String successMessage = String.format(

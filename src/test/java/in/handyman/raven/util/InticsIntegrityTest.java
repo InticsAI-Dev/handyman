@@ -41,13 +41,15 @@ class InticsIntegrityTest {
         // Create an instance of ProtegrityApiEncryptionImpl
         // with the necessary parameters
         List<EncryptionRequestClass> requestList = Arrays.asList(
-                new EncryptionRequestClass("AES256", "value1", "key123"),
-                new EncryptionRequestClass("AES128", "value2", "key456")
+                new EncryptionRequestClass("AES256", "{\n" +
+                        "  \"member_address_line1\": \"15, patti street\"\n" +
+                        "}", "key123"),
+                new EncryptionRequestClass("AES256", "{\n" +
+                        "  \"member_address_line1\": \"15, T Nagar\"\n" +
+                        "}", "key456")
         );
         ProtegrityApiEncryptionImpl protegrityApiEncryption=new ProtegrityApiEncryptionImpl(encryptionUrl,decryptionUrl, actionExecutionAudit, log);
-        //String encryptedString = protegrityApiEncryption.encrypt("test-encryption","AES256","COPRO_REQUEST");
         List<EncryptionRequestClass> encryptedString = protegrityApiEncryption.encrypt(requestList);
-        System.out.println(encryptedString);
     }
 
 
