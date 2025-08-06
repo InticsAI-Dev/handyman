@@ -187,6 +187,7 @@ action:
     |contextInsertActionAudit
     |kafkaProductionResponse
     |kafkaOutboundComparison
+    |pipelineEventActionAudit
 
     );
 
