@@ -21,7 +21,7 @@ public class DeepSiftLineItem {
     private Integer paperNo;
     private Long processId;
     private Long rootPipelineId;
-    private Long groupId;
+    private Integer groupId; // Changed to Integer
     private Long actionId;
     private Long tenantId;
     private String inputFilePath;
