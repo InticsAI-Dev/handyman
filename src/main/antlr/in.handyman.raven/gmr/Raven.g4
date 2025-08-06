@@ -186,6 +186,7 @@ action:
     |multivalueConcatenation
     |kafkaProductionResponse
     |kafkaOutboundComparison
+    |pipelineEventActionAudit
     );
 
 
@@ -1473,6 +1474,13 @@ kafkaOutboundComparison:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
+
+     pipelineEventActionAudit:
+        'pipelineEventActionAudit' 'as' name=STRING
+    	'resource-conn' resourceConn=STRING
+    	'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;
