@@ -11,8 +11,6 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
-import in.handyman.raven.lib.model.documentEyeCue.StoreContent;
 
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -154,9 +152,12 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         }
     }
 
-    private void handleSuccessfulResponse(DocumentEyeCueInputTable entity, Response response,
-                                          ObjectMapper objectMapper, List<DocumentEyeCueOutputTable> resultList,
-                                          String jsonInputRequest, URL endpoint) throws IOException {
+    private void handleSuccessfulResponse(DocumentEyeCueInputTable entity,
+                                          Response response,
+                                          ObjectMapper objectMapper,
+                                          List<DocumentEyeCueOutputTable> resultList,
+                                          String jsonInputRequest,
+                                          URL endpoint) throws IOException {
         log.info(aMarker, "Document EyeCue API call successful for origin_id {}", entity.getOriginId());
 
         String responseBody = Objects.requireNonNull(response.body()).string();
@@ -164,17 +165,26 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         try {
             DocumentEyeCueResponse documentEyeCueResponse = objectMapper.readValue(responseBody, DocumentEyeCueResponse.class);
 
+            String outputFilePath = generateOutputFilePath(entity);
+            if (processBase64.equals(ProcessFileFormatE.BASE64.name()) && documentEyeCueResponse.getProcessedPdfBase64() != null) {
+                fileProcessingUtils.convertBase64ToFile(documentEyeCueResponse.getProcessedPdfBase64(), outputFilePath);
+            }
+
+            // 🔹 Upload to StoreContent API
+            uploadToStoreContent(outputFilePath, entity);
+
+            // Save DB record
             DocumentEyeCueOutputTable outputRecord = DocumentEyeCueOutputTable.builder()
                     .originId(entity.getOriginId())
                     .groupId(entity.getGroupId())
                     .tenantId(entity.getTenantId())
                     .processId(entity.getProcessId())
                     .templateId(entity.getTemplateId())
-                    .processedFilePath(documentEyeCueResponse.getProcessedPdfPath())
+                    .processedFilePath(outputFilePath)
                     .status("COMPLETED")
                     .stage(PROCESS_NAME)
-                    .message(documentEyeCueResponse.getErrorMessage() != null ?
-                            documentEyeCueResponse.getErrorMessage() : "Document EyeCue processing completed successfully")
+                    .message(Optional.ofNullable(documentEyeCueResponse.getErrorMessage())
+                            .orElse("Document EyeCue processing completed successfully"))
                     .createdOn(entity.getCreatedOn())
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
@@ -185,52 +195,33 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
                     .build();
 
-            String processedPdfPath = outputRecord.getProcessedFilePath();
-            log.info(aMarker, "Calling StoreContent macro for file: {}", processedPdfPath);
-
-            try {
-                String repository = "FilenetCE"; // TODO: make configurable via context
-                String applicationId = "SMARTINTAKE"; // TODO: make configurable via context
-                String dcn = entity.getOriginId(); // Or use actual DCN from pipeline if different
-                String envUrl = action.getContext().getOrDefault("storecontent.env.url", "https://dev.api.anthem.com");
-                String apiKey = action.getContext().get("storecontent.api.key");
-                String bearerToken = action.getContext().get("storecontent.bearer.token");
-
-                StoreContent storeContentMacro = new StoreContent();
-                StoreContentResponseDto storeResponse = storeContentMacro.execute(
-                        processedPdfPath,
-                        repository,
-                        applicationId,
-                        dcn,
-                        envUrl,
-                        apiKey,
-                        bearerToken
-                );
-
-                if (storeResponse != null) {
-                    log.info(aMarker, "StoreContent Upload Status: {}", storeResponse.getStatus());
-                    log.info(aMarker, "Content ID: {}", storeResponse.getContentID());
-                    outputRecord.setContentId(storeResponse.getContentID());
-                } else {
-                    log.warn(aMarker, "StoreContent macro returned null for file {}", processedPdfPath);
-                }
-
-            } catch (Exception e) {
-                log.error(aMarker, "StoreContent macro failed for file {}: {}", processedPdfPath, e.getMessage(), e);
-            }
-
-            // Handle base64 response if needed
-            if (processBase64.equals(ProcessFileFormatE.BASE64.name()) &&
-                    documentEyeCueResponse.getProcessedPdfBase64() != null) {
-                String outputFilePath = generateOutputFilePath(entity);
-                fileProcessingUtils.convertBase64ToFile(documentEyeCueResponse.getProcessedPdfBase64(), outputFilePath);
-                outputRecord.setProcessedFilePath(outputFilePath);
-            }
-
             resultList.add(outputRecord);
-
         } catch (JsonProcessingException e) {
             handleJsonProcessingException(entity, e, resultList, jsonInputRequest, responseBody, endpoint);
+        }
+    }
+
+    private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
+        try {
+            // ✅ Read repository & applicationId from context (with defaults)
+            String repository = action.getContext().getOrDefault("storecontent.repository", "FilenetCE");
+            String applicationId = action.getContext().getOrDefault("storecontent.application.id", "CUE");
+
+            // ✅ Call StoreContent uploader with entity so it can map documentId → contentkey
+            //    and fileName → FileName + "_updated"
+            StoreContent storeContent = new StoreContent();
+            storeContent.execute(
+                    filePath,
+                    repository,
+                    applicationId,
+                    entity,  // Pass the whole entity
+                    action   // ActionExecutionAudit for API key + bearer token + metadata
+            );
+
+            log.info(aMarker, "StoreContent upload done for origin_id {}", entity.getOriginId());
+        } catch (Exception e) {
+            log.error(aMarker, "StoreContent upload failed for origin_id {}: {}",
+                    entity.getOriginId(), e.getMessage(), e);
         }
     }
 

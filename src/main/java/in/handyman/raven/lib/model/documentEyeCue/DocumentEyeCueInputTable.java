@@ -25,6 +25,8 @@ public class DocumentEyeCueInputTable implements CoproProcessor.Entity {
     private Long rootPipelineId;
     private String batchId;
     private Timestamp createdOn;
+    private String documentId;
+    private String fileName;
 
     @Override
     public List<Object> getRowData() {
