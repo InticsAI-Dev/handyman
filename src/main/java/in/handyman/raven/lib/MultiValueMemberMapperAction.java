@@ -1,7 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -9,21 +7,23 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.MultiValueMemberMapper;
+import in.handyman.raven.lib.model.*;
+
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
-import java.time.LocalDate;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
+import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperInputTable;
+import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
+import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
+import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
 import in.handyman.raven.util.CommonQueryUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
@@ -45,7 +45,17 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
   private final Marker aMarker;
 
-  private final String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
+  public static final String READ_BATCH_SIZE = "read.batch.size";
+  public static final String WRITE_BATCH_SIZE = "write.batch.size";
+
+  public static final String DUMMY_URL = "http://localhost:10181/copro/preprocess/autorotation";
+
+  public static final String MULTI_MEMBER_CONSUMER_API_COUNT = "multi.member.consumer.API.count";
+
+  public static final String INSERT_INTO = "INSERT INTO ";
+  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+  public static final String INSERT_COLUMNS_UPDATED = "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id\n";
 
   private final String PIPELINE_END_TO_END_ENCRYPTION = "pipeline.end.to.end.encryption";
 
@@ -61,10 +71,13 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   public void execute() throws Exception {
     try {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multiValueMemberMapper.getResourceConn());
-      log.info(aMarker, "Control Data Comparison Action for {} has been started", multiValueMemberMapper.getName());
+      log.info(aMarker, "Multi Value Member Mapper Action for {} has been started", multiValueMemberMapper.getName());
+
+      Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
 
       String outputTable = multiValueMemberMapper.getOutputTable();
-      final List<MultiValueMemberQueryInputTable> multiValueMemberQueryInputTables = new ArrayList<>();
+
+      final List<MultiValueMemberMapperInputTable> multiValueMemberQueryInputTables = new ArrayList<>();
 
       jdbi.useTransaction(handle -> {
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multiValueMemberMapper.getQuerySet());
@@ -72,8 +85,8 @@ public class MultiValueMemberMapperAction implements IActionExecution {
         formattedQuery.forEach(sqlToExecute -> {
           log.info(aMarker, "Executing query {} from index {}", sqlToExecute, i.getAndIncrement());
           Query query = handle.createQuery(sqlToExecute);
-          List<MultiValueMemberQueryInputTable> results = query
-                  .mapToBean(MultiValueMemberQueryInputTable.class)
+          List<MultiValueMemberMapperInputTable> results = query
+                  .mapToBean(MultiValueMemberMapperInputTable.class)
                   .list();
           multiValueMemberQueryInputTables.addAll(results);
           log.info(aMarker, "Executed query from index {}", i.get());
@@ -81,219 +94,107 @@ public class MultiValueMemberMapperAction implements IActionExecution {
       });
       log.info(aMarker, "Total rows returned from the query: {}", multiValueMemberQueryInputTables.size());
 
+
+      final List<URL> urls = Optional.of(DUMMY_URL).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+        try {
+          return new URL(s1);
+        } catch (MalformedURLException e) {
+          log.error("Error in processing the URL ", e);
+          throw new HandymanException("Error in processing the URL", e, action);
+        }
+      }).collect(Collectors.toList())).orElse(Collections.emptyList());
+
+      Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
+
+      Integer consumerApiCount = Integer.valueOf(action.getContext().get(MULTI_MEMBER_CONSUMER_API_COUNT));
+
+      Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId =
+              multiValueMemberQueryInputTables.stream()
+                      .collect(Collectors.groupingBy(MultiValueMemberMapperInputTable::getOriginId));
+
+      log.info(aMarker, "Grouped input rows by originId, total groups: {}", groupedByOriginId.size());
+
       String encryptData = action.getContext().getOrDefault(PIPELINE_END_TO_END_ENCRYPTION,"false");
 
       boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(encryptData);
 
       InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
-      String processingSorItemName = action.getContext().get(PROCESSING_SOR_ITEM_NAME);
+      MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable = extracted(groupedByOriginId, pipelineEndToEndEncryptionActivator, encryption);
 
-      String[] fields = processingSorItemName.split("\\s*,\\s*");
+      final CoproProcessor<MultiValueMemberMapperTransformInputTable, MultiValueMemberMapperOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), MultiValueMemberMapperOutputTable.class, MultiValueMemberMapperTransformInputTable.class, multiValueMemberMapper.getResourceConn(), log, new MultiValueMemberMapperTransformInputTable(), urls, action);
 
-      Set<String> validSorItems = new HashSet<>(Arrays.asList(fields));
+      log.info(aMarker, "Consumer API count for Multi Value Member Mapper is {}", consumerApiCount);
+      String insertQuery = INSERT_INTO + outputTable + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
+      coproProcessor.startProducer(multiValueMemberMapper.getQuerySet(), readBatchSize);
+      Thread.sleep(1000);
 
-      for (MultiValueMemberQueryInputTable row : multiValueMemberQueryInputTables) {
-        try {
-          String extractedValue = row.getPredictedValue();
-          String encryptionPolicy = row.getEncryptionPolicy();
-          String sorItemName = row.getSorItemName();
+      Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+      MultiValueMemberConsumerProcess multiValueMemberConsumerProcess   = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId);
 
-          if (validSorItems.contains(sorItemName)) {
-            log.debug("Processing multi_value lineItemType for SOR item: {}", sorItemName);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, multiValueMemberConsumerProcess);
 
-            if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(row.getIsEncrypted())) {
-              log.info("Decryption and re-encryption enabled for multi_value item: {}", sorItemName);
-
-              String[] multivalue = extractedValue.split(",");
-              List<String> encryptMultiValue = new ArrayList<>();
-
-              for (String value : multivalue) {
-                String trimmedValue = value.trim();
-                String encryptedValue = encryption.encrypt(trimmedValue, encryptionPolicy, sorItemName);
-                encryptMultiValue.add(encryptedValue);
-              }
-
-              String finalOutput = String.join(",", encryptMultiValue);
-              log.debug("Final re-encrypted multi_value string for {}", sorItemName);
-              row.setPredictedValue(finalOutput);
-            } else {
-              log.info("Encryption not required for multi_value item: {}. Setting original extracted value.", sorItemName);
-              row.setPredictedValue(extractedValue);
-            }
-          }
-        } catch (Exception e) {
-          HandymanException handymanException = new HandymanException(e);
-          HandymanException.insertException("Control data comparison Input table failed {}:", handymanException, action);
-        }
-      }
-      // Group rows by originId
-      Map<String, List<MultiValueMemberQueryInputTable>> groupedByOriginId =
-              multiValueMemberQueryInputTables.stream()
-                      .collect(Collectors.groupingBy(MultiValueMemberQueryInputTable::getOriginId));
-
-      for (Map.Entry<String, List<MultiValueMemberQueryInputTable>> entry : groupedByOriginId.entrySet()) {
-        String originId = entry.getKey();
-        List<MultiValueMemberQueryInputTable> groupRows = entry.getValue();
-
-        // Per-group evaluation
-        String result = evaluateMultivaluePresenceAndUniqueness(groupRows, validSorItems, log, aMarker);
-        log.info(aMarker, "Multivalue result for originId {}: {}", originId, result);
-
-        // Insert into output table
-        bulkInsertOutputTable(jdbi, outputTable, groupRows, result);
-      }
-
-      log.info(aMarker, "Control Data Comparison Action has been completed {}", multiValueMemberMapper.getName());
+      log.info(aMarker, "Multi Value Member Mapper Action has been completed {}", multiValueMemberMapper.getName());
   } catch (Exception e) {
     action.getContext().put(multiValueMemberMapper.getName() + ".isSuccessful", "false");
-    log.error(aMarker, "Error in execute method for Control Data Comparison ", e);
+    log.error(aMarker, "Error in execute method for Multi Value Member Mapper ", e);
     HandymanException handymanException = new HandymanException(e);
-    HandymanException.insertException("Control data comparison failed {}:", handymanException, action);
+    HandymanException.insertException("Multi Value Member Mapper failed {}:", handymanException, action);
   }
   }
 
-  public static String evaluateMultivaluePresenceAndUniqueness(
-          List<MultiValueMemberQueryInputTable> inputRows,
-          Set<String> targetSorItems,
-          Logger log,
-          Marker marker
-  ) {
-    Map<String, Set<String>> valuesPerSorItem = new HashMap<>();
-    Set<String> presentSorItems = new HashSet<>();
+  private MultiValueMemberMapperTransformInputTable extracted(Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
+    MultiValueMemberMapperTransformInputTable transformedList = (MultiValueMemberMapperTransformInputTable) groupedByOriginId.entrySet()
+            .stream()
+            .map(entry -> {
+              String originId = entry.getKey();
+              List<MultiValueMemberMapperInputTable> inputRows = entry.getValue();
 
-    for (MultiValueMemberQueryInputTable row : inputRows) {
-      String sorItemName = row.getSorItemName();
-      String predictedValue = row.getPredictedValue();
+              List<extractedSorItemList> sorItems = inputRows.stream().map(row -> extractedSorItemList.builder()
+                              .minScoreId(row.getScoreId())
+                              .paperNo(row.getPaperNo())
+                              .sorItemName(row.getSorItemName())
+                              .weightScore(row.getWeightScore())
+                              .predictedValue(processAndDecryptMultiValue(row, pipelineEndToEndEncryptionActivator, encryption))
+                              .bBox(row.getBBox())
+                              .confidenceScore(row.getScoreId())
+                              .frequency(row.getFrequency())
+                              .cummulativeScore(row.getCummulativeScore())
+                              .questionId(row.getQuestionId())
+                              .synonymId(row.getSynonymId())
+                              .tenantId(row.getTenantId())
+                              .modelRegistry(row.getModelRegistry())
+                              .rootPipelineId(row.getRootPipelineId())
+                              .batchId(row.getBatchId())
+                              .build())
+                      .collect(Collectors.toList());
 
-      if (sorItemName != null && predictedValue != null && targetSorItems.contains(sorItemName)) {
-        presentSorItems.add(sorItemName);
-        Set<String> values = valuesPerSorItem.computeIfAbsent(sorItemName, k -> new HashSet<>());
-
-        Arrays.stream(predictedValue.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .forEach(values::add);
-      }
-    }
-
-    if (!presentSorItems.containsAll(targetSorItems)) {
-      log.info(marker, "Missing one or more target SOR items in input. Expected: {}, Found: {}", targetSorItems, presentSorItems);
-      return "N";
-    }
-
-    // Commercial: requires all 3 (ID, Name, DOB) with more than 1 unique value each
-    if (targetSorItems.containsAll(Set.of("member_id", "member_last_name", "member_date_of_birth"))) {
-      boolean allHaveMultiple = true;
-      for (String key : List.of("member_id", "member_last_name", "member_date_of_birth")) {
-        int count = valuesPerSorItem.getOrDefault(key, Collections.emptySet()).size();
-        log.info(marker, "Commercial - SOR item '{}' has {} unique values", key, count);
-        if (count <= 1) {
-          allHaveMultiple = false;
-          break;
-        }
-      }
-      return allHaveMultiple ? "Y" : "N";
-    }
-
-    // GBD: requires at least one of Member ID or Member Name to have >1 unique value (DOB is ignored)
-    if (targetSorItems.contains("member_id") || targetSorItems.contains("member_last_name")) {
-      int idCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
-      int nameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
-
-      log.info(marker, "GBD - Member ID count: {}, Member Name count: {}", idCount, nameCount);
-
-      return (idCount > 1 || nameCount > 1) ? "Y" : "N";
-    }
-
-    log.info(marker, "Unknown plan type. SOR items: {}", targetSorItems);
-    return "N";
+              return MultiValueMemberMapperTransformInputTable.builder()
+                      .originId(originId)
+                      .sorItemList(sorItems)
+                      .build();
+            });
+    return transformedList;
   }
 
+  private String processAndDecryptMultiValue(MultiValueMemberMapperInputTable row, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
+    String extractedValue = row.getPredictedValue();
+    String sorItemName = row.getSorItemName();
+    String encryptionPolicy = row.getEncryptionPolicy();
 
-  private void bulkInsertOutputTable(Jdbi jdbi, String outputTable,
-                                     List<MultiValueMemberQueryInputTable> inputRows,
-                                     String thresholdResult) {
-    Optional<MultiValueMemberQueryInputTable> mmIndicatorRowOpt = inputRows.stream()
-            .filter(row -> "multiple_member_indicator".equalsIgnoreCase(row.getSorItemName()))
-            .findFirst();
-
-    if (mmIndicatorRowOpt.isEmpty()) {
-      throw new IllegalStateException("No row found with sor_item_name = 'multiple_member_indicator'");
+    if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(row.getIsEncrypted())) {
+      log.info("Decryption the extracted value for the sor item:{} for the multi-member voting", sorItemName);
+      String encryptedValue = encryption.decrypt(extractedValue, encryptionPolicy, sorItemName);
+      row.setPredictedValue(encryptedValue);
+    } else {
+      log.info("Decryption not required for sor item: {}. Setting original extracted value.", sorItemName);
+      row.setPredictedValue(extractedValue);
     }
-
-    Long questionId = mmIndicatorRowOpt.get().getQuestionId();
-    Long synonymId = mmIndicatorRowOpt.get().getSynonymId();
-
-    jdbi.useHandle(handle -> {
-      var batch = handle.prepareBatch(
-              "INSERT INTO " + outputTable + " (" +
-                      "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, " +
-                      "confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, " +
-                      "model_registry, root_pipeline_id, batch_id" +
-                      ") VALUES (" +
-                      ":minScoreId, :originId, :paperNo, :sorItemName, :weightScore, :predictedValue, :bBox, " +
-                      ":confidenceScore, :frequency, :cummulativeScore, :questionId, :synonymId, :tenantId, " +
-                      ":modelRegistry, :rootPipelineId, :batchId" +
-                      ")"
-      );
-
-      for (MultiValueMemberQueryInputTable row : inputRows) {
-        batch
-                .bind("minScoreId", row.getScoreId())
-                .bind("originId", row.getOriginId())
-                .bind("paperNo", row.getPaperNo())
-                .bind("sorItemName", "multiple_member_indicator")
-                .bind("weightScore", row.getWeightScore())
-                .bind("predictedValue", thresholdResult)
-                .bind("bBox", row.getBBox())
-                .bind("confidenceScore", row.getVqaScore())
-                .bind("frequency", row.getFrequency())
-                .bind("cummulativeScore", row.getCummulativeScore())
-                .bind("questionId", questionId)
-                .bind("synonymId", synonymId)
-                .bind("tenantId", row.getTenantId())
-                .bind("modelRegistry", row.getModelRegistry())
-                .bind("rootPipelineId", row.getRootPipelineId())
-                .bind("batchId", row.getBatchId());
-      }
-
-      batch.execute();
-    });
+    return extractedValue;
   }
-
 
   @Override
   public boolean executeIf() throws Exception {
     return multiValueMemberMapper.getCondition();
-  }
-
-  @AllArgsConstructor
-  @NoArgsConstructor
-  @Data
-  @Builder
-  public static class MultiValueMemberQueryInputTable {
-
-    private Long rootPipelineId;
-    private String batchId;
-    private Long groupId;
-    private String originId;
-    private String sorContainerName;
-    private String sorItemName;
-    private String predictedValue;
-    private Long paperNo;
-    private Long tenantId;
-    private String encryptionPolicy;
-    private String isEncrypted;
-    private String lineItemType;
-    private Long synonymId;
-    private Long questionId;
-    private Long frequency;
-    private double vqaScore;
-    private String bBox;
-    private String modelRegistry;
-    private Long scoreId;
-    private Long cummulativeScore;
-    private Long weightScore;
   }
 }
