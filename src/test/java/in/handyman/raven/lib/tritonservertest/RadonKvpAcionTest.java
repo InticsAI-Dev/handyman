@@ -17,15 +17,42 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://intics.elevance.ngrok.dev/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("http://192.168.10.241:8001/predict")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
-                        "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
-                        "                    WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
-                        "                    WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name\n" +
-                        "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
-                        "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
-                        "                    WHERE a.model_registry = 'RADON'  and id =1388;")
+                .querySet("SELECT DISTINCT\n" +
+                        "    a.input_file_path,\n" +
+                        "    a.input_response_json,\n" +
+                        "    a.user_prompt,\n" +
+                        "    a.process,\n" +
+                        "    a.paper_no,\n" +
+                        "    a.origin_id,\n" +
+                        "    a.process_id,\n" +
+                        "    a.group_id,\n" +
+                        "    a.tenant_id,\n" +
+                        "    a.root_pipeline_id,\n" +
+                        "    a.system_prompt,\n" +
+                        "    a.batch_id,\n" +
+                        "    a.model_registry,\n" +
+                        "    a.category,\n" +
+                        "    NOW() AS created_on,\n" +
+                        "    CASE\n" +
+                        "        WHEN 'KRYPTON' = 'RADON' THEN 'RADON START'\n" +
+                        "        WHEN 'KRYPTON' = 'KRYPTON' THEN 'KRYPTON START'\n" +
+                        "        WHEN 'KRYPTON' = 'OPTIMUS' THEN 'OPTIMUS START'\n" +
+                        "    END AS api_name,\n" +
+                        "    sc.sor_container_id AS sor_container_id,\n" +
+                        "    si.sor_item_id AS sor_item_id\n" +
+                        "FROM transit_data.kvp_transformer_input_35339 a\n" +
+                        "JOIN sor_meta.sor_container sc\n" +
+                        "    ON a.sor_container_id = sc.sor_container_id\n" +
+                        "JOIN sor_meta.sor_item si\n" +
+                        "    ON si.sor_item_id = a.sor_item_id\n" +
+                        "    AND si.sor_container_id = sc.sor_container_id\n" +
+                        "WHERE\n" +
+                        "    a.model_registry = 'OPTIMUS'\n" +
+                        "    AND a.group_id = '154'\n" +
+                        "    AND a.tenant_id = '1'\n" +
+                        "    AND a.batch_id = 'BATCH-154_0';\n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

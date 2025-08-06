@@ -3,6 +3,7 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -55,6 +56,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             jdbi.useTransaction(handle -> {
                     String boundingBox = "";
                     String extractedContent = input.getResponse();
+                    String sorItemName=input.getSorItemName();
                     String jsonResponse;
 
                     String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
@@ -68,7 +70,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
                     List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(input.getSorMetaDetail(), new TypeReference<>() {
                     });
-                    JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
+                    JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper,sorItemName);
                     if (stringObjectMap != null && stringObjectMap.isObject()) {
 
                         final String insertQueryXenon = buildInsertQueryXenon();
@@ -307,42 +309,50 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             parsedResponses.add(parsedResponse);
         }
     }
-
-    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper,String sorItemName) {
         try {
             if (jsonResponse.contains("```json")) {
                 log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
-                // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
                 Matcher matcher = pattern.matcher(jsonResponse);
                 if (matcher.find()) {
-                    // Extract the JSON string from the matched group
-                    String jsonString = matcher.group(1);
-                    jsonString = jsonString.replace("\n", "");
-                    // Convert the cleaned JSON string to a JsonNode
+                    String jsonString = matcher.group(1).replace("\n", "");
                     jsonResponse = repairJson(jsonString);
                     if (!jsonResponse.isEmpty()) {
                         return objectMapper.readTree(jsonResponse);
                     } else {
                         return null;
                     }
-                } else {
+                }else {
                     jsonResponse = repairJson(jsonResponse);
                     return objectMapper.readTree(jsonResponse);
                 }
-            } else if ((jsonResponse.contains("{")) | (jsonResponse.contains("["))) {
-                log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
+            }
+            else if (Objects.equals(action.getContext().get("double.parser.string"), "true")) {
+                log.info("Context flag 'double.parser.string' is true. Returning plain string wrapped in JSON.");
+                ObjectNode node = objectMapper.createObjectNode();
+                node.put(sorItemName, jsonResponse.trim());
+                return node;
+            }
+            else if (jsonResponse.contains("{") || jsonResponse.contains("[")) {
+                log.info("Input does not contain the required ```json``` markers. So processing it based on object literals.");
                 return objectMapper.readTree(jsonResponse);
+            } else if (Objects.equals(action.getContext().get("double.parser.string"), "true")) {
+                log.info("Context flag 'double.parser.string' is true for plain string. Returning as JSON.");
+                ObjectNode node = objectMapper.createObjectNode();
+                node.put("text", jsonResponse.trim());
+                return node;
             } else {
-                log.info("Input does not contain the required ```json``` markers or any indication of object literals. So returning null.");
+                log.info("Input does not contain any JSON structure or valid flag. Returning null.");
                 return null;
             }
         } catch (Exception e) {
-            HandymanException exception=new HandymanException(e);
+            HandymanException exception = new HandymanException(e);
             HandymanException.insertException("Error in convertFormattedJsonStringToJsonNode method for Llm json parser action", exception, action);
             return null;
         }
     }
+
 
     private String repairJson(String jsonString) {
 
