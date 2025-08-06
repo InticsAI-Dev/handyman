@@ -17,9 +17,9 @@
         <junit.version>5.9.0</junit.version>
         <jackson.version>2.14.0</jackson.version>
         <jdbi.version>3.36.0</jdbi.version>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <java.version>11</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>21</java.version>
         <slf4j.version>2.0.5</slf4j.version>
         <kafka.version>3.1.0</kafka.version>
         <poi.version>5.2.2</poi.version>
@@ -117,7 +117,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.24</version>
+            <version>1.18.32</version>
             <scope>provided</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jsr310 -->
@@ -371,6 +371,16 @@
                 <version>3.1.0</version>
                 <configuration>
                     <directory>src/main/antlr/in.handyman.raven/compiler</directory>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version> <!-- or latest stable -->
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <release>${java.version}</release>
                 </configuration>
             </plugin>
         </plugins>

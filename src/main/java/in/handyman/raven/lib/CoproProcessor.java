@@ -38,7 +38,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     private final I stoppingSeed;
 
     private final List<URL> nodes;
-    private final Integer nodeSize;
+    private final int nodeSize;
 
     private final AtomicInteger nodeCount = new AtomicInteger();
 
@@ -52,7 +52,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         this.inputTargetClass = inputTargetClass;
         this.stoppingSeed = stoppingSeed;
         this.nodes = coproNodes;
-        this.executorService = Executors.newWorkStealingPool();
+        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
         this.outputTargetClass = outputTargetClass;
         this.jdbiResourceName = jdbiResourceName;
         this.logger = logger;
@@ -88,7 +88,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
-            final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
+            final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> (Integer) (counter.getAndIncrement() / readBatchSize)));
             logger.info("Total no of rows created {}", counter.get());
             executorService.submit(() -> {
                 try {
