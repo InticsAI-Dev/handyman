@@ -32,9 +32,8 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQU
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
-    public static final String DEEP_SIFT_START = "DEEP SIFT START";
+    public static final String OPTIMUS_START = "OPTIMUS START";
     public static final String KRYPTON_START = "KRYPTON START";
-    public static final String REQUEST_ACTIVATOR_HANDLER_NAME = "copro.request.deep.sift.handler.name";
     public static final String DEEP_SIFT_MODEL_NAME = "preprocess.deep.sift.model.name";
 
     public static final String PAGE_CONTENT_NO = "no";
@@ -54,9 +53,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
 
-    public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,
-                                   Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils,
-                                   String processBase64) {
+    public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -75,7 +72,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     public List<DeepSiftOutputTable> process(URL endpoint, DeepSiftInputTable entity) throws IOException {
         List<DeepSiftOutputTable> parentObj = new ArrayList<>();
 
-        String coproHandlerName = action.getContext().get(REQUEST_ACTIVATOR_HANDLER_NAME);
         String deepSiftModelName = action.getContext().get(DEEP_SIFT_MODEL_NAME);
 
         String inputFilePath = entity.getInputFilePath();
@@ -122,19 +118,12 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         String jsonInputRequest = objectMapper.writeValueAsString(deepSiftData);
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request built for URI: {}, inputFilePath: {}", endpoint, inputFilePath);
+            log.info(aMarker, "Request built for URL: {}, inputFilePath: {}", endpoint, inputFilePath);
         }
 
-        if ("COPRO".equals(modelName)) {
-            log.info(aMarker, "Executing COPRO handler for endpoint: {}", endpoint);
-            Request request = new Request.Builder()
-                    .url(endpoint)
-                    .post(RequestBody.create(jsonInputRequest, mediaType))
-                    .build();
-            coproRequestBuilder(entity, request, parentObj, originId, groupId, jsonInputRequest, endpoint);
-        } else if ("OPTIMUS".equals(modelName)) {
+        if ("OPTIMUS".equals(modelName)) {
             log.info(aMarker, "Executing OPTIMUS handler for endpoint: {}", endpoint);
-            DeepSiftData deepSiftPayload = getArgonRequestPayloadFromEntity(entity);
+            DeepSiftData deepSiftPayload = getOptimusRequestPayloadFromEntity(entity);
             String base64ForPath;
             try {
                 base64ForPath = getBase64ForPath(inputFilePath);
@@ -157,13 +146,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
             deepSiftPayloadString = mapper.writeValueAsString(deepSiftPayload);
 
-            String jsonRequestOptimusArgon = getTritonRequestPayload(deepSiftPayloadString, DEEP_SIFT_START, mapper);
+            String jsonRequestOptimus = getTritonRequestPayload(deepSiftPayloadString, OPTIMUS_START, mapper);
 
             Request request = new Request.Builder()
                     .url(endpoint)
-                    .post(RequestBody.create(jsonRequestOptimusArgon, mediaType))
+                    .post(RequestBody.create(jsonRequestOptimus, mediaType))
                     .build();
-            tritonRequestArgonExecutor(entity, request, parentObj, jsonRequestOptimusArgon, endpoint);
+            tritonRequestOptimusExecutor(entity, request, parentObj, jsonRequestOptimus, endpoint);
         } else if ("KRYPTON".equals(modelName)) {
             log.info(aMarker, "Executing KRYPTON handler for endpoint: {}", endpoint);
             DeepSiftRequest kryptonRequestPayload = getKryptonRequestPayloadFromQuery(entity);
@@ -187,25 +176,15 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 throw new HandymanException("Error serializing Krypton payload", e, action);
             }
 
-            String jsonRequestTritonKrypton = getTritonRequestPayload(deepSiftPayloadString, KRYPTON_START, mapper);
+            String jsonRequestKrypton = getTritonRequestPayload(deepSiftPayloadString, KRYPTON_START, mapper);
 
             Request request = new Request.Builder()
                     .url(endpoint)
-                    .post(RequestBody.create(jsonRequestTritonKrypton, mediaType))
+                    .post(RequestBody.create(jsonRequestKrypton, mediaType))
                     .build();
-            tritonRequestKryptonExecutor(entity, request, parentObj, jsonRequestTritonKrypton, endpoint);
-        } else if ("TEST4J".equals(modelName)) {
-            log.info(aMarker, "Executing TEST4J handler for endpoint: {}", endpoint);
-
-            DeepSiftRequest test4jRequest = getKryptonRequestPayloadFromQuery(entity);
-
-            String deepSiftPayloadString;
-            try {
-                deepSiftPayloadString = mapper.writeValueAsString(test4jRequest);
-            } catch (JsonProcessingException e) {
-                log.error(aMarker, "Failed to serialize DeepSiftRequest for TEST4J", e);
-                throw new HandymanException("Error serializing request for TEST4J", e, action);
-            }
+            tritonRequestKryptonExecutor(entity, request, parentObj, jsonRequestKrypton, endpoint);
+        } else if ("ARGON".equals(modelName)) {
+            log.info(aMarker, "Executing ARGON handler for endpoint: {}", endpoint);
 
             try {
                 log.info(aMarker, "Input file: {}, exists: {}", inputFilePath, inputFile.exists());
@@ -216,7 +195,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     throw new HandymanException("Input file is not a JPEG: " + inputFilePath);
                 }
 
-                String outputDir = System.getProperty("java.io.tmpdir") + File.separator + "test4j_output";
+                String outputDir = System.getProperty("java.io.tmpdir") + File.separator + "ARGON_output";
                 try {
                     Path outputPath = Paths.get(outputDir);
                     if (Files.exists(outputPath) && !Files.isDirectory(outputPath)) {
@@ -240,7 +219,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 log.info(aMarker, "Output file path: {}", outputFilePath);
 
                 TestDataExtractorInput.TestDataExtractorInputBuilder builder = TestDataExtractorInput.builder()
-                        .name("DeepSiftTest4J")
+                        .name("DeepSiftArgon")
                         .mode("text")
                         .inputFilePaths(Collections.singletonList(inputFilePath))
                         .outputPath(outputFilePath)
@@ -265,7 +244,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 String extractedText = Files.readString(outputFile.toPath());
 
                 String cleanedText = extractedText.replaceAll(
-                        "TesseractBatchResponseDto\\(documents=\\[TesseractResponseDto\\(textByPage=\\{([\\s\\S]*?)\\}\\)\\]\\)",
+                        "TesseractBatchResponseDto\\(documents=\\[TesseractResponseDto\\(textByPage=\\{Data=([\\s\\S]*?)\\}\\)\\]\\)",
                         "$1"
                 );
 
@@ -279,51 +258,16 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     extractedContentEnc = encryption.encrypt(cleanedText, "AES256", "TEXT_DATA");
                 }
 
-                parentObj.add(DeepSiftOutputTable.builder()
-                        .inputFilePath(inputFilePath)
-                        .extractedText(extractedContentEnc)
-                        .originId(entity.getOriginId())
-                        .groupId(entity.getGroupId())
-                        .paperNo(pageNumber)
-                        .createdOn(entity.getCreatedOn())
-                        .rootPipelineId(entity.getRootPipelineId())
-                        .tenantId(entity.getTenantId())
-                        .batchId(entity.getBatchId())
-                        .sourceDocumentType(entity.getSourceDocumentType())
-                        .sorItemId(entity.getSorItemId())
-                        .sorItemName(entity.getSorItemName())
-                        .sorContainerId(entity.getSorContainerId())
-                        .sorContainerName(entity.getSorContainerName())
-                        .modelId(entity.getModelId())
-                        .modelName(modelName)
-                        .searchName(entity.getSearchName())
-                        .build());
+                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).extractedText(extractedContentEnc).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(pageNumber).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(modelName).searchName(entity.getSearchName()).build());
 
                 outputFile.delete();
                 log.info(aMarker, "Output file deleted: {}", outputFilePath);
 
             } catch (Exception e) {
-                log.error(aMarker, "Exception in TEST4J handler for file: {}", inputFilePath, e);
-                parentObj.add(DeepSiftOutputTable.builder()
-                        .inputFilePath(inputFilePath)
-                        .originId(entity.getOriginId())
-                        .groupId(entity.getGroupId())
-                        .paperNo(entity.getPaperNo() != null ? entity.getPaperNo() : 1)
-                        .createdOn(entity.getCreatedOn())
-                        .rootPipelineId(entity.getRootPipelineId())
-                        .tenantId(entity.getTenantId())
-                        .batchId(entity.getBatchId())
-                        .sourceDocumentType(entity.getSourceDocumentType())
-                        .sorItemId(entity.getSorItemId())
-                        .sorItemName(entity.getSorItemName())
-                        .sorContainerId(entity.getSorContainerId())
-                        .sorContainerName(entity.getSorContainerName())
-                        .modelId(entity.getModelId())
-                        .modelName(modelName)
-                        .searchName(entity.getSearchName())
-                        .build());
-                HandymanException handymanException = new HandymanException("TEST4J processing failed", e);
-                HandymanException.insertException("Deep sift TEST4J failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
+                log.error(aMarker, "Exception in ARGON handler for file: {}", inputFilePath, e);
+                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo() != null ? entity.getPaperNo() : 1).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(modelName).searchName(entity.getSearchName()).build());
+                HandymanException handymanException = new HandymanException("ARGON processing failed", e);
+                HandymanException.insertException("Deep sift ARGON failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
                 throw handymanException;
             }
         }
@@ -414,28 +358,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
         }
 
-        parentObj.add(DeepSiftOutputTable.builder()
-                .inputFilePath(deepSiftDataItem.getInputFilePath())
-                .extractedText(extractedContent)
-                .originId(deepSiftDataItem.getOriginId())
-                .groupId(deepSiftDataItem.getGroupId())
-                .paperNo(entity.getPaperNo())
-                .createdOn(entity.getCreatedOn())
-                .rootPipelineId(deepSiftDataItem.getRootPipelineId())
-                .tenantId(deepSiftDataItem.getTenantId())
-                .batchId(deepSiftDataItem.getBatchId())
-                .sourceDocumentType(entity.getSourceDocumentType())
-                .sorItemId(entity.getSorItemId())
-                .sorItemName(entity.getSorItemName())
-                .sorContainerId(entity.getSorContainerId())
-                .sorContainerName(entity.getSorContainerName())
-                .modelId(entity.getModelId())
-                .modelName(innerModel)
-                .searchName(entity.getSearchName())
-                .build());
+        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(innerModel).searchName(entity.getSearchName()).build());
     }
 
-    private void extractedArgonOutputDataRequest(DeepSiftInputTable entity, String stringDataItem, List<DeepSiftOutputTable> parentObj,
+    private void extractedOptimusOutputDataRequest(DeepSiftInputTable entity, String stringDataItem, List<DeepSiftOutputTable> parentObj,
                                                  String modelName, String modelVersion, String request, String response, String endpoint)
             throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
@@ -461,40 +387,21 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
         }
 
-        parentObj.add(DeepSiftOutputTable.builder()
-                .inputFilePath(deepSiftDataItem.getInputFilePath())
-                .extractedText(extractedContent)
-                .originId(deepSiftDataItem.getOriginId())
-                .groupId(deepSiftDataItem.getGroupId())
-                .paperNo(entity.getPaperNo())
-                .createdOn(entity.getCreatedOn())
-                .rootPipelineId(deepSiftDataItem.getRootPipelineId())
-                .tenantId(deepSiftDataItem.getTenantId())
-                .batchId(deepSiftDataItem.getBatchId())
-                .sourceDocumentType(entity.getSourceDocumentType())
-                .sorItemId(entity.getSorItemId())
-                .sorItemName(entity.getSorItemName())
-                .sorContainerId(entity.getSorContainerId())
-                .sorContainerName(entity.getSorContainerName())
-                .modelId(entity.getModelId())
-                .modelName(innerModel)
-                .searchName(entity.getSearchName())
-                .build());
+        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(innerModel).searchName(entity.getSearchName()).build());
     }
 
-    private void tritonRequestArgonExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
-                                            String jsonRequest, URL endpoint) {
+    private void tritonRequestOptimusExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj, String jsonRequest, URL endpoint) {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
-            log.info(aMarker, "Triton response: code={}, message={}", response.code(), response.message());
+            log.info(aMarker, "Optimus response: code={}, message={}", response.code(), response.message());
 
             if (response.isSuccessful()) {
                 DeepSiftResponse modelResponse = mapper.readValue(responseBody, DeepSiftResponse.class);
                 if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                     modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
                         try {
-                            extractedArgonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(),
+                            extractedOptimusOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(),
                                     modelResponse.getModelVersion(), jsonRequest, responseBody,
                                     endpoint.toString());
                         } catch (JsonProcessingException e) {
@@ -535,7 +442,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         return objectMapper.writeValueAsString(tritonInputRequest);
     }
 
-    private DeepSiftData getArgonRequestPayloadFromEntity(DeepSiftInputTable entity) {
+    private DeepSiftData getOptimusRequestPayloadFromEntity(DeepSiftInputTable entity) {
         DeepSiftData deepSiftData = new DeepSiftData();
         deepSiftData.setOriginId(entity.getOriginId());
         deepSiftData.setGroupId(entity.getGroupId());
@@ -553,44 +460,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         return deepSiftData;
     }
 
-    private void replicateResponseBuilder(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
-                                          String replicateJsonRequest, URL endpoint) {
-        try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
-
-            if (response.isSuccessful()) {
-                ReplicateResponse replicateResponse = mapper.readValue(responseBody, ReplicateResponse.class);
-                if (!replicateResponse.getOutput().isEmpty() && !replicateResponse.getOutput().isNull()) {
-                    extractedReplicateOutputResponse(endpoint, entity, replicateResponse, parentObj, replicateJsonRequest, responseBody);
-                } else {
-                    parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                            response.message(), replicateJsonRequest, responseBody, endpoint.toString()));
-                    HandymanException handymanException = new HandymanException("Unsuccessful response code: " + response.code() +
-                            " message: " + response.message());
-                    HandymanException.insertException("Deep sift replicate consumer failed for origin Id " + entity.getOriginId() +
-                            " paper no " + entity.getPaperNo(), handymanException, action);
-                    log.error(aMarker, "Replicate response has empty output: {}", replicateResponse.getOutput());
-                }
-            } else {
-                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        response.message(), replicateJsonRequest, responseBody, endpoint.toString()));
-                HandymanException handymanException = new HandymanException("Unsuccessful response code: " + response.code() +
-                        " message: " + response.message());
-                HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
-                        " paper no " + entity.getPaperNo(), handymanException, action);
-                log.error(aMarker, "Replicate response status: {}", response.message());
-            }
-        } catch (Exception e) {
-            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    ExceptionUtil.toString(e), replicateJsonRequest, "Error In getting replicate Response",
-                    endpoint.toString()));
-            log.error(aMarker, "Exception in replicate: {}", e.toString());
-            HandymanException handymanException = new HandymanException("Deep sift replicate consumer failed", e);
-            HandymanException.insertException("Deep sift consumer failed for replicate origin Id " + entity.getOriginId() +
-                    " paper no " + entity.getPaperNo(), handymanException, action);
-        }
-    }
-
     public String getBase64ForPath(String imagePath) throws IOException {
         try {
             byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
@@ -603,120 +472,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         }
     }
 
-    private void extractedReplicateOutputResponse(URL endpoint, DeepSiftInputTable entity, ReplicateResponse replicateResponse,
-                                                  List<DeepSiftOutputTable> parentObj, String replicateJsonRequest, String replicateJsonResponse)
-            throws JsonProcessingException {
-        DeepSiftDataItem deepSiftDataItem = mapper.treeToValue(replicateResponse.getOutput(), DeepSiftDataItem.class);
-        String contentString = Optional.ofNullable(deepSiftDataItem.getPageContent()).map(String::valueOf).orElse("");
-        String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-        String extractedContentEnc = contentString;
-        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-
-        if ("true".equals(encryptSotPageContent)) {
-            extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
-        }
-
-        parentObj.add(DeepSiftOutputTable.builder()
-                .inputFilePath(new File(entity.getInputFilePath()).getAbsolutePath())
-                .extractedText(extractedContentEnc)
-                .originId(entity.getOriginId())
-                .groupId(entity.getGroupId())
-                .paperNo(entity.getPaperNo())
-                .createdOn(entity.getCreatedOn())
-                .rootPipelineId(entity.getRootPipelineId())
-                .tenantId(entity.getTenantId())
-                .batchId(entity.getBatchId())
-                .sourceDocumentType(entity.getSourceDocumentType())
-                .sorItemId(entity.getSorItemId())
-                .sorItemName(entity.getSorItemName())
-                .sorContainerId(entity.getSorContainerId())
-                .sorContainerName(entity.getSorContainerName())
-                .modelId(entity.getModelId())
-                .modelName(replicateResponse.getModel())
-                .searchName(entity.getSearchName())
-                .build());
-    }
-
-    private void coproRequestBuilder(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
-                                     String originId, Integer groupId, String jsonInputRequest, URL endpoint) {
-        try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
-
-            if (response.isSuccessful()) {
-                extractedCoproOutputResponse(entity, responseBody, parentObj, originId, groupId, "", "",
-                        jsonInputRequest, responseBody, endpoint.toString());
-            } else {
-                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        response.message(), jsonInputRequest, responseBody, endpoint.toString()));
-                HandymanException handymanException = new HandymanException("Unsuccessful response code: " + response.code() +
-                        " message: " + response.message());
-                HandymanException.insertException("Deep sift consumer failed for origin Id " + originId +
-                        " paper no " + entity.getPaperNo(), handymanException, action);
-                log.error(aMarker, "Error in response: {}", response.message());
-            }
-        } catch (Exception e) {
-            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    ExceptionUtil.toString(e), jsonInputRequest, "Error In Response", endpoint.toString()));
-            log.error(aMarker, "Exception in Copro: {}", e.toString());
-            HandymanException handymanException = new HandymanException("Deep sift consumer failed", e);
-            HandymanException.insertException("Deep sift consumer failed for origin Id " + originId +
-                    " paper no " + entity.getPaperNo(), handymanException, action);
-        }
-    }
-
-    private void extractedCoproOutputResponse(DeepSiftInputTable entity, String stringDataItem, List<DeepSiftOutputTable> parentObj,
-                                              String originId, Integer groupId, String modelName, String modelVersion,
-                                              String request, String response, String endpoint) {
-        String parentResponseObject = extractPageContent(stringDataItem);
-        String contentString = Optional.ofNullable(parentResponseObject).map(String::valueOf).orElse("");
-        String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-        String extractedContentEnc = contentString;
-        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-
-        if ("true".equals(encryptSotPageContent)) {
-            extractedContentEnc = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
-        }
-
-        parentObj.add(DeepSiftOutputTable.builder()
-                .inputFilePath(new File(entity.getInputFilePath()).getAbsolutePath())
-                .extractedText(extractedContentEnc)
-                .originId(originId)
-                .groupId(groupId)
-                .paperNo(entity.getPaperNo())
-                .createdOn(entity.getCreatedOn())
-                .rootPipelineId(entity.getRootPipelineId())
-                .tenantId(entity.getTenantId())
-                .batchId(entity.getBatchId())
-                .sourceDocumentType(entity.getSourceDocumentType())
-                .sorItemId(entity.getSorItemId())
-                .sorItemName(entity.getSorItemName())
-                .sorContainerId(entity.getSorContainerId())
-                .sorContainerName(entity.getSorContainerName())
-                .modelId(entity.getModelId())
-                .modelName(modelName)
-                .searchName(entity.getSearchName())
-                .build());
-    }
-
-    private static String extractPageContent(String jsonString) {
-        int startIndex = jsonString.indexOf("\"pageContent\":") + "\"pageContent\":".length();
-        int endIndex = jsonString.lastIndexOf("}");
-
-        if (startIndex != -1 && endIndex != -1) {
-            String pageContent = jsonString.substring(startIndex, endIndex).trim();
-            if (pageContent.startsWith("\"")) {
-                pageContent = pageContent.substring(1);
-            }
-            if (pageContent.endsWith("\"")) {
-                pageContent = pageContent.substring(0, pageContent.length() - 1);
-            }
-            return pageContent;
-        }
-        return "";
-    }
-
     public String encryptRequestResponse(String request) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         if ("true".equals(encryptReqRes)) {
@@ -727,23 +482,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
     private DeepSiftOutputTable buildOutputTable(DeepSiftInputTable entity, String status, String message,
                                                  String request, String response, String endpoint) {
-        return DeepSiftOutputTable.builder()
-                .inputFilePath(entity.getInputFilePath())
-                .originId(entity.getOriginId())
-                .groupId(entity.getGroupId())
-                .paperNo(entity.getPaperNo())
-                .createdOn(entity.getCreatedOn())
-                .rootPipelineId(entity.getRootPipelineId())
-                .tenantId(entity.getTenantId())
-                .batchId(entity.getBatchId())
-                .sourceDocumentType(entity.getSourceDocumentType())
-                .sorItemId(entity.getSorItemId())
-                .sorItemName(entity.getSorItemName())
-                .sorContainerId(entity.getSorContainerId())
-                .sorContainerName(entity.getSorContainerName())
-                .modelId(entity.getModelId())
-                .modelName(entity.getModelName())
-                .searchName(entity.getSearchName())
-                .build();
+        return DeepSiftOutputTable.builder().inputFilePath(entity.getInputFilePath()).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(entity.getModelName()).searchName(entity.getSearchName()).build();
     }
 }

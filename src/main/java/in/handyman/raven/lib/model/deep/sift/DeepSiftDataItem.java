@@ -21,7 +21,7 @@ public class DeepSiftDataItem {
     private Integer paperNo;
     private Long processId;
     private Long rootPipelineId;
-    private Integer groupId; // Changed to Integer to match entity.getGroupId()
+    private Integer groupId;
     private Long actionId;
     private Long tenantId;
     private String inputFilePath;
