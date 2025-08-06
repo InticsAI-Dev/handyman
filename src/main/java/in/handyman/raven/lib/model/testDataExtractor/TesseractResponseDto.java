@@ -8,7 +8,5 @@ import java.util.Map;
 @Data
 @Builder
 public class TesseractResponseDto {
-    private String fileName;
-    private int pages;
     private Map<String, String> textByPage;
 }

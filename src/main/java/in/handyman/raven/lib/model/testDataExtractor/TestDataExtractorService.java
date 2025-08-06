@@ -94,9 +94,7 @@ public class TestDataExtractorService {
                             .build())
                     .collect(Collectors.toList());
 
-            DocumentMatchResultDto.DocumentMatchResultDtoBuilder docBuilder = DocumentMatchResultDto.builder()
-                    .fileName(result.getFileName())
-                    .totalPages(result.getPages());
+            DocumentMatchResultDto.DocumentMatchResultDtoBuilder docBuilder = DocumentMatchResultDto.builder();
 
             if (pageMatchGroups.isEmpty()) {
                 docBuilder.paperNoMatches(new ArrayList<>())
@@ -123,11 +121,9 @@ public class TestDataExtractorService {
         // Only process JPEG files
         String text = tesseract.doOCR(file);
         extractedTexts = new LinkedHashMap<>();
-        extractedTexts.put("page1", text);
+        extractedTexts.put("Data", text);
 
         return TesseractResponseDto.builder()
-                .fileName(fileName)
-                .pages(extractedTexts.size())
                 .textByPage(extractedTexts)
                 .build();
     }

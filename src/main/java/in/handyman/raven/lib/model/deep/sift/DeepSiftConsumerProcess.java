@@ -264,41 +264,39 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 }
                 String extractedText = Files.readString(outputFile.toPath());
 
-                int pageNumber = paperNumber != null ? paperNumber : 1;
-                String flag = (extractedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+                String cleanedText = extractedText.replaceAll(
+                        "TesseractBatchResponseDto\\(documents=\\[TesseractResponseDto\\(textByPage=\\{([\\s\\S]*?)\\}\\)\\]\\)",
+                        "$1"
+                );
+
+                int pageNumber = entity.getPaperNo() != null ? entity.getPaperNo() : 1; // Use entity.getPaperNo()
+                String flag = (cleanedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
                 String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-                String extractedContentEnc = extractedText;
+                String extractedContentEnc = cleanedText;
                 InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
                 if ("true".equals(encryptSotPageContent)) {
-                    extractedContentEnc = encryption.encrypt(extractedText, "AES256", "TEXT_DATA");
+                    extractedContentEnc = encryption.encrypt(cleanedText, "AES256", "TEXT_DATA");
                 }
-
-                String jsonResponse = String.format(
-                        "{\"payload\":{\"documents\":[{\"fileName\":\"%s\",\"textByPage\":{\"page%d\":\"%s\"}}]}}",
-                        inputFile.getName(),
-                        pageNumber,
-                        extractedText.replace("\"", "\\\"")
-                );
 
                 parentObj.add(DeepSiftOutputTable.builder()
                         .inputFilePath(inputFilePath)
                         .extractedText(extractedContentEnc)
-                        .originId(originId)
-                        .groupId(groupId)
+                        .originId(entity.getOriginId())
+                        .groupId(entity.getGroupId())
                         .paperNo(pageNumber)
                         .createdOn(entity.getCreatedOn())
                         .rootPipelineId(entity.getRootPipelineId())
-                        .tenantId(tenantId)
-                        .batchId(batchId)
-                        .sourceDocumentType(sourceDocumentType)
+                        .tenantId(entity.getTenantId())
+                        .batchId(entity.getBatchId())
+                        .sourceDocumentType(entity.getSourceDocumentType())
                         .sorItemId(entity.getSorItemId())
-                        .sorItemName(sorItemName)
+                        .sorItemName(entity.getSorItemName())
                         .sorContainerId(entity.getSorContainerId())
-                        .sorContainerName(sorContainerName)
-                        .modelId(modelId)
+                        .sorContainerName(entity.getSorContainerName())
+                        .modelId(entity.getModelId())
                         .modelName(modelName)
-                        .searchName(searchName)
+                        .searchName(entity.getSearchName())
                         .build());
 
                 outputFile.delete();
@@ -308,24 +306,24 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 log.error(aMarker, "Exception in TEST4J handler for file: {}", inputFilePath, e);
                 parentObj.add(DeepSiftOutputTable.builder()
                         .inputFilePath(inputFilePath)
-                        .originId(originId)
-                        .groupId(groupId)
-                        .paperNo(paperNumber)
+                        .originId(entity.getOriginId())
+                        .groupId(entity.getGroupId())
+                        .paperNo(entity.getPaperNo() != null ? entity.getPaperNo() : 1)
                         .createdOn(entity.getCreatedOn())
                         .rootPipelineId(entity.getRootPipelineId())
-                        .tenantId(tenantId)
-                        .batchId(batchId)
-                        .sourceDocumentType(sourceDocumentType)
+                        .tenantId(entity.getTenantId())
+                        .batchId(entity.getBatchId())
+                        .sourceDocumentType(entity.getSourceDocumentType())
                         .sorItemId(entity.getSorItemId())
-                        .sorItemName(sorItemName)
+                        .sorItemName(entity.getSorItemName())
                         .sorContainerId(entity.getSorContainerId())
-                        .sorContainerName(sorContainerName)
-                        .modelId(modelId)
+                        .sorContainerName(entity.getSorContainerName())
+                        .modelId(entity.getModelId())
                         .modelName(modelName)
-                        .searchName(searchName)
+                        .searchName(entity.getSearchName())
                         .build());
                 HandymanException handymanException = new HandymanException("TEST4J processing failed", e);
-                HandymanException.insertException("Deep sift TEST4J failed for origin Id " + originId + " paper no " + paperNumber, handymanException, action);
+                HandymanException.insertException("Deep sift TEST4J failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
                 throw handymanException;
             }
         }
