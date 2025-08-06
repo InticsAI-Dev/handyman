@@ -170,6 +170,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                                 extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
                             } catch (JsonProcessingException e) {
                                 String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + " message : " + response.message();
+                                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
                                 HandymanException handymanException = new HandymanException(errorMessage);
                                 HandymanException.insertException(errorMessage, handymanException, this.action);
                                 log.error(aMarker, errorMessage);
