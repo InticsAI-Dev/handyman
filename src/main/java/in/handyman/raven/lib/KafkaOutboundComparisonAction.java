@@ -204,7 +204,7 @@
                     String extractedValue = extractValueByJsonPath(jsonData, fieldConfig);
 
                     // Validate extracted value
-                    ValidationResult validation = validateExtractedValue(extractedValue);
+                    ValidationResult validation = validateExtractedValue(extractedValue, fieldConfig);
                     if (!validation.isValid()) {
                         validationErrors.add(validation.getErrorMessage());
                         status = "ERROR";
@@ -234,20 +234,38 @@
             try {
                 List<Object> allValues = new ArrayList<>();
                 String[] jsonPaths = fieldConfig.getJsonPath().split("\\|");
+                String fieldName = fieldConfig.getSorItemName();
+
+                log.debug(aMarker, "Processing field: {} with JsonPath(s): {}", fieldName, Arrays.toString(jsonPaths));
 
                 for (String jsonPath : jsonPaths) {
                     jsonPath = jsonPath.trim();
-                    log.debug(aMarker, "Evaluating JsonPath: {} for field: {}", jsonPath, fieldConfig.getSorItemName());
-                    Object value = JsonPath.using(jsonPathConfig).parse(jsonData.toString()).read(jsonPath);
+                    log.debug(aMarker, "Evaluating JsonPath: {} for field: {}", jsonPath, fieldName);
+                    try {
+                        Object value = JsonPath.using(jsonPathConfig).parse(jsonData.toString()).read(jsonPath);
 
-                    if (value instanceof List) {
-                        allValues.addAll((List<?>) value);
-                    } else if (value != null && !value.toString().trim().isEmpty()) {
-                        allValues.add(value);
+                        if (value == null) {
+                            log.debug(aMarker, "JsonPath {} returned null for field: {}", jsonPath, fieldName);
+                            continue;
+                        }
+
+                        if (value instanceof List) {
+                            List<?> listValues = (List<?>) value;
+                            if (listValues.isEmpty()) {
+                                log.debug(aMarker, "JsonPath {} returned empty list for field: {}", jsonPath, fieldName);
+                            } else {
+                                allValues.addAll(listValues);
+                            }
+                        } else if (!value.toString().trim().isEmpty()) {
+                            allValues.add(value);
+                        } else {
+                            log.debug(aMarker, "JsonPath {} returned empty string for field: {}", jsonPath, fieldName);
+                        }
+                    } catch (Exception e) {
+                        log.warn(aMarker, "Failed to evaluate JsonPath: {} for field: {}", jsonPath, fieldName, e);
                     }
                 }
 
-                // Remove empty or null values
                 allValues.removeIf(v -> v == null || v.toString().trim().isEmpty());
                 log.debug(aMarker, "Extracted values for {}", fieldConfig.getSorItemName());
 
@@ -256,7 +274,6 @@
                     return "";
                 }
 
-                // Convert all values to a single string, joining with delimiter
                 String delimiter = fieldConfig.isArray() && fieldConfig.getArrayDelimiter() != null
                         ? fieldConfig.getArrayDelimiter() : ",";
                 String result = allValues.stream()
@@ -266,27 +283,32 @@
                         .filter(s -> !s.isEmpty())
                         .collect(Collectors.joining(delimiter));
 
-                log.debug(aMarker, "Final extracted value for {}", fieldConfig.getSorItemName());
-                return result.isEmpty() ? "" : result;
+                log.debug(aMarker, "Final extracted value for field {}", fieldName);
+                return result.isEmpty() ? (fieldConfig.isRequired() ? null : "") : result;
 
             } catch (Exception e) {
-                log.warn(aMarker, "Failed to extract value using JsonPath: {} for field: {}", fieldConfig.getJsonPath(), fieldConfig.getSorItemName(), e);
-                return "";
+                log.error(aMarker, "Failed to extract value for field: {}", fieldConfig.getSorItemName(), e);
+                return fieldConfig.isRequired() ? null : "";
             }
         }
+        private ValidationResult validateExtractedValue(String value, SorFieldConfig fieldConfig) {
+            String fieldName = fieldConfig.getSorItemName();
+            boolean isRequired = fieldConfig.isRequired();
 
-        private ValidationResult validateExtractedValue(String value) {
-            // Allow empty string for all fields, including required ones
-            if (value == null || value.trim().isEmpty()) {
+            if (isRequired && (value == null || value.trim().isEmpty())) {
+                String errorMessage = String.format("Required field %s is missing or empty", fieldName);
+                log.warn(aMarker, errorMessage);
                 return ValidationResult.builder()
-                        .isValid(true)
-                        .errorMessage("")
+                        .isValid(false)
+                        .errorMessage(errorMessage)
                         .build();
             }
 
-            return ValidationResult.builder().isValid(true).errorMessage("").build();
+            return ValidationResult.builder()
+                    .isValid(true)
+                    .errorMessage("")
+                    .build();
         }
-
         private Map<Long, SorFieldConfig> fetchSorFieldConfigs(Jdbi jdbi) {
             return jdbi.withHandle(handle -> handle.createQuery(
                             "SELECT fw.sor_item_config_id AS id, fw.json_path, fw.sor_item_name, " +
