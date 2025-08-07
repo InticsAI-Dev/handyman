@@ -201,6 +201,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .build();
 
             resultList.add(outputRecord);
+
         } catch (JsonProcessingException e) {
             handleJsonProcessingException(entity, e, resultList, jsonInputRequest, responseBody, endpoint);
         }
