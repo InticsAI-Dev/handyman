@@ -2,39 +2,42 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.*;
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
-import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerProcess<MultiValueMemberMapperTransformInputTable, MultiValueMemberMapperOutputTable>{
+public class MultiValueMemberConsumerProcess {
     private final Logger log;
     private final Marker marker;
     private final ActionExecutionAudit action;
-    private final MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable;
+    private final List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables;
     private final Long tenantId;
+    private final ExecutorService executor;
 
     private final String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
 
-    public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable, Long tenantId) {
+    public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables, Long tenantId, Integer threadCount) {
         this.log = log;
         this.marker = marker;
         this.action = action;
-        this.multiValueMemberMapperTransformInputTable = multiValueMemberMapperTransformInputTable;
+        this.multiValueMemberMapperTransformInputTables = multiValueMemberMapperTransformInputTables;
         this.tenantId = tenantId;
+        this.executor = Executors.newFixedThreadPool(threadCount);
     }
 
-    public List<MultiValueMemberMapperOutputTable> process(URL endpoint, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTable) throws Exception {
+    public List<MultiValueMemberMapperOutputTable> doMultiMemberValidation() throws Exception {
         log.info(marker, "Starting MultiValueMemberMapper process for tenantId: {}, actionId: {}", tenantId, action.getActionId());
 
-        List<MultiValueMemberMapperOutputTable> finalOutput = new ArrayList<>();
+        List<MultiValueMemberMapperOutputTable> finalOutput = Collections.synchronizedList(new ArrayList<>());
 
         String processingSorItemName = action.getContext().get(PROCESSING_SOR_ITEM_NAME);
 
@@ -45,16 +48,47 @@ public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerP
                     .map(String::trim)
                     .collect(Collectors.toSet());
 
-            for (MultiValueMemberMapperTransformInputTable inputTable : multiValueMemberMapperTransformInputTable) {
-                String processedValue = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log, marker);
-                MultiValueMemberMapperOutputTable singleRecord = outputTableCreation(inputTable, processedValue);
+            List<Future<?>> futures = new ArrayList<>();
+            for (MultiValueMemberMapperTransformInputTable inputTable : multiValueMemberMapperTransformInputTables) {
+                futures.add(executor.submit(() -> {
+                    String threadName = Thread.currentThread().getName();
+                    String originId = inputTable.getOriginId();
 
-                finalOutput.add(singleRecord);
+                    try {
+                        log.info(marker, "[Thread: {}] START processing for originId: {}", threadName, originId);
+
+                        String result = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log, marker);
+                        MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result);
+                        finalOutput.add(outputRow);
+
+                        log.info(marker, "[Thread: {}] SUCCESS for originId: {}", threadName, originId);
+
+                    } catch (Exception e) {
+                        log.error(marker, "[Thread: {}] ERROR processing originId: {}", threadName, originId, e);
+                        throw new HandymanException("Error processing input table for originId: " + originId, e);
+                    }
+                }));
+
+            }
+            for (Future<?> future : futures) {
+                future.get();
             }
             log.info(marker, "Processing completed successfully for tenantId: {}, actionId: {}", tenantId, action.getActionId());
         } catch (Exception e) {
             log.error(marker, "Error processing MultiValueMemberMapper for tenantId: {}, actionId: {}.", tenantId, action.getActionId(), e);
             throw new HandymanException("Error processing MultiValueMemberMapper", e);
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
+                    log.warn(marker, "Executor did not terminate in the specified time.");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException ie) {
+                log.error(marker, "Executor termination interrupted.", ie);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
 
         return finalOutput;
@@ -128,7 +162,12 @@ public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerP
             log.info("No row found with sor_item_name = 'multiple_member_indicator'");
         }
 
-        extractedSorItemList mmIndicatorRow = mmIndicatorRowOpt.get();
+        extractedSorItemList mmIndicatorRow = null;
+        if (mmIndicatorRowOpt.isEmpty()) {
+            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId()); // fallback
+        } else {
+            mmIndicatorRow = mmIndicatorRowOpt.get();
+        }
 
         return MultiValueMemberMapperOutputTable.builder()
                 .minScoreId(mmIndicatorRow.getMinScoreId())
@@ -150,8 +189,4 @@ public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerP
                 .build();
     }
 
-    @Override
-    public List<MultiValueMemberMapperOutputTable> process(URL endpoint, MultiValueMemberMapperTransformInputTable entity) throws Exception {
-        return List.of();
-    }
 }

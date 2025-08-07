@@ -23,8 +23,11 @@ import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapper
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
+import in.handyman.raven.lib.model.scalar.ValidatorByBeanShellExecutor;
 import in.handyman.raven.util.CommonQueryUtil;
+import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -54,6 +57,8 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
   public static final String INSERT_INTO = "INSERT INTO ";
   public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+  private List<MultiValueMemberMapperOutputTable> multiValueMemberMapperOutputTables;
 
   public static final String INSERT_COLUMNS_UPDATED = "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id\n";
 
@@ -122,17 +127,11 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTable = extractedValues(groupedByOriginId, pipelineEndToEndEncryptionActivator, encryption);
 
-      final CoproProcessor<MultiValueMemberMapperTransformInputTable, MultiValueMemberMapperOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), MultiValueMemberMapperOutputTable.class, MultiValueMemberMapperTransformInputTable.class, multiValueMemberMapper.getResourceConn(), log, new MultiValueMemberMapperTransformInputTable(), urls, action);
+      multiValueMemberMapperOutputTables = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId, consumerApiCount).doMultiMemberValidation();
 
-      log.info(aMarker, "Consumer API count for Multi Value Member Mapper is {}", consumerApiCount);
-      String insertQuery = INSERT_INTO + outputTable + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
-      coproProcessor.startProducer(multiValueMemberMapper.getQuerySet(), readBatchSize);
-      Thread.sleep(1000);
-
-      Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-      MultiValueMemberConsumerProcess multiValueMemberConsumerProcess   = new MultiValueMemberConsumerProcess(log, aMarker, action, (MultiValueMemberMapperTransformInputTable) multiValueMemberMapperTransformInputTable, tenantId);
-
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, multiValueMemberConsumerProcess);
+      log.info(aMarker, "Started batch insert into {}", outputTable);
+      jdbi.useHandle(handle -> executeBatchInsert(handle, multiValueMemberMapperOutputTables));
+      log.info(aMarker, "Batch insert completed into {}", outputTable);
 
       log.info(aMarker, "Multi Value Member Mapper Action has been completed {}", multiValueMemberMapper.getName());
   } catch (Exception e) {
@@ -200,6 +199,28 @@ public class MultiValueMemberMapperAction implements IActionExecution {
       row.setPredictedValue(extractedValue);
     }
     return extractedValue;
+  }
+
+  private void executeBatchInsert(Handle handle, List<MultiValueMemberMapperOutputTable> rows) {
+    String sql = buildInsertSQL();
+    try (PreparedBatch batch = handle.prepareBatch(sql)) {
+      rows.forEach(row -> {
+        batch.bind("createdUserId", action.getContext().get("created_user_id"));
+        batch.bindBean(row);
+        batch.bind("batchId", multiValueMemberMapper.getBatchId());
+        batch.add();
+      });
+      int[] counts = batch.execute();
+      log.info(aMarker, "Batch inserted {} records", counts.length);
+    } catch (Exception e) {
+      log.error(aMarker, "Batch insert failed", e);
+      HandymanException.insertException("Error in batch insert into " + multiValueMemberMapper.getOutputTable(), new HandymanException(e), action);
+    }
+  }
+
+  private String buildInsertSQL() {
+    String insertQuery = INSERT_INTO + multiValueMemberMapper.getOutputTable() + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
+    return insertQuery;
   }
 
   @Override
