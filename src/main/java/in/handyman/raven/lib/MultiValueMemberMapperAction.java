@@ -60,7 +60,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
   private List<MultiValueMemberMapperOutputTable> multiValueMemberMapperOutputTables;
 
-  public static final String INSERT_COLUMNS_UPDATED = "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id\n";
+  public static final String INSERT_COLUMNS_UPDATED = "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id";
 
   private final String PIPELINE_END_TO_END_ENCRYPTION = "pipeline.end.to.end.encryption";
 
@@ -222,8 +222,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
         .bind(12, row.getTenantId())
         .bind(13, row.getModelRegistry())
         .bind(14, row.getRootPipelineId())
-        .bind(15, row.getBatchId())
-        .bind(16, row.getTenantId());
+        .bind(15, row.getBatchId());
         batch.add();
       });
       int[] counts = batch.execute();
