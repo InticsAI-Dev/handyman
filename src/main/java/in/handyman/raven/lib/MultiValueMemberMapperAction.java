@@ -56,7 +56,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   public static final String MULTI_MEMBER_CONSUMER_API_COUNT = "multi.member.consumer.API.count";
 
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
   private List<MultiValueMemberMapperOutputTable> multiValueMemberMapperOutputTables;
 
