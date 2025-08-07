@@ -186,8 +186,8 @@ action:
     |multivalueConcatenation
     |kafkaProductionResponse
     |kafkaOutboundComparison
-    |multiValueMemberMapper
     |pipelineEventActionAudit
+    |multiValueMemberMapper
     );
 
 
@@ -1476,6 +1476,13 @@ kafkaOutboundComparison:
     '}'
     ('on-condition' condition=expression)*  ;
 
+     pipelineEventActionAudit:
+        'pipelineEventActionAudit' 'as' name=STRING
+    	'resource-conn' resourceConn=STRING
+    	'using' '{'
+    		querySet=STRING
+    	'}' ('on-condition' condition=expression)* ;
+
 multiValueMemberMapper:
     'multiValueMemberMapper' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
@@ -1485,12 +1492,6 @@ multiValueMemberMapper:
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
-pipelineEventActionAudit:
-    'pipelineEventActionAudit' 'as' name=STRING
-    'resource-conn' resourceConn=STRING
-    'using' '{'
-        querySet=STRING
-    '}' ('on-condition' condition=expression)* ;
 //rules
 
 resource : STRING;
