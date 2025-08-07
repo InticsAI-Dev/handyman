@@ -205,9 +205,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
     String sql = buildInsertSQL();
     try (PreparedBatch batch = handle.prepareBatch(sql)) {
       rows.forEach(row -> {
-        batch.bind("createdUserId", action.getContext().get("created_user_id"));
         batch.bindBean(row);
-        batch.bind("batchId", multiValueMemberMapper.getBatchId());
         batch.add();
       });
       int[] counts = batch.execute();
