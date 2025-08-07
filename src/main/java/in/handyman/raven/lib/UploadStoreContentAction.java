@@ -21,8 +21,8 @@ public class UploadStoreContentAction {
 
     public void execute() {
         try {
-            String repository = action.getContext().getOrDefault("storecontent.repository", "FilenetCE");
-            String applicationId = action.getContext().getOrDefault("storecontent.application.id", "CUE");
+            String repository = action.getContext().get("doc.eyecue.storecontent.repository");
+            String applicationId = action.getContext().get("doc.eyecue.storecontent.application.id");
 
             StoreContent storeContent = new StoreContent();
             StoreContentResponseDto response = storeContent.execute(
