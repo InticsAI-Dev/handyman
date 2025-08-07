@@ -426,12 +426,12 @@ public class ScalarAdapterAction implements IActionExecution {
             if (!encryptRequestList.isEmpty()) {
                 List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptRequestList);
                 int encryptionCount=0;
-                    for (ValidatorConfigurationDetail result : listOfDetails) {
-                        if (encryptedResults.get(encryptionCount).getPolicy() != null) {
-                            result.setInputValue(encryptedResults.get(encryptionCount).getValue());
-                            encryptionCount++;
-                        }
+                for (ValidatorConfigurationDetail result : listOfDetails) {
+                    if (encryptedResults.get(encryptionCount).getPolicy() != null) {
+                        result.setInputValue(encryptedResults.get(encryptionCount).getValue());
+                        encryptionCount++;
                     }
+                }
             }
 
             // Final Batch Insert
