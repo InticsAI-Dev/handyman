@@ -850,6 +850,16 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitDeepSift(RavenParser.DeepSiftContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link RavenParser#deepSiftSearch}.
+	 * @param ctx the parse tree
+	 */
+	void enterDeepSiftSearch(RavenParser.DeepSiftSearchContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#deepSiftSearch}.
+	 * @param ctx the parse tree
+	 */
+	void exitDeepSiftSearch(RavenParser.DeepSiftSearchContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link RavenParser#episodeOfCoverage}.
 	 * @param ctx the parse tree
 	 */

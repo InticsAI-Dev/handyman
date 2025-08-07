@@ -108,6 +108,7 @@ action:
     |zeroShotClassifierPaperFilter
     |dataExtraction
     |deepSift
+    |deepSiftSearch
     |assetInfo
     |episodeOfCoverage
     |userRegistration
@@ -744,6 +745,14 @@ dataExtraction:
 
 deepSift:
 	'deepSift' 'as' name=STRING
+	'resource-conn' resourceConn=STRING
+	'result-table' resultTable=STRING
+	'copro-url' endPoint=STRING
+	'process-id' processId=STRING
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+deepSiftSearch:
+	'deepSiftSearch' 'as' name=STRING
 	'resource-conn' resourceConn=STRING
 	'result-table' resultTable=STRING
 	'copro-url' endPoint=STRING
