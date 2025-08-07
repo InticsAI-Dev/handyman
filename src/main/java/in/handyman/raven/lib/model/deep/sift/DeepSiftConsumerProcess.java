@@ -95,11 +95,8 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         Long actionId = action.getActionId();
         String batchId = entity.getBatchId();
         String sourceDocumentType = entity.getSourceDocumentType();
-        String sorItemName = entity.getSorItemName();
-        String sorContainerName = entity.getSorContainerName();
         Integer modelId = entity.getModelId();
         String modelName = entity.getModelName();
-        String searchName = entity.getSearchName();
 
         DeepSiftData deepSiftData = new DeepSiftData();
         deepSiftData.setOriginId(originId);
@@ -241,14 +238,14 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     extractedContentEnc = encryption.encrypt(cleanedText, "AES256", "TEXT_DATA");
                 }
 
-                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).extractedText(extractedContentEnc).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(pageNumber).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(modelName).searchName(entity.getSearchName()).build());
+                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).extractedText(extractedContentEnc).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(pageNumber).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
 
                 outputFile.delete();
                 log.info(aMarker, "Output file deleted: {}", outputFilePath);
 
             } catch (Exception e) {
                 log.error(aMarker, "Exception in ARGON handler for file: {}", inputFilePath, e);
-                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo() != null ? entity.getPaperNo() : 1).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(modelName).searchName(entity.getSearchName()).build());
+                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo() != null ? entity.getPaperNo() : 1).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
                 HandymanException handymanException = new HandymanException("ARGON processing failed", e);
                 HandymanException.insertException("Deep sift ARGON failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
                 throw handymanException;
@@ -341,7 +338,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
         }
 
-        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(innerModel).searchName(entity.getSearchName()).build());
+        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(innerModel).build());
     }
 
     private void extractedOptimusOutputDataRequest(DeepSiftInputTable entity, String stringDataItem, List<DeepSiftOutputTable> parentObj,
@@ -370,7 +367,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
         }
 
-        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(innerModel).searchName(entity.getSearchName()).build());
+        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(innerModel).build());
     }
 
     private void tritonRequestOptimusExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj, String jsonRequest, URL endpoint) {
@@ -465,6 +462,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
     private DeepSiftOutputTable buildOutputTable(DeepSiftInputTable entity, String status, String message,
                                                  String request, String response, String endpoint) {
-        return DeepSiftOutputTable.builder().inputFilePath(entity.getInputFilePath()).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName()).sorContainerId(entity.getSorContainerId()).sorContainerName(entity.getSorContainerName()).modelId(entity.getModelId()).modelName(entity.getModelName()).searchName(entity.getSearchName()).build();
+        return DeepSiftOutputTable.builder().inputFilePath(entity.getInputFilePath()).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(entity.getModelName()).build();
     }
 }

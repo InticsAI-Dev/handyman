@@ -28,13 +28,8 @@ public class DeepSiftInputTable implements CoproProcessor.Entity {
     private String batchId;
     private Integer paperNo;
     private String sourceDocumentType;
-    private Long sorItemId;
-    private String sorItemName;
-    private Integer sorContainerId;
-    private String sorContainerName;
     private Integer modelId;
     private String modelName;
-    private String searchName;
     private String basePrompt;
     private String systemPrompt;
     private String base64Img;

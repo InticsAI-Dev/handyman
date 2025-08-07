@@ -29,14 +29,8 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private String extractedText;
     private Integer paperNo;
     private String sourceDocumentType;
-    private Long sorItemId;
-    private String sorItemName;
-    private Integer sorContainerId;
-    private String containerDocumentType;
-    private String sorContainerName;
     private Integer modelId;
     private String modelName;
-    private String searchName;
     private String status;
 
     @Override
@@ -53,13 +47,8 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.extractedText,
                 this.paperNo,
                 this.sourceDocumentType,
-                this.sorItemId,
-                this.sorItemName,
-                this.sorContainerId,
-                this.sorContainerName,
                 this.modelId,
-                this.modelName,
-                this.searchName
+                this.modelName
         ).collect(Collectors.toList());
     }
 
