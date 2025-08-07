@@ -202,10 +202,32 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   }
 
   private void executeBatchInsert(Handle handle, List<MultiValueMemberMapperOutputTable> rows) {
-    String sql = buildInsertSQL();
+
+    String sql = "INSERT INTO transit_data.voting_phase_2_19212_result (" +
+            "min_score_id, origin_id, paper_no, sor_item_name, weight_score, " +
+            "predicted_value, b_box, confidence_score, frequency, cummulative_score, " +
+            "question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id" +
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
     try (PreparedBatch batch = handle.prepareBatch(sql)) {
       rows.forEach(row -> {
-        batch.bindBean(row);
+        batch.bind(0, row.getMinScoreId())
+        .bind(1, row.getOriginId())
+        .bind(2, row.getPaperNo())
+        .bind(3, row.getSorItemName())
+        .bind(4, row.getWeightScore())
+        .bind(5, row.getPredictedValue())
+        .bind(6, row.getBBox())
+        .bind(7, row.getConfidenceScore())
+        .bind(8, row.getFrequency())
+        .bind(9, row.getCummulativeScore())
+        .bind(10, row.getQuestionId())
+        .bind(11, row.getSynonymId())
+        .bind(12, row.getTenantId())
+        .bind(13, row.getModelRegistry())
+        .bind(14, row.getRootPipelineId())
+        .bind(15, row.getBatchId())
+        .bind(16, row.getTenantId());
         batch.add();
       });
       int[] counts = batch.execute();
@@ -216,10 +238,6 @@ public class MultiValueMemberMapperAction implements IActionExecution {
     }
   }
 
-  private String buildInsertSQL() {
-    String insertQuery = INSERT_INTO + multiValueMemberMapper.getOutputTable() + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
-    return insertQuery;
-  }
 
   @Override
   public boolean executeIf() throws Exception {
