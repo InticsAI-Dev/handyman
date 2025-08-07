@@ -9,12 +9,9 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.triton.*;
-import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.core.utils.FileProcessingUtils;
-import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
-import in.handyman.raven.lib.TestDataExtractorAction;
-import in.handyman.raven.lib.model.testDataExtractor.TestDataExtractorInput;
+import in.handyman.raven.lib.model.testDataExtractor.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import okhttp3.*;
@@ -218,23 +215,9 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 String outputFilePath = outputDir + File.separator + baseFileName + ".txt";
                 log.info(aMarker, "Output file path: {}", outputFilePath);
 
-                TestDataExtractorInput.TestDataExtractorInputBuilder builder = TestDataExtractorInput.builder()
-                        .name("DeepSiftArgon")
-                        .mode("text")
-                        .inputFilePaths(Collections.singletonList(inputFilePath))
-                        .outputPath(outputFilePath)
-                        .condition(true);
-
-                builder.endPoint(endpoint.toString());
-                builder.resourceConn(action.getContext().getOrDefault("resource.connection", ""));
-                builder.resultTable(action.getContext().getOrDefault("result.table", ""));
-                builder.querySet(action.getContext().getOrDefault("query.set", ""));
-
-                TestDataExtractorInput testDataExtractorInput = builder.build();
-
-                TestDataExtractorAction extractorAction = new TestDataExtractorAction(action, log, testDataExtractorInput);
+                TestDataExtractorService extractorService = new TestDataExtractorService();
                 log.info(aMarker, "Starting extraction for file: {}", inputFile.getName());
-                extractorAction.execute();
+                extractorService.processTextExtraction(Collections.singletonList(inputFilePath), outputFilePath);
 
                 File outputFile = new File(outputFilePath);
                 log.info(aMarker, "Checking output file: {}, exists: {}", outputFilePath, outputFile.exists());
@@ -248,7 +231,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         "$1"
                 );
 
-                int pageNumber = entity.getPaperNo() != null ? entity.getPaperNo() : 1; // Use entity.getPaperNo()
+                int pageNumber = entity.getPaperNo() != null ? entity.getPaperNo() : 1;
                 String flag = (cleanedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
                 String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
                 String extractedContentEnc = cleanedText;

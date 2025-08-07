@@ -1015,18 +1015,6 @@ public class RavenBaseListener implements RavenListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterTestDataExtractor(RavenParser.TestDataExtractorContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitTestDataExtractor(RavenParser.TestDataExtractorContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterDeepSift(RavenParser.DeepSiftContext ctx) { }
 	/**
 	 * {@inheritDoc}
