@@ -76,7 +76,7 @@ public class CheckboxVqaAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             CheckboxVqaOutputTable.class,
                             CheckboxVqaInputTable.class,
-                            jdbi, log,
+                            checkboxVqa.getResourceConn(), log,
                             new CheckboxVqaInputTable(), urls, action);
             coproProcessor.startProducer(checkboxVqa.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);

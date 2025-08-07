@@ -13,6 +13,10 @@ public class HandymanException extends RuntimeException {
     {
         super(t);
     }
+    public HandymanException(String message,Throwable t)
+    {
+        super(message,t);
+    }
     public HandymanException(final String message) {
         super(message);
     }

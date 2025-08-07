@@ -76,7 +76,7 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       HwUrgencyTriageOutputTable.class,
                       HwUrgencyTriageInputTable.class,
-                      jdbi, log,
+                      pixelClassifierUrgencyTriage.getResourceConn(), log,
                       new HwUrgencyTriageInputTable(), urls, action);
       coproProcessor.startProducer(pixelClassifierUrgencyTriage.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       Thread.sleep(1000);

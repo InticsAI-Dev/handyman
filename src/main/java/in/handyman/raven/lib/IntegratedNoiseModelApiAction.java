@@ -89,7 +89,7 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             NoiseModelOutputEntity.class,
                             NoiseModelInputEntity.class,
-                            jdbi, log,
+                            integratedNoiseModelApi.getResourceConn(), log,
                             new NoiseModelInputEntity(), urls, action);
 
             coproProcessor.startProducer(integratedNoiseModelApi.getQuerySet(), readBatchSize);
