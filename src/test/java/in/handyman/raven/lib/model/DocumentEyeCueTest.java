@@ -42,14 +42,7 @@ class DocumentEyeCueTest {
                 Map.entry("document.eye.cue.force.ocr", "false"),
                 Map.entry("document.eye.cue.skip.text.pages", "true"),
                 Map.entry("document.eye.cue.max.paper.count", "5"),
-                Map.entry("doc.eyecue.encryption", "true"),
-
-                // 🔹 StoreContent integration values
-                Map.entry("storecontent.api.key", "ENCRYPTED_KEY_HERE"),
-                Map.entry("apigee.token.url", "https://uat.api.anthem.com/oauth/client_credential/accesstoken"),
-                Map.entry("apigee.client.id", "CLIENT_ID_HERE"),
-                Map.entry("apigee.client.secret", "CLIENT_SECRET_HERE"),
-                Map.entry("storecontent.base.url", "https://uat.api.anthem.com")
+                Map.entry("doc.eyecue.encryption", "true")
         ));
         actionExecutionAudit.setActionId(1L);
 

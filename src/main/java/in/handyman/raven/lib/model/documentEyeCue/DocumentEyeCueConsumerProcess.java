@@ -9,6 +9,7 @@ import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.UploadStoreContentAction;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 
@@ -166,14 +167,18 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
             DocumentEyeCueResponse documentEyeCueResponse = objectMapper.readValue(responseBody, DocumentEyeCueResponse.class);
 
             String outputFilePath = generateOutputFilePath(entity);
-            if (processBase64.equals(ProcessFileFormatE.BASE64.name()) && documentEyeCueResponse.getProcessedPdfBase64() != null) {
+
+            if (processBase64.equals(ProcessFileFormatE.BASE64.name())
+                    && documentEyeCueResponse.getProcessedPdfBase64() != null) {
                 fileProcessingUtils.convertBase64ToFile(documentEyeCueResponse.getProcessedPdfBase64(), outputFilePath);
+            } else {
+                outputFilePath = documentEyeCueResponse.getProcessedPdfPath() != null
+                        ? documentEyeCueResponse.getProcessedPdfPath()
+                        : outputFilePath;
             }
 
-            // 🔹 Upload to StoreContent API
-            uploadToStoreContent(outputFilePath, entity);
+            new UploadStoreContentAction(action, entity, outputFilePath).execute();
 
-            // Save DB record
             DocumentEyeCueOutputTable outputRecord = DocumentEyeCueOutputTable.builder()
                     .originId(entity.getOriginId())
                     .groupId(entity.getGroupId())
@@ -201,32 +206,8 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         }
     }
 
-    private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
-        try {
-            // ✅ Read repository & applicationId from context (with defaults)
-            String repository = action.getContext().getOrDefault("storecontent.repository", "FilenetCE");
-            String applicationId = action.getContext().getOrDefault("storecontent.application.id", "CUE");
-
-            // ✅ Call StoreContent uploader with entity so it can map documentId → contentkey
-            //    and fileName → FileName + "_updated"
-            StoreContent storeContent = new StoreContent();
-            storeContent.execute(
-                    filePath,
-                    repository,
-                    applicationId,
-                    entity,  // Pass the whole entity
-                    action   // ActionExecutionAudit for API key + bearer token + metadata
-            );
-
-            log.info(aMarker, "StoreContent upload done for origin_id {}", entity.getOriginId());
-        } catch (Exception e) {
-            log.error(aMarker, "StoreContent upload failed for origin_id {}: {}",
-                    entity.getOriginId(), e.getMessage(), e);
-        }
-    }
 
     private String generateOutputFilePath(DocumentEyeCueInputTable entity) {
-        // Generate output file path based on original file name and response data
         return documentEyeCue.getOutputDir() + "/" + entity.getOriginId() + "_processed.pdf";
     }
 

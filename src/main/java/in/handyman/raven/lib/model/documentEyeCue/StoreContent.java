@@ -18,19 +18,6 @@
     @Slf4j
     public class StoreContent {
 
-        /**
-         * Uploads a file to StoreContent API using Anthem client JAR.
-         * Automatically maps:
-         * - documentId → contentkey
-         * - fileName + "_updated" → FileName in metadata
-         *
-         * @param filePath Local file path (processed file)
-         * @param repository Repository name (e.g., FilenetCE)
-         * @param applicationId Application ID (e.g., CUE)
-         * @param entity DocumentEyeCueInputTable containing documentId & fileName
-         * @param action ActionExecutionAudit for API key and token retrieval
-         * @return StoreContentResponseDto
-         */
         public StoreContentResponseDto execute(String filePath,
                                                String repository,
                                                String applicationId,
