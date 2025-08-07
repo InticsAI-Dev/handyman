@@ -120,7 +120,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
-      MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable = extracted(groupedByOriginId, pipelineEndToEndEncryptionActivator, encryption);
+      List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTable = extractedValues(groupedByOriginId, pipelineEndToEndEncryptionActivator, encryption);
 
       final CoproProcessor<MultiValueMemberMapperTransformInputTable, MultiValueMemberMapperOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), MultiValueMemberMapperOutputTable.class, MultiValueMemberMapperTransformInputTable.class, multiValueMemberMapper.getResourceConn(), log, new MultiValueMemberMapperTransformInputTable(), urls, action);
 
@@ -130,7 +130,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
       Thread.sleep(1000);
 
       Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-      MultiValueMemberConsumerProcess multiValueMemberConsumerProcess   = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId);
+      MultiValueMemberConsumerProcess multiValueMemberConsumerProcess   = new MultiValueMemberConsumerProcess(log, aMarker, action, (MultiValueMemberMapperTransformInputTable) multiValueMemberMapperTransformInputTable, tenantId);
 
       coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, multiValueMemberConsumerProcess);
 
@@ -143,38 +143,47 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   }
   }
 
-  private MultiValueMemberMapperTransformInputTable extracted(Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
-    MultiValueMemberMapperTransformInputTable transformedList = (MultiValueMemberMapperTransformInputTable) groupedByOriginId.entrySet()
-            .stream()
+  private List<MultiValueMemberMapperTransformInputTable> extractedValues(
+          Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId,
+          boolean pipelineEndToEndEncryptionActivator,
+          InticsIntegrity encryption) {
+
+    List<MultiValueMemberMapperTransformInputTable> collect = groupedByOriginId.entrySet().stream()
             .map(entry -> {
               String originId = entry.getKey();
               List<MultiValueMemberMapperInputTable> inputRows = entry.getValue();
 
-              List<extractedSorItemList> sorItems = inputRows.stream().map(row -> extractedSorItemList.builder()
-                              .minScoreId(row.getScoreId())
-                              .paperNo(row.getPaperNo())
-                              .sorItemName(row.getSorItemName())
-                              .weightScore(row.getWeightScore())
-                              .predictedValue(processAndDecryptMultiValue(row, pipelineEndToEndEncryptionActivator, encryption))
-                              .bBox(row.getBBox())
-                              .confidenceScore(row.getScoreId())
-                              .frequency(row.getFrequency())
-                              .cummulativeScore(row.getCummulativeScore())
-                              .questionId(row.getQuestionId())
-                              .synonymId(row.getSynonymId())
-                              .tenantId(row.getTenantId())
-                              .modelRegistry(row.getModelRegistry())
-                              .rootPipelineId(row.getRootPipelineId())
-                              .batchId(row.getBatchId())
-                              .build())
+              List<extractedSorItemList> sorItems = inputRows.stream()
+                      .map(row -> {
+                        extractedSorItemList item = extractedSorItemList.builder()
+                                .minScoreId(row.getScoreId())
+                                .paperNo(row.getPaperNo())
+                                .sorItemName(row.getSorItemName())
+                                .weightScore(row.getWeightScore())
+                                .predictedValue(processAndDecryptMultiValue(row, pipelineEndToEndEncryptionActivator, encryption))
+                                .bBox(row.getBBox())
+                                .confidenceScore(row.getScoreId())
+                                .frequency(row.getFrequency())
+                                .cummulativeScore(row.getCummulativeScore())
+                                .questionId(row.getQuestionId())
+                                .synonymId(row.getSynonymId())
+                                .tenantId(row.getTenantId())
+                                .modelRegistry(row.getModelRegistry())
+                                .rootPipelineId(row.getRootPipelineId())
+                                .batchId(row.getBatchId())
+                                .build();
+
+                        return item;
+                      })
                       .collect(Collectors.toList());
 
               return MultiValueMemberMapperTransformInputTable.builder()
                       .originId(originId)
                       .sorItemList(sorItems)
                       .build();
-            });
-    return transformedList;
+            })
+            .collect(Collectors.toList());
+    return collect;
   }
 
   private String processAndDecryptMultiValue(MultiValueMemberMapperInputTable row, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {

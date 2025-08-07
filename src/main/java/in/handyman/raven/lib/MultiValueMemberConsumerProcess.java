@@ -31,7 +31,7 @@ public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerP
         this.tenantId = tenantId;
     }
 
-    public List<MultiValueMemberMapperOutputTable> process(URL endpoint, MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable) throws Exception {
+    public List<MultiValueMemberMapperOutputTable> process(URL endpoint, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTable) throws Exception {
         log.info(marker, "Starting MultiValueMemberMapper process for tenantId: {}, actionId: {}", tenantId, action.getActionId());
 
         List<MultiValueMemberMapperOutputTable> finalOutput = new ArrayList<>();
@@ -45,11 +45,12 @@ public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerP
                     .map(String::trim)
                     .collect(Collectors.toSet());
 
-            String processedValue = evaluateMultivaluePresenceAndUniqueness(multiValueMemberMapperTransformInputTable, targetSorItems, log, marker);
-            MultiValueMemberMapperOutputTable singleRecord = outputTableCreation(multiValueMemberMapperTransformInputTable, processedValue);
+            for (MultiValueMemberMapperTransformInputTable inputTable : multiValueMemberMapperTransformInputTable) {
+                String processedValue = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log, marker);
+                MultiValueMemberMapperOutputTable singleRecord = outputTableCreation(inputTable, processedValue);
 
-            finalOutput.add(singleRecord);
-
+                finalOutput.add(singleRecord);
+            }
             log.info(marker, "Processing completed successfully for tenantId: {}, actionId: {}", tenantId, action.getActionId());
         } catch (Exception e) {
             log.error(marker, "Error processing MultiValueMemberMapper for tenantId: {}, actionId: {}.", tenantId, action.getActionId(), e);
@@ -147,5 +148,10 @@ public class MultiValueMemberConsumerProcess implements CoproProcessor.ConsumerP
                 .rootPipelineId(mmIndicatorRow.getRootPipelineId())
                 .batchId(mmIndicatorRow.getBatchId())
                 .build();
+    }
+
+    @Override
+    public List<MultiValueMemberMapperOutputTable> process(URL endpoint, MultiValueMemberMapperTransformInputTable entity) throws Exception {
+        return List.of();
     }
 }
