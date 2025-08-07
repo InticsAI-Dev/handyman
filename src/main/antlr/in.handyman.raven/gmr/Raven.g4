@@ -184,11 +184,10 @@ action:
     |mockServerTest
     |documentEyeCue
     |multivalueConcatenation
-    |contextInsertActionAudit
     |kafkaProductionResponse
     |kafkaOutboundComparison
     |multiValueMemberMapper
-
+    |pipelineEventActionAudit
     );
 
 
@@ -1454,12 +1453,6 @@ multivalueConcatenation:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
-contextInsertActionAudit:
-    'contextInsertActionAudit' 'as' name=STRING
-	'resource-conn' resourceConn=STRING
-	'using' '{'
-		querySet=STRING
-	'}' ('on-condition' condition=expression)* ;
 
 kafkaProductionResponse:
     'kafkaProductionResponse' 'as' name=STRING
@@ -1490,6 +1483,13 @@ multiValueMemberMapper:
     'batch-id' batchId=STRING
     'using' '{'
     	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+pipelineEventActionAudit:
+    'pipelineEventActionAudit' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'using' '{'
+        querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 //rules
 
