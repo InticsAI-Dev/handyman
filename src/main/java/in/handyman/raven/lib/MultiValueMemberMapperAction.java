@@ -203,13 +203,9 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
   private void executeBatchInsert(Handle handle, List<MultiValueMemberMapperOutputTable> rows) {
 
-    String sql = "INSERT INTO transit_data.voting_phase_2_19212_result (" +
-            "min_score_id, origin_id, paper_no, sor_item_name, weight_score, " +
-            "predicted_value, b_box, confidence_score, frequency, cummulative_score, " +
-            "question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id" +
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    String insertQuery = INSERT_INTO + multiValueMemberMapper.getOutputTable() + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
 
-    try (PreparedBatch batch = handle.prepareBatch(sql)) {
+    try (PreparedBatch batch = handle.prepareBatch(insertQuery)) {
       rows.forEach(row -> {
         batch.bind(0, row.getMinScoreId())
         .bind(1, row.getOriginId())
