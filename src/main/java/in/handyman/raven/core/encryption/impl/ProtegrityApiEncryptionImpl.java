@@ -1,6 +1,7 @@
 package in.handyman.raven.core.encryption.impl;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
@@ -65,6 +66,27 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
         logger.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
         return callProtegrityApi(encryptedToken, encryptionPolicy, sorItem, protegrityDecApiUrl);
+    }
+
+    @Override
+    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+        if (requestList == null || requestList.isEmpty()) {
+            //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
+            return Collections.emptyList();
+        }
+        //logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
+        return callProtegrityListApi(requestList, protegrityEncApiUrl);
+    }
+
+    @Override
+    public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+        if (requestList == null || requestList.isEmpty()) {
+            //logger.warn("Decryption skipped: encryptedToken is null or blank for sorItem: {}", sorItem);
+            return Collections.emptyList();
+        }
+
+        //logger.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
+        return callProtegrityListApi(requestList, protegrityDecApiUrl);
     }
 
     @Override
@@ -207,6 +229,86 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
             HandymanException.insertException("Error calling Protegrity API with uuid : " + uuid + " message : " + e.getMessage(), handymanException, actionExecutionAudit);
         }
         return "";
+    }
+
+    private List<EncryptionRequestClass> callProtegrityListApi(List<EncryptionRequestClass> protegrityList, String endpoint) throws HandymanException {
+        long auditId = -1;
+        String uuid = UUID.randomUUID().toString();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Insert the Protegrity audit record into your database or repository
+            auditId = REPO.insertProtegrityAuditRecord(
+                    "BATCH",
+                    getEncryptionMethod(),
+                    endpoint,
+                    actionExecutionAudit.getRootPipelineId(),
+                    actionExecutionAudit.getActionId(),
+                    Thread.currentThread().getName(),
+                    uuid
+            );
+
+            logger.info("Calling Protegrity API (BATCH) with auditId={}, uuid={}, endpoint={}, items={}",
+                    auditId, uuid, endpoint, protegrityList.size());
+
+            // Convert the entire list to JSON and send in one request
+            String jsonPayload = objectMapper.writeValueAsString(protegrityList);
+            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
+            Request request = new Request.Builder().url(endpoint).post(body).build();
+
+            try (Response response = client.newCall(request).execute()) {
+                long endTime = System.currentTimeMillis();
+                long tat = endTime - startTime;
+
+                String responseBody = response.body().string();
+
+                List<EncryptionRequestClass> encryptedValues = objectMapper.readValue(responseBody, new TypeReference<List<EncryptionRequestClass>>(){});
+
+                if (!response.isSuccessful()) {
+                    String errorMessage = String.format(
+                            "FAILURE | uuid=%s | auditId=%d | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | jsonSize=%d",
+                            uuid, auditId, endpoint, response.code(), response.message(), tat, protegrityList.size()
+                    );
+                    logger.error(errorMessage);
+                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
+                    HandymanException exception = new HandymanException(response.message());
+                    HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
+                    throw exception;
+                }
+
+                String successMessage = String.format(
+                        "SUCCESS | uuid=%s | auditId=%d | endpoint=%s | TAT=%d ms | jsonSize=%d",
+                        uuid, auditId, endpoint, tat, protegrityList.size()
+                );
+                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
+                logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms]",
+                        auditId, uuid, protegrityList.size(), tat);
+
+                // Return the list of EncryptionRequestClass objects
+                System.out.println(encryptedValues);
+                return encryptedValues;
+
+            }
+
+        } catch (IOException e) {
+            long endTime = System.currentTimeMillis();
+            long tat = endTime - startTime;
+
+            String errMsg = String.format(
+                    "EXCEPTION | uuid=%s | auditId=%d | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d",
+                    uuid, auditId, endpoint, e.getMessage(), tat, protegrityList.size()
+            );
+
+            logger.error(errMsg, e);
+            HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
+
+            if (auditId != -1) {
+                REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
+            }
+
+            HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
+            throw handymanException;
+        }
     }
 
     @Builder

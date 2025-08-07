@@ -116,16 +116,6 @@ public class AESEncryptionImpl implements InticsDataEncryptionApi {
     }
 
     @Override
-    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
-        return List.of();
-    }
-
-    @Override
-    public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
-        return List.of();
-    }
-
-    @Override
     public String getEncryptionMethod() {
         LOGGER.info("Returning encryption method: AES-256");
         return "AES-256";

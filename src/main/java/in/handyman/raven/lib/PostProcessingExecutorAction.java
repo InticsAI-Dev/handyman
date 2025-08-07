@@ -47,7 +47,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private final Marker aMarker;
 
     private List<PostProcessingExecutorInput> postProcessingExecutorInputs = new ArrayList<>();
-
+    private static final String POST_PROCESSING_THREAD_COUNT = "post.processing.thread.count";
 
     public PostProcessingExecutorAction(final ActionExecutionAudit action, final Logger log,
                                         final Object postProcessingExecutor) {
@@ -61,6 +61,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     public void execute() throws Exception {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
+        int postProcessingThreadCount = Integer.parseInt(action.getContext().getOrDefault(POST_PROCESSING_THREAD_COUNT, "10"));
 
         String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
@@ -89,7 +90,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
             }
         });
 
-        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log);
+        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log,postProcessingThreadCount);
         log.info("Starting the post processing for row wise details");
         postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
         log.info("Completed the post processing for row wise details");
