@@ -285,8 +285,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                         auditId, uuid, protegrityList.size(), tat);
 
                 // Return the list of EncryptionRequestClass objects
-                System.out.println(encryptedValues);
-                return encryptedValues;
+            return encryptedValues;
 
             }
 
