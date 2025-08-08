@@ -1,12 +1,15 @@
     package in.handyman.raven.lib.model.documentEyeCue;
 
+    import in.handyman.raven.lambda.access.ResourceAccess;
     import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
     import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
     import com.anthem.acma.commonclient.storecontent.dto.StoreContentRequestDto;
     import com.anthem.acma.commonclient.storecontent.dto.Repository;
     import com.anthem.acma.commonclient.storecontent.logic.Acmastorecontentclient;
     import com.anthem.acma.commonclient.storecontent.logic.AcmastorecontentclientFactory;
-    import lombok.extern.slf4j.Slf4j;
+    import in.handyman.raven.lib.model.DocumentEyeCue;
+    import org.jdbi.v3.core.Jdbi;
+    import org.slf4j.Logger;
 
     import java.io.BufferedInputStream;
     import java.io.File;
@@ -15,20 +18,22 @@
     import java.util.HashMap;
     import java.util.Properties;
 
-    @Slf4j
     public class StoreContent {
+        public DocumentEyeCue documentEyeCue;
+        public Logger log;
 
         public StoreContentResponseDto execute(String filePath,
                                                String repository,
                                                String applicationId,
                                                DocumentEyeCueInputTable entity,
-                                               ActionExecutionAudit action) {
+                                               ActionExecutionAudit action,
+                                               DocumentEyeCue documentEyeCue) {
 
             StoreContentResponseDto responseDto = null;
             File file = new File(filePath);
 
             if (!file.exists() || !file.isFile()) {
-                log.error("❌ File not found: {}", filePath);
+                log.error("File not found: {}", filePath);
                 return null;
             }
 
@@ -69,7 +74,7 @@
                 if (entity != null && entity.getDocumentId() != null) {
                     additionalParams.put("contentkey", entity.getDocumentId());
                 } else {
-                    log.warn("⚠️ documentId not provided; contentkey will be empty");
+                    log.warn("documentId not provided; contentkey will be empty");
                     additionalParams.put("contentkey", "");
                 }
                 additionalParams.put("contentkeytype", "DCN");
@@ -94,17 +99,53 @@
 
                 // 8️⃣ Log response
                 if (responseDto != null) {
-                    log.info("✅ Upload Complete - Status: {}", responseDto.getStatus());
-                    log.info("   Content ID: {}", responseDto.getContentID());
-                    log.info("   Message: {}", responseDto.getMessage());
-                } else {
-                    log.warn("⚠️ Null response from StoreContent client.");
+                    log.info("Upload Complete - Status: {}", responseDto.getStatus());
+                    log.info("Content ID: {}", responseDto.getContentID());
+                    log.info("Message: {}", responseDto.getMessage());
+
+                    saveStoreContentAudit(entity, filePath, responseDto, documentEyeCue);
+                }else {
+                    log.warn("Null response from StoreContent client.");
                 }
 
             } catch (Exception e) {
-                log.error("❌ Error while uploading to StoreContent", e);
+                log.error("Error while uploading to StoreContent", e);
             }
 
             return responseDto;
         }
+
+        private void saveStoreContentAudit(DocumentEyeCueInputTable entity,
+                                           String filePath,
+                                           StoreContentResponseDto responseDto,
+                                           DocumentEyeCue documentEyeCue) {
+            String sql = "INSERT INTO doc_eyecue.storecontent_upload_audit " +
+                    "(origin_id, document_id, group_id, tenant_id, processed_file_path, " +
+                    "storecontent_status, storecontent_message, storecontent_content_id, " +
+                    "created_on, process_id, batch_id, last_updated_on, endpoint) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, now(), ?)";
+
+            try {
+                final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(documentEyeCue.getResourceConn());
+
+                jdbi.useHandle(handle -> handle.execute(sql,
+                        entity.getOriginId(),
+                        entity.getDocumentId(),
+                        entity.getGroupId(),
+                        entity.getTenantId(),
+                        filePath,
+                        responseDto.getStatus(),
+                        responseDto.getMessage(),
+                        responseDto.getContentID(),
+                        entity.getProcessId(),
+                        entity.getBatchId(),
+                        documentEyeCue.getEndpoint()
+                ));
+
+                log.info("StoreContent upload audit inserted for origin_id {}", entity.getOriginId());
+            } catch (Exception e) {
+                log.error("Failed to insert StoreContent upload audit for origin_id {}", entity.getOriginId(), e);
+            }
+        }
+
     }

@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.documentEyeCue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -13,20 +14,29 @@ public class BearerTokenProvider {
 
     public static String fetchBearerToken(ActionExecutionAudit action) {
         try {
-            String tokenUrl = action.getContext().get("apigee.token.url");
-            String clientId = action.getContext().get("apigee.client.id");
-            String clientSecret = action.getContext().get("apigee.client.secret");
+            if (action == null || action.getContext() == null) {
+                log.error("ActionExecutionAudit or its context is null – cannot fetch bearer token");
+                return "";
+            }
 
-            if (tokenUrl == null || clientId == null || clientSecret == null) {
+            String tokenUrl = action.getContext().get("apigee.token.url");
+            String clientIdEnc = action.getContext().get("apigee.client.id");
+            String clientSecretEnc = action.getContext().get("apigee.client.secret");
+
+            if (tokenUrl == null || clientIdEnc == null || clientSecretEnc == null) {
                 log.error("Missing Apigee token configuration in ActionExecutionAudit context");
                 return "";
             }
+
+            String clientId = ConfigEncryptionUtils.fromEnv().decryptProperty(clientIdEnc);
+            String clientSecret = ConfigEncryptionUtils.fromEnv().decryptProperty(clientSecretEnc);
 
             String credentials = Credentials.basic(clientId, clientSecret);
 
             Request request = new Request.Builder()
                     .url(tokenUrl)
-                    .post(RequestBody.create("grant_type=client_credentials",
+                    .post(RequestBody.create(
+                            "grant_type=client_credentials",
                             MediaType.parse("application/x-www-form-urlencoded")))
                     .header("Authorization", credentials)
                     .header("Content-Type", "application/x-www-form-urlencoded")
@@ -37,7 +47,8 @@ public class BearerTokenProvider {
                     log.error("Failed to fetch bearer token: HTTP {} - {}", response.code(), response.message());
                     return "";
                 }
-                String body = response.body().string();
+
+                String body = response.body() != null ? response.body().string() : "";
                 JsonNode json = new ObjectMapper().readTree(body);
                 return json.has("access_token") ? json.get("access_token").asText() : "";
             }

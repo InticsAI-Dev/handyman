@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.documentEyeCue;
 
+import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.EncryptionConstants;
@@ -9,7 +10,6 @@ import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.UploadStoreContentAction;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 
@@ -177,7 +177,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                         : outputFilePath;
             }
 
-            new UploadStoreContentAction(action, entity, outputFilePath).execute();
+            uploadToStoreContent(outputFilePath, entity);
 
             DocumentEyeCueOutputTable outputRecord = DocumentEyeCueOutputTable.builder()
                     .originId(entity.getOriginId())
@@ -204,6 +204,29 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
         } catch (JsonProcessingException e) {
             handleJsonProcessingException(entity, e, resultList, jsonInputRequest, responseBody, endpoint);
+        }
+    }
+
+    private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
+        try {
+            String repository = action.getContext().get("doc.eyecue.storecontent.repository");
+            String applicationId = action.getContext().get("doc.eyecue.storecontent.application.id");
+
+            StoreContent storeContent = new StoreContent();
+            StoreContentResponseDto response = storeContent.execute(
+                    filePath,
+                    repository,
+                    applicationId,
+                    entity,
+                    action,
+                    documentEyeCue
+            );
+
+            log.info("StoreContent upload done for document_id: {} | contentId: {}",
+                    entity.getDocumentId(), response.getContentID());
+        } catch (Exception e) {
+            log.error("StoreContent upload failed for document_id {}: {}",
+                    entity.getDocumentId(), e.getMessage(), e);
         }
     }
 

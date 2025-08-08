@@ -1,7 +1,7 @@
 package in.handyman.raven.lib.model.documentEyeCue;
 
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.core.encryption.SecurityEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,16 +13,17 @@ public class ApiKeyProvider {
             log.warn("ActionExecutionAudit is null – cannot fetch API key");
             return "";
         }
+
         String encryptedApiKey = action.getContext().get("storecontent.api.key");
         if (encryptedApiKey == null || encryptedApiKey.isBlank()) {
             log.warn("No API key found in action context");
             return "";
         }
+
         try {
-            return SecurityEngine.getInticsIntegrityMethod(action, log)
-                    .decrypt(encryptedApiKey, "AES256", "STORECONTENT_API_KEY");
+            return ConfigEncryptionUtils.fromEnv().decryptProperty(encryptedApiKey);
         } catch (Exception e) {
-            log.error("Error decrypting API key", e);
+            log.error("Error decrypting StoreContent API key", e);
             return "";
         }
     }

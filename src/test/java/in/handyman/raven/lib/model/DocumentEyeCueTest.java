@@ -106,12 +106,14 @@ class DocumentEyeCueTest {
                 Map.entry("storecontent.streaming.url", "http://localhost:5000/stream"),
                 Map.entry("storecontent.nonstreaming.url", "http://localhost:5000/nonstream"),
                 Map.entry("storecontent.meta.SYSID", "SYSTEM_TEST_CUE"),
-        Map.entry("storecontent.meta.MEMBERCERTNUM", "MEMNUM_CUE"),
-        Map.entry("storecontent.meta.ORIGRCPTDATE", "10/28/2019"),
-        Map.entry("storecontent.meta.BATCHNAME", "BNAME_CUE"),
-        Map.entry("storecontent.meta.STATUSDATE", "10/29/2019"),
-        Map.entry("storecontent.meta.DOCUMENTTYPE", "DOCTYPE_CUE"),
-        Map.entry("storecontent.meta.SRCID", "SOURCEID")
+                Map.entry("storecontent.meta.MEMBERCERTNUM", "MEMNUM_CUE"),
+                Map.entry("storecontent.meta.ORIGRCPTDATE", "10/28/2019"),
+                Map.entry("storecontent.meta.BATCHNAME", "BNAME_CUE"),
+                Map.entry("storecontent.meta.STATUSDATE", "10/29/2019"),
+                Map.entry("storecontent.meta.DOCUMENTTYPE", "DOCTYPE_CUE"),
+                Map.entry("storecontent.meta.SRCID", "SOURCEID"),
+                Map.entry("doc.eyecue.storecontent.repository","FilenetCE"),
+                Map.entry("doc.eyecue.storecontent.application.id","CUE")
         ));
         actionExecutionAudit.setActionId(1L);
 
