@@ -96,7 +96,7 @@ public class PaperItemizerAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             PaperItemizerOutputTable.class,
                             PaperItemizerInputTable.class,
-                            jdbi, log,
+                            paperItemizer.getResourceConn(), log,
                             new PaperItemizerInputTable(), urls, action);
 
             log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);

@@ -96,7 +96,7 @@ public class MasterdataComparisonAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       MasterDataOutputTable.class,
                       MasterDataInputTable.class,
-                      jdbi, log,
+                      masterdataComparison.getResourceConn(), log,
                       new MasterDataInputTable(), urls, action);
       log.info(aMarker, "master data comparison copro Processor initialization  {}", coproProcessor);
 

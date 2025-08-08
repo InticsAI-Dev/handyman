@@ -17,7 +17,7 @@ import okhttp3.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private final OkHttpClient client;
+    private final OkHttpClient client ;
     private final String protegrityEncApiUrl;
     private final String protegrityDecApiUrl;
     private final ActionExecutionAudit actionExecutionAudit;
@@ -57,16 +57,6 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         return callProtegrityApi(inputToken, encryptionPolicy, sorItem, protegrityEncApiUrl);
     }
 
-    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
-        if (requestList == null || requestList.isEmpty()) {
-            //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
-            return Collections.emptyList();
-        }
-        //logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
-        return callProtegrityListApi(requestList, protegrityEncApiUrl);
-    }
-
-
     @Override
     public String decrypt(String encryptedToken, String encryptionPolicy, String sorItem) throws HandymanException {
         if (encryptedToken == null || encryptedToken.isBlank()) {
@@ -79,6 +69,16 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     }
 
     @Override
+    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+        if (requestList == null || requestList.isEmpty()) {
+            //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
+            return Collections.emptyList();
+        }
+        //logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
+        return callProtegrityListApi(requestList, protegrityEncApiUrl);
+    }
+
+    @Override
     public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         if (requestList == null || requestList.isEmpty()) {
             //logger.warn("Decryption skipped: encryptedToken is null or blank for sorItem: {}", sorItem);
@@ -88,7 +88,6 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         //logger.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
         return callProtegrityListApi(requestList, protegrityDecApiUrl);
     }
-
 
     @Override
     public String getEncryptionMethod() {
@@ -193,7 +192,46 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         }
     }
 
-   private List<EncryptionRequestClass> callProtegrityListApi(List<EncryptionRequestClass> protegrityList, String endpoint) throws HandymanException {
+
+
+    //TODO to increase performance call this method
+    private String callProtegrityApiList(List<EncryptionRequest> encryptionRequestLists, String endpoint) throws HandymanException {
+        UUID uuid = UUID.randomUUID();
+        try {
+            logger.info("Calling Protegrity API with uuid {} at {}", uuid, endpoint);
+
+            String jsonPayload = objectMapper.writeValueAsString(encryptionRequestLists);
+
+            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(body)
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    logger.error("Protegrity API error with uuid {} and message {} (Code: {})", uuid,
+                            response.message(), response.code());
+                    HandymanException.insertException("Protegrity API error: " + response.message(), new HandymanException(response.message()), actionExecutionAudit);
+                }
+
+                String responseBody = String.valueOf(response.body());
+
+                JsonNode jsonResponse = objectMapper.readTree(responseBody);
+                String encryptedValue = jsonResponse.get(0).get("value").asText();
+                logger.info("Protegrity API call successful with uuid {} and message : {}", uuid, response.message());
+                return encryptedValue;
+            }
+
+        } catch (IOException e) {
+            logger.error("Error calling Protegrity with uuid {} and message {}", uuid, e.getMessage(), e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error calling Protegrity API with uuid : " + uuid + " message : " + e.getMessage(), handymanException, actionExecutionAudit);
+        }
+        return "";
+    }
+
+    private List<EncryptionRequestClass> callProtegrityListApi(List<EncryptionRequestClass> protegrityList, String endpoint) throws HandymanException {
         long auditId = -1;
         String uuid = UUID.randomUUID().toString();
         long startTime = System.currentTimeMillis();
@@ -273,50 +311,12 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         }
     }
 
-
-    //TODO to increase performance call this method
-    private String callProtegrityApiList(List<EncryptionRequest> encryptionRequestLists, String endpoint) throws HandymanException {
-        UUID uuid = UUID.randomUUID();
-        try {
-            logger.info("Calling Protegrity API with uuid {} at {}", uuid, endpoint);
-
-            String jsonPayload = objectMapper.writeValueAsString(encryptionRequestLists);
-
-            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
-            Request request = new Request.Builder()
-                    .url(endpoint)
-                    .post(body)
-                    .build();
-
-            try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    logger.error("Protegrity API error with uuid {} and message {} (Code: {})", uuid,
-                            response.message(), response.code());
-                    HandymanException.insertException("Protegrity API error: " + response.message(), new HandymanException(response.message()), actionExecutionAudit);
-                }
-
-                String responseBody = String.valueOf(response.body());
-
-                JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                String encryptedValue = jsonResponse.get(0).get("value").asText();
-                logger.info("Protegrity API call successful with uuid {} and message : {}", uuid, response.message());
-                return encryptedValue;
-            }
-
-        } catch (IOException e) {
-            logger.error("Error calling Protegrity with uuid {} and message {}", uuid, e.getMessage(), e);
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Error calling Protegrity API with uuid : " + uuid + " message : " + e.getMessage(), handymanException, actionExecutionAudit);
-        }
-        return "";
-    }
-
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     @Data
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    public static class EncryptionRequest {
+    static class EncryptionRequest {
         private String policy;
         private String value;
         private String key;

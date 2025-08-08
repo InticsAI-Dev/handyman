@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class PdfToPaperItemizer {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
@@ -43,13 +47,12 @@ public class PdfToPaperItemizer {
     }
 
     public List<PaperItemizerOutputTable> paperItemizer(String filePath, String outputDir, PaperItemizerInputTable entity) {
-
+        long startTime = System.currentTimeMillis();
         final String IMAGE_TYPE = action.getContext().get(PAPER_ITEMIZER_IMAGE_TYPE_RGB);
         List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
 
         File targetDir = readDirectory(outputDir, log);
 
-        // getting file extension
         String fileExtension = getFileExtension(new File(filePath)).toLowerCase();
         log.info("The input file has Origin ID {} and file extension {}", entity.getOriginId(), fileExtension);
 
@@ -58,8 +61,8 @@ public class PdfToPaperItemizer {
                 int dpi = Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_FILE_DPI));
                 String fileFormat = action.getContext().get(PAPER_ITEMIZER_FILE_FORMAT);
                 boolean resizeActive = Objects.equals("true", action.getContext().get("paper.itemization.resize.activator"));
+                ImageType imageType = Objects.equals("true", IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
 
-                PDFRenderer pdfRenderer = new PDFRenderer(document);
                 String originalFileName = new File(filePath).getName();
                 String fileNameWithoutExtension = removeExtension(originalFileName);
 
@@ -68,97 +71,96 @@ public class PdfToPaperItemizer {
                 targetDir = new File(String.valueOf(combinedtargetDirPath));
                 boolean created = targetDir.mkdirs();
                 if (!targetDir.exists() && !targetDir.mkdirs()) {
-                    new HandymanException("Failed to create output directory: " + targetDir);
+                    throw new HandymanException("Failed to create output directory: " + targetDir);
                 }
 
                 log.info("Status for directory creation : {} for file {}", created ? "Successful" : "Failed", fileNameWithoutExtension);
 
-                int pageCount = getPageNo(document.getNumberOfPages());
-
-                File outputFile = null;
-                Integer pageNumber = 0;
-                ImageType imageType = Objects.equals("true", IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
-
-                List<PaperItemizerOutputTable> paperItemizerOutputTables = new ArrayList<>();
-                for (int page = 0; page < pageCount; page++) {
-                    BufferedImage image = pdfRenderer.renderImageWithDPI(page, dpi, imageType);
-                    if (resizeActive) {
-                        int resizeWidth = Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_WIDTH));
-                        int resizeHeight = Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_HEIGHT));
-
-                        log.info("Resizing the image to width: {}, height: {}", resizeWidth, resizeHeight);
-                        image = resizeImage(image, resizeWidth, resizeHeight);
-                        log.info("Resized the page {} for OriginId: {}", page, entity.getOriginId());
-                    }
-                    // Save image
-                    String pageFileName = String.format("%s_%d.%s", fileNameWithoutExtension, page, fileFormat);
-                    outputFile = new File(targetDir, pageFileName);
-                    pageNumber = page + 1;
-                    ImageIO.write(image, fileFormat, outputFile);
-                    log.info("Page {} successfully saved for document ID: {}", page, entity.getOriginId());
-                    try {
-                        paperItemizerOutputTables.add(PaperItemizerOutputTable
-                                .builder()
-                                .processedFilePath(String.valueOf(outputFile))
-                                .originId(entity.getOriginId())
-                                .groupId(entity.getGroupId())
-                                .templateId(entity.getTemplateId())
-                                .tenantId(entity.getTenantId())
-                                .processId(entity.getProcessId())
-                                .paperNo(Long.valueOf(pageNumber))
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .stage(PROCESS_NAME)
-                                .message("Paper Itemize macro completed")
-                                .createdOn(CreateTimeStamp.currentTimestamp())
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .rootPipelineId(entity.getRootPipelineId())
-                                .modelName(MODEL_NAME)
-                                .modelVersion(VERSION)
-                                .batchId(entity.getBatchId())
-                                .request("")
-                                .response("")
-                                .endpoint("")
-                                .build());
-                    } catch (Exception exception) {
-                        parentObj.add(
-                                PaperItemizerOutputTable
-                                        .builder()
-                                        .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                                        .groupId(entity.getGroupId())
-                                        .processId(entity.getProcessId())
-                                        .templateId(entity.getTemplateId())
-                                        .tenantId(entity.getTenantId())
-                                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                                        .stage(PROCESS_NAME)
-                                        .message(exception.getMessage())
-                                        .createdOn(entity.getCreatedOn())
-                                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                        .rootPipelineId(entity.getRootPipelineId())
-                                        .batchId(entity.getBatchId())
-                                        .request("")
-                                        .response("Error In getting Response from copro")
-                                        .endpoint("")
-                                        .build());
-                        HandymanException handymanException = new HandymanException(exception);
-                        HandymanException.insertException("Paper Itemize consumer failed for origin Id " + entity.getOriginId(), handymanException, action);
-                        log.error("The Exception occurred in request {}", exception.getMessage(), exception);
-                    }
-                    log.info("Itemized papers successfully created in folder: {} ", targetDir.getAbsolutePath());
-
-                }
+                int pageCount = document.getNumberOfPages();
                 document.close();
-                parentObj.addAll(paperItemizerOutputTables);
+
+                int resizeWidth = resizeActive ? Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_WIDTH)) : 0;
+                int resizeHeight = resizeActive ? Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_HEIGHT)) : 0;
+
+                ExecutorService executor = Executors.newFixedThreadPool(Integer.parseInt(action.getContext().getOrDefault("paper.itemizer.consumer.API.count","1")));
+                List<Future<PaperItemizerOutputTable>> futures = new ArrayList<>();
+                final File tempTargetDir = targetDir;
+
+                for (int page = 0; page < pageCount; page++) {
+                    final int currentPage = page;
+                    futures.add(executor.submit(() -> {
+                        long startPageTime = System.currentTimeMillis();
+                        try (PDDocument threadDoc = PDDocument.load(new File(filePath))) {
+                            PDFRenderer renderer = new PDFRenderer(threadDoc);
+                            BufferedImage image = renderer.renderImageWithDPI(currentPage, dpi, imageType);
+
+                            if (resizeActive) {
+                                log.info("Resizing page {}", currentPage);
+                                image = resizeImage(image, resizeWidth, resizeHeight);
+                            }
+
+                            String pageFileName = String.format("%s_%d.%s", fileNameWithoutExtension, currentPage, fileFormat);
+                            File outputFile = new File(tempTargetDir, pageFileName);
+                            ImageIO.write(image, fileFormat, outputFile);
+
+                            long endPageTime = System.currentTimeMillis();
+                            log.info("Page {} processed in {} ms", currentPage, (endPageTime - startPageTime));
+
+                            return PaperItemizerOutputTable.builder()
+                                    .processedFilePath(outputFile.toString())
+                                    .originId(entity.getOriginId())
+                                    .groupId(entity.getGroupId())
+                                    .templateId(entity.getTemplateId())
+                                    .tenantId(entity.getTenantId())
+                                    .processId(entity.getProcessId())
+                                    .paperNo((long) currentPage + 1)
+                                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                    .stage(PROCESS_NAME)
+                                    .message("Paper Itemize macro completed")
+                                    .createdOn(CreateTimeStamp.currentTimestamp())
+                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                    .rootPipelineId(entity.getRootPipelineId())
+                                    .modelName(MODEL_NAME)
+                                    .modelVersion(VERSION)
+                                    .batchId(entity.getBatchId())
+                                    .request("")
+                                    .response("")
+                                    .endpoint("")
+                                    .build();
+                        } catch (Exception e) {
+                            log.error("Error processing page {}: {}", currentPage, e.getMessage(), e);
+                            throw e;
+                        }
+                    }));
+                }
+
+                for (Future<PaperItemizerOutputTable> future : futures) {
+                    try {
+                        parentObj.add(future.get());
+                    } catch (Exception e) {
+                        log.error("Failed to process a page future: {}", e.getMessage(), e);
+                    }
+                }
+
+                executor.shutdown();
+                executor.awaitTermination(1, TimeUnit.MINUTES);
+
+                long endTime = System.currentTimeMillis();
+                System.out.println("Total elapsed time for paperItemizer: {} ms"+ (endTime - startTime));
+                log.info("Total elapsed time for paperItemizer: {} ms", (endTime - startTime));
+
             } catch (Exception e) {
-                log.error("Error during paper itemization: {}", e.getMessage());
+                log.error("Error during paper itemization: {}", e.getMessage(), e);
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("paper itemization consumer failed for origin Id " + entity.getOriginId(), handymanException, action);
-
             }
         } else {
-            new HandymanException("Unsupported file type: " + fileExtension);
+            throw new HandymanException("Unsupported file type: " + fileExtension);
         }
+
         return parentObj;
     }
+
 
     private int getPageNo(int originalPaperCount) {
         String extractionPaperLimitActivator = action.getContext().get(EXTRACTION_PAPER_LIMIT_ACTIVATOR);

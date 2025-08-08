@@ -105,7 +105,6 @@ public class AESEncryptionImpl implements InticsDataEncryptionApi {
             throw new HandymanException("Error during AES-256 decryption.", e);
         }
     }
-
     @Override
     public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         return List.of();

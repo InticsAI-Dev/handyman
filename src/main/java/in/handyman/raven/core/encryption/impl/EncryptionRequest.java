@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class EncryptionRequestClass {
+public class EncryptionRequest {
     private String policy;
     private String value;
     private String key;

@@ -46,7 +46,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private final Marker aMarker;
 
     private List<PostProcessingExecutorInput> postProcessingExecutorInputs = new ArrayList<>();
-
+    private static final String POST_PROCESSING_THREAD_COUNT = "post.processing.thread.count";
 
     public PostProcessingExecutorAction(final ActionExecutionAudit action, final Logger log,
                                         final Object postProcessingExecutor) {
@@ -60,6 +60,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     public void execute() throws Exception {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
+        int postProcessingThreadCount = Integer.parseInt(action.getContext().getOrDefault(POST_PROCESSING_THREAD_COUNT, "10"));
 
         String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
@@ -83,7 +84,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         });
         log.info("Post processing Executor action total rows returned from the query {}",postProcessingExecutorInputs.size());
         List<EncryptionRequestClass> decryptRequestList = new ArrayList<>();
-       // Map<String, PostProcessingExecutorInput> decryptMapping = new HashMap<>();
+        // Map<String, PostProcessingExecutorInput> decryptMapping = new HashMap<>();
 
         for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
             if (pipelineEndToEndEncryptionActivator && Objects.equals(input.getIsEncrypted(), "t")) {
@@ -107,7 +108,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
             }
         }
 
-        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log);
+        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log,postProcessingThreadCount);
         log.info("Starting the post processing for row wise details");
         postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
         log.info("Completed the post processing for row wise details");
@@ -151,7 +152,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         List<EncryptionRequestClass> encryptRequestList = new ArrayList<>();
         Map<String, PostProcessingExecutorInput> singleValueMap = new HashMap<>();
         Map<String, List<String>> multiValueTempStore = new HashMap<>();
-        Map<String, Integer> multiValueSizeMap = new HashMap<>();
+
 
 // Step 1: Build encryption request list
         for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
@@ -163,7 +164,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 if ("multi_value".equals(input.getLineItemType())) {
                     log.debug("Processing multi_value lineItemType for SOR item: {}", sorItemName);
                     String[] values = extractedValue.split(",");
-                    multiValueSizeMap.put(sorItemName, values.length); // keep count for reconstruction
+
                     for (int i = 0; i < values.length; i++) {
                         String trimmed = values[i].trim();
                         String key = sorItemName + ":" + i;

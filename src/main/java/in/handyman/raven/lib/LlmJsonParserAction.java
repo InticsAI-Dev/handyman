@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
+import in.handyman.raven.core.encryption.impl.ProtegrityApiEncryptionImpl;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -27,6 +28,7 @@ import java.sql.Types;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
@@ -56,140 +58,140 @@ public class LlmJsonParserAction implements IActionExecution {
 
     }
 
-//    @Override
-//    public void executeLegacy() {
-//        try {
-//            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
-//            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-//            log.info(aMarker, "Llm json parser action {} has been started ", llmJsonParser.getName());
-//
-//
-//            final String selectQuery = llmJsonParser.getQuerySet();
-//            log.info(aMarker, "Llm json parser action {} has been started ", selectQuery);
-//            List<LlmJsonQueryInputTable> inputTableList = jdbi.withHandle(handle -> handle.createQuery(selectQuery)
-//                    .mapToBean(LlmJsonQueryInputTable.class)
-//                    .list());
-//
-//            log.info("Query set executed and returned entities size: {}", inputTableList.size());
-//
-//            ObjectMapper objectMapper = new ObjectMapper();
-//
-//            jdbi.useTransaction(handle -> {
-//                for (LlmJsonQueryInputTable inputTable : inputTableList) {
-//                    String boundingBox = "";
-//                    String extractedContent = inputTable.getResponse();
-//                    String jsonResponse;
-//
-//                    String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-//                    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
-//
-//                    if (Objects.equals(encryptOutputSorItem, "true")) {
-//                        jsonResponse = encryption.decrypt(extractedContent, "AES256", "LLM_OUTPUT_JSON");
-//                    } else {
-//                        jsonResponse = extractedContent;
-//                    }
-//
-//                    List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(inputTable.getSorMetaDetail(), new TypeReference<>() {
-//                    });
-//                    JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
-//                    if (stringObjectMap != null && stringObjectMap.isObject()) {
-//
-//                        final String insertQueryXenon = buildInsertQueryXenon();
-//
-//
-//                        List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
-//                        log.info(aMarker, "Llm json parser insert query {}", insertQueryXenon);
-//
-//                        parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
-//
-//
-//                        List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
-//                        for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
-//
-//                            getInsertIntoXenonResultTable(handle, inputTable, parsedResponse, insertQueryXenon);
-//
-//                            log.info("\n insert processing for process {} :\n", inputTable.getProcess());
-//
-//                        }
-//                    } else if (stringObjectMap != null && stringObjectMap.isArray()) {
-//
-//                        log.info("Processing an array-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
-//
-//                        final String insertQueryKrypton = buildInsertQueryKrypton();
-//
-//                        List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = null;
-//                        try {
-//                            log.info(aMarker, "LLM json parser insert query {}", insertQueryKrypton);
-//                            innerParsedResponsesKrypton = new ArrayList<>();
-//
-//                            innerParsedResponsesKrypton = objectMapper.readValue(
-//                                    stringObjectMap.traverse(),
-//                                    new TypeReference<List<LlmJsonParserKvpKrypton>>() {
-//                                    }
-//                            );
-//                        } catch (Exception e) {
-//                            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
-//                            HandymanException handymanException = new HandymanException(e);
-//                            HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + inputTable.getOriginId() + " paper No " + inputTable.getPaperNo(), handymanException, action);
-//
-//                        }
-//
-//
-//                        for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
-//
-//                            boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
-//                            log.info("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
-//                            boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
-//
-//                            boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
-//                            log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
-//
-//                            double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
-//                            LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
-//
-//                            LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-//                                    .createdOn(String.valueOf(inputTable.getCreatedOn()))
-//                                    .tenantId(inputTable.getTenantId())
-//                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-//                                    .lastUpdatedUserId(inputTable.getTenantId())
-//                                    .confidenceScore(confidenceScore)
-//                                    .sorItemName(parsedEncryptResponse.getKey())
-//                                    .answer(parsedEncryptResponse.getValue())
-//                                    .boundingBox(boundingBox)
-//                                    .paperNo(inputTable.getPaperNo())
-//                                    .originId(inputTable.getOriginId())
-//                                    .groupId(inputTable.getGroupId())
-//                                    .rootPipelineId(inputTable.getRootPipelineId())
-//                                    .batchId(inputTable.getBatchId())
-//                                    .modelRegistry(inputTable.getModelRegistry())
-//                                    .extractedImageUnit(inputTable.getExtractedImageUnit())
-//                                    .imageDpi(inputTable.getImageDpi())
-//                                    .imageHeight(inputTable.getImageHeight())
-//                                    .imageWidth(inputTable.getImageWidth())
-//                                    .sorContainerId(inputTable.getSorContainerId())
-//                                    .sorItemLabel(parsedEncryptResponse.getLabel())
-//                                    .build();
-//
-//                            getInsertIntoKryptonResultTable(handle, insertQueryKrypton, insertData);
-//
-//                        }
-//
-//                    }
-//
-//                }
-//            });
-//
-//
-//            log.info(aMarker, " Llm json parser action has been completed {}  ", llmJsonParser.getName());
-//        } catch (Exception e) {
-//            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
-//            HandymanException handymanException = new HandymanException(e);
-//            HandymanException.insertException("Error in execute method for Llm json parser action", handymanException, action);
-//
-//        }
-//    }
-
+    @Override
     public void execute() {
+        try {
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(llmJsonParser.getResourceConn());
+            jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+            log.info(aMarker, "Llm json parser action {} has been started ", llmJsonParser.getName());
+
+
+            final String selectQuery = llmJsonParser.getQuerySet();
+            log.info(aMarker, "Llm json parser action {} has been started ", selectQuery);
+            List<LlmJsonQueryInputTable> inputTableList = jdbi.withHandle(handle -> handle.createQuery(selectQuery)
+                    .mapToBean(LlmJsonQueryInputTable.class)
+                    .list());
+
+            log.info("Query set executed and returned entities size: {}", inputTableList.size());
+
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            jdbi.useTransaction(handle -> {
+                for (LlmJsonQueryInputTable inputTable : inputTableList) {
+                    String boundingBox = "";
+                    String extractedContent = inputTable.getResponse();
+                    String jsonResponse;
+
+                    String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
+                    InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
+
+                    if (Objects.equals(encryptOutputSorItem, "true")) {
+                        jsonResponse = encryption.decrypt(extractedContent, "AES256", "LLM_OUTPUT_JSON");
+                    } else {
+                        jsonResponse = extractedContent;
+                    }
+
+                    List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(inputTable.getSorMetaDetail(), new TypeReference<>() {
+                    });
+                    JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
+                    if (stringObjectMap != null && stringObjectMap.isObject()) {
+
+                        final String insertQueryXenon = buildInsertQueryXenon();
+
+
+                        List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
+                        log.info(aMarker, "Llm json parser insert query {}", insertQueryXenon);
+
+                        parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
+
+
+                        List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
+                        for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
+
+                            getInsertIntoXenonResultTable(handle, inputTable, parsedResponse, insertQueryXenon);
+
+                            log.info("\n insert processing for process {} :\n", inputTable.getProcess());
+
+                        }
+                    } else if (stringObjectMap != null && stringObjectMap.isArray()) {
+
+                        log.info("Processing an array-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
+
+                        final String insertQueryKrypton = buildInsertQueryKrypton();
+
+                        List<LlmJsonParserKvpKrypton> innerParsedResponsesKrypton = null;
+                        try {
+                            log.info(aMarker, "LLM json parser insert query {}", insertQueryKrypton);
+                            innerParsedResponsesKrypton = new ArrayList<>();
+
+                            innerParsedResponsesKrypton = objectMapper.readValue(
+                                    stringObjectMap.traverse(),
+                                    new TypeReference<List<LlmJsonParserKvpKrypton>>() {
+                                    }
+                            );
+                        } catch (Exception e) {
+                            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + inputTable.getOriginId() + " paper No " + inputTable.getPaperNo(), handymanException, action);
+
+                        }
+
+
+                        for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
+
+                            boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
+                            log.info("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
+                            boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
+
+                            boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
+                            log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
+
+                            double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
+                            LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
+
+                            LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
+                                    .createdOn(String.valueOf(inputTable.getCreatedOn()))
+                                    .tenantId(inputTable.getTenantId())
+                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                    .lastUpdatedUserId(inputTable.getTenantId())
+                                    .confidenceScore(confidenceScore)
+                                    .sorItemName(parsedEncryptResponse.getKey())
+                                    .answer(parsedEncryptResponse.getValue())
+                                    .boundingBox(boundingBox)
+                                    .paperNo(inputTable.getPaperNo())
+                                    .originId(inputTable.getOriginId())
+                                    .groupId(inputTable.getGroupId())
+                                    .rootPipelineId(inputTable.getRootPipelineId())
+                                    .batchId(inputTable.getBatchId())
+                                    .modelRegistry(inputTable.getModelRegistry())
+                                    .extractedImageUnit(inputTable.getExtractedImageUnit())
+                                    .imageDpi(inputTable.getImageDpi())
+                                    .imageHeight(inputTable.getImageHeight())
+                                    .imageWidth(inputTable.getImageWidth())
+                                    .sorContainerId(inputTable.getSorContainerId())
+                                    .sorItemLabel(parsedEncryptResponse.getLabel())
+                                    .build();
+
+                            getInsertIntoKryptonResultTable(handle, insertQueryKrypton, insertData);
+
+                        }
+
+                    }
+
+                }
+            });
+
+
+            log.info(aMarker, " Llm json parser action has been completed {}  ", llmJsonParser.getName());
+        } catch (Exception e) {
+            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in execute method for Llm json parser action", handymanException, action);
+
+        }
+    }
+
+    public void executeBatch(ProtegrityApiEncryptionImpl protegrityApiEncryption) {
 
         {
             try {

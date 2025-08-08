@@ -10,5 +10,6 @@ public interface InticsDataEncryptionApi {
     public String decrypt(String encryptedToken, String encryptionPolicy, String sorItem) throws HandymanException;
     List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException;
     List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException;
+
     public String getEncryptionMethod();
 }
