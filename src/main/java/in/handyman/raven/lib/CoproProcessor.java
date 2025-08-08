@@ -6,6 +6,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
 import in.handyman.raven.lib.interfaces.coproprocessor.InboundBatchDataConsumer;
+import in.handyman.raven.lib.model.common.copro.CoproExecutorFactory;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
 public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     private final BlockingQueue<I> queue;
-    private ExecutorService executorService;
+    private final ExecutorService executorService;
 
     private final Class<O> outputTargetClass;
     private final Class<I> inputTargetClass;
@@ -88,7 +89,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
-            final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> (Integer) (counter.getAndIncrement() / readBatchSize)));
+            final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
             logger.info("Total no of rows created {}", counter.get());
             executorService.submit(() -> {
                 try {
@@ -136,22 +137,26 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
-                              final ConsumerProcess<I, O> callable) {
+                              final ConsumerProcess<I, O> callable, boolean virtualThreadConcurrencyLimit) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
-        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
-            executorService = Executors.newFixedThreadPool(consumerCount);
-            logger.info("Copro processor created with fixed thread pool of size {}", consumerCount);
-        } else {
-            executorService = Executors.newWorkStealingPool();
-            logger.info("Copro processor created with work stealing pool");
-        }
-        for (int consumer = 0; consumer < consumerCount; consumer++) {
-            executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
-                    startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbiResourceName, logger));
+        String coproThreadCreatorType = actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING");
+        CoproExecutorFactory.CoproExecutor executorWrapper =
+                CoproExecutorFactory.createExecutor(
+                        CoproExecutorFactory.ThreadType.valueOf(coproThreadCreatorType.toUpperCase()),
+                        consumerCount,
+                        virtualThreadConcurrencyLimit,
+                        logger
+                );
 
-            logger.info("Consumer {} submitted the process", consumer);
+        for (int i = 0; i < consumerCount; i++) {
+            executorWrapper.submit(() -> new InboundBatchDataConsumer<>(
+                    insertSql, writeBatchSize, callable, tPredicate,
+                    startTime, countDownLatch, queue, nodeCount,
+                    nodeSize, actionExecutionAudit, nodes,
+                    jdbiResourceName, logger
+            ), logger, i);
         }
         try {
             countDownLatch.await();

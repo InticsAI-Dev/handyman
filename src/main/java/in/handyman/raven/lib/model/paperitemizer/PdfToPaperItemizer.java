@@ -19,11 +19,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 public class PdfToPaperItemizer {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
@@ -36,7 +34,7 @@ public class PdfToPaperItemizer {
     static final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
     static final String MODEL_NAME = "APP";
     static final String VERSION = "1";
-    public final String EXTENSION_PDF = "pdf";
+    public static final String EXTENSION_PDF = "pdf";
     private final ActionExecutionAudit action;
     private final Logger log;
 
@@ -77,77 +75,81 @@ public class PdfToPaperItemizer {
                 log.info("Status for directory creation : {} for file {}", created ? "Successful" : "Failed", fileNameWithoutExtension);
 
                 int pageCount = document.getNumberOfPages();
-                document.close();
 
                 int resizeWidth = resizeActive ? Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_WIDTH)) : 0;
                 int resizeHeight = resizeActive ? Integer.parseInt(action.getContext().get(PAPER_ITEMIZER_RESIZE_HEIGHT)) : 0;
 
-                ExecutorService executor = Executors.newFixedThreadPool(Integer.parseInt(action.getContext().getOrDefault("paper.itemizer.consumer.API.count","1")));
-                List<Future<PaperItemizerOutputTable>> futures = new ArrayList<>();
-                final File tempTargetDir = targetDir;
+                try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                    List<Future<PaperItemizerOutputTable>> futures = new ArrayList<>();
+                    final File tempTargetDir = targetDir;
 
-                for (int page = 0; page < pageCount; page++) {
-                    final int currentPage = page;
-                    futures.add(executor.submit(() -> {
-                        long startPageTime = System.currentTimeMillis();
-                        try (PDDocument threadDoc = PDDocument.load(new File(filePath))) {
-                            PDFRenderer renderer = new PDFRenderer(threadDoc);
-                            BufferedImage image = renderer.renderImageWithDPI(currentPage, dpi, imageType);
+                    for (int page = 0; page < pageCount; page++) {
+                        final int currentPage = page;
+                        futures.add(executor.submit(() -> {
+                            long startPageTime = System.currentTimeMillis();
+                            try (PDDocument threadDoc = PDDocument.load(new File(filePath))) {
+                                PDFRenderer renderer = new PDFRenderer(threadDoc);
+                                BufferedImage image = renderer.renderImageWithDPI(currentPage, dpi, imageType);
 
-                            if (resizeActive) {
-                                log.info("Resizing page {}", currentPage);
-                                image = resizeImage(image, resizeWidth, resizeHeight);
+                                if (resizeActive) {
+                                    log.info("Resizing page {}", currentPage);
+                                    image = resizeImage(image, resizeWidth, resizeHeight);
+                                }
+
+                                String pageFileName = String.format("%s_%d.%s", fileNameWithoutExtension, currentPage, fileFormat);
+                                File outputFile = new File(tempTargetDir, pageFileName);
+                                ImageIO.write(image, fileFormat, outputFile);
+
+                                long endPageTime = System.currentTimeMillis();
+                                log.info("Page {} processed in {} ms", currentPage, (endPageTime - startPageTime));
+
+                                return PaperItemizerOutputTable.builder()
+                                        .processedFilePath(outputFile.toString())
+                                        .originId(entity.getOriginId())
+                                        .groupId(entity.getGroupId())
+                                        .templateId(entity.getTemplateId())
+                                        .tenantId(entity.getTenantId())
+                                        .processId(entity.getProcessId())
+                                        .paperNo((long) currentPage + 1)
+                                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                        .stage(PROCESS_NAME)
+                                        .message("Paper Itemize macro completed")
+                                        .createdOn(CreateTimeStamp.currentTimestamp())
+                                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                        .rootPipelineId(entity.getRootPipelineId())
+                                        .modelName(MODEL_NAME)
+                                        .modelVersion(VERSION)
+                                        .batchId(entity.getBatchId())
+                                        .request("")
+                                        .response("")
+                                        .endpoint("")
+                                        .build();
+                            } catch (Exception e) {
+                                log.error("Error processing page {}: {}", currentPage, e.getMessage(), e);
+                                throw e;
                             }
-
-                            String pageFileName = String.format("%s_%d.%s", fileNameWithoutExtension, currentPage, fileFormat);
-                            File outputFile = new File(tempTargetDir, pageFileName);
-                            ImageIO.write(image, fileFormat, outputFile);
-
-                            long endPageTime = System.currentTimeMillis();
-                            log.info("Page {} processed in {} ms", currentPage, (endPageTime - startPageTime));
-
-                            return PaperItemizerOutputTable.builder()
-                                    .processedFilePath(outputFile.toString())
-                                    .originId(entity.getOriginId())
-                                    .groupId(entity.getGroupId())
-                                    .templateId(entity.getTemplateId())
-                                    .tenantId(entity.getTenantId())
-                                    .processId(entity.getProcessId())
-                                    .paperNo((long) currentPage + 1)
-                                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                    .stage(PROCESS_NAME)
-                                    .message("Paper Itemize macro completed")
-                                    .createdOn(CreateTimeStamp.currentTimestamp())
-                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                    .rootPipelineId(entity.getRootPipelineId())
-                                    .modelName(MODEL_NAME)
-                                    .modelVersion(VERSION)
-                                    .batchId(entity.getBatchId())
-                                    .request("")
-                                    .response("")
-                                    .endpoint("")
-                                    .build();
-                        } catch (Exception e) {
-                            log.error("Error processing page {}: {}", currentPage, e.getMessage(), e);
-                            throw e;
-                        }
-                    }));
-                }
-
-                for (Future<PaperItemizerOutputTable> future : futures) {
-                    try {
-                        parentObj.add(future.get());
-                    } catch (Exception e) {
-                        log.error("Failed to process a page future: {}", e.getMessage(), e);
+                        }));
                     }
-                }
 
-                executor.shutdown();
-                executor.awaitTermination(1, TimeUnit.MINUTES);
+                    for (Future<PaperItemizerOutputTable> future : futures) {
+                        try {
+                            parentObj.add(future.get());
+                        } catch (Exception e) {
+                            log.error("Failed to process a page future: {}", e.getMessage(), e);
+                        }
+                    }
+
+                } catch (Exception e) {
+                    log.error("Unexpected error during concurrent processing: {}", e.getMessage(), e);
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("paper itemization consumer failed for origin Id in concurrency dpi conversion block" + entity.getOriginId(), handymanException, action);
+
+                }
 
                 long endTime = System.currentTimeMillis();
-                System.out.println("Total elapsed time for paperItemizer: {} ms"+ (endTime - startTime));
-                log.info("Total elapsed time for paperItemizer: {} ms", (endTime - startTime));
+                long executionTime = endTime - startTime;
+                log.info("Total elapsed time for paperItemizer: {} ms" , executionTime);
+                log.info("Total elapsed time for paperItemizer: {} ms", executionTime);
 
             } catch (Exception e) {
                 log.error("Error during paper itemization: {}", e.getMessage(), e);

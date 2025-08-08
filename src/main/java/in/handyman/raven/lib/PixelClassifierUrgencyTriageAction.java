@@ -80,7 +80,7 @@ public class PixelClassifierUrgencyTriageAction implements IActionExecution {
                       new HwUrgencyTriageInputTable(), urls, action);
       coproProcessor.startProducer(pixelClassifierUrgencyTriage.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
       Thread.sleep(1000);
-      coproProcessor.startConsumer(insertQuery, 1, 1, new HwUrgencyTriageConsumerProcess(log, aMarker, action));
+      coproProcessor.startConsumer(insertQuery, 1, 1, new HwUrgencyTriageConsumerProcess(log, aMarker, action), true);
       log.info(aMarker, " Handwritten Urgency Triage has been completed {}  ", pixelClassifierUrgencyTriage.getName());
     } catch (Exception e) {
       action.getContext().put(pixelClassifierUrgencyTriage.getName() + ".isSuccessful", "false");

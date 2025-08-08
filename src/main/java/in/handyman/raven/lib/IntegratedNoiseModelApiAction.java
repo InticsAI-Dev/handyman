@@ -98,7 +98,7 @@ public class IntegratedNoiseModelApiAction implements IActionExecution {
 
             //8. call the method start consumer from coproprocessor
 
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, new NoiseModelConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, new NoiseModelConsumerProcess(log, aMarker, action), true);
             log.info("start consumer method from copro processor ");
 
 

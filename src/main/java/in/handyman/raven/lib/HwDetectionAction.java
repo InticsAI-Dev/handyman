@@ -101,7 +101,7 @@ public class HwDetectionAction implements IActionExecution {
             log.info("hwdetection read batch size {} and queryset from macro {} ", readBatchSize, hwDetection.getQuerySet());
             Thread.sleep(1000);
 
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, hwClassificationConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, hwClassificationConsumerProcess, true);
             log.info(aMarker, " Handwritten Classification has been completed {}  ", hwDetection.getName());
         } catch (Exception e) {
             action.getContext().put(hwDetection.getName() + ".isSuccessful", "false");

@@ -105,7 +105,7 @@ public class FileMergerPdfAction implements IActionExecution {
             coproProcessor.startProducer(fileMergerPdf.getQuerySet(), readBatchSize);
             log.info(aMarker, "file merger copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize1, fileMergerPdfConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize1, fileMergerPdfConsumerProcess, true);
             log.info(aMarker, "file merger copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize1);
 
         } catch (Exception ex) {

@@ -136,7 +136,7 @@ public class ValidationLlmAction implements IActionExecution {
       coproProcessor.startProducer( validationLlm.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
       final ValidationLlmConsumerProcess validationLlmConsumerProcess = new ValidationLlmConsumerProcess(log, aMarker, action, this);
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize,validationLlmConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize,validationLlmConsumerProcess, true);
       log.info(aMarker, " paragraph extraction Action has been completed {}  ", validationLlm.getName());
     } catch (Exception e) {
       action.getContext().put(validationLlm.getName() + ".isSuccessful", "false");

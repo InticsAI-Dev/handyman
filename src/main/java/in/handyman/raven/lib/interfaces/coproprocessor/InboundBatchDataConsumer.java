@@ -5,7 +5,6 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.slf4j.Logger;
@@ -17,13 +16,13 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implements Callable<Void> {
 
@@ -83,20 +82,19 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                     }
                 } catch (InterruptedException e) {
                     logger.error("Error at Consumer thread", e);
-                    HandymanException handymanException=new HandymanException(e);
+                    HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error at Consumer thread", handymanException, actionExecutionAudit);
                 } catch (Exception e) {
                     logger.error("Error at Consumer Process", e);
-                    HandymanException handymanException=new HandymanException(e);
+                    HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error at Consumer Process", handymanException, actionExecutionAudit);
                 }
             }
             checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime, jdbi);
         } catch (Exception e) {
             logger.error("Final persistence failed", e);
-            HandymanException handymanException=new HandymanException(e);
+            HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Final persistence failed ", handymanException, actionExecutionAudit);
-
         } finally {
             logger.info("Consumer {} completed the process and persisted {} rows", countDownLatch.getCount(), nodeCount.get());
             countDownLatch.countDown();
@@ -124,7 +122,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
             }
         } catch (Exception e) {
             logger.error("Error in callable process in consumer", e);
-            HandymanException handymanException=new HandymanException(e);
+            HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Error in callable process in consumer ", handymanException, actionExecutionAudit);
 
         }
@@ -149,7 +147,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     private List<O> extractFailedResults(List<O> resultSet) {
         return resultSet.stream()
                 .filter(o -> ConsumerProcessApiStatus.FAILED.getStatusDescription().equals(o.getStatus()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private List<O> retryWithAttempts(CoproProcessor.ConsumerProcess<I, O> callable, URL endpoint, I take, int maxAttempts, Jdbi jdbi) {
@@ -160,11 +158,11 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                 insertFailedCoproProcess(take, retryOutput, attempt, jdbi);
             } catch (Exception e) {
                 logger.error("Retry attempt {} failed for item. Error: {}", attempt, e.getMessage(), e);
-                HandymanException handymanException=new HandymanException(e);
+                HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error in callable process in consumer ", handymanException, actionExecutionAudit);
             }
         }
-        return null;
+        return Collections.emptyList();
     }
 
     private boolean hasSuccess(List<O> retryOutput) {
@@ -227,7 +225,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
 
 
-    private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime,Jdbi jdbi) {
+    private void writeBatchToDBOnCondition(String insertSql, Integer writeBatchSize, List<O> processedEntity, LocalDateTime startTime, Jdbi jdbi) {
         if (nodeCount.get() % writeBatchSize == 0) {
             try {
                 jdbi.useTransaction(handle -> {
@@ -246,7 +244,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
             } catch (Exception e) {
                 logger.error("Error during batch insert or audit logging. Batch size: {}, Entities: {}, StartTime: {}",
                         writeBatchSize, processedEntity.size(), startTime, e);
-                HandymanException exception=new HandymanException(e);
+                HandymanException exception = new HandymanException(e);
                 HandymanException.insertException("Failed to write batch to DB", exception, actionExecutionAudit);
             }
         }
@@ -285,7 +283,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                     insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                 } catch (Exception e) {
                     logger.error("Error in executing prepared statement {}", e.getMessage());
-                    HandymanException handymanException=new HandymanException(e);
+                    HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error in executing prepared statement ", handymanException, actionExecutionAudit);
                 }
                 logger.info("Consumer persisted {}", rowCount);

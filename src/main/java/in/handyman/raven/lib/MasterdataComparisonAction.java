@@ -3,16 +3,12 @@
 
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.MasterdataComparison;
 import in.handyman.raven.lib.model.common.*;
 import in.handyman.raven.util.ExceptionUtil;
@@ -105,7 +101,7 @@ public class MasterdataComparisonAction implements IActionExecution {
       log.info(aMarker, "master data comparison coproProcessor startProducer called read batch size {}", action.getContext().get("read.batch.size"));
       Thread.sleep(1000);
       coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("consumer.masterdata.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")),
-              new MasterdataComparisonProcess(log, aMarker, action));
+              new MasterdataComparisonProcess(log, aMarker, action), true);
       log.info(aMarker, "master data comparison coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("consumer.masterdata.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")));
 
     } catch (Exception ex) {

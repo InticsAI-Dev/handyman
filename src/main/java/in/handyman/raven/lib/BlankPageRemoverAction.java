@@ -3,7 +3,6 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
@@ -94,7 +93,7 @@ public class BlankPageRemoverAction implements IActionExecution {
             coproProcessor.startProducer(blankPageRemover.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
             //8. call the method start consumer from coproprocessor
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("blank.page.removal.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new BlankPageRemoverAction.BlankPageRemoverConsumerProcess(log, aMarker, action, outputDir));
+            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("blank.page.removal.consumer.API.count")), Integer.valueOf(action.getContext().get("write.batch.size")), new BlankPageRemoverAction.BlankPageRemoverConsumerProcess(log, aMarker, action, outputDir), true);
             log.info(aMarker, " Blank Page Removal Action has been completed {}  ", blankPageRemover.getName());
         } catch (Throwable t) {
             action.getContext().put(blankPageRemover.getName() + ".isSuccessful", "false");

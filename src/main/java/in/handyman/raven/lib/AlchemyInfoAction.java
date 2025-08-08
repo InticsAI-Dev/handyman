@@ -82,7 +82,7 @@ public class AlchemyInfoAction implements IActionExecution {
                             new AlchemyInfoAction.AlchemyInfoInputTable(), urls, action);
             coproProcessor.startProducer(alchemyInfo.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1,  Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyInfoAction.AlchemyInfoConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, 1,  Integer.valueOf(action.getContext().get("write.batch.size")), new AlchemyInfoAction.AlchemyInfoConsumerProcess(log, aMarker, action), true);
             log.info(aMarker, "Alchemy Info has been completed {}  ", alchemyInfo.getName());
         } catch (Exception t) {
             action.getContext().put(alchemyInfo.getName() + ".isSuccessful", "false");

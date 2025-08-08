@@ -1,7 +1,6 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.net.MediaType;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -132,7 +131,7 @@ public class FigureDetectionAction implements IActionExecution {
             coproProcessor.startProducer(figureDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);
             final FigureDetectionConsumerProcess figureDetectionConsumerProcess = new FigureDetectionConsumerProcess(log, aMarker, outputDir, action, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, figureDetectionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, figureDetectionConsumerProcess, true);
             log.info(aMarker, " Figure detection Action has been completed {}  ", figureDetection.getName());
         } catch (Exception e) {
             action.getContext().put(figureDetection.getName() + ".isSuccessful", "false");

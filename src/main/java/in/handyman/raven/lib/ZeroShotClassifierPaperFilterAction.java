@@ -82,7 +82,7 @@ public class ZeroShotClassifierPaperFilterAction implements IActionExecution {
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, Integer.parseInt(zeroShotClassifierPaperFilter.getThreadCount()),
                     Integer.parseInt(zeroShotClassifierPaperFilter.getWriteBatchSize()),
-                    new ZeroShotConsumerProcess(log, aMarker, action));
+                    new ZeroShotConsumerProcess(log, aMarker, action), true);
             log.info(aMarker, " Zero shot classifier has been completed {}  ", zeroShotClassifierPaperFilter.getName());
 
         } catch (Exception e) {

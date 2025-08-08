@@ -134,7 +134,7 @@ public class RadonKvpBboxAction implements IActionExecution {
     }
 
     private void callStartConsumer(CoproProcessor<RadonBboxInputEntity, RadonBboxOutputEntity> coproProcessor, String insertQuery, Integer consumerCountInt, Integer writeBatchSizeInt, ObjectMapper objectMapper, FileProcessingUtils fileProcessingUtils) {
-        coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, new RadonBboxConsumerProcess(log, aMarker, action, radonKvpBbox, objectMapper, processBase64, fileProcessingUtils));
+        coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, new RadonBboxConsumerProcess(log, aMarker, action, radonKvpBbox, objectMapper, processBase64, fileProcessingUtils), true);
     }
 
     @NotNull

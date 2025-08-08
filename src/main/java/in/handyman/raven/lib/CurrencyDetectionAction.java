@@ -128,7 +128,7 @@ public class CurrencyDetectionAction implements IActionExecution {
             coproProcessor.startProducer(currencyDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);
             final CurrencyDetectionConsumerProcess currencyDetectionConsumerProcess = new CurrencyDetectionConsumerProcess(log, aMarker, action, outputDir, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, currencyDetectionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, currencyDetectionConsumerProcess, true);
             log.info(aMarker, " Currency detection Action has been completed {}  ", currencyDetection.getName());
         } catch (Exception e) {
             action.getContext().put(currencyDetection.getName() + ".isSuccessful", "false");

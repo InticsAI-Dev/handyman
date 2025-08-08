@@ -117,7 +117,7 @@ public class DocumentEyeCueAction implements IActionExecution {
             coproProcessor.startProducer(documentEyeCue.getQuerySet(), readBatchSize);
             log.info(aMarker, "Document EyeCue copro coproProcessor startProducer called read batch size {}", readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new DocumentEyeCueConsumerProcess(log, aMarker, fileProcessingUtils, action, processBase64, documentEyeCue));
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new DocumentEyeCueConsumerProcess(log, aMarker, fileProcessingUtils, action, processBase64, documentEyeCue), true);
             log.info(aMarker, "Document EyeCue copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
 
         } catch (Exception ex) {

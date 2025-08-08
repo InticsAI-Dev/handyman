@@ -55,27 +55,64 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
+        log.info(aMarker, "PostProcessingExecutor started for action: {}", action.getActionName());
+
+        if (postProcessingExecutor.getQuerySet() == null || postProcessingExecutor.getQuerySet().isEmpty()) {
+            log.warn(aMarker, "No queries provided for post-processing executor. Skipping execution.");
+            return;
+        }
 
         Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
-        InticsIntegrity crypt = SecurityEngine.getInticsIntegrityMethod(action, log);
+        InticsIntegrity crypt  = SecurityEngine.getInticsIntegrityMethod(action, log);
         String itemWiseEncryptionActivator = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        boolean encryptEnabled = Boolean.parseBoolean(itemWiseEncryptionActivator);
         int postProcessingThreadCount = Integer.parseInt(action.getContext().getOrDefault(POST_PROCESSING_THREAD_COUNT, "10"));
 
-        boolean encryptEnabled = Boolean.parseBoolean(itemWiseEncryptionActivator);
-        log.info(aMarker, "PostProcessingExecutor started with encryptEnabled: {}", encryptEnabled);
+        try {
+            jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
+            log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
+        } catch (Exception e) {
+            log.error(aMarker, "Error fetching and decrypting inputs", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error during fetch and decrypt phase", handymanException, action);
+        }
 
-        jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
+        try {
+            postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(
+                    postProcessingExecutorInputs, action, log, postProcessingThreadCount
+            ).doRowWiseValidator();
 
-        log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
-        postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
-        log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
+            log.info(aMarker, "Total Rows after post-processing: {}", postProcessingExecutorInputs.size());
+        } catch (Exception e) {
+            log.error(aMarker, "Error during validation", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Validation failed during post-processing", handymanException, action);
+        }
 
-        postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
+        try {
+            postProcessingExecutorInputs.forEach(input -> {
+                try {
+                    processEncryption(input, crypt, encryptEnabled);
+                } catch (Exception e) {
+                    log.error(aMarker, "Encryption error for item: {}", input, e);
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Encryption failed for input: " + input, handymanException, action);
+                }
+            });
+        } catch (Exception e) {
+            log.error(aMarker, "Unexpected error during encryption step", e);
+            throw new HandymanException("Unexpected encryption failure", e);
+        }
 
-        String outputTable = postProcessingExecutor.getOutputTable();
-        log.info(aMarker, "Started batch insert into {}", outputTable);
-        jdbi.useHandle(handle -> executeBatchInsert(handle, postProcessingExecutorInputs));
-        log.info(aMarker, "Batch insert completed into {}", outputTable);
+        try {
+            log.info(aMarker, "Started batch insert into {}", postProcessingExecutor.getOutputTable());
+            jdbi.useHandle(handle -> executeBatchInsert(handle, postProcessingExecutorInputs));
+            log.info(aMarker, "Batch insert completed into {}", postProcessingExecutor.getOutputTable());
+        } catch (Exception e) {
+            log.error(aMarker, "Batch insert failed", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Batch insert failed into " + postProcessingExecutor.getOutputTable(), handymanException, action);
+        }
     }
 
     private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
@@ -84,7 +121,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 .flatMap(sql -> handle.createQuery(sql)
                         .mapToBean(PostProcessingExecutorInput.class)
                         .stream())
-                .collect(Collectors.toList());
+                .toList();
         log.info(aMarker, "Total rows fetched: {}", postProcessingExecutorInputs.size());
         if (encryptEnabled) {
             postProcessingExecutorInputs.forEach(input -> {

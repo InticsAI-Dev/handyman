@@ -138,7 +138,7 @@ public class BulletInExtractionAction implements IActionExecution {
 
       coproProcessor.startProducer(bulletInExtraction.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
-      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, bulletinExtractionConsumerProcess);
+      coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, bulletinExtractionConsumerProcess, true);
       log.info(aMarker, " Bulletin extraction Action has been completed {}  ", bulletInExtraction.getName());
     } catch (Exception e) {
       action.getContext().put(bulletInExtraction.getName() + ".isSuccessful", "false");

@@ -54,3 +54,7 @@ echo "✅ Java $VERSION is now active!"
 #tar -xzf apache-maven-3.9.11-bin.tar.gz
 #sudo mv apache-maven-3.9.11 /opt/maven
 #sudo ln -s /opt/maven/bin/mvn /usr/bin/mvn
+
+#export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+#export PATH=$JAVA_HOME/bin:$PATH
+#source ~/.bashrc    # or ~/.zshrc

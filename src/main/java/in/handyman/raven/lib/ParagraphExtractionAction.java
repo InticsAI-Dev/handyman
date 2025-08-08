@@ -20,9 +20,6 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionConsumerProcess;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionInputQuerySet;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionOutputQuerySet;
 import in.handyman.raven.lib.model.paragraph.detection.ParagraphExtractionConsumerProcess;
 import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryInputTable;
 import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryOutputTable;
@@ -141,7 +138,7 @@ public class ParagraphExtractionAction implements IActionExecution {
       coproProcessor.startProducer(paragraphExtraction.getQuerySet(), readBatchSize);
       Thread.sleep(threadSleepTime);
       final ParagraphExtractionConsumerProcess paragraphExtractionConsumerProcess = new ParagraphExtractionConsumerProcess(log, aMarker, action, outputDir, this);
-     coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, paragraphExtractionConsumerProcess);
+     coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, paragraphExtractionConsumerProcess, true);
       log.info(aMarker, " paragraph extraction Action has been completed {}  ", paragraphExtraction.getName());
     } catch (Exception e) {
       action.getContext().put(paragraphExtraction.getName() + ".isSuccessful", "false");

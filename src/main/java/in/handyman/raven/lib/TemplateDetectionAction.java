@@ -116,7 +116,7 @@ public class TemplateDetectionAction implements IActionExecution {
             log.info(aMarker, "Copro processor start compose completed {}", nameStr);
             Thread.sleep(threadSleepTime);
             final TemplateDetectionConsumerProcess templateDetectionConsumerProcess = new TemplateDetectionConsumerProcess(log, aMarker, action, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, templateDetectionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, templateDetectionConsumerProcess, true);
 
         } catch (Exception e) {
             log.error(aMarker, "Error in execute method for template detection {}", ExceptionUtil.toString(e));

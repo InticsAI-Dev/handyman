@@ -93,11 +93,11 @@ public class UrgencyTriageModelAction implements IActionExecution {
             Thread.sleep(1000);
             if (Objects.equals(action.getContext().get(UT_LEGACY_API_CALL_CONFIGS), LEGACY_TRUE)){
                 UrgencyTriageConsumerProcess urgencyTriageConsumerProcess = new UrgencyTriageConsumerProcess(log, aMarker, action);
-                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess, true);
 
             }else{
                 UrgencyTriageConsumerProcessRadon urgencyTriageConsumerProcessRadon = new UrgencyTriageConsumerProcessRadon(log, aMarker, action);
-                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcessRadon);
+                coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcessRadon, true);
 
 
             }

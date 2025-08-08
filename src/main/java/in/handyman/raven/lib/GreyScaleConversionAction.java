@@ -116,7 +116,7 @@ public class GreyScaleConversionAction implements IActionExecution {
             final CoproProcessor<GreyScaleConversionInputQuerySet, GreyScaleConversionOutputQuerySet> coproProcessor = getGreyScaleConsumerProcess(jdbi, urls);
             Thread.sleep(threadSleepTime);
             final GreyScaleConversionConsumerProcess greyScaleConversionConsumerProcess = new GreyScaleConversionConsumerProcess(log, aMarker, action, outputDir, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, greyScaleConversionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, greyScaleConversionConsumerProcess, true);
             log.info(aMarker, "Grey Scale Conversion Action has been completed {}  ", greyScaleConversion.getName());
         } catch (Exception e) {
             action.getContext().put(greyScaleConversion.getName() + ".isSuccessful", "false");

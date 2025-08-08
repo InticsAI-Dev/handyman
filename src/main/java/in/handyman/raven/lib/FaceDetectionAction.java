@@ -1,7 +1,6 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.net.MediaType;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -133,7 +132,7 @@ public class FaceDetectionAction implements IActionExecution {
             coproProcessor.startProducer(faceDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);
             final FaceDetectionConsumerProcess faceDetectionConsumerProcess = new FaceDetectionConsumerProcess(log, aMarker, outputDir, action, this);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, faceDetectionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, faceDetectionConsumerProcess, true);
             log.info(aMarker, " Face detection Action has been completed {}  ", faceDetection.getName());
         } catch (Exception e) {
             action.getContext().put(faceDetection.getName() + ".isSuccessful", "false");

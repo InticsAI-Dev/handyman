@@ -95,7 +95,7 @@ public class TableExtractionHeadersAction implements IActionExecution {
             log.info(aMarker, "table extraction copro coproProcessor startProducer called read batch size {}", readBatchSizeStr);
             Thread.sleep(1000);
             TableExtractionConsumerProcess tableExtractionConsumerProcess = new TableExtractionConsumerProcess(log, aMarker, outputDir, action);
-            coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, tableExtractionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerCountInt, writeBatchSizeInt, tableExtractionConsumerProcess, true);
             log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCountInt, writeBatchSizeInt);
 
 

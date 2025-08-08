@@ -107,7 +107,7 @@ public class IntellimatchAction implements IActionExecution {
       Integer consumerCount = Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count"));
       Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
       coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize,
-              new IntellimatchConsumerProcess(log, aMarker, action));
+              new IntellimatchConsumerProcess(log, aMarker, action), true);
       log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCount, writeBatchSize);
 
     } catch (Exception ex) {

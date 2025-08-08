@@ -88,7 +88,7 @@ public class UrgencyTriageBetaAction implements IActionExecution {
 
             coproProcessor.startProducer(urgencyTriageBeta.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, urgencyTriageConsumerProcess, true);
             log.info(aMarker, "Urgency Triage has been completed {}  ", urgencyTriageBeta.getName());
         } catch (Exception t) {
             action.getContext().put(urgencyTriageBeta.getName() + ".isSuccessful", "false");

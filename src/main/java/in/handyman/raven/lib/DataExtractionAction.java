@@ -93,7 +93,7 @@ public class DataExtractionAction implements IActionExecution {
 
             coproProcessor.startProducer(dataExtraction.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, dataExtractionConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, dataExtractionConsumerProcess, true);
             log.info(aMarker, " Data Extraction Action has been completed {}  ", dataExtraction.getName());
         } catch (Exception e) {
             action.getContext().put(dataExtraction.getName() + ".isSuccessful", "false");

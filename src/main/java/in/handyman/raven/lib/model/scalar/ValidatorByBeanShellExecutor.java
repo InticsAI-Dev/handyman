@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.scalar;
 
 import bsh.EvalError;
 import bsh.Interpreter;
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
 import org.jetbrains.annotations.NotNull;
@@ -18,12 +19,8 @@ public class ValidatorByBeanShellExecutor {
 
     private final List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs;
 
-    private final List<PostProcessingExecutorAction.PostProcessingExecutorInput> updatedPostProcessingExecutorInputs = new ArrayList<>();
-
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
-    private final ExecutorService executor;
-
 
     public ValidatorByBeanShellExecutor(List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs,
                                         ActionExecutionAudit actionExecutionAudit,
@@ -32,7 +29,6 @@ public class ValidatorByBeanShellExecutor {
         this.postProcessingExecutorInputs = postProcessingExecutorInputs;
         this.actionExecutionAudit = actionExecutionAudit;
         this.log = log;
-        this.executor = Executors.newFixedThreadPool(threadPoolSize);
     }
 
 
@@ -41,15 +37,16 @@ public class ValidatorByBeanShellExecutor {
         log.info("Starting row-wise validation for {} inputs", inputSize);
 
         Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOrigin(postProcessingExecutorInputs);
-        List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
-        byOrigin.forEach((origin, originInputs) -> originFutures.add(
-                CompletableFuture.runAsync(() -> processOrigin(origin, originInputs), executor)
-        ));
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
-        CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.MINUTES);
+            byOrigin.forEach((origin, originInputs) -> originFutures.add(
+                    CompletableFuture.runAsync(() -> processOrigin(origin, originInputs, executor), executor)
+            ));
+
+            CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
+        }
 
         log.info("Completed all validations for post processing inputs.");
         return postProcessingExecutorInputs;
@@ -61,13 +58,29 @@ public class ValidatorByBeanShellExecutor {
                 .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getOriginId));
     }
 
-    private void processOrigin(String originId, List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs) {
+    private void processOrigin(String originId,
+                               List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs,
+                               Executor executor) {
         log.info("Processing origin {} with {} inputs", originId, originInputs.size());
         Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byPage = groupByPage(originInputs);
 
-        byPage.forEach((pageNo, pageInputs) ->
-                CompletableFuture.runAsync(() -> processPage(originId, pageNo, pageInputs), executor)
-        );
+        List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> entry : byPage.entrySet()) {
+            int pageNo = entry.getKey();
+            List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs = entry.getValue();
+
+            pageFutures.add(CompletableFuture.runAsync(() ->
+                    processPage(originId, pageNo, pageInputs), executor));
+        }
+
+        try {
+            CompletableFuture.allOf(pageFutures.toArray(new CompletableFuture[0])).get();
+        } catch (Exception e) {
+            log.error("Error processing origin {}: {}", originId, e.getMessage(), e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("BeanShell evaluation error", handymanException, actionExecutionAudit);
+        }
     }
 
     private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
@@ -105,7 +118,7 @@ public class ValidatorByBeanShellExecutor {
         if (order == null || order.isEmpty()) return Collections.emptyList();
         List<String> classes = Arrays.stream(order.split(","))
                 .map(String::trim)
-                .collect(Collectors.toList());
+                .toList();
         log.info("Loaded {} script classes", classes.size());
         return classes;
     }
@@ -148,8 +161,12 @@ public class ValidatorByBeanShellExecutor {
 
         } catch (EvalError e) {
             log.error("BeanShell evaluation error: {}", e.getMessage(), e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("BeanShell evaluation error", handymanException, actionExecutionAudit);
         } catch (Exception e) {
             log.error("Error executing class script: ", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error executing class script:", handymanException, actionExecutionAudit);
         }
     }
 

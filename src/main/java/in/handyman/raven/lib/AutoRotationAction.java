@@ -129,7 +129,7 @@ public class AutoRotationAction implements IActionExecution {
             coproProcessor.startProducer(autoRotation.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);
             final AutoRotationConsumerProcess autoRotationConsumerProcess = new AutoRotationConsumerProcess(log, aMarker, action, outputDir, this, fileProcessingUtils, tritonRequestActivator, processBase64);
-            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, autoRotationConsumerProcess);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, autoRotationConsumerProcess, true);
             log.info(aMarker, " Auto Rotation Action has been completed {}  ", autoRotation.getName());
         } catch (Exception e) {
             action.getContext().put(autoRotation.getName() + ".isSuccessful", "false");

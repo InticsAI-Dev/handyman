@@ -87,7 +87,7 @@ public class ProductResponseAction implements IActionExecution {
                             new ProductResponseAction.ProductResponseInputTable(), urls, action);
             coproProcessor.startProducer(productResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
+            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get("write.batch.size")), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action), true);
             log.info(aMarker, "Product Response has been completed {}  ", productResponse.getName());
         } catch (Exception t) {
             log.error(aMarker, "Error at Product Response execute method {}", ExceptionUtil.toString(t));
