@@ -39,7 +39,7 @@
 
             try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
 
-                // 1️⃣ Environment URLs from context
+                // Environment URLs from context
                 String envUrlStream = action.getContext().get("storecontent.streaming.url");
                 String envUrlNonStream = action.getContext().get("storecontent.nonstreaming.url");
 
@@ -48,12 +48,12 @@
                 clientProps.setProperty("BASE_URL_STORECONTENTNONSTREAM", envUrlNonStream);
                 clientProps.setProperty("isApigeeInvoked", "True");
 
-                // 2️⃣ Request DTO
+                // Request DTO
                 StoreContentRequestDto requestDto = new StoreContentRequestDto();
                 requestDto.setRepository(Repository.valueOf(repository));
                 requestDto.setApplicationID(applicationId);
 
-                // 3️⃣ Content Metadata (fileName + "_updated")
+                // Content Metadata (fileName + "_updated")
                 HashMap<String, String> contentMetadata = new HashMap<>();
                 String updatedFileName;
                 if (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank()) {
@@ -68,7 +68,7 @@
                                 : "application/pdf");
                 requestDto.setContentMetaData(contentMetadata);
 
-                // 4️⃣ Additional params (versioning + documentId)
+                // Additional params (versioning + documentId)
                 HashMap<String, String> additionalParams = new HashMap<>();
                 additionalParams.put("versioning", "Y");
                 if (entity != null && entity.getDocumentId() != null) {
@@ -80,7 +80,7 @@
                 additionalParams.put("contentkeytype", "DCN");
                 requestDto.setAddtionalParams(additionalParams);
 
-                // 5️⃣ Headers (dynamic from context)
+                // Headers (dynamic from context)
                 HashMap<String, String> headers = new HashMap<>();
                 headers.put("apikey", ApiKeyProvider.getDecryptedApiKey(action));
                 headers.put("Accept", "application/json;charset=UTF-8");
@@ -90,14 +90,14 @@
                 }
                 requestDto.setHeaderMap(headers);
 
-                // 6️⃣ File stream
+                // File stream
                 requestDto.setContentData(bis);
 
-                // 7️⃣ Execute client
+                // Execute client
                 Acmastorecontentclient client = AcmastorecontentclientFactory.createInstance(clientProps);
                 responseDto = client.storeContent(requestDto);
 
-                // 8️⃣ Log response
+                // Log response
                 if (responseDto != null) {
                     log.info("Upload Complete - Status: {}", responseDto.getStatus());
                     log.info("Content ID: {}", responseDto.getContentID());
