@@ -228,7 +228,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                         "$1"
                 );
 
-                int pageNumber = entity.getPaperNo() != null ? entity.getPaperNo() : 1;
                 String flag = (cleanedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
                 String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
                 String extractedContentEnc = cleanedText;
@@ -238,14 +237,14 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     extractedContentEnc = encryption.encrypt(cleanedText, "AES256", "TEXT_DATA");
                 }
 
-                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).extractedText(extractedContentEnc).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(pageNumber).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
+                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).extractedText(extractedContentEnc).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
 
                 outputFile.delete();
                 log.info(aMarker, "Output file deleted: {}", outputFilePath);
 
             } catch (Exception e) {
                 log.error(aMarker, "Exception in ARGON handler for file: {}", inputFilePath, e);
-                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo() != null ? entity.getPaperNo() : 1).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
+                parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
                 HandymanException handymanException = new HandymanException("ARGON processing failed", e);
                 HandymanException.insertException("Deep sift ARGON failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
                 throw handymanException;
