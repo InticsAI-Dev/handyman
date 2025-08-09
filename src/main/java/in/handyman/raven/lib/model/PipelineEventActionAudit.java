@@ -19,9 +19,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @ActionContext(
-    actionName = "InsertActionAudit"
+    actionName = "PipelineEventActionAudit"
 )
-public class InsertActionAudit implements IActionContext {
+public class PipelineEventActionAudit implements IActionContext {
   private String name;
 
   private String resourceConn;
