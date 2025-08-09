@@ -1,8 +1,10 @@
 package in.handyman.raven.lib.model.common.copro;
 
+import in.handyman.raven.exception.HandymanException;
 import lombok.Getter;
 import org.slf4j.Logger;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -26,7 +28,13 @@ public class CoproExecutorFactory {
             this.concurrencyLimiter = concurrencyLimiter;
         }
 
-        public void submit(Runnable task, Logger logger, int consumerIndex) {
+        /**
+         * Submit a Callable task. This will acquire a permit (if concurrencyLimiter != null),
+         * run the callable.call(), and release the permit in finally.
+         *
+         * Note: we run the callable inside a Runnable wrapper so we can control acquiring/releasing.
+         */
+        public void submit(Callable<Void> taskCallable, Logger logger, int consumerIndex) {
             Runnable wrappedTask = () -> {
                 if (concurrencyLimiter != null) {
                     try {
@@ -40,7 +48,12 @@ public class CoproExecutorFactory {
                 }
 
                 try {
-                    task.run();
+                    try {
+                        taskCallable.call();
+                    } catch (Exception ex) {
+                        logger.error("Consumer {} callable threw exception", consumerIndex, ex);
+                        throw new HandymanException(ex);
+                    }
                 } finally {
                     if (concurrencyLimiter != null) {
                         concurrencyLimiter.release();

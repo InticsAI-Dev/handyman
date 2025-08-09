@@ -151,12 +151,16 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                 );
 
         for (int i = 0; i < consumerCount; i++) {
-            executorWrapper.submit(() -> new InboundBatchDataConsumer<>(
-                    insertSql, writeBatchSize, callable, tPredicate,
-                    startTime, countDownLatch, queue, nodeCount,
-                    nodeSize, actionExecutionAudit, nodes,
-                    jdbiResourceName, logger
-            ), logger, i);
+            executorWrapper.submit(
+                    new InboundBatchDataConsumer<>(
+                            insertSql, writeBatchSize, callable, tPredicate,
+                            startTime, countDownLatch, queue, nodeCount,
+                            nodeSize, actionExecutionAudit, nodes,
+                            jdbiResourceName, logger
+                    ),
+                    logger,
+                    i
+            );
         }
         try {
             countDownLatch.await();
