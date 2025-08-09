@@ -348,7 +348,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     ObjectNode fallbackNode = objectMapper.createObjectNode();
                     fallbackNode.put("key", sorItemName);
                     fallbackNode.put("value", jsonResponse.trim());
-                    fallbackNode.put("label", "UNKNOWN");
+                    fallbackNode.put("label", "");
                     fallbackNode.put("confidence", 0.0);
 
                     ArrayNode wrapperArray = objectMapper.createArrayNode();
