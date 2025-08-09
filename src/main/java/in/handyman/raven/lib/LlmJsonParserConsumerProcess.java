@@ -145,6 +145,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                     .imageWidth(input.getImageWidth())
                                     .sorContainerId(input.getSorContainerId())
                                     .sorItemLabel(parsedEncryptResponse.getLabel())
+                                    .sectionAlias(parsedEncryptResponse.getSectionAlias())
                                     .build();
 
                             getInsertIntoKryptonResultTable(handle, insertQueryKrypton, insertData);
