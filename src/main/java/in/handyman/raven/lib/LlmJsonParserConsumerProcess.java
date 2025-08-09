@@ -1,8 +1,10 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
@@ -163,6 +165,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             HandymanException.insertException("Error in execute method for Llm json parser action", handymanException, action);
 
         }
+        log.info(marker, " Llm json parser action has been completed {}  ", llmJsonQueryOutputTables);
         return llmJsonQueryOutputTables;
     }
     public static List<LlmJsonParsedResponse> encryptJsonAnswers(ActionExecutionAudit action,
@@ -233,29 +236,39 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         return response;
     }
 
-    private static void getInsertIntoXenonResultTable(Handle handle, LlmJsonQueryInputTable inputTable, LlmJsonParsedResponse parsedResponse, String insertQueryXenon) {
+    private  void getInsertIntoXenonResultTable(Handle handle, LlmJsonQueryInputTable inputTable, LlmJsonParsedResponse parsedResponse, String insertQueryXenon) {
 
-        handle.createUpdate(insertQueryXenon)
-                .bind(0, inputTable.getCreatedOn())
-                .bind(1, inputTable.getTenantId())
-                .bind(2, CreateTimeStamp.currentTimestamp())
-                .bind(3, inputTable.getTenantId())
-                .bind(4, parsedResponse.getSorContainerName())
-                .bind(5, parsedResponse.getSorItemName())
-                .bind(6, parsedResponse.getAnswer())
-                .bind(7, inputTable.getPaperNo())
-                .bind(8, inputTable.getOriginId())
-                .bind(9, inputTable.getGroupId())
-                .bind(10, inputTable.getTenantId())
-                .bind(11, inputTable.getRootPipelineId())
-                .bind(12, inputTable.getBatchId())
-                .bind(13, inputTable.getModelRegistry())
-                .bind(14, inputTable.getExtractedImageUnit())
-                .bind(15, inputTable.getImageDpi())
-                .bind(16, inputTable.getImageHeight())
-                .bind(17, inputTable.getImageWidth())
-                .bind(18, inputTable.getSorContainerId())
-                .execute();
+        try {
+            log.info("Insert values - container: {}, item: {}, answer: {}",
+                    parsedResponse.getSorContainerName(),
+                    parsedResponse.getSorItemName(),
+                    parsedResponse.getAnswer());
+
+            handle.createUpdate(insertQueryXenon)
+                    .bind(0, inputTable.getCreatedOn())
+                    .bind(1, inputTable.getTenantId())
+                    .bind(2, CreateTimeStamp.currentTimestamp())
+                    .bind(3, inputTable.getTenantId())
+                    .bind(4, parsedResponse.getSorContainerName())
+                    .bind(5, parsedResponse.getSorItemName())
+                    .bind(6, parsedResponse.getAnswer())
+                    .bind(7, inputTable.getPaperNo())
+                    .bind(8, inputTable.getOriginId())
+                    .bind(9, inputTable.getGroupId())
+                    .bind(10, inputTable.getTenantId())
+                    .bind(11, inputTable.getRootPipelineId())
+                    .bind(12, inputTable.getBatchId())
+                    .bind(13, inputTable.getModelRegistry())
+                    .bind(14, inputTable.getExtractedImageUnit())
+                    .bind(15, inputTable.getImageDpi())
+                    .bind(16, inputTable.getImageHeight())
+                    .bind(17, inputTable.getImageWidth())
+                    .bind(18, inputTable.getSorContainerId())
+                    .execute();
+        } catch (Exception e) {
+            log.error(marker, "Insert failed for Xenon table: {}", e.getMessage(), e);
+        }
+
     }
 
     private static int getInsertIntoKryptonResultTable(Handle handle, String insertQueryKrypton, LlmJsonQueryOutputTable llmJsonQueryOutputTable) {
@@ -329,10 +342,24 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 }
             }
             else if (Objects.equals(action.getContext().get("double.parser.string"), "true")) {
-                log.info("Context flag 'double.parser.string' is true. Returning plain string wrapped in JSON.");
-                ObjectNode node = objectMapper.createObjectNode();
-                node.put(sorItemName, jsonResponse.trim());
-                return node;
+                try {
+                    jsonResponse = repairJson(jsonResponse);  // optional repair logic
+
+                    ObjectNode fallbackNode = objectMapper.createObjectNode();
+                    fallbackNode.put("key", sorItemName);
+                    fallbackNode.put("value", jsonResponse.trim());
+                    fallbackNode.put("label", "UNKNOWN");
+                    fallbackNode.put("confidence", 0.0);
+
+                    ArrayNode wrapperArray = objectMapper.createArrayNode();
+                    wrapperArray.add(fallbackNode);
+
+                    return wrapperArray;
+
+                } catch (Exception e) {
+                    log.error("Failed to build fallback JSON node for response: {}", jsonResponse, e);
+                    throw e;
+                }
             }
             else if (jsonResponse.contains("{") || jsonResponse.contains("[")) {
                 log.info("Input does not contain the required ```json``` markers. So processing it based on object literals.");
@@ -437,14 +464,15 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 "VALUES (?::timestamp, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     }
 
-
     @NotNull
     private String buildInsertQueryXenon() {
         return "INSERT INTO " + llmJsonParser.getOutputTable() +
-                "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
-                "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label) "
-                + " VALUES(?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?,?,?)";
+                "(created_on, created_user_id, last_updated_on, last_updated_user_id, " +
+                "sor_container_name, sor_item_name, answer, paper_no, " +
+                "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, " +
+                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id) " +
+                "VALUES (?::timestamp, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     }
+
 
 }
