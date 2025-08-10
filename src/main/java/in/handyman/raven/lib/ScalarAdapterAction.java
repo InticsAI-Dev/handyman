@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -23,9 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -171,22 +170,43 @@ public class ScalarAdapterAction implements IActionExecution {
         }
     }*/
 
-    private void performFieldValidation(final Jdbi jdbi, List<ValidatorConfigurationDetail> listOfDetails) {
+    private void performFieldValidation1(final Jdbi jdbi, List<ValidatorConfigurationDetail> listOfDetails) {
         try {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
+            List<EncryptionRequestClass> decryptRequestList = new ArrayList<>();
+            //Map<String, ValidatorConfigurationDetail> decryptMapping = new HashMap<>();
+            String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+
+            // Step 1: Collect Decryption Requests
             for (ValidatorConfigurationDetail result : listOfDetails) {
-
-                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
-                String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
-                if (Objects.equals(encryptData, "true")) {
-                    if (Objects.equals(result.getIsEncrypted(), "t")) {
-                        result.setInputValue(encryption.decrypt(result.getInputValue(), "AES256", result.getSorItemName()));
-                    }
+                if (Objects.equals(encryptData, "true") && Objects.equals(result.getIsEncrypted(), "t")) {
+                    String inputValue = result.getInputValue();
+                    String sorItem = result.getSorKey();
+                    decryptRequestList.add(new EncryptionRequestClass("AES256",inputValue, sorItem));
                 }
+            }
 
+            // Step 2: Batch Decrypt
+            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+            List<EncryptionRequestClass> decryptedContentList = Collections.emptyList();
 
+            if (!decryptRequestList.isEmpty()) {
+                decryptedContentList = encryption.decrypt(decryptRequestList);
+            }
+
+            int decryptedIndex=0;
+            // Step 3: Update Decrypted Values back
+            for (ValidatorConfigurationDetail item : listOfDetails) {
+                EncryptionRequestClass decryptedItem = decryptedContentList.get(decryptedIndex++);
+                item.setInputValue(decryptedItem.getValue());
+            }
+
+            // Step 4: Process Each Validator Detail
+            List<EncryptionRequestClass> encryptRequestList = new ArrayList<>();
+            Map<String, String> encryptValueMap = new HashMap<>();
+
+            for (ValidatorConfigurationDetail result : listOfDetails) {
                 if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
-
                     log.info(aMarker, "Build 19- scalar executing  validator {} and item {} ", result.getOriginId(), result.getSorItemName());
 
                     FieldValidator scrubbingInput = FieldValidator.builder()
@@ -201,19 +221,16 @@ public class ScalarAdapterAction implements IActionExecution {
 
                     String inputValue = scrubbingInput.getInputValue();
                     result.setInputValue(inputValue);
-                    int wordScore = wordcountAction.getWordCount(inputValue,
-                            result.getWordLimit(), result.getWordThreshold());
-                    int charScore = charactercountAction.getCharCount(inputValue,
-                            result.getCharLimit(), result.getCharThreshold());
 
-
+                    int wordScore = wordcountAction.getWordCount(inputValue, result.getWordLimit(), result.getWordThreshold());
+                    int charScore = charactercountAction.getCharCount(inputValue, result.getCharLimit(), result.getCharThreshold());
                     int validatorNegativeScore = 0;
                     int validatorScore = computeAdapterScore(scrubbingInput);
+
                     if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
                         scrubbingInput.setAdapter(result.getRestrictedAdapter());
                         validatorNegativeScore = computeAdapterScore(scrubbingInput);
                     }
-
 
                     double valConfidenceScore;
                     if (Objects.equals(action.getContext().get("scalar.adapter.update.empty.wrt.score"), "true")) {
@@ -223,7 +240,6 @@ public class ScalarAdapterAction implements IActionExecution {
                     } else {
                         valConfidenceScore = result.getConfidenceScore();
                         log.info(aMarker, "Build 19-validator scalar confidence score {}", valConfidenceScore);
-
                     }
 
                     updateEmptyValueForRestrictedAns(result, inputValue);
@@ -241,24 +257,22 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setMessage("scalar validation macro completed");
                     result.setCategory(result.getCategory());
 
-
-                    if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(result.getIsEncrypted(), "t")) {
-                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
-                        }
+                    // Collect encryption requests (post-processing)
+                    if (Objects.equals(encryptData, "true") && Objects.equals(result.getIsEncrypted(), "t")) {
+                        encryptRequestList.add(new EncryptionRequestClass(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
                     }
 
                     resultQueue.add(result);
-                    log.info(aMarker, "executed  validator {} and {} ", result.getOriginId(), result.getSorItemName());
+                    log.info(aMarker, "executed validator {} and {}", result.getOriginId(), result.getSorItemName());
 
                     if (resultQueue.size() == this.writeBatchSize) {
-                        log.info(aMarker, "executing  batch {}", resultQueue.size());
+                        log.info(aMarker, "executing batch {}", resultQueue.size());
                         consumerBatch(jdbi, resultQueue);
-                        log.info(aMarker, "executed  batch {}", resultQueue.size());
+                        log.info(aMarker, "executed batch {}", resultQueue.size());
                         insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
                         resultQueue.clear();
-                        log.info(aMarker, "cleared batch {}", resultQueue.size());
                     }
+
                 } else {
                     result.setRootPipelineId(action.getRootPipelineId());
                     result.setProcessId(String.valueOf(action.getProcessId()));
@@ -266,25 +280,169 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
 
-                    if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(result.getIsEncrypted(), "t")) {
-                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
-                        }
+                    if (Objects.equals(encryptData, "true") && Objects.equals(result.getIsEncrypted(), "t")) {
+                        encryptRequestList.add(new EncryptionRequestClass(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
                     }
 
                     resultQueue.add(result);
-                    log.info(aMarker, "executed  validator for originId {} , paperNo {} ,sorItemName {}", result.getOriginId(), result.getPaperNo(), result.getSorItemName());
                 }
-
             }
+            // Step 5: Batch Encrypt
+            if (!encryptRequestList.isEmpty()) {
+                List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptRequestList);
+                for (EncryptionRequestClass encrypted : encryptedResults) {
+                    for (ValidatorConfigurationDetail result : listOfDetails) {
+                        if (Objects.equals(result.getSorItemName(), encrypted.getPolicy())) {
+                            result.setInputValue(encrypted.getValue());
+                        }
+                    }
+                }
+            }
+
+            // Step 6: Final batch insert
             if (!resultQueue.isEmpty()) {
                 log.info(aMarker, "executing final batch {}", resultQueue.size());
                 consumerBatch(jdbi, resultQueue);
                 log.info(aMarker, "executed final batch {}", resultQueue.size());
                 insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
                 resultQueue.clear();
-                log.info(aMarker, "cleared final batch {}", resultQueue.size());
             }
+
+        } catch (Exception e) {
+            action.getContext().put(scalarAdapter.getName().concat(".error"), "true");
+            log.error(aMarker, "Exception occurred in Scalar Computation {}", ExceptionUtil.toString(e));
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Exception occurred in Scalar Computation", handymanException, action);
+        }
+    }
+    private void performFieldValidation(final Jdbi jdbi, List<ValidatorConfigurationDetail> listOfDetails){
+        try {
+            List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
+            List<EncryptionRequestClass> decryptRequestList = new ArrayList<>();
+            List<EncryptionRequestClass> encryptRequestList = new ArrayList<>();
+            String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+
+            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+
+            // Step 1: Process Decryption, Validation, and Encryption in a Single Loop
+            for (ValidatorConfigurationDetail result : listOfDetails) {
+
+                // Step 1.1: Collect Decryption Requests
+                if (Objects.equals(encryptData, "true") && Objects.equals(result.getIsEncrypted(), "t")) {
+                    decryptRequestList.add(new EncryptionRequestClass("AES256", result.getInputValue(), result.getSorKey()));
+                }
+
+                // Step 1.2: Process Validation if Value is not Empty/Blank
+                if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
+                    log.info(aMarker, "Executing scalar validation for {} and item {}", result.getOriginId(), result.getSorKey());
+
+                    FieldValidator scrubbingInput = FieldValidator.builder()
+                            .inputValue(result.getInputValue())
+                            .adapter(result.getAllowedAdapter())
+                            .allowedSpecialChar(result.getAllowedCharacters())
+                            .comparableChar(result.getComparableCharacters())
+                            .threshold(result.getValidatorThreshold())
+                            .build();
+
+                    computeScrubbingForValue(scrubbingInput);
+
+                    String inputValue = scrubbingInput.getInputValue();
+                    result.setInputValue(inputValue);
+
+                    // Scoring Logic
+                    int wordScore = wordcountAction.getWordCount(inputValue, result.getWordLimit(), result.getWordThreshold());
+                    int charScore = charactercountAction.getCharCount(inputValue, result.getCharLimit(), result.getCharThreshold());
+                    int validatorScore = computeAdapterScore(scrubbingInput);
+
+                    int validatorNegativeScore = 0;
+                    if (result.getRestrictedAdapterFlag() == 1 && validatorScore != 0) {
+                        scrubbingInput.setAdapter(result.getRestrictedAdapter());
+                        validatorNegativeScore = computeAdapterScore(scrubbingInput);
+                    }
+
+                    double valConfidenceScore;
+                    if (Objects.equals(action.getContext().get("scalar.adapter.update.empty.wrt.score"), "true")) {
+                        valConfidenceScore = wordScore + charScore + validatorScore - validatorNegativeScore;
+                        log.info(aMarker, "Scalar confidence score {}", valConfidenceScore);
+                        updateEmptyValueIfLowCf(result, valConfidenceScore);
+                    } else {
+                        valConfidenceScore = result.getConfidenceScore();
+                    }
+
+                    updateEmptyValueForRestrictedAns(result, inputValue);
+                    log.info(aMarker, "VQA score {}", result.getVqaScore());
+
+                    // Set final values
+                    result.setWordScore(wordScore);
+                    result.setCharScore(charScore);
+                    result.setValidatorScore(validatorScore);
+                    result.setValidatorNegativeScore(validatorNegativeScore);
+                    result.setRootPipelineId(action.getRootPipelineId());
+                    result.setConfidenceScore(valConfidenceScore);
+                    result.setProcessId(String.valueOf(action.getProcessId()));
+                    result.setStatus("COMPLETED");
+                    result.setStage("SCALAR_VALIDATION");
+                    result.setMessage("scalar validation macro completed");
+                    result.setCategory(result.getCategory());
+
+                    // Step 1.3: Collect Encryption Requests (Post-Validation)
+                    if (Objects.equals(encryptData, "true") && Objects.equals(result.getIsEncrypted(), "t")) {
+                        encryptRequestList.add(new EncryptionRequestClass(result.getEncryptionPolicy(), result.getInputValue() ,result.getSorKey()));
+                    }
+
+                    resultQueue.add(result);
+
+                } else { // if input value is empty or blank
+                    result.setRootPipelineId(action.getRootPipelineId());
+                    result.setProcessId(String.valueOf(action.getProcessId()));
+                    result.setStatus("COMPLETED");
+                    result.setStage("SCALAR_VALIDATION");
+                    result.setMessage("scalar validation macro completed");
+
+                    if (Objects.equals(encryptData, "true") && Objects.equals(result.getIsEncrypted(), "t")) {
+                        encryptRequestList.add(new EncryptionRequestClass(result.getEncryptionPolicy(),result.getInputValue(), result.getSorKey()));
+                    }
+
+                    resultQueue.add(result);
+                }
+            }
+
+            // Step 2: Batch Decrypt
+            List<EncryptionRequestClass> decryptedResults = Collections.emptyList();
+            if (!decryptRequestList.isEmpty()) {
+                decryptedResults = encryption.decrypt(decryptRequestList);
+            }
+
+            // Update decrypted values back to the details list
+            int decryptedIndex = 0;
+            for (ValidatorConfigurationDetail item : listOfDetails) {
+                if (decryptedIndex < decryptedResults.size()) {
+                    item.setInputValue(decryptedResults.get(decryptedIndex).getValue());
+                    decryptedIndex++;
+                }
+            }
+
+            // Step 3: Batch Encrypt
+            if (!encryptRequestList.isEmpty()) {
+                List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptRequestList);
+                int encryptionCount=0;
+                    for (ValidatorConfigurationDetail result : listOfDetails) {
+                        if (encryptedResults.get(encryptionCount).getPolicy() != null) {
+                            result.setInputValue(encryptedResults.get(encryptionCount).getValue());
+                            encryptionCount++;
+                        }
+                    }
+            }
+
+            // Final Batch Insert
+            if (!resultQueue.isEmpty()) {
+                log.info(aMarker, "Executing final batch {}", resultQueue.size());
+                consumerBatch(jdbi, resultQueue);
+                log.info(aMarker, "Executed final batch {}", resultQueue.size());
+                insertSummaryAudit(jdbi, listOfDetails.size(), resultQueue.size(), 0);
+                resultQueue.clear();
+            }
+
         } catch (Exception e) {
             action.getContext().put(scalarAdapter.getName().concat(".error"), "true");
             log.error(aMarker, "Exception occurred in Scalar Computation {}", ExceptionUtil.toString(e));
