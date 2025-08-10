@@ -4,10 +4,7 @@ import in.handyman.raven.exception.HandymanException;
 import lombok.Getter;
 import org.slf4j.Logger;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 public class CoproExecutorFactory {
 
@@ -78,7 +75,8 @@ public class CoproExecutorFactory {
 
         switch (threadType) {
             case VIRTUAL_THREAD -> {
-                executorService = Executors.newVirtualThreadPerTaskExecutor();
+                ThreadFactory vtf = Thread.ofVirtual().name("vthread-", 0L).factory();
+                executorService = Executors.newThreadPerTaskExecutor(vtf);
                 if (virtualThreadConcurrencyLimit) {
                     concurrencyLimiter = new Semaphore(consumerCount);
                     logger.info("Virtual thread pool created with concurrency limit {}", consumerCount);
