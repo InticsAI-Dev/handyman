@@ -52,7 +52,7 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
                 batchId,
                 tenantId,
                 createdOn,
-                createdBy != null ? createdBy : "system",
+                createdBy != null ? createdBy : "-1",
                 searchOutput != null ? String.join(",", searchOutput) : null,
                 paperNo,
                 groupId

@@ -31,7 +31,6 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
     public static final String OPTIMUS_START = "OPTIMUS START";
     public static final String KRYPTON_START = "KRYPTON START";
-    public static final String DEEP_SIFT_MODEL_NAME = "preprocess.deep.sift.model.name";
 
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
@@ -68,8 +67,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     @Override
     public List<DeepSiftOutputTable> process(URL endpoint, DeepSiftInputTable entity) throws IOException {
         List<DeepSiftOutputTable> parentObj = new ArrayList<>();
-
-        String deepSiftModelName = action.getContext().get(DEEP_SIFT_MODEL_NAME);
 
         String inputFilePath = entity.getInputFilePath();
         if (inputFilePath == null || inputFilePath.trim().isEmpty()) {

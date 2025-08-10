@@ -23,7 +23,6 @@ public class TestDataExtractorController {
     public ResponseEntity<String> extractText(@RequestParam("filePaths") List<String> filePaths,
                                               @RequestParam("outputPath") String outputPath) {
         try {
-            // Validate file paths
             for (String filePath : filePaths) {
                 if (!Files.exists(Paths.get(filePath))) {
                     return ResponseEntity.status(400).body("File does not exist: " + filePath);

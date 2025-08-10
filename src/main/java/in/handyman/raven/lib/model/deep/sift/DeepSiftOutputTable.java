@@ -40,7 +40,7 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.groupId,
                 this.inputFilePath,
                 this.createdOn,
-                this.createdBy != null ? this.createdBy : "system",
+                this.createdBy != null ? this.createdBy : "-1",
                 this.rootPipelineId,
                 this.tenantId,
                 this.batchId,
