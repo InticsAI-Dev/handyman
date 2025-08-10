@@ -1620,16 +1620,6 @@ public interface RavenListener extends ParseTreeListener {
 	 */
 	void exitMultivalueConcatenation(RavenParser.MultivalueConcatenationContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link RavenParser#contextInsertActionAudit}.
-	 * @param ctx the parse tree
-	 */
-	void enterContextInsertActionAudit(RavenParser.ContextInsertActionAuditContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link RavenParser#contextInsertActionAudit}.
-	 * @param ctx the parse tree
-	 */
-	void exitContextInsertActionAudit(RavenParser.ContextInsertActionAuditContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link RavenParser#kafkaProductionResponse}.
 	 * @param ctx the parse tree
 	 */
@@ -1649,6 +1639,26 @@ public interface RavenListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitKafkaOutboundComparison(RavenParser.KafkaOutboundComparisonContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#pipelineEventActionAudit}.
+	 * @param ctx the parse tree
+	 */
+	void enterPipelineEventActionAudit(RavenParser.PipelineEventActionAuditContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#pipelineEventActionAudit}.
+	 * @param ctx the parse tree
+	 */
+	void exitPipelineEventActionAudit(RavenParser.PipelineEventActionAuditContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link RavenParser#multiValueMemberMapper}.
+	 * @param ctx the parse tree
+	 */
+	void enterMultiValueMemberMapper(RavenParser.MultiValueMemberMapperContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link RavenParser#multiValueMemberMapper}.
+	 * @param ctx the parse tree
+	 */
+	void exitMultiValueMemberMapper(RavenParser.MultiValueMemberMapperContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link RavenParser#resource}.
 	 * @param ctx the parse tree

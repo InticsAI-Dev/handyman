@@ -1951,18 +1951,6 @@ public class RavenBaseListener implements RavenListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterContextInsertActionAudit(RavenParser.ContextInsertActionAuditContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitContextInsertActionAudit(RavenParser.ContextInsertActionAuditContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterKafkaProductionResponse(RavenParser.KafkaProductionResponseContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1982,6 +1970,30 @@ public class RavenBaseListener implements RavenListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitKafkaOutboundComparison(RavenParser.KafkaOutboundComparisonContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPipelineEventActionAudit(RavenParser.PipelineEventActionAuditContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPipelineEventActionAudit(RavenParser.PipelineEventActionAuditContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterMultiValueMemberMapper(RavenParser.MultiValueMemberMapperContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitMultiValueMemberMapper(RavenParser.MultiValueMemberMapperContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
