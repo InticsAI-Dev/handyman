@@ -52,6 +52,7 @@ public class LlmJsonParserActionTest {
 
         //ProtegrityApiEncryptionImpl protegrityApiEncryption=new ProtegrityApiEncryptionImpl(encryptionUrl,decryptionUrl, ac, log);
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
+
         llmJsonParserAction.execute();
 
 

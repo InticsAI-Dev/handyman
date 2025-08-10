@@ -42,8 +42,8 @@ class ScalarAdapterActionTest {
 
                 .build();
 
-        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
-        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
+        String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8190/vulcan/api/encryption/decrypt";
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);

@@ -32,8 +32,8 @@ class InticsIntegrityTest {
 
     @Test
     void testProtegrityEncryptionApi(){
-        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
-        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
+        String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8190/vulcan/api/encryption/decrypt";
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.setContext(Collections.singletonMap("protegrity.timeout.seconds", "10"));
         actionExecutionAudit.setActionId(1L);

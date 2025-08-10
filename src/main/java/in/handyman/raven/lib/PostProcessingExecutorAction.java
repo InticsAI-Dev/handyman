@@ -2,6 +2,7 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -24,7 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -82,144 +85,108 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 log.info(aMarker, "executed query from index {}", i.get());
             }
         });
-        log.info("Post processing Executor action total rows returned from the query {}",postProcessingExecutorInputs.size());
-        List<EncryptionRequestClass> decryptRequestList = new ArrayList<>();
-        // Map<String, PostProcessingExecutorInput> decryptMapping = new HashMap<>();
 
-        for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
-            if (pipelineEndToEndEncryptionActivator && Objects.equals(input.getIsEncrypted(), "t")) {
-                decryptRequestList.add(new EncryptionRequestClass(
-                        input.getEncryptionPolicy(),
-                        input.getExtractedValue(),
-                        input.getSorItemName()
-                ));
-            }
-        }
+        log.info("Post processing Executor action total rows returned from the query {}", postProcessingExecutorInputs.size());
 
-// Step 2: Decrypt once
-        List<EncryptionRequestClass> decryptedResults = encryption.decrypt(decryptRequestList);
+        // Batch decryption
+        decryptPostProcessingInputs(postProcessingExecutorInputs, encryption, pipelineEndToEndEncryptionActivator);
 
-        // Step 3: Map decrypted results back
-        int decryptedIndex=0;
-        for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
-            if (decryptedIndex < decryptedResults.size()) {
-                EncryptionRequestClass decryptedItem = decryptedResults.get(decryptedIndex++);
-                input.setExtractedValue(decryptedItem.getValue());
-            }
-        }
-
-        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log,postProcessingThreadCount);
+        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount);
         log.info("Starting the post processing for row wise details");
         postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
         log.info("Completed the post processing for row wise details");
         log.info("Updated validator configuration details of size {}", postProcessingExecutorInputs.size());
 
-//        postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
-//            String extractedValue = postProcessingExecutorInput.getExtractedValue();
-//            String encryptionPolicy = postProcessingExecutorInput.getEncryptionPolicy();
-//            if (Objects.equals(postProcessingExecutorInput.getLineItemType(), "multi_value")) {
-//                log.debug("Processing multi_value lineItemType for SOR item: {}", postProcessingExecutorInput.getSorItemName());
-//                if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
-//                    log.info("Decryption and re-encryption enabled for multi_value item: {}", postProcessingExecutorInput.getSorItemName());
-//                    try {
-//                        String[] multivalue = extractedValue.split(",");
-//                        List<String> encryptMultiValue = new ArrayList<>();
-//                        for (int i = 0; i < multivalue.length; i++) {
-//                            String trimmedValue = multivalue[i].trim();
-//                            String encryptedValue = encryption.encrypt(trimmedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
-//                            encryptMultiValue.add(encryptedValue);
-//                        }
-//                        String finalOutput = String.join(",", encryptMultiValue);
-//                        log.debug("Final re-encrypted multi_value string for {}: ", postProcessingExecutorInput.getSorItemName());
-//                        postProcessingExecutorInput.setExtractedValue(finalOutput);
-//                    } catch (Exception e) {
-//                        log.error("Error processing multi_value encryption for {}: {}", postProcessingExecutorInput.getSorItemName(), e.getMessage(), e);
-//                        throw e;
-//                    }
-//                } else {
-//                    log.info("Encryption not required for multi_value item: {}. Setting original extracted value.", postProcessingExecutorInput.getSorItemName());
-//                    postProcessingExecutorInput.setExtractedValue(extractedValue);
-//                }
-//            }
-//            else {
-//                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
-//                    postProcessingExecutorInput.setExtractedValue(encryption.encrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName()));
-//                }
-//            }
-//        });
-
-
-        List<EncryptionRequestClass> encryptRequestList = new ArrayList<>();
-        Map<String, PostProcessingExecutorInput> singleValueMap = new HashMap<>();
-        Map<String, List<String>> multiValueTempStore = new HashMap<>();
-
-
-// Step 1: Build encryption request list
-        for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
-            String extractedValue = input.getExtractedValue();
-            String encryptionPolicy = input.getEncryptionPolicy();
-            String sorItemName = input.getSorItemName();
-
-            if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
-                if ("multi_value".equals(input.getLineItemType())) {
-                    log.debug("Processing multi_value lineItemType for SOR item: {}", sorItemName);
-                    String[] values = extractedValue.split(",");
-
-                    for (int i = 0; i < values.length; i++) {
-                        String trimmed = values[i].trim();
-                        String key = sorItemName + ":" + i;
-                        encryptRequestList.add(new EncryptionRequestClass(encryptionPolicy,trimmed, key));
-
-                        // associate back for reconstruction
-                        multiValueTempStore.computeIfAbsent(sorItemName, k -> new ArrayList<>());
-                    }
-                } else {
-                    encryptRequestList.add(new EncryptionRequestClass(encryptionPolicy,extractedValue, sorItemName));
-                    singleValueMap.put(sorItemName, input);
-                }
-            }
-        }
-
-// Step 2: Encrypt in batch
-        List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptRequestList);
-
-// Step 3: Map encrypted results back
-        for (EncryptionRequestClass encrypted : encryptedResults) {
-            String policy = encrypted.getPolicy(); // this will be either `sorItemName` or `sorItemName:index`
-            String encryptedValue = encrypted.getValue();
-
-            if (policy.contains(":")) {
-                // handle multi_value
-                String sorItemName = policy.split(":")[0];
-                multiValueTempStore.get(sorItemName).add(encryptedValue);
-            } else {
-                // single value
-                PostProcessingExecutorInput input = singleValueMap.get(policy);
-                if (input != null) {
-                    input.setExtractedValue(encryptedValue);
-                }
-            }
-        }
-
-// Step 4: Set final re-joined encrypted value for multi_value items
-        for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
-            if ("multi_value".equals(input.getLineItemType())
-                    && pipelineEndToEndEncryptionActivator
-                    && "t".equalsIgnoreCase(input.getIsEncrypted())) {
-
-                List<String> encryptedList = multiValueTempStore.get(input.getSorItemName());
-                if (encryptedList != null && !encryptedList.isEmpty()) {
-                    String finalOutput = String.join(",", encryptedList);
-                    input.setExtractedValue(finalOutput);
-                } else {
-                    // fallback: keep original value
-                    input.setExtractedValue(input.getExtractedValue());
-                }
-            }
-        }
-
+        // Batch re-encryption
+        reEncryptPostProcessingInputs(postProcessingExecutorInputs, encryption, pipelineEndToEndEncryptionActivator, log);
 
         consumerBatch(jdbi, postProcessingExecutorInputs, outputTableName, batchId, groupId);
+    }
+
+    private void decryptPostProcessingInputs(List<PostProcessingExecutorInput> inputs, InticsIntegrity encryption, boolean encryptionEnabled) {
+        List<EncryptionRequestClass> decryptRequests = new ArrayList<>();
+        List<Integer> indexes = new ArrayList<>();
+
+        for (int i = 0; i < inputs.size(); i++) {
+            PostProcessingExecutorInput input = inputs.get(i);
+            if (encryptionEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+                decryptRequests.add(new EncryptionRequestClass(
+                        input.getEncryptionPolicy(),
+                        input.getExtractedValue(),
+                        input.getSorItemName()
+                ));
+                indexes.add(i);
+            }
+        }
+
+        List<EncryptionRequestClass> decryptedValues = batchDecryptValues(decryptRequests,encryption);
+
+        for (int i = 0; i < indexes.size(); i++) {
+            inputs.get(indexes.get(i)).setExtractedValue(decryptedValues.get(i).getValue());
+        }
+    }
+
+    private void reEncryptPostProcessingInputs(List<PostProcessingExecutorInput> inputs, InticsIntegrity encryption, boolean encryptionEnabled, Logger log) {
+        List<EncryptionRequestClass> encryptRequests = new ArrayList<>();
+        List<Integer> indexes = new ArrayList<>();
+
+        // For multi_value items, we need to remember which input and index within multi-value
+        List<MultiValueEncryptionMetadata> multiValueMetaList = new ArrayList<>();
+
+        for (int i = 0; i < inputs.size(); i++) {
+            PostProcessingExecutorInput input = inputs.get(i);
+            String value = input.getExtractedValue();
+
+            if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
+                if (encryptionEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+                    try {
+                        String[] multivalue = value.split(",");
+                        for (int j = 0; j < multivalue.length; j++) {
+                            String val = multivalue[j].trim();
+                            EncryptionRequestClass request = new EncryptionRequestClass( input.getEncryptionPolicy() ,val,input.getSorItemName());
+                            encryptRequests.add(request);
+                            multiValueMetaList.add(new MultiValueEncryptionMetadata(i, j));
+                        }
+                    } catch (Exception e) {
+                        log.error("Error preparing multi_value encryption for {}: {}", input.getSorItemName(), e.getMessage(), e);
+                        throw e;
+                    }
+                } else {
+                    log.info("Encryption not required for multi_value item: {}. Setting original extracted value.", input.getSorItemName());
+                    input.setExtractedValue(value);
+                }
+            } else {
+                if (encryptionEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+                    encryptRequests.add(new EncryptionRequestClass(input.getEncryptionPolicy() ,value, input.getSorItemName()));
+                    indexes.add(i);
+                }
+            }
+        }
+
+        // One-time batch encrypt
+        List<EncryptionRequestClass> encryptedValues = batchEncryptValues(encryptRequests, encryption);
+
+        // Reconstruct encrypted values
+        int encryptedIndex = 0;
+        for (MultiValueEncryptionMetadata meta : multiValueMetaList) {
+            PostProcessingExecutorInput input = inputs.get(meta.getInputIndex());
+            String[] currentValues = input.getExtractedValue().split(",");
+            currentValues[meta.getValueIndex()] = encryptedValues.get(encryptedIndex++).getValue();
+            input.setExtractedValue(String.join(",", currentValues));
+        }
+
+        for (int i = 0; i < indexes.size(); i++) {
+            inputs.get(indexes.get(i)).setExtractedValue(encryptedValues.get(encryptedIndex++).getValue());
+        }
+    }
+
+
+    public static List<EncryptionRequestClass> batchDecryptValues(List<EncryptionRequestClass> requests, InticsIntegrity encryption) {
+        return encryption.decrypt(requests);
+    }
+
+    public static List<EncryptionRequestClass> batchEncryptValues(List<EncryptionRequestClass> requests, InticsIntegrity encryption) {
+        return encryption.encrypt(requests);
     }
 
 
@@ -307,5 +274,13 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String encryptionPolicy;
         private String isEncrypted;
         private String lineItemType;
+    }
+
+
+    @AllArgsConstructor
+    @Data
+    private static class MultiValueEncryptionMetadata {
+        private int inputIndex;
+        private int valueIndex;
     }
 }

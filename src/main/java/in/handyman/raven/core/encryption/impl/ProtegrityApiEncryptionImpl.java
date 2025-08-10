@@ -239,7 +239,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         try {
             // Insert the Protegrity audit record into your database or repository
             auditId = REPO.insertProtegrityAuditRecord(
-                    "BATCH",
+                    protegrityList.get(0).getKey(),
                     getEncryptionMethod(),
                     endpoint,
                     actionExecutionAudit.getRootPipelineId(),
