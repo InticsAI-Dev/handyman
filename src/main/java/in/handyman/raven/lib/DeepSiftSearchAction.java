@@ -40,7 +40,7 @@ public class DeepSiftSearchAction implements IActionExecution {
           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::timestamp, ?, ?, ?, ?)";
 
   public static final String READ_BATCH_SIZE = "read.batch.size";
-  public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
+  public static final String DEEP_SIFT_SEARCH_CONSUMER_API_COUNT = "deep.sift.search.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
@@ -97,7 +97,7 @@ public class DeepSiftSearchAction implements IActionExecution {
               );
 
       Integer readBatchSize = Integer.parseInt(action.getContext().getOrDefault(READ_BATCH_SIZE, "10"));
-      Integer consumerCount = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(TEXT_EXTRACTION_CONSUMER_API_COUNT, "1")));
+      Integer consumerCount = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(DEEP_SIFT_SEARCH_CONSUMER_API_COUNT, "1")));
       Integer writeBatchSize = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(WRITE_BATCH_SIZE, "1")));
 
       DeepSiftSearchConsumerProcess searchConsumerProcess =

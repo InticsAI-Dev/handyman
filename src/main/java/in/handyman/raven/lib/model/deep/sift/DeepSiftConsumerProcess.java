@@ -31,6 +31,7 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
     public static final String OPTIMUS_START = "OPTIMUS START";
     public static final String KRYPTON_START = "KRYPTON START";
+    public static final String XENON_START = "XENON START";
 
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
@@ -186,58 +187,20 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     throw new HandymanException("Input file is not a JPEG: " + inputFilePath);
                 }
 
-                String outputDir = System.getProperty("java.io.tmpdir") + File.separator + "ARGON_output";
-                try {
-                    Path outputPath = Paths.get(outputDir);
-                    if (Files.exists(outputPath) && !Files.isDirectory(outputPath)) {
-                        throw new HandymanException("Path exists but is not a directory: " + outputDir);
-                    }
-                    Files.createDirectories(outputPath);
-                    log.info(aMarker, "Output directory created or already exists: {}", outputDir);
-                } catch (FileAlreadyExistsException e) {
-                    log.warn(aMarker, "Directory already exists, continuing: {}", outputDir, e);
-                } catch (IOException e) {
-                    log.error(aMarker, "Failed to create output directory: {}", outputDir, e);
-                    throw new HandymanException("Cannot create output directory: " + outputDir, e);
-                }
-
-                if (!Files.isWritable(Paths.get(outputDir))) {
-                    throw new HandymanException("Output directory is not writable: " + outputDir);
-                }
-
-                String baseFileName = inputFile.getName().replaceAll("(?i)\\.jpg|\\.jpeg$", "");
-                String outputFilePath = outputDir + File.separator + baseFileName + ".txt";
-                log.info(aMarker, "Output file path: {}", outputFilePath);
-
                 TestDataExtractorService extractorService = new TestDataExtractorService();
                 log.info(aMarker, "Starting extraction for file: {}", inputFile.getName());
-                extractorService.processTextExtraction(Collections.singletonList(inputFilePath), outputFilePath);
+                String extractedText = extractorService.processTextExtraction(Collections.singletonList(inputFilePath));
 
-                File outputFile = new File(outputFilePath);
-                log.info(aMarker, "Checking output file: {}, exists: {}", outputFilePath, outputFile.exists());
-                if (!outputFile.exists()) {
-                    throw new HandymanException("Output file not generated: " + outputFilePath);
-                }
-                String extractedText = Files.readString(outputFile.toPath());
-
-                String cleanedText = extractedText.replaceAll(
-                        "TesseractBatchResponseDto\\(documents=\\[TesseractResponseDto\\(textByPage=\\{Data=([\\s\\S]*?)\\}\\)\\]\\)",
-                        "$1"
-                );
-
-                String flag = (cleanedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+                String flag = (extractedText.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
                 String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-                String extractedContentEnc = cleanedText;
+                String extractedContentEnc = extractedText;
                 InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
                 if ("true".equals(encryptSotPageContent)) {
-                    extractedContentEnc = encryption.encrypt(cleanedText, "AES256", "TEXT_DATA");
+                    extractedContentEnc = encryption.encrypt(extractedText, "AES256", "TEXT_DATA");
                 }
 
                 parentObj.add(DeepSiftOutputTable.builder().inputFilePath(inputFilePath).extractedText(extractedContentEnc).originId(entity.getOriginId()).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).tenantId(entity.getTenantId()).batchId(entity.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(modelName).build());
-
-                outputFile.delete();
-                log.info(aMarker, "Output file deleted: {}", outputFilePath);
 
             } catch (Exception e) {
                 log.error(aMarker, "Exception in ARGON handler for file: {}", inputFilePath, e);
@@ -246,8 +209,120 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 HandymanException.insertException("Deep sift ARGON failed for origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, action);
                 throw handymanException;
             }
+        } else if ("XENON".equals(modelName)){
+            log.info(aMarker, "Executing XENON handler for endpoint: {}", endpoint);
+            DeepSiftRequest XenonRequestPayload = getXenonRequestPayloadFromQuery(entity);
+            String base64ForPath;
+            try {
+                base64ForPath = getBase64ForPath(inputFilePath);
+                if (base64ForPath == null || base64ForPath.isEmpty()) {
+                    log.error(aMarker, "Base64 conversion returned null or empty for file: {}", inputFilePath);
+                }
+                XenonRequestPayload.setBase64Img(base64ForPath);
+                log.info(aMarker, "Base64 image generated for file: {}", inputFilePath);
+            } catch (IOException e) {
+                log.error(aMarker, "Failed to convert file to Base64: {}", inputFilePath, e);
+                throw new HandymanException("Error converting file to Base64 for Xenon", e, action);
+            }
+            String deepSiftPayloadString;
+            try {
+                deepSiftPayloadString = mapper.writeValueAsString(XenonRequestPayload);
+            } catch (JsonProcessingException e) {
+                log.error(aMarker, "Failed to serialize Xenon payload", e);
+                throw new HandymanException("Error serializing Xenon payload", e, action);
+            }
+
+            String jsonRequestXenon = getTritonRequestPayload(deepSiftPayloadString, XENON_START, mapper);
+
+            Request request = new Request.Builder()
+                    .url(endpoint)
+                    .post(RequestBody.create(jsonRequestXenon, mediaType))
+                    .build();
+            tritonRequestXenonExecutor(entity, request, parentObj, jsonRequestXenon, endpoint);
         }
         return parentObj;
+    }
+
+    private DeepSiftRequest getXenonRequestPayloadFromQuery(DeepSiftInputTable entity) {
+        DeepSiftRequest deepSiftRequest = new DeepSiftRequest();
+        deepSiftRequest.setOriginId(entity.getOriginId());
+        deepSiftRequest.setTenantId(entity.getTenantId());
+        deepSiftRequest.setRootPipelineId(entity.getRootPipelineId());
+        deepSiftRequest.setActionId(action.getActionId());
+        deepSiftRequest.setProcess(PROCESS_NAME);
+        deepSiftRequest.setInputFilePath(entity.getInputFilePath());
+        deepSiftRequest.setBatchId(entity.getBatchId());
+        deepSiftRequest.setPaperNo(entity.getPaperNo());
+        deepSiftRequest.setGroupId(Long.valueOf(entity.getGroupId()));
+        deepSiftRequest.setModelName(entity.getModelName());
+        return deepSiftRequest;
+    }
+
+    private void tritonRequestXenonExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj, String jsonRequest, URL endpoint) {
+        try (Response response = httpclient.newCall(request).execute()) {
+            String responseBody = Objects.requireNonNull(response.body()).string();
+
+            log.info(aMarker, "Xenon response: code={}, message={}", response.code(), response.message());
+
+            if (response.isSuccessful()) {
+                DeepSiftResponse modelResponse = mapper.readValue(responseBody, DeepSiftResponse.class);
+                if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
+                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
+                        try {
+                            extractedXenonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(),
+                                    modelResponse.getModelVersion(), jsonRequest, responseBody,
+                                    endpoint.toString());
+                        } catch (JsonProcessingException e) {
+                            throw new HandymanException("Exception in extracted output Data request", e);
+                        }
+                    }));
+                }
+            } else {
+                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
+                        response.message(), jsonRequest, responseBody, endpoint.toString()));
+                HandymanException handymanException = new HandymanException("Unsuccessful response code: " + response.code() +
+                        " message: " + response.message());
+                HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
+                        " paper no " + entity.getPaperNo(), handymanException, action);
+                log.error(aMarker, "Error in response: {}", response.message());
+            }
+        } catch (Exception e) {
+            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
+                    ExceptionUtil.toString(e), jsonRequest, "Error In Response", endpoint.toString()));
+            log.error(aMarker, "Exception occurred", e);
+            HandymanException handymanException = new HandymanException("Deep sift consumer failed", e);
+            HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
+                    " paper no " + entity.getPaperNo(), handymanException, action);
+        }
+    }
+
+    private void extractedXenonOutputDataRequest(DeepSiftInputTable entity, String stringDataItem, List<DeepSiftOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint)
+            throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode dataNodeJson = mapper.readTree(stringDataItem);
+
+        String innerModel = dataNodeJson.has("model") ? dataNodeJson.get("model").asText() : modelName;
+
+        DeepSiftLineItem deepSiftDataItem = mapper.readValue(stringDataItem, DeepSiftLineItem.class);
+        deepSiftDataItem.setOriginId(Optional.ofNullable(deepSiftDataItem.getOriginId()).orElse(entity.getOriginId()));
+        deepSiftDataItem.setInputFilePath(Optional.ofNullable(deepSiftDataItem.getInputFilePath()).orElse(entity.getInputFilePath()));
+        deepSiftDataItem.setProcessId(Optional.ofNullable(deepSiftDataItem.getProcessId()).orElse(entity.getProcessId()));
+        deepSiftDataItem.setGroupId(Optional.ofNullable(deepSiftDataItem.getGroupId()).orElse(entity.getGroupId()));
+        deepSiftDataItem.setTenantId(Optional.ofNullable(deepSiftDataItem.getTenantId()).orElse(entity.getTenantId()));
+        deepSiftDataItem.setRootPipelineId(Optional.ofNullable(deepSiftDataItem.getRootPipelineId()).orElse(entity.getRootPipelineId()));
+        deepSiftDataItem.setBatchId(Optional.ofNullable(deepSiftDataItem.getBatchId()).orElse(entity.getBatchId()));
+
+        String contentString = Optional.ofNullable(deepSiftDataItem.getInferResponse()).map(String::valueOf).orElse("");
+        String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+        String extractedContent = contentString;
+        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+
+        if ("true".equals(encryptSotPageContent)) {
+            extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
+        }
+
+        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(innerModel).build());
     }
 
     private DeepSiftRequest getKryptonRequestPayloadFromQuery(DeepSiftInputTable entity) {

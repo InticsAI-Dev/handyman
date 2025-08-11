@@ -42,9 +42,9 @@ public class DeepSiftAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO ";
   public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   public static final String READ_BATCH_SIZE = "read.batch.size";
-  public static final String TEXT_EXTRACTION_CONSUMER_API_COUNT = "text.extraction.consumer.API.count";
+  public static final String DEEP_SIFT_CONSUMER_API_COUNT = "deep.sift.consumer.API.count";
   public static final String WRITE_BATCH_SIZE = "write.batch.size";
-  public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
+  public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
   private final ActionExecutionAudit action;
   public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
@@ -86,7 +86,7 @@ public class DeepSiftAction implements IActionExecution {
       final CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DeepSiftOutputTable.class, DeepSiftInputTable.class, DeepSift.getResourceConn(), log, new DeepSiftInputTable(), urls, action);
 
       Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-      Integer consumerApiCount = Integer.valueOf(action.getContext().get(TEXT_EXTRACTION_CONSUMER_API_COUNT));
+      Integer consumerApiCount = Integer.valueOf(action.getContext().get(DEEP_SIFT_CONSUMER_API_COUNT));
       Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
       Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
       DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
