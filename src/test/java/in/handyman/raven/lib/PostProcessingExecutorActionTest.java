@@ -13,43 +13,10 @@ class PostProcessingExecutorActionTest {
 
         PostProcessingExecutor postProcessingExecutor = PostProcessingExecutor.builder()
                 .name("Post Processing executor")
-                .batchId("BATCH-2014_0_new")
+                .batchId("BATCH-24_0")
                 .groupId("2014")
                 .condition(true)
                 .outputTable("score.aggregation_evaluator")
-                .resourceConn("intics_zio_db_conn_hera")
-                .querySet("SELECT\n" +
-                        "                                            a.tenant_id as tenant_id,\n" +
-                        "                                            a.confidence_score as aggregated_score,\n" +
-                        "                                            a.weight_score as masked_score,\n" +
-                        "                                            a.origin_id,\n" +
-                        "                                            a.paper_no,\n" +
-                        "                                            a.extracted_value,\n" +
-                        "                                            b.vqa_score,\n" +
-                        "                                            a.weight_rank as rank,\n" +
-                        "                                            smca.sor_item_attribution_id as sor_item_attribution_id,\n" +
-                        "                                            a.sor_item_name,\n" +
-                        "                                            '1' as documentId,\n" +
-                        "                                            1 as acc_transaction_id,\n" +
-                        "                                            b.b_box,\n" +
-                        "                                            a.root_pipeline_id as root_pipeline_id,\n" +
-                        "                                            a.freq as frequency,\n" +
-                        "                                            b.question_id,\n" +
-                        "                                            b.synonym_id,\n" +
-                        "                                            a.model_registry,\n" +
-                        "                                            smca.is_encrypted,\n" +
-                        "                                            smca.encryption_policy\n" +
-                        "                                          FROM\n" +
-                        "                                            voting.weighted_value a\n" +
-                        "                                            JOIN score.scalar_validation b ON a.validation_id = b.validation_id\n" +
-                        "                                            JOIN macro.sor_meta_consolidated_audit smca ON smca.tenant_id = b.tenant_id\n" +
-                        "                                                            AND smca.root_pipeline_id = b.root_pipeline_id\n" +
-                        "                                                            AND smca.synonym_id = b.synonym_id\n" +
-                        "                                                            AND smca.sor_item_name = b.sor_item_name\n" +
-                        "                                            JOIN sor_transaction.sor_transaction_payload_queue_archive st ON st.origin_id = a.origin_id\n" +
-                        "                                                            AND st.batch_id = a.batch_id\n" +
-                        "                                                            AND st.tenant_id = b.tenant_id\n" +
-                        "                        WHERE a.origin_id ='ORIGIN-8736';\n")
                 .resourceConn("intics_zio_db_conn")
                 .querySet("  SELECT DISTINCT\n" +
                         "          b.tenant_id,\n" +
@@ -84,21 +51,20 @@ class PostProcessingExecutorActionTest {
                         "    WHERE\n" +
                         "          b.group_id = '2014'\n" +
                         "      AND b.tenant_id = 1\n" +
-                        "      AND b.batch_id = 'BATCH-2014_0'\n" +
-                        "      AND b.root_pipeline_id = '275569'\n" +
+                        "      AND b.batch_id = 'BATCH-24_0'\n" +
+                        "      AND b.root_pipeline_id = '903'\n" +
                         "      AND smca.line_item_type = 'multi_value'\n" +
-                        "      and b.sor_item_name = 'auth_id';")
+                        "      and b.sor_item_name = 'member_address_line1';")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.getContext().put("tenant_id", "1");
         action.getContext().put("group_id", "2014");
-        action.getContext().put("batch_id", "BATCH-2014_0_new");
+        action.getContext().put("batch_id", "BATCH-24_0");
         action.getContext().put("created_user_id", "1");
-                action.getContext().put("outbound.mapper.bsh.class.order", "AuthIdValidator");
-                action.getContext().put("outbound.mapper.bsh.class.order", "MedicaidMemberIdValidator");
-        action.getContext().put("pipeline.end.to.end.encryption", "false");
+        action.getContext().put("outbound.mapper.bsh.class.order", "AuthIdValidator");
+        action.getContext().put("pipeline.end.to.end.encryption", "true");
         action.getContext().put("AuthIdValidator", "import org.slf4j.Logger;\n" +
                 "import java.util.*;\n" +
                 "\n" +
@@ -282,9 +248,12 @@ class PostProcessingExecutorActionTest {
                 "    }\n" +
                 "}");
         action.getContext().put("MedicaidMemberIdValidator", "");
-
+        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
         action.setRootPipelineId(929L);
-
+        action.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
+        action.getContext().put("protegrity.enc.api.url",encryptionUrl);
+        action.getContext().put("protegrity.dec.api.url",decryptionUrl);
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, postProcessingExecutor);
         postProcessingExecutorAction.execute();
     }

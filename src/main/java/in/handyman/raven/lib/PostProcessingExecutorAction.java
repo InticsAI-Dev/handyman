@@ -1,13 +1,13 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.core.encryption.SecurityEngine;
-import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.model.PostProcessingExecutor;
 import in.handyman.raven.lib.model.scalar.ValidatorByBeanShellExecutor;
 import in.handyman.raven.util.CommonQueryUtil;
@@ -15,8 +15,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -87,16 +87,21 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 .collect(Collectors.toList());
         log.info(aMarker, "Total rows fetched: {}", postProcessingExecutorInputs.size());
         if (encryptEnabled) {
-            postProcessingExecutorInputs.forEach(input -> {
-                if ("t".equalsIgnoreCase(input.getIsEncrypted())) {
-                    String decrypted = crypt.decrypt(
-                            input.getExtractedValue(),
-                            input.getEncryptionPolicy(),
-                            input.getSorItemName()
-                    );
-                    input.setExtractedValue(decrypted);
-                }
-            });
+            if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
+                log.info("Scalar activator is disabled, running decryption in AES256 mode");
+                postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                    if ("t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
+                        postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), "AES256", postProcessingExecutorInput.getSorItemName()));
+                    }
+                });
+            } else {
+                log.info("Scalar activator is enabled, running decryption in policy mode");
+                postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                    if ("t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
+                        postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
+                    }
+                });
+            }
         }
     }
 
