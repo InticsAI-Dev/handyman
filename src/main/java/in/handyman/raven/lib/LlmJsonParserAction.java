@@ -169,6 +169,7 @@ public class LlmJsonParserAction implements IActionExecution {
                                     .imageWidth(inputTable.getImageWidth())
                                     .sorContainerId(inputTable.getSorContainerId())
                                     .sorItemLabel(parsedEncryptResponse.getLabel())
+                                    .sectionAlias(parsedEncryptResponse.getSectionAlias())
                                     .build();
 
                             getInsertIntoKryptonResultTable(handle, insertQueryKrypton, insertData);
