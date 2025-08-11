@@ -128,7 +128,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
                     new AgenticPaperFilterConsumerProcess(log, aMarker, action, this, pageContentMinLength, fileProcessingUtils, processBase64, agenticPaperFilter.getResourceConn());
 
-            
+
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, agenticPaperFilterConsumerProcess);
             log.info(aMarker, " Agentic Paper Filter Action has been completed {}  ", agenticPaperFilter.getName());
         } catch (Exception e) {
