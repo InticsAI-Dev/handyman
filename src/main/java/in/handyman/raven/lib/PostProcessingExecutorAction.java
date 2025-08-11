@@ -16,13 +16,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.statement.PreparedBatch;
+import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.Query;
+import org.jdbi.v3.core.statement.Update;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -42,114 +46,156 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
     private final Marker aMarker;
 
-    private List<PostProcessingExecutorInput> postProcessingExecutorInputs;
-
+    private List<PostProcessingExecutorInput> postProcessingExecutorInputs = new ArrayList<>();
     private static final String POST_PROCESSING_THREAD_COUNT = "post.processing.thread.count";
 
-    public PostProcessingExecutorAction(ActionExecutionAudit action, Logger log, Object executor) {
+    public PostProcessingExecutorAction(final ActionExecutionAudit action, final Logger log,
+                                        final Object postProcessingExecutor) {
+        this.postProcessingExecutor = (PostProcessingExecutor) postProcessingExecutor;
         this.action = action;
         this.log = log;
-        this.postProcessingExecutor = (PostProcessingExecutor) executor;
-        this.aMarker = MarkerFactory.getMarker("PostProcessingExecutor:" + postProcessingExecutor.getName());
+        this.aMarker = MarkerFactory.getMarker(" PostProcessingExecutor:" + this.postProcessingExecutor.getName());
     }
 
     @Override
     public void execute() throws Exception {
-
-        Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
-        InticsIntegrity crypt = SecurityEngine.getInticsIntegrityMethod(action, log);
-        String itemWiseEncryptionActivator = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(postProcessingExecutor.getResourceConn());
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
         int postProcessingThreadCount = Integer.parseInt(action.getContext().getOrDefault(POST_PROCESSING_THREAD_COUNT, "10"));
 
-        boolean encryptEnabled = Boolean.parseBoolean(itemWiseEncryptionActivator);
-        log.info(aMarker, "PostProcessingExecutor started with encryptEnabled: {}", encryptEnabled);
+        String pipelineEndToEndEncryptionActivatorStr = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
+        boolean pipelineEndToEndEncryptionActivator = Boolean.parseBoolean(pipelineEndToEndEncryptionActivatorStr);
 
-        jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
+        Long groupId = Long.valueOf(postProcessingExecutor.getGroupId());
+        String batchId = postProcessingExecutor.getBatchId();
 
-        log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
-        postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
-        log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
+        String outputTableName = postProcessingExecutor.getOutputTable();
 
-        postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
-
-        String outputTable = postProcessingExecutor.getOutputTable();
-        log.info(aMarker, "Started batch insert into {}", outputTable);
-        jdbi.useHandle(handle -> executeBatchInsert(handle, postProcessingExecutorInputs));
-        log.info(aMarker, "Batch insert completed into {}", outputTable);
-    }
-
-    private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
-        List<String> queries = CommonQueryUtil.getFormattedQuery(postProcessingExecutor.getQuerySet());
-        postProcessingExecutorInputs = queries.stream()
-                .flatMap(sql -> handle.createQuery(sql)
-                        .mapToBean(PostProcessingExecutorInput.class)
-                        .stream())
-                .collect(Collectors.toList());
-        log.info(aMarker, "Total rows fetched: {}", postProcessingExecutorInputs.size());
-        if (encryptEnabled) {
-            postProcessingExecutorInputs.forEach(input -> {
-                if ("t".equalsIgnoreCase(input.getIsEncrypted())) {
-                    String decrypted = crypt.decrypt(
-                            input.getExtractedValue(),
-                            input.getEncryptionPolicy(),
-                            input.getSorItemName()
-                    );
-                    input.setExtractedValue(decrypted);
+        jdbi.useTransaction(handle -> {
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(postProcessingExecutor.getQuerySet());
+            AtomicInteger i = new AtomicInteger(0);
+            for (String sqlToExecute : formattedQuery) {
+                log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
+                Query query = handle.createQuery(sqlToExecute);
+                ResultIterable<PostProcessingExecutorInput> resultIterable = query.mapToBean(PostProcessingExecutorInput.class);
+                List<PostProcessingExecutorInput> processingExecutorInputs = resultIterable.stream().collect(Collectors.toList());
+                postProcessingExecutorInputs.addAll(processingExecutorInputs);
+                log.info(aMarker, "executed query from index {}", i.get());
+            }
+        });
+        log.info("Post processing Executor action total rows returned from the query {}",postProcessingExecutorInputs.size());
+        if(action.getContext().getOrDefault("scalar.adapter.activator","false").equalsIgnoreCase("false")) {
+            log.info("Scalar activator is disabled, running decryption in AES256 mode");
+            postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                    postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), "AES256", postProcessingExecutorInput.getSorItemName()));
+                }
+            });
+        }else {
+            log.info("Scalar activator is enabled, running decryption in policy mode");
+            postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                    postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
                 }
             });
         }
+
+
+        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log,postProcessingThreadCount);
+        log.info("Starting the post processing for row wise details");
+        postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
+        log.info("Completed the post processing for row wise details");
+        log.info("Updated validator configuration details of size {}", postProcessingExecutorInputs.size());
+
+        postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+            String extractedValue = postProcessingExecutorInput.getExtractedValue();
+            String encryptionPolicy = postProcessingExecutorInput.getEncryptionPolicy();
+            if (Objects.equals(postProcessingExecutorInput.getLineItemType(), "multi_value")) {
+                log.debug("Processing multi_value lineItemType for SOR item: {}", postProcessingExecutorInput.getSorItemName());
+                if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
+                    log.info("Decryption and re-encryption enabled for multi_value item: {}", postProcessingExecutorInput.getSorItemName());
+                    try {
+                        String[] multivalue = extractedValue.split(",");
+                        List<String> encryptMultiValue = new ArrayList<>();
+                        for (int i = 0; i < multivalue.length; i++) {
+                            String trimmedValue = multivalue[i].trim();
+                            String encryptedValue = encryption.encrypt(trimmedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName());
+                            encryptMultiValue.add(encryptedValue);
+                        }
+                        String finalOutput = String.join(",", encryptMultiValue);
+                        log.debug("Final re-encrypted multi_value string for {}: ", postProcessingExecutorInput.getSorItemName());
+                        postProcessingExecutorInput.setExtractedValue(finalOutput);
+                    } catch (Exception e) {
+                        log.error("Error processing multi_value encryption for {}: {}", postProcessingExecutorInput.getSorItemName(), e.getMessage(), e);
+                        throw e;
+                    }
+                } else {
+                    log.info("Encryption not required for multi_value item: {}. Setting original extracted value.", postProcessingExecutorInput.getSorItemName());
+                    postProcessingExecutorInput.setExtractedValue(extractedValue);
+                }
+            }
+            else {
+                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                    postProcessingExecutorInput.setExtractedValue(encryption.encrypt(extractedValue, encryptionPolicy, postProcessingExecutorInput.getSorItemName()));
+                }
+            }
+        });
+
+        consumerBatch(jdbi, postProcessingExecutorInputs, outputTableName, batchId, groupId);
     }
 
-    private void processEncryption(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-        if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
-            handleMultiValue(input, crypt, encryptEnabled);
-        } else if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
-            input.setExtractedValue(
-                    crypt.encrypt(
-                            input.getExtractedValue(),
-                            input.getEncryptionPolicy(),
-                            input.getSorItemName()
-                    )
-            );
+
+    void consumerBatch(final Jdbi jdbi, List<PostProcessingExecutorInput> resultQueue, final String outputTableName, String batchId, Long groupId) {
+        String createdUserId = action.getContext().get("created_user_id");
+        try {
+            resultQueue.forEach(insert -> jdbi.useTransaction(handle -> {
+                try {
+                    String columnList = "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score," +
+                            "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id";
+
+                    String columnBindedList = "now(), :createdUserId, now(), :createdUserId, :tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, :predictedValue, :vqaScore," +
+                            ":rank, :sorItemAttributionId, :sorItemName, :documentId , :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId";
+
+                    Update update = handle.createUpdate("INSERT INTO " + outputTableName +
+                            " (" + columnList + ") " +
+                            " VALUES(" + columnBindedList + ")");
+
+                    update.bind("createdUserId", createdUserId);
+                    update.bind("tenantId", insert.getTenantId());
+                    update.bind("aggregatedScore", insert.getAggregatedScore());
+                    update.bind("maskedScore", insert.getMaskedScore());
+                    update.bind("originId", insert.getOriginId());
+                    update.bind("paperNo", insert.getPaperNo());
+                    update.bind("predictedValue", insert.getExtractedValue());
+                    update.bind("vqaScore", insert.getVqaScore());
+                    update.bind("rank", insert.getRank());
+                    update.bind("sorItemAttributionId", insert.getSorItemAttributionId());
+                    update.bind("sorItemName", insert.getSorItemName());
+                    update.bind("documentId", insert.getDocumentId());
+                    update.bind("accTransactionId", insert.getAccTransactionId());
+                    update.bind("bbox", insert.getBbox());
+                    update.bind("rootPipelineId", insert.getRootPipelineId());
+                    update.bind("frequency", insert.getFrequency());
+                    update.bind("questionId", insert.getQuestionId());
+                    update.bind("synonymId", insert.getSynonymId());
+                    update.bind("modelRegistry", insert.getModelRegistry());
+                    update.bind("batchId", batchId);
+                    update.bind("groupId", groupId);
+
+                    update.execute();
+                } catch (Exception t) {
+                    log.error(aMarker, "Error inserting result {} and {}", insert.getOriginId(), insert.getSorItemName(), t);
+                    HandymanException handymanException = new HandymanException(t);
+                    HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result for groupId " + groupId + " origin Id " + insert.getOriginId() + " paper No " + insert.getPaperNo(), handymanException, action);
+                }
+            }));
+        } catch (Exception t) {
+            log.error(aMarker, "Error inserting result {}", resultQueue, t);
+            HandymanException handymanException = new HandymanException(t);
+            HandymanException.insertException("Exception occurred in Post Processing consumer batch insert into adapter result", handymanException, action);
         }
     }
 
-    private void handleMultiValue(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-        String[] parts = input.getExtractedValue().split(",");
-        List<String> reEncrypted = java.util.Arrays.stream(parts)
-                .map(String::trim)
-                .map(val -> encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())
-                        ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName())
-                        : val)
-                .collect(Collectors.toList());
-        input.setExtractedValue(String.join(",", reEncrypted));
-    }
-
-    private void executeBatchInsert(Handle handle, List<PostProcessingExecutorInput> rows) {
-        String sql = buildInsertSQL();
-        try (PreparedBatch batch = handle.prepareBatch(sql)) {
-            rows.forEach(row -> {
-                batch.bind("createdUserId", action.getContext().get("created_user_id"));
-                batch.bindBean(row);
-                batch.bind("groupId", Long.valueOf(postProcessingExecutor.getGroupId()));
-                batch.bind("batchId", postProcessingExecutor.getBatchId());
-                batch.add();
-            });
-            int[] counts = batch.execute();
-            log.info(aMarker, "Batch inserted {} records", counts.length);
-        } catch (Exception e) {
-            log.error(aMarker, "Batch insert failed", e);
-            HandymanException.insertException("Error in batch insert into " + postProcessingExecutor.getOutputTable(), new HandymanException(e), action);
-        }
-    }
-
-    private String buildInsertSQL() {
-        return "INSERT INTO " + postProcessingExecutor.getOutputTable() + " (" +
-                "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, " +
-                "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id) VALUES (" +
-                "now(), :createdUserId, now(), :createdUserId, :tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, :extractedValue, :vqaScore, " +
-                ":rank, :sorItemAttributionId, :sorItemName, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId)";
-    }
 
     @Override
     public boolean executeIf() throws Exception {
