@@ -84,11 +84,22 @@ public class PostProcessingExecutorAction implements IActionExecution {
             }
         });
         log.info("Post processing Executor action total rows returned from the query {}",postProcessingExecutorInputs.size());
-        postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
-            if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
-                postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
-            }
-        });
+        if(action.getContext().getOrDefault("scalar.adapter.activator","false").equalsIgnoreCase("false")) {
+            log.info("Scalar activator is disabled, running decryption in AES256 mode");
+            postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                    postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), "AES256", postProcessingExecutorInput.getSorItemName()));
+                }
+            });
+        }else {
+            log.info("Scalar activator is enabled, running decryption in policy mode");
+            postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                if (pipelineEndToEndEncryptionActivator && Objects.equals(postProcessingExecutorInput.getIsEncrypted(), "t")) {
+                    postProcessingExecutorInput.setExtractedValue(encryption.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
+                }
+            });
+        }
+
 
         ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log,postProcessingThreadCount);
         log.info("Starting the post processing for row wise details");
