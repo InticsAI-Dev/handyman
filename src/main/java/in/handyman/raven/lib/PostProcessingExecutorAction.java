@@ -100,12 +100,17 @@ public class PostProcessingExecutorAction implements IActionExecution {
             });
         }
 
-
-        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log,postProcessingThreadCount);
-        log.info("Starting the post processing for row wise details");
-        postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
-        log.info("Completed the post processing for row wise details");
-        log.info("Updated validator configuration details of size {}", postProcessingExecutorInputs.size());
+        try {
+            ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount);
+            log.info("Starting the post processing for row wise details");
+            postProcessingExecutorInputs = validatorByBeanShellExecutor.doRowWiseValidator();
+            log.info("Completed the post processing for row wise details");
+            log.info("Updated validator configuration details of size {}", postProcessingExecutorInputs.size());
+        } catch (Exception e) {
+            log.error(aMarker, "Error during validation", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Validation failed during post-processing", handymanException, action);
+        }
 
         postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
             String extractedValue = postProcessingExecutorInput.getExtractedValue();
