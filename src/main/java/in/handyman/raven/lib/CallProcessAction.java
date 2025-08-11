@@ -51,7 +51,7 @@ public class CallProcessAction implements IActionExecution {
         final String fileRelativePath = callProcess.getSource();
         var targetProcess = callProcess.getTarget();
         var dbSrc = callProcess.getDatasource();
-        var sql = callProcess.getValue().replace("\"", "");
+        var sql = callProcess.getValue().replaceAll("\"", "");
         log.info(aMarker, " id#{}, name#{}, calledProcess#{}, calledFile#{}, db=#{}", actionExecutionAudit.getActionId(), callProcess.getName(), targetProcess, fileRelativePath, dbSrc);
 
         Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbSrc);
