@@ -1,7 +1,6 @@
 package in.handyman.raven.core.encryption.impl;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
@@ -17,7 +16,7 @@ import okhttp3.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private final OkHttpClient client ;
+    private final OkHttpClient client;
     private final String protegrityEncApiUrl;
     private final String protegrityDecApiUrl;
     private final ActionExecutionAudit actionExecutionAudit;
@@ -57,6 +56,16 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         return callProtegrityApi(inputToken, encryptionPolicy, sorItem, protegrityEncApiUrl);
     }
 
+    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+        if (requestList == null || requestList.isEmpty()) {
+            //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
+            return Collections.emptyList();
+        }
+        //logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
+        return callProtegrityListApi(requestList, protegrityEncApiUrl);
+    }
+
+
     @Override
     public String decrypt(String encryptedToken, String encryptionPolicy, String sorItem) throws HandymanException {
         if (encryptedToken == null || encryptedToken.isBlank()) {
@@ -69,16 +78,6 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     }
 
     @Override
-    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
-        if (requestList == null || requestList.isEmpty()) {
-            //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
-            return Collections.emptyList();
-        }
-        //logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
-        return callProtegrityListApi(requestList, protegrityEncApiUrl);
-    }
-
-    @Override
     public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         if (requestList == null || requestList.isEmpty()) {
             //logger.warn("Decryption skipped: encryptedToken is null or blank for sorItem: {}", sorItem);
@@ -88,6 +87,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         //logger.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
         return callProtegrityListApi(requestList, protegrityDecApiUrl);
     }
+
 
     @Override
     public String getEncryptionMethod() {
@@ -192,6 +192,102 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         }
     }
 
+    private List<EncryptionRequestClass> callProtegrityListApi(List<EncryptionRequestClass> protegrityList, String endpoint) throws HandymanException {
+        long auditId = -1;
+        String uuid = UUID.randomUUID().toString();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Insert the Protegrity audit record into your database or repository
+            auditId = REPO.insertProtegrityAuditRecord(
+                    "BATCH",
+                    getEncryptionMethod(),
+                    endpoint,
+                    actionExecutionAudit.getRootPipelineId(),
+                    actionExecutionAudit.getActionId(),
+                    Thread.currentThread().getName(),
+                    uuid
+            );
+
+            logger.info("Calling Protegrity API (BATCH) with auditId={}, uuid={}, endpoint={}, items={}",
+                    auditId, uuid, endpoint, protegrityList.size());
+
+            // Convert the entire list to JSON and send in one request
+            String jsonPayload = objectMapper.writeValueAsString(protegrityList);
+            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
+            Request request = new Request.Builder().url(endpoint).post(body).build();
+
+            try (Response response = client.newCall(request).execute()) {
+                long endTime = System.currentTimeMillis();
+                long tat = endTime - startTime;
+
+                String responseBody = response.body().string();
+
+                if (!response.isSuccessful()) {
+                    String errorMessage = String.format(
+                            "FAILURE | uuid=%s | auditId=%d | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | jsonSize=%d",
+                            uuid, auditId, endpoint, response.code(), response.message(), tat, protegrityList.size()
+                    );
+                    logger.error(errorMessage);
+                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
+                    HandymanException exception = new HandymanException(response.message());
+                    HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
+                    throw exception;
+                }
+
+                // Parse the JSON response from the Protegrity API
+                JsonNode jsonResponse = objectMapper.readTree(responseBody);
+                List<EncryptionRequestClass> encryptedValues = new ArrayList<>();
+
+                // Iterate over the response JSON array and map to EncryptionRequestClass
+                for (int i = 0; i < jsonResponse.size(); i++) {
+                    JsonNode responseItem = jsonResponse.get(i);
+                    String encryptedValue = responseItem.get("value").asText();
+
+                    // Map the encrypted value back to EncryptionRequestClass
+                    EncryptionRequestClass encryptedRequest = new EncryptionRequestClass(
+                            responseItem.get("policy").asText(), // Assuming policy is in the response
+                            encryptedValue,
+                            responseItem.get("key").asText() // Assuming key is in the response
+                    );
+
+                    encryptedValues.add(encryptedRequest);
+                }
+
+                String successMessage = String.format(
+                        "SUCCESS | uuid=%s | auditId=%d | endpoint=%s | TAT=%d ms | jsonSize=%d",
+                        uuid, auditId, endpoint, tat, protegrityList.size()
+                );
+                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
+                logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms]",
+                        auditId, uuid, protegrityList.size(), tat);
+
+                // Return the list of EncryptionRequestClass objects
+                System.out.println(encryptedValues);
+                return encryptedValues;
+
+            }
+
+        } catch (IOException e) {
+            long endTime = System.currentTimeMillis();
+            long tat = endTime - startTime;
+
+            String errMsg = String.format(
+                    "EXCEPTION | uuid=%s | auditId=%d | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d",
+                    uuid, auditId, endpoint, e.getMessage(), tat, protegrityList.size()
+            );
+
+            logger.error(errMsg, e);
+            HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
+
+            if (auditId != -1) {
+                REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
+            }
+
+            HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
+            throw handymanException;
+        }
+    }
 
 
     //TODO to increase performance call this method
@@ -231,92 +327,12 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         return "";
     }
 
-    private List<EncryptionRequestClass> callProtegrityListApi(List<EncryptionRequestClass> protegrityList, String endpoint) throws HandymanException {
-        long auditId = -1;
-        String uuid = UUID.randomUUID().toString();
-        long startTime = System.currentTimeMillis();
-
-        try {
-            // Insert the Protegrity audit record into your database or repository
-            auditId = REPO.insertProtegrityAuditRecord(
-                    "BATCH",
-                    getEncryptionMethod(),
-                    endpoint,
-                    actionExecutionAudit.getRootPipelineId(),
-                    actionExecutionAudit.getActionId(),
-                    Thread.currentThread().getName(),
-                    uuid
-            );
-
-            logger.info("Calling Protegrity API (BATCH) with auditId={}, uuid={}, endpoint={}, items={}",
-                    auditId, uuid, endpoint, protegrityList.size());
-
-            // Convert the entire list to JSON and send in one request
-            String jsonPayload = objectMapper.writeValueAsString(protegrityList);
-            RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
-            Request request = new Request.Builder().url(endpoint).post(body).build();
-
-            try (Response response = client.newCall(request).execute()) {
-                long endTime = System.currentTimeMillis();
-                long tat = endTime - startTime;
-
-                String responseBody = response.body().string();
-
-                List<EncryptionRequestClass> encryptedValues = objectMapper.readValue(responseBody, new TypeReference<List<EncryptionRequestClass>>(){});
-
-                if (!response.isSuccessful()) {
-                    String errorMessage = String.format(
-                            "FAILURE | uuid=%s | auditId=%d | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | jsonSize=%d",
-                            uuid, auditId, endpoint, response.code(), response.message(), tat, protegrityList.size()
-                    );
-                    logger.error(errorMessage);
-                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
-                    HandymanException exception = new HandymanException(response.message());
-                    HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
-                    throw exception;
-                }
-
-                String successMessage = String.format(
-                        "SUCCESS | uuid=%s | auditId=%d | endpoint=%s | TAT=%d ms | jsonSize=%d",
-                        uuid, auditId, endpoint, tat, protegrityList.size()
-                );
-                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
-                logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms]",
-                        auditId, uuid, protegrityList.size(), tat);
-
-                // Return the list of EncryptionRequestClass objects
-                System.out.println(encryptedValues);
-                return encryptedValues;
-
-            }
-
-        } catch (IOException e) {
-            long endTime = System.currentTimeMillis();
-            long tat = endTime - startTime;
-
-            String errMsg = String.format(
-                    "EXCEPTION | uuid=%s | auditId=%d | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d",
-                    uuid, auditId, endpoint, e.getMessage(), tat, protegrityList.size()
-            );
-
-            logger.error(errMsg, e);
-            HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
-
-            if (auditId != -1) {
-                REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
-            }
-
-            HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
-            throw handymanException;
-        }
-    }
-
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     @Data
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    static class EncryptionRequest {
+    public static class EncryptionRequest {
         private String policy;
         private String value;
         private String key;

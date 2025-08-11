@@ -2,30 +2,27 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.AssetInfo;
 import in.handyman.raven.lib.model.AssetInfoInputTable;
 import in.handyman.raven.lib.model.AssetInfoOutputTable;
-import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.result.ResultIterable;
-import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 
@@ -71,7 +68,7 @@ public class AssetInfoAction implements IActionExecution {
             Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
             log.info(aMarker, "Asset Info Action for {} has been started", assetInfo.getName());
 
-            final List<URL> urls =Optional.of(DUMMY_URL).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            final List<URL> urls = Optional.of(DUMMY_URL).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
                 try {
                     return new URL(s1);
                 } catch (MalformedURLException e) {
@@ -92,7 +89,7 @@ public class AssetInfoAction implements IActionExecution {
             Thread.sleep(1000);
 
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
-            AssetInfoConsumerProcess assetInfoConsumerProcess  = new AssetInfoConsumerProcess(log, aMarker, action, assetInfo, tenantId);
+            AssetInfoConsumerProcess assetInfoConsumerProcess = new AssetInfoConsumerProcess(log, aMarker, action, assetInfo, tenantId);
 
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, assetInfoConsumerProcess);
             log.info(aMarker, "Asset Info Action has been completed {}  ", assetInfo.getName());

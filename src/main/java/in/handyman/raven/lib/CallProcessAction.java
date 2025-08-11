@@ -98,31 +98,31 @@ public class CallProcessAction implements IActionExecution {
         try {
             final int forkBatchSize = Optional.ofNullable(callProcess.getForkBatchSize()).map(Integer::valueOf).orElse(0);
             if (forkBatchSize != 0) {
-                try (var executor = Executors.newWorkStealingPool(forkBatchSize)) {
-                    var counter = new CountDownLatch(runContext.size());
-                    runContext.forEach(lContext -> {
-                        final LambdaCallable lambdaCallable = new LambdaCallable(lContext, counter);
-                        executor.submit(lambdaCallable);
-                    });
+                var executor = Executors.newWorkStealingPool(forkBatchSize) ;
+                var counter = new CountDownLatch(runContext.size());
+                runContext.forEach(lContext -> {
+                    final LambdaCallable lambdaCallable = new LambdaCallable(lContext, counter);
+                    executor.submit(lambdaCallable);
+                });
 
+                try {
+                    counter.await();
+                } catch (InterruptedException e) {
+                    log.error(aMarker, "The Exception occurred ", e);
+                    throw new HandymanException("Call process parallel failed ", e, actionExecutionAudit);
+                } finally {
+                    log.info(aMarker, "Shutting down executor service");
+                    executor.shutdown();
                     try {
-                        counter.await();
-                    } catch (InterruptedException e) {
-                        log.error(aMarker, "The Exception occurred ", e);
-                        throw new HandymanException("Call process parallel failed ", e, actionExecutionAudit);
-                    } finally {
-                        log.info(aMarker, "Shutting down executor service");
-                        executor.shutdown();
-                        try {
-                            if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
-                                executor.shutdownNow();
-                            }
-                        } catch (InterruptedException e) {
+                        if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
                             executor.shutdownNow();
-                            Thread.currentThread().interrupt();
                         }
+                    } catch (InterruptedException e) {
+                        executor.shutdownNow();
+                        Thread.currentThread().interrupt();
                     }
                 }
+
 
             } else {
                 runContext.forEach(lContext -> {

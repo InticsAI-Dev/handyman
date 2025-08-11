@@ -103,7 +103,7 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                     PDPage firstPage = document.getPage(0);
                     pageWidth = firstPage.getMediaBox().getWidth();
                     pageHeight = firstPage.getMediaBox().getHeight();
-                    float width_inches = pageWidth / 75.0f; // Assuming 75 DPI for PDF
+                    float width_inches = pageWidth / 72.0f; // Assuming 75 DPI for PDF
                     dpi = (int) (pageWidth / width_inches);
                     log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
                 } catch (IOException e) {
@@ -120,8 +120,11 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                     log.error("Error in calculating width, height, dpi for image");
                 }
             }
+            String fileId = FilenameUtils.removeExtension(file.getName()) + "_" + ((int) (900000 * random() + 100000));
+            log.info("File Name: {}, File Size: {}, File Extension: {}, File ID: {}", file.getName(), fileSize, fileExtension, fileId);
+            log.info("File ID generated: {}", fileId);
             fileInfoBuilder = AssetInfoOutputTable.builder()
-                    .fileId(FilenameUtils.removeExtension(file.getName()) + "_" + ((int) (900000 * random() + 100000)))
+                    .fileId(fileId)
                     .tenantId(tenantId)
                     .fileChecksum(sha1Hex)
                     .fileExtension(fileExtension)
