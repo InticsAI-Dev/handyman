@@ -14,7 +14,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -25,36 +24,23 @@ import org.slf4j.Marker;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Base64;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Stream;
+import java.util.*;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
 import static java.lang.Math.random;
 
 /**
  * Consumer process for AssetInfoAction to handle file metadata extraction and audit logging.
- * Optimized for I/O, memory, and throughput without changing behavior.
  */
 public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<AssetInfoInputTable, AssetInfoOutputTable> {
-    private static final int HASH_BUFFER_SIZE = 1 << 20; // 1 MiB
-    private static final Set<String> IMAGE_EXTS = Set.of("jpg", "jpeg", "png", "bmp", "gif", "tif", "tiff");
-
     private final Logger log;
     private final Marker marker;
     private final ActionExecutionAudit action;
@@ -69,127 +55,80 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
         this.tenantId = tenantId;
     }
 
-    @Override
     public List<AssetInfoOutputTable> process(URL endpoint, AssetInfoInputTable input) throws Exception {
+        List<AssetInfoOutputTable> fileInfos = new ArrayList<>();
         try {
-            final String filePathString = Optional.ofNullable(input.getFilePath()).orElse("");
-            final String batchId = Optional.ofNullable(input.getBatchId()).orElse("");
-            if (filePathString.isBlank()) {
-                log.warn(marker, "Empty file path in input");
-                return List.of();
-            }
-
-            log.info(marker, "Processing file path: {}", filePathString);
-            final Path base = Paths.get(filePathString);
-
-            if (Files.isDirectory(base)) {
-                try (Stream<Path> walk = Files.walk(base, Integer.MAX_VALUE, FileVisitOption.FOLLOW_LINKS)) {
-                    // Parallelize per-file work; collect to list to avoid synchronized adds.
-                    return walk.filter(Files::isRegularFile)
-                            .parallel()
-                            .map(p -> safeInsertQuery(p.toFile(), tenantId, batchId))
-                            .toList();
+            log.info(marker, "Processing file path: {}", input.getFilePath());
+            final String filePathString = Optional.ofNullable(input.getFilePath()).map(String::valueOf).orElse("[]");
+            final String batchId = Optional.ofNullable(input.getBatchId()).map(String::valueOf).orElse("[]");
+            File file = new File(filePathString);
+            if (file.isDirectory()) {
+                try (var files = Files.walk(Path.of(filePathString)).filter(Files::isRegularFile)) {
+                    files.forEach(path -> fileInfos.add(insertQuery(path.toFile(), tenantId, batchId)));
                 } catch (IOException e) {
-                    log.error(marker, "Exception during directory traversal {}", ExceptionUtil.toString(e));
-                    throw new HandymanException("Exception during directory traversal", e, action);
+                    log.error(marker, "Exception occurred in directory iteration {}", ExceptionUtil.toString(e));
+                    throw new HandymanException("Exception occurred in directory iteration", e, action);
                 }
-            } else if (Files.isRegularFile(base)) {
-                return List.of(insertQuery(base.toFile(), tenantId, batchId));
-            } else {
-                log.warn(marker, "Path is neither file nor directory: {}", filePathString);
-                return List.of();
+            } else if (file.isFile()) {
+                fileInfos.add(insertQuery(file, tenantId, batchId));
             }
         } catch (Exception e) {
             log.error(marker, "Error in file info for {}", input.getFilePath(), e);
-            insertSummaryAudit(ResourceAccess.rdbmsJDBIConn(assetInfo.getResourceConn()), 0, 0, 1,
-                    "Error in file info for " + input.getFilePath(), tenantId);
-            throw e;
+            insertSummaryAudit(ResourceAccess.rdbmsJDBIConn(assetInfo.getResourceConn()), 0, 0, 1, "Error in file info for " + input.getFilePath(), tenantId);
         }
-    }
-
-    // Wrap insertQuery with error handling so parallel stream can continue on failures.
-    private AssetInfoOutputTable safeInsertQuery(File file, Long tenantId, String batchId) {
-        try {
-            return insertQuery(file, tenantId, batchId);
-        } catch (Exception e) {
-            log.error(marker, "Failed to process file {} -> {}", file, ExceptionUtil.toString(e));
-            // Return a minimal row with just the file path to keep behavior predictable
-            return AssetInfoOutputTable.builder()
-                    .filePath(file.getAbsolutePath())
-                    .tenantId(tenantId)
-                    .batchId(batchId)
-                    .build();
-        }
+        return fileInfos;
     }
 
     private AssetInfoOutputTable insertQuery(File file, Long tenantId, String batchId) {
+        AssetInfoOutputTable fileInfoBuilder = new AssetInfoOutputTable();
         try {
-            final String fileAbsolutePath = file.getAbsolutePath();
-            final String fileName = file.getName();
-            final String fileBase = FilenameUtils.removeExtension(fileName);
-            final String fileExtension = FilenameUtils.getExtension(fileName);
-            final Path path = file.toPath();
-
-            log.info(marker, "Insert query for file {}", fileAbsolutePath);
-
-            // Fast, buffered SHA-1
-            final String sha1Hex;
-            try (InputStream is = new BufferedInputStream(Files.newInputStream(path), HASH_BUFFER_SIZE)) {
-                sha1Hex = DigestUtils.sha1Hex(is);
+            log.info(marker, "Insert query for file {}", file);
+            String sha1Hex;
+            try (InputStream is = Files.newInputStream(Path.of(file.getPath()))) {
+                sha1Hex = org.apache.commons.codec.digest.DigestUtils.sha1Hex(is);
+            } catch (IOException e) {
+                log.error("Error in reading input stream {}", ExceptionUtil.toString(e));
+                throw new HandymanException("Error in reading input stream", e, action);
             }
-
-            final long fileSizeKB = file.length() / 1024;
-            final String decodedFileName = decodeFileName(fileName);
-
-            // Only build base64 for non-PDF files
-            final String base64ForPathValue = getBase64ForPath(fileAbsolutePath, fileExtension);
-
-            // Dimensions + DPI (first page for PDF; pixel dims for images)
+            var fileSize = file.length() / 1024;
+            String fileExtension = FilenameUtils.getExtension(file.getName());
+            String fileAbsolutePath = file.getAbsolutePath();
+            String decodedFileName = decodeFileName(file.getName());
+            String base64ForPathValue = getBase64ForPath(fileAbsolutePath, fileExtension);
             float pageWidth = 0f;
             float pageHeight = 0f;
             int dpi = 0;
-
-            if ("pdf".equalsIgnoreCase(fileExtension)) {
-                // Load directly from file to avoid copying bytes into heap
-                try (PDDocument document = Loader.loadPDF(file)) {
-                    if (document.getNumberOfPages() > 0) {
-                        PDPage firstPage = document.getPage(0);
-                        pageWidth = firstPage.getMediaBox().getWidth();
-                        pageHeight = firstPage.getMediaBox().getHeight();
-                        // PDF user units are points (1/72 inch)
-                        dpi = Math.round(pageWidth / (pageWidth / 72f));
-                    }
+            if (fileExtension.equalsIgnoreCase("pdf")) {
+                try (PDDocument document = Loader.loadPDF(Files.readAllBytes(file.toPath()))) {
+                    PDPage firstPage = document.getPage(0);
+                    pageWidth = firstPage.getMediaBox().getWidth();
+                    pageHeight = firstPage.getMediaBox().getHeight();
+                    float width_inches = pageWidth / 75.0f; // Assuming 75 DPI for PDF
+                    dpi = (int) (pageWidth / width_inches);
+                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
                 } catch (IOException e) {
-                    log.error(marker, "Error calculating PDF width/height/dpi for {} -> {}", fileAbsolutePath, e.getMessage());
+                    log.error("Error in calculating width, height, dpi for pdf file with exception {}", e.getMessage());
                 }
-            } else if (isImageExt(fileExtension)) {
-                try {
-                    BufferedImage image = ImageIO.read(file);
-                    if (image != null) {
-                        pageWidth = image.getWidth();
-                        pageHeight = image.getHeight();
-                        // Best-effort DPI estimation to keep behavior consistent with your original
-                        dpi = 72; // keep a sane constant; earlier math simplified to ~72 anyway
-                    } else {
-                        log.error(marker, "Failed to read image {}", fileAbsolutePath);
-                    }
-                } catch (IOException e) {
-                    log.error(marker, "Error reading image {} -> {}", fileAbsolutePath, e.getMessage());
+            } else {
+                BufferedImage image = ImageIO.read(file);
+                if (image != null) {
+                    pageWidth = image.getWidth();
+                    pageHeight = image.getHeight();
+                    float width_inches = pageWidth / 72;
+                    dpi = (int) (pageWidth / width_inches);
+                } else {
+                    log.error("Error in calculating width, height, dpi for image");
                 }
             }
-
-            final String fileId = fileBase + "_" + ((int) (900000 * random() + 100000));
-            log.info(marker, "File Name: {}, Size(KB): {}, Ext: {}, File ID: {}", fileName, fileSizeKB, fileExtension, fileId);
-
-            return AssetInfoOutputTable.builder()
-                    .fileId(fileId)
+            fileInfoBuilder = AssetInfoOutputTable.builder()
+                    .fileId(FilenameUtils.removeExtension(file.getName()) + "_" + ((int) (900000 * random() + 100000)))
                     .tenantId(tenantId)
                     .fileChecksum(sha1Hex)
                     .fileExtension(fileExtension)
-                    .fileName(fileBase)
+                    .fileName(FilenameUtils.removeExtension(file.getName()))
                     .decodedFileName(FilenameUtils.removeExtension(decodedFileName))
                     .filePath(fileAbsolutePath)
-                    .fileSize(String.valueOf(fileSizeKB))
+                    .fileSize(String.valueOf(fileSize))
                     .rootPipelineId(Long.valueOf(action.getContext().get("pipeline-id")))
                     .processId(Long.valueOf(action.getContext().get("process-id")))
                     .encode(encryptRequestResponse(base64ForPathValue))
@@ -198,16 +137,17 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                     .dpi(dpi)
                     .batchId(batchId)
                     .build();
-
+            log.info(marker, "File Info Builder {}", fileInfoBuilder.getFileName());
         } catch (Exception ex) {
             log.error(marker, "Error occurred in builder {}", ExceptionUtil.toString(ex));
             throw new HandymanException("Failed to execute {}", ex, action);
         }
+        return fileInfoBuilder;
     }
 
     private void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments, Long tenantId) {
         try {
-            final String batchId = action.getContext().get("batch_id");
+            String batchId = action.getContext().get("batch_id");
             SanitarySummary summary = SanitarySummary.builder()
                     .rowCount(rowCount)
                     .correctRowCount(executeCount)
@@ -220,7 +160,8 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                 Update update = handle.createUpdate("INSERT INTO " + assetInfo.getAuditTable() +
                         " (row_count, correct_row_count, error_row_count, comments, created_at, tenant_id, batch_id) " +
                         " VALUES(:rowCount, :correctRowCount, :errorRowCount, :comments, NOW(), :tenantId, :batchId)");
-                update.bindBean(summary).execute();
+                Update bindBean = update.bindBean(summary);
+                bindBean.execute();
             });
         } catch (Exception exception) {
             log.error(marker, "Error inserting into batch insert audit {}", ExceptionUtil.toString(exception));
@@ -230,31 +171,30 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
     private String encryptRequestResponse(String request) {
-        final String encryptReqRes = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
+        String encryptReqRes = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
+        String requestStr;
         if ("true".equals(encryptReqRes)) {
-            return SecurityEngine.getInticsIntegrityMethod(action, log)
-                    .encrypt(request, "AES256", "BASE64_ENCODED");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action, log).encrypt(request, "AES256", "BASE64_ENCODED");
+            requestStr = encryptedRequest;
+        } else {
+            requestStr = request;
         }
-        return request;
+        return requestStr;
     }
 
     private String getBase64ForPath(String imagePath, String fileExtension) throws IOException {
-        if ("pdf".equalsIgnoreCase(fileExtension)) {
-            return "";
-        }
+        String base64Image = "";
         try {
-            byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
-            String b64 = Base64.getEncoder().encodeToString(imageBytes);
-            log.info(marker, "Base64 created for file {}", imagePath);
-            return b64;
+            if (!Objects.equals(fileExtension, "pdf")) {
+                byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
+                base64Image = Base64.getEncoder().encodeToString(imageBytes);
+                log.info(marker, "Base64 created for file {}", imagePath);
+            }
         } catch (Exception e) {
-            log.error(marker, "Error creating base64 {}", ExceptionUtil.toString(e));
+            log.error(marker, "Error occurred in creating base64 {}", ExceptionUtil.toString(e));
             throw new HandymanException("Error occurred in creating base64", e, action);
         }
-    }
-
-    private static boolean isImageExt(String ext) {
-        return ext != null && IMAGE_EXTS.contains(ext.toLowerCase());
+        return base64Image;
     }
 
     private static String decodeFileName(String fileName) {
