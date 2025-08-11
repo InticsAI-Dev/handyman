@@ -237,13 +237,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     private  void getInsertIntoXenonResultTable(Handle handle, LlmJsonQueryInputTable inputTable, LlmJsonParsedResponse parsedResponse, String insertQueryXenon) {
-
-        try {
-            log.info("Insert values - container: {}, item: {}, answer: {}",
-                    parsedResponse.getSorContainerName(),
-                    parsedResponse.getSorItemName(),
-                    parsedResponse.getAnswer());
-
             handle.createUpdate(insertQueryXenon)
                     .bind(0, inputTable.getCreatedOn())
                     .bind(1, inputTable.getTenantId())
@@ -265,10 +258,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     .bind(17, inputTable.getImageWidth())
                     .bind(18, inputTable.getSorContainerId())
                     .execute();
-        } catch (Exception e) {
-            log.error(marker, "Insert failed for Xenon table: {}", e.getMessage(), e);
-        }
-
     }
 
     private static int getInsertIntoKryptonResultTable(Handle handle, String insertQueryKrypton, LlmJsonQueryOutputTable llmJsonQueryOutputTable) {
