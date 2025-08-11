@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.util.*;
-        import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -76,7 +76,8 @@ public class MultiValueMemberConsumerProcess {
             log.info(marker, "Processing completed successfully for tenantId: {}, actionId: {}", tenantId, action.getActionId());
         } catch (Exception e) {
             log.error(marker, "Error processing MultiValueMemberMapper for tenantId: {}, actionId: {}.", tenantId, action.getActionId(), e);
-            throw new HandymanException("Error processing MultiValueMemberMapper", e);
+            HandymanException handymanException = new HandymanException("Error processing MultiValueMemberMapper", e);
+            HandymanException.insertException("Error processing MultiValueMemberMapper", handymanException, action);
         } finally {
             executor.shutdown();
             try {

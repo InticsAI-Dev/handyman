@@ -104,6 +104,8 @@ public class MultitudeAction implements IActionExecution {
                         } catch (InterruptedException e) {
                             log.error("Executors", e);
                             Thread.currentThread().interrupt();
+                            HandymanException handymanException = new HandymanException("Multitude execution interrupted", e, actionExecutionAudit);
+                            HandymanException.insertException("Multitude execution interrupted",handymanException, actionExecutionAudit);
                         }
                     }
 

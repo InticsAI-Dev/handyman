@@ -132,6 +132,8 @@ public class CallProcessAction implements IActionExecution {
                         context.putAll(start.getContext());
                     } catch (Exception e) {
                         log.error(aMarker, "Failed process for root pipeline id {} and called file {}", lContext.getRootPipelineId(), lContext.getRelativePath(), e);
+                        HandymanException handymanException = new HandymanException("Failed to execute call process action for call process " + callProcess.getName(), e, actionExecutionAudit);
+                        HandymanException.insertException("Failed to execute call process action for call process " + callProcess.getName(), handymanException, actionExecutionAudit);
                     }
                 });
             }
