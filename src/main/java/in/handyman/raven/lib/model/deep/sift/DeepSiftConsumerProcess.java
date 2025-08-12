@@ -234,13 +234,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 throw new HandymanException("Error serializing Xenon payload", e, action);
             }
 
-            String jsonRequestXenon = getTritonRequestPayload(deepSiftPayloadString, XENON_START, mapper);
+            String jsonRequestXenon = getXenonRequest(deepSiftPayloadString, XENON_START, mapper);
 
             Request request = new Request.Builder()
                     .url(endpoint)
                     .post(RequestBody.create(jsonRequestXenon, mediaType))
                     .build();
-            tritonRequestXenonExecutor(entity, request, parentObj, jsonRequestXenon, endpoint);
+            requestXenonExecutor(entity, request, parentObj, jsonRequestXenon, endpoint);
         }
         return parentObj;
     }
@@ -254,39 +254,58 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         deepSiftRequest.setProcess(PROCESS_NAME);
         deepSiftRequest.setInputFilePath(entity.getInputFilePath());
         deepSiftRequest.setBatchId(entity.getBatchId());
-        deepSiftRequest.setPaperNo(entity.getPaperNo());
+        deepSiftRequest.setProcessId(entity.getRootPipelineId());
         deepSiftRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         deepSiftRequest.setModelName(entity.getModelName());
         return deepSiftRequest;
     }
 
-    private void tritonRequestXenonExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj, String jsonRequest, URL endpoint) {
+    private static String getXenonRequest(String deepSiftPayloadString, String name, ObjectMapper objectMapper)
+            throws JsonProcessingException {
+        DeepSiftRequest deepSiftRequest = objectMapper.readValue(deepSiftPayloadString, DeepSiftRequest.class);
+
+        XenonRequest customRequest = XenonRequest.builder()
+                .originId(deepSiftRequest.getOriginId())
+                .batchId(deepSiftRequest.getBatchId())
+                .processId(deepSiftRequest.getProcessId())
+                .groupId(deepSiftRequest.getGroupId())
+                .tenantId(deepSiftRequest.getTenantId())
+                .rootPipelineId(deepSiftRequest.getRootPipelineId())
+                .process(deepSiftRequest.getProcess())
+                .modelName(deepSiftRequest.getModelName())
+                .actionId(deepSiftRequest.getActionId())
+                .inputFilePath(deepSiftRequest.getInputFilePath())
+                .base64Img(deepSiftRequest.getBase64Img())
+                .build();
+
+        return objectMapper.writeValueAsString(customRequest);
+    }
+
+    private void requestXenonExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj, String jsonRequest, URL endpoint) {
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
 
             log.info(aMarker, "Xenon response: code={}, message={}", response.code(), response.message());
 
             if (response.isSuccessful()) {
-                DeepSiftResponse modelResponse = mapper.readValue(responseBody, DeepSiftResponse.class);
-                if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
-                        try {
-                            extractedXenonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(),
-                                    modelResponse.getModelVersion(), jsonRequest, responseBody,
-                                    endpoint.toString());
-                        } catch (JsonProcessingException e) {
-                            throw new HandymanException("Exception in extracted output Data request", e);
-                        }
-                    }));
+                XenonResponse xenonResponse = mapper.readValue(responseBody, XenonResponse.class);
+
+                if (xenonResponse.isSuccess() && xenonResponse.hasInferResponse()) {
+                    String extractedContent = xenonResponse.getInferResponse();
+
+                    String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
+                    String finalExtractedContent = extractedContent;
+                    if ("true".equals(encryptSotPageContent)) {
+                        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+                        finalExtractedContent = encryption.encrypt(extractedContent, "AES256", "TEXT_DATA");
+                    }
+
+                    parentObj.add(DeepSiftOutputTable.builder().inputFilePath(entity.getInputFilePath()).extractedText(finalExtractedContent).originId(xenonResponse.getOriginId()).groupId(xenonResponse.getGroupId().intValue()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(xenonResponse.getRootPipelineId()).tenantId(xenonResponse.getTenantId()).batchId(xenonResponse.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(xenonResponse.getModelName()).build());
+                } else {
+                    parentObj.add(buildOutputTable(entity, "FAILED",
+                            xenonResponse.getErrorMessage() != null ? xenonResponse.getErrorMessage() : "No infer response",
+                            jsonRequest, responseBody, endpoint.toString()));
                 }
-            } else {
-                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        response.message(), jsonRequest, responseBody, endpoint.toString()));
-                HandymanException handymanException = new HandymanException("Unsuccessful response code: " + response.code() +
-                        " message: " + response.message());
-                HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
-                        " paper no " + entity.getPaperNo(), handymanException, action);
-                log.error(aMarker, "Error in response: {}", response.message());
             }
         } catch (Exception e) {
             parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
@@ -296,35 +315,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
                     " paper no " + entity.getPaperNo(), handymanException, action);
         }
-    }
-
-    private void extractedXenonOutputDataRequest(DeepSiftInputTable entity, String stringDataItem, List<DeepSiftOutputTable> parentObj, String modelName, String modelVersion, String request, String response, String endpoint)
-            throws JsonProcessingException {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode dataNodeJson = mapper.readTree(stringDataItem);
-
-        String innerModel = dataNodeJson.has("model") ? dataNodeJson.get("model").asText() : modelName;
-
-        DeepSiftLineItem deepSiftDataItem = mapper.readValue(stringDataItem, DeepSiftLineItem.class);
-        deepSiftDataItem.setOriginId(Optional.ofNullable(deepSiftDataItem.getOriginId()).orElse(entity.getOriginId()));
-        deepSiftDataItem.setInputFilePath(Optional.ofNullable(deepSiftDataItem.getInputFilePath()).orElse(entity.getInputFilePath()));
-        deepSiftDataItem.setProcessId(Optional.ofNullable(deepSiftDataItem.getProcessId()).orElse(entity.getProcessId()));
-        deepSiftDataItem.setGroupId(Optional.ofNullable(deepSiftDataItem.getGroupId()).orElse(entity.getGroupId()));
-        deepSiftDataItem.setTenantId(Optional.ofNullable(deepSiftDataItem.getTenantId()).orElse(entity.getTenantId()));
-        deepSiftDataItem.setRootPipelineId(Optional.ofNullable(deepSiftDataItem.getRootPipelineId()).orElse(entity.getRootPipelineId()));
-        deepSiftDataItem.setBatchId(Optional.ofNullable(deepSiftDataItem.getBatchId()).orElse(entity.getBatchId()));
-
-        String contentString = Optional.ofNullable(deepSiftDataItem.getInferResponse()).map(String::valueOf).orElse("");
-        String flag = (contentString.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
-        String extractedContent = contentString;
-        String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-
-        if ("true".equals(encryptSotPageContent)) {
-            extractedContent = encryption.encrypt(contentString, "AES256", "TEXT_DATA");
-        }
-
-        parentObj.add(DeepSiftOutputTable.builder().inputFilePath(deepSiftDataItem.getInputFilePath()).extractedText(extractedContent).originId(deepSiftDataItem.getOriginId()).groupId(deepSiftDataItem.getGroupId()).paperNo(entity.getPaperNo()).createdOn(entity.getCreatedOn()).rootPipelineId(deepSiftDataItem.getRootPipelineId()).tenantId(deepSiftDataItem.getTenantId()).batchId(deepSiftDataItem.getBatchId()).sourceDocumentType(entity.getSourceDocumentType()).modelId(entity.getModelId()).modelName(innerModel).build());
     }
 
     private DeepSiftRequest getKryptonRequestPayloadFromQuery(DeepSiftInputTable entity) {
