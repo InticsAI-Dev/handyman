@@ -54,13 +54,13 @@ public class DeepSiftActionTest {
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
-                Map.entry("text.extraction.consumer.API.count", "1"),
+                Map.entry("deep.sift.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("copro.request.deep.sift.handler.name", "TRITON"),
                 Map.entry("replicate.request.api.token", ""),
                 Map.entry("actionId", "21352"),
                 Map.entry("write.batch.size", "5"),
-                Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("deep.sift.page.content.min.length.threshold", "1"),
                 Map.entry("deep.sift.extraction.activator", "true")
         ));
         DeepSiftAction deepSiftAction = new DeepSiftAction(actionExecutionAudit, log, deepSift);
@@ -119,7 +119,8 @@ public class DeepSiftActionTest {
                 Map.entry("deep.sift.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.deep.sift.model.name", "KRYPTON"),
-                Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("deep.sift.page.content.min.length.threshold", "1"),
+                Map.entry("tesseract.data.path", ""),
                 Map.entry("write.batch.size", "5"),
                 Map.entry("deep.sift.extraction.activator", "true")
         ));

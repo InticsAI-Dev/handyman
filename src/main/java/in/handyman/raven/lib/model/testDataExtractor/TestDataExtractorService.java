@@ -12,10 +12,12 @@ import java.util.*;
 
 public class TestDataExtractorService {
     private final Tesseract tesseract;
+    private final String tessaractDataPath;
 
-    public TestDataExtractorService() {
+    public TestDataExtractorService(String tessaractDataPath) {
         this.tesseract = new Tesseract();
-        this.tesseract.setDatapath("/usr/share/tesseract-ocr/4.00/tessdata");
+        this.tessaractDataPath = tessaractDataPath;
+        this.tesseract.setDatapath(tessaractDataPath);
         this.tesseract.setLanguage("eng");
         this.tesseract.setOcrEngineMode(TessAPI.TessOcrEngineMode.OEM_LSTM_ONLY);
     }

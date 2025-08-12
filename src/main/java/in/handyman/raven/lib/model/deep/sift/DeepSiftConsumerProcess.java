@@ -187,7 +187,9 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     throw new HandymanException("Input file is not a JPEG: " + inputFilePath);
                 }
 
-                TestDataExtractorService extractorService = new TestDataExtractorService();
+                String tessaractDataPath = action.getContext().get("tesseract.data.path");
+
+                TestDataExtractorService extractorService = new TestDataExtractorService(tessaractDataPath);
                 log.info(aMarker, "Starting extraction for file: {}", inputFile.getName());
                 String extractedText = extractorService.processTextExtraction(Collections.singletonList(inputFilePath));
 
