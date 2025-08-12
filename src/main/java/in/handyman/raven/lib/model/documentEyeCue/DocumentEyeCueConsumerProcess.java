@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.documentEyeCue;
 
+import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.EncryptionConstants;
@@ -15,6 +16,7 @@ import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -54,6 +56,11 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
     }
+
+    private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");
+
+    private static final String KEY_REPOSITORY = "doc.eyecue.storecontent.repository";
+    private static final String KEY_APPLICATION_ID = "doc.eyecue.storecontent.application.id";
 
     @Override
     public List<DocumentEyeCueOutputTable> process(URL endpoint, DocumentEyeCueInputTable entity) throws Exception {
@@ -152,9 +159,12 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         }
     }
 
-    private void handleSuccessfulResponse(DocumentEyeCueInputTable entity, Response response,
-                                          ObjectMapper objectMapper, List<DocumentEyeCueOutputTable> resultList,
-                                          String jsonInputRequest, URL endpoint) throws IOException {
+    private void handleSuccessfulResponse(DocumentEyeCueInputTable entity,
+                                          Response response,
+                                          ObjectMapper objectMapper,
+                                          List<DocumentEyeCueOutputTable> resultList,
+                                          String jsonInputRequest,
+                                          URL endpoint) throws IOException {
         log.info(aMarker, "Document EyeCue API call successful for origin_id {}", entity.getOriginId());
 
         String responseBody = Objects.requireNonNull(response.body()).string();
@@ -162,17 +172,30 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         try {
             DocumentEyeCueResponse documentEyeCueResponse = objectMapper.readValue(responseBody, DocumentEyeCueResponse.class);
 
+            String outputFilePath = generateOutputFilePath(entity);
+
+            if (processBase64.equals(ProcessFileFormatE.BASE64.name())
+                    && documentEyeCueResponse.getProcessedPdfBase64() != null) {
+                fileProcessingUtils.convertBase64ToFile(documentEyeCueResponse.getProcessedPdfBase64(), outputFilePath);
+            } else {
+                outputFilePath = documentEyeCueResponse.getProcessedPdfPath() != null
+                        ? documentEyeCueResponse.getProcessedPdfPath()
+                        : outputFilePath;
+            }
+
+            uploadToStoreContent(outputFilePath, entity);
+
             DocumentEyeCueOutputTable outputRecord = DocumentEyeCueOutputTable.builder()
                     .originId(entity.getOriginId())
                     .groupId(entity.getGroupId())
                     .tenantId(entity.getTenantId())
                     .processId(entity.getProcessId())
                     .templateId(entity.getTemplateId())
-                    .processedFilePath(documentEyeCueResponse.getProcessedPdfPath())
+                    .processedFilePath(outputFilePath)
                     .status("COMPLETED")
                     .stage(PROCESS_NAME)
-                    .message(documentEyeCueResponse.getErrorMessage() != null ?
-                            documentEyeCueResponse.getErrorMessage() : "Document EyeCue processing completed successfully")
+                    .message(Optional.ofNullable(documentEyeCueResponse.getErrorMessage())
+                            .orElse("Document EyeCue processing completed successfully"))
                     .createdOn(entity.getCreatedOn())
                     .rootPipelineId(entity.getRootPipelineId())
                     .batchId(entity.getBatchId())
@@ -183,14 +206,6 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
                     .build();
 
-            // Handle base64 response if needed
-            if (processBase64.equals(ProcessFileFormatE.BASE64.name()) &&
-                    documentEyeCueResponse.getProcessedPdfBase64() != null) {
-                String outputFilePath = generateOutputFilePath(entity);
-                fileProcessingUtils.convertBase64ToFile(documentEyeCueResponse.getProcessedPdfBase64(), outputFilePath);
-                outputRecord.setProcessedFilePath(outputFilePath);
-            }
-
             resultList.add(outputRecord);
 
         } catch (JsonProcessingException e) {
@@ -198,8 +213,39 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         }
     }
 
+    private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
+        try {
+            String repository = action.getContext().get(KEY_REPOSITORY);
+            String applicationId = action.getContext().get(KEY_APPLICATION_ID);
+
+            StoreContent storeContent = new StoreContent();
+            StoreContentResponseDto response = storeContent.execute(
+                    filePath,
+                    repository,
+                    applicationId,
+                    entity,
+                    action,
+                    documentEyeCue
+            );
+
+            if (response != null) {
+                log.info(MARKER, "StoreContent upload done for document_id: {} | contentId: {}",
+                        entity.getDocumentId(), response.getContentID());
+            } else {
+                String warnMsg = "StoreContent upload returned null for document_id: " + entity.getDocumentId();
+                HandymanException.insertException(warnMsg, new HandymanException(warnMsg), action);
+                log.warn(MARKER, warnMsg);
+            }
+        } catch (Exception e) {
+            String errorMessage = "StoreContent upload failed for document_id: " + entity.getDocumentId();
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException(errorMessage, handymanException, action);
+            log.error(MARKER, errorMessage, e);
+        }
+    }
+
+
     private String generateOutputFilePath(DocumentEyeCueInputTable entity) {
-        // Generate output file path based on original file name and response data
         return documentEyeCue.getOutputDir() + "/" + entity.getOriginId() + "_processed.pdf";
     }
 
