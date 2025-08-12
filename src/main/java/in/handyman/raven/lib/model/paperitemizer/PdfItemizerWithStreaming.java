@@ -64,7 +64,7 @@ public class PdfItemizerWithStreaming {
 
         } else if (PdfExtensions.EXTENSION_JPEG.getEType().equalsIgnoreCase(fileExtension) || PdfExtensions.EXTENSION_JPG.getEType().equalsIgnoreCase(fileExtension) || PdfExtensions.EXTENSION_PNG.getEType().equalsIgnoreCase(fileExtension)) {
             log.info("Processing image file: {} for originId {}", filePath, originId);
-            PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeCompletedOutput(entity, new File(entity.getFilePath()), 1, 1, startTime);
+            PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeCompletedOutput(entity, new File(entity.getFilePath()), 0, 1, startTime);
             parentObj.add(paperItemizerOutputTable);
         } else {
             log.error("Unsupported file type: {} for originId {}", fileExtension, originId);
@@ -108,7 +108,7 @@ public class PdfItemizerWithStreaming {
                 .templateId(entity.getTemplateId())
                 .tenantId(entity.getTenantId())
                 .processId(entity.getProcessId())
-                .paperNo(currentPage)
+                .paperNo(currentPage+1)
                 .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .message("Paper Itemize macro completed to process the file with page numbers " + pageCount)
