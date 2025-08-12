@@ -79,6 +79,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Agentic Paper Filter Action for {} has been started", agenticPaperFilter.getName());
 
+
             String outputTableName = agenticPaperFilter.getResultTable();
             final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
             final List<URL> urls = Optional.ofNullable(agenticPaperFilter.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
