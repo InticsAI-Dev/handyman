@@ -111,7 +111,7 @@ public class CoproRetryServiceAsync {
         this.defaultMaxRetries = Math.max(1, defaultMaxRetries);
         this.baseDelayMillis = Math.max(10, baseDelayMillis);
         this.jitterFactor = Double.isFinite(jitterFactor) ? Math.max(0.0, Math.min(1.0, jitterFactor)) : 0.2;
-        this.maxBackoffMillis = Math.max(1000, maxBackoffMillis);
+        this.maxBackoffMillis = Math.max(100, maxBackoffMillis);
     }
 
 
@@ -171,10 +171,8 @@ public class CoproRetryServiceAsync {
                 persistAuditAsync(auditCopy, action);
 
                 if (attempt < maxAttempts) {
-                    long delay = nextBackoffMillis(attempt);
-                    scheduler.schedule(() ->
-                                    attemptAsync(request, requestBody, originalAudit, action, resultFuture, attempt + 1, maxAttempts),
-                            delay, TimeUnit.MILLISECONDS);
+                    scheduler.execute(() ->
+                            attemptAsync(request, requestBody, originalAudit, action, resultFuture, attempt + 1, maxAttempts));
                 } else {
                     resultFuture.completeExceptionally(e);
                 }
@@ -201,12 +199,9 @@ public class CoproRetryServiceAsync {
                         persistAuditAsync(auditCopy, action);
 
                         if (attempt < maxAttempts) {
-                            long delay = nextBackoffMillis(attempt);
-                            scheduler.schedule(() ->
-                                            attemptAsync(request, requestBody, originalAudit, action, resultFuture, attempt + 1, maxAttempts),
-                                    delay, TimeUnit.MILLISECONDS);
+                            scheduler.execute(() ->
+                                    attemptAsync(request, requestBody, originalAudit, action, resultFuture, attempt + 1, maxAttempts));
                         } else {
-                            // last attempt: return response payload (may be null)
                             resultFuture.complete(new CoproResponse(r.code(), r.message(), bodyBytes));
                         }
                     } else {

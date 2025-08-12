@@ -11,6 +11,7 @@ import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
+import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AgenticPaperFilterAction;
 import in.handyman.raven.lib.CoproProcessor;
@@ -36,6 +37,7 @@ import java.util.regex.Pattern;
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
+
 public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput> {
     private final ActionExecutionAudit action;
 
@@ -93,8 +95,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.jdbiResourceName = jdbiResourceName;
 
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
+//        HandymanRepo handymanRepo = ResourceAccess.getHandymanRepo(jdbi);
         coproRetryService = new CoproRetryServiceAsync(handymanRepo, jdbi, httpclient,
-                SCHEDULER, DB_EXECUTOR, 3, 50L, 0.5, 200L);
+                SCHEDULER, DB_EXECUTOR, 3, 10L, 0.5, 50L);
     }
 
     @Override
@@ -145,8 +148,15 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             String jsonRequestTritonKrypton = getTritonRequestPayload(textExtractionPayloadString);
 
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
-            CompletableFuture<CoproRetryServiceAsync.CoproResponse> future = tritonRequestKryptonExecutorV2(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
-            future.join();
+            try {
+                CompletableFuture<CoproRetryServiceAsync.CoproResponse> future = tritonRequestKryptonExecutorV2(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
+                // wait up to X seconds for completion. Choose appropriate timeout.
+                future.get(10, TimeUnit.SECONDS);
+            } catch (TimeoutException te) {
+                String errorMessage = "Copro call timed out : " + te.getMessage();
+                log.error(aMarker, errorMessage, te);
+                HandymanException.insertException(errorMessage, new HandymanException(te), this.action);
+            }
             log.debug("size of parentobj: {}", parentObj.size());
         } catch (Exception e) {
             String errorMessage = "Error in preparing or sending TRITON request for paper " + entity.getPaperNo() + ": " + e.getMessage();
@@ -330,7 +340,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
 
     private CoproRetryErrorAuditTable setErrorAudictInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
-        CoproRetryErrorAuditTable retryAudict = CoproRetryErrorAuditTable.builder()
+        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
                 .originId(entity.getOriginId())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
@@ -345,7 +355,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
                 .build();
-        return retryAudict;
+        return retryAudit;
     }
 
 
