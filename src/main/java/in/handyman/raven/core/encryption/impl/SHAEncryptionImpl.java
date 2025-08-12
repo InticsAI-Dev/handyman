@@ -25,7 +25,6 @@ public class SHAEncryptionImpl implements InticsDataEncryptionApi {
     public String decrypt(String encryptedToken, String encryptionPolicy, String sorItem) throws HandymanException {
         throw new HandymanException("SHA-256 is a one-way hash and cannot be decrypted.");
     }
-
     @Override
     public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         return List.of();
@@ -35,7 +34,6 @@ public class SHAEncryptionImpl implements InticsDataEncryptionApi {
     public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         return List.of();
     }
-
     @Override
     public String getEncryptionMethod() {
         return "SHA-256";

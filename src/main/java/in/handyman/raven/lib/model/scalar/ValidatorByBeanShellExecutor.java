@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.scalar;
 
 import bsh.EvalError;
 import bsh.Interpreter;
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
 import org.jetbrains.annotations.NotNull;
@@ -148,8 +149,12 @@ public class ValidatorByBeanShellExecutor {
 
         } catch (EvalError e) {
             log.error("BeanShell evaluation error: {}", e.getMessage(), e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("BeanShell evaluation error", handymanException, actionExecutionAudit);
         } catch (Exception e) {
             log.error("Error executing class script: ", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error executing class script", handymanException, actionExecutionAudit);
         }
     }
 
