@@ -243,18 +243,18 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             float pageHeight = 0f;
             int dpi = 0;
             if (fileExtension.equalsIgnoreCase("pdf")) {
-                try (PDDocument document = PDDocument.load(file)) {
-
-                    PDPage firstPage = document.getPage(0);
-                    pageWidth = firstPage.getMediaBox().getWidth();
-                    pageHeight = firstPage.getMediaBox().getHeight();
-
-                    float width_inches = pageWidth / 72;
-                    dpi = (int) (pageWidth / width_inches);
-                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
-                } catch (IOException e) {
-                    log.error("Error in calculating width, height, dpi for pdf file with exception {}", e.getMessage());
-                }
+//                try (PDDocument document = PDDocument.load(file)) {
+//
+//                    PDPage firstPage = document.getPage(0);
+//                    pageWidth = firstPage.getMediaBox().getWidth();
+//                    pageHeight = firstPage.getMediaBox().getHeight();
+//
+//                    float width_inches = pageWidth / 72;
+//                    dpi = (int) (pageWidth / width_inches);
+//                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
+//                } catch (IOException e) {
+//                    log.error("Error in calculating width, height, dpi for pdf file with exception {}", e.getMessage());
+//                }
             } else {
                 BufferedImage image = null;
                 try {
@@ -384,18 +384,18 @@ public class FileMergerPdfConsumerProcess implements CoproProcessor.ConsumerProc
             float pageHeight = 0f;
             int dpi = 0;
             if (fileExtension.equalsIgnoreCase("pdf")) {
-                try (PDDocument document = PDDocument.load(file)) {
-
-                    PDPage firstPage = document.getPage(0);
-                    pageWidth = firstPage.getMediaBox().getWidth();
-                    pageHeight = firstPage.getMediaBox().getHeight();
-
-                    float width_inches = pageWidth / 72;
-                    dpi = (int) (pageWidth / width_inches);
-                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
-                } catch (IOException e) {
-                    log.error("Error in calculating width, height, dpi with exception {}", e.getMessage());
-                }
+//                try (PDDocument document = PDDocument.load(file)) {
+//
+//                    PDPage firstPage = document.getPage(0);
+//                    pageWidth = firstPage.getMediaBox().getWidth();
+//                    pageHeight = firstPage.getMediaBox().getHeight();
+//
+//                    float width_inches = pageWidth / 72;
+//                    dpi = (int) (pageWidth / width_inches);
+//                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
+//                } catch (IOException e) {
+//                    log.error("Error in calculating width, height, dpi with exception {}", e.getMessage());
+//                }
             } else {
                 BufferedImage image = null;
                 try {

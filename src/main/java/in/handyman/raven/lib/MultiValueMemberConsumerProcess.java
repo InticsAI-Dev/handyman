@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.util.*;
-        import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -76,7 +76,8 @@ public class MultiValueMemberConsumerProcess {
             log.info(marker, "Processing completed successfully for tenantId: {}, actionId: {}", tenantId, action.getActionId());
         } catch (Exception e) {
             log.error(marker, "Error processing MultiValueMemberMapper for tenantId: {}, actionId: {}.", tenantId, action.getActionId(), e);
-            throw new HandymanException("Error processing MultiValueMemberMapper", e);
+            HandymanException handymanException = new HandymanException("Error processing MultiValueMemberMapper", e);
+            HandymanException.insertException("Error processing MultiValueMemberMapper", handymanException, action);
         } finally {
             executor.shutdown();
             try {
@@ -126,7 +127,7 @@ public class MultiValueMemberConsumerProcess {
             boolean allHaveMultiple = true;
             for (String key : List.of("member_id", "member_last_name", "member_date_of_birth")) {
                 int count = valuesPerSorItem.getOrDefault(key, Collections.emptySet()).size();
-                log.info(marker, "Commercial - SOR item '{}' has {} unique values", key, count);
+                log.info(marker, "Case 1 - SOR item '{}' has {} unique values", key, count);
                 if (count <= 1) {
                     allHaveMultiple = false;
                     break;
@@ -140,7 +141,7 @@ public class MultiValueMemberConsumerProcess {
             int idCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
             int nameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
 
-            log.info(marker, "GBD - Member ID count: {}, Member Name count: {}", idCount, nameCount);
+            log.info(marker, "Case 2 - Member ID count: {}, Member Name count: {}", idCount, nameCount);
 
             return (idCount > 1 || nameCount > 1) ? "Y" : "N";
         }
