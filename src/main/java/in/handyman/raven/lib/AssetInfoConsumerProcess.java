@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.jdbi.v3.core.Jdbi;
@@ -98,11 +99,11 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
             float pageHeight = 0f;
             int dpi = 0;
             if (fileExtension.equalsIgnoreCase("pdf")) {
-                try (PDDocument document = PDDocument.load(file)) {
+                try (PDDocument document = Loader.loadPDF(Files.readAllBytes(file.toPath()))) {
                     PDPage firstPage = document.getPage(0);
                     pageWidth = firstPage.getMediaBox().getWidth();
                     pageHeight = firstPage.getMediaBox().getHeight();
-                    float width_inches = pageWidth / 72;
+                    float width_inches = pageWidth / 72.0f; // Assuming 75 DPI for PDF
                     dpi = (int) (pageWidth / width_inches);
                     log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
                 } catch (IOException e) {

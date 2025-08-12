@@ -16,10 +16,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -63,8 +60,8 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             this.logger.info("Copro processor created for copro coproNodes {}", nodeSize);
         } else {
             this.logger.info("Failed to create Copro processor due to empty copro coproNodes");
-            HandymanException handymanException=new HandymanException("Failed to create Copro processor due to empty copro coproNodes");
-            HandymanException.insertException("Failed to create Copro processor due to empty copro coproNodes",handymanException,actionExecutionAudit);
+            HandymanException handymanException = new HandymanException("Failed to create Copro processor due to empty copro coproNodes");
+            HandymanException.insertException("Failed to create Copro processor due to empty copro coproNodes", handymanException, actionExecutionAudit);
         }
         final StatementExecutionAudit audit = StatementExecutionAudit.builder()
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())
@@ -100,7 +97,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                             Thread.sleep(10);
                         } catch (InterruptedException e) {
                             logger.error("Error at Producer sleep", e);
-                            HandymanException handymanException=new HandymanException(e);
+                            HandymanException handymanException = new HandymanException(e);
                             HandymanException.insertException("Error at Producer sleep", handymanException, actionExecutionAudit);
                         }
                     });
@@ -157,6 +154,17 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             countDownLatch.await();
         } catch (InterruptedException e) {
             logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
+        } finally {
+            logger.info("Shutting down executor service");
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

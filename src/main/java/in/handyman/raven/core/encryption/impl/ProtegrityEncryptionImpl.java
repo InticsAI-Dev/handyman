@@ -19,7 +19,6 @@ public class ProtegrityEncryptionImpl implements InticsDataEncryptionApi {
         //TODO CALL PROTEGRITY API DECRYPTION
         return new String();
     }
-
     @Override
     public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         return List.of();
@@ -29,7 +28,6 @@ public class ProtegrityEncryptionImpl implements InticsDataEncryptionApi {
     public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         return List.of();
     }
-
     @Override
     public String getEncryptionMethod() {
         return "PROTEGRITY_ENC";
