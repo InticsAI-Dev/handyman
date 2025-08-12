@@ -3,6 +3,8 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -56,6 +58,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 String boundingBox = "";
                 String extractedContent = input.getResponse();
                 String jsonResponse;
+                String sorItemName=input.getSorItemName();
 
                 String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
                 InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
@@ -68,7 +71,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
                 List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(input.getSorMetaDetail(), new TypeReference<>() {
                 });
-                JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
+                JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper,sorItemName);
                 if (stringObjectMap != null && stringObjectMap.isObject()) {
 
                     final String insertQueryXenon = buildInsertQueryXenon();
@@ -309,7 +312,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         }
     }
 
-    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper,String sorItemName) {
         try {
             if (jsonResponse.contains("```json")) {
                 log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
@@ -331,7 +334,28 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     jsonResponse = repairJson(jsonResponse);
                     return objectMapper.readTree(jsonResponse);
                 }
-            } else if ((jsonResponse.contains("{")) | (jsonResponse.contains("["))) {
+            }
+            else if (Objects.equals(action.getContext().get("double.parser.string"), "true")) {
+                try {
+                    jsonResponse = repairJson(jsonResponse);  // optional repair logic
+
+                    ObjectNode jsonNode = objectMapper.createObjectNode();
+                    jsonNode.put("key", sorItemName);
+                    jsonNode.put("value", jsonResponse.trim());
+                    jsonNode.put("label", "");
+                    jsonNode.put("confidence", 0.0);
+
+                    ArrayNode wrapperArray = objectMapper.createArrayNode();
+                    wrapperArray.add(jsonNode);
+
+                    return wrapperArray;
+
+                } catch (Exception e) {
+                    log.error("Failed to build fallback JSON node for response: {}", jsonResponse, e);
+                    throw e;
+                }
+            }
+            else if ((jsonResponse.contains("{")) | (jsonResponse.contains("["))) {
                 log.info("Input does not contain the required ```json``` markers. So processing it based on the indication of object literals.");
                 return objectMapper.readTree(jsonResponse);
             } else {
