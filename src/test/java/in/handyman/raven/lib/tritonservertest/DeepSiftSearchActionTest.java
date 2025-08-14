@@ -17,9 +17,9 @@ public class DeepSiftSearchActionTest {
                 .name("search filteration for group_id 104 for batch id BATCH-104_0")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://161.156.84.219/predict")
-                .processId("4074")
-                .resultTable("sor_transaction.deep_search_output_audit")
+                .endPoint("http://localhost:5432/predict")
+                .processId("8037")
+                .resultTable("deep_sift.deep_search_output_audit")
                 .querySet("SELECT\n" +
                         "    dsi.origin_id,\n" +
                         "    dsi.group_id,\n" +
@@ -38,22 +38,23 @@ public class DeepSiftSearchActionTest {
                         "    dsi.search_id,\n" +
                         "    dsi.search_name,\n" +
                         "    dsi.keywords\n" +
-                        "FROM sor_transaction.deep_search_input_audit dsi\n" +
-                        "JOIN deep_sift.deep_sift_payload_queue dspq\n" +
+                        "FROM deep_sift.deep_search_input_audit dsi\n" +
+                        "JOIN deep_sift.deep_sift_payload_queue_archive dspq\n" +
                         "    ON dspq.origin_id = dsi.origin_id\n" +
-                        "WHERE dsi.batch_id = 'BATCH-104_0'\n" +
+                        "WHERE dsi.batch_id = 'BATCH-190_1'\n" +
                         "  AND dsi.tenant_id = 1\n" +
-                        "  AND dsi.group_id = '104'\n" +
-                        "  AND dspq.status = 'IN_PROGRESS';")
+                        "  AND dsi.group_id = '190';")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://161.156.84.219/predict");
-        actionExecutionAudit.setProcessId(4074L);
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/predict");
+        actionExecutionAudit.setProcessId(8037L);
         actionExecutionAudit.setActionId(42182L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
                 Map.entry("read.batch.size", "5"),
                 Map.entry("okhttp.client.timeout", "20"),
                 Map.entry("text.extraction.consumer.API.count", "1"),
+                Map.entry("deep.sift.consumer.API.count", "1"),
+                Map.entry("deep.sift.page.content.min.length.threshold", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("copro.request.deep.sift.handler.name", "TRITON"),
                 Map.entry("replicate.request.api.token", ""),

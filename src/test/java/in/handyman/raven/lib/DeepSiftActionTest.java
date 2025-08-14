@@ -16,7 +16,7 @@ public class DeepSiftActionTest {
                 .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://172.202.112.23:8000/predict")
+                .endPoint("http://localhost:5432/xenon-textract")
                 .processId("2036")
                 .resultTable("transit_data.deep_sift_output_2036")
                 .querySet("SELECT\n" +
@@ -45,10 +45,10 @@ public class DeepSiftActionTest {
                         "WHERE\n" +
                         "    dsi.batch_id = 'BATCH-52_0'\n" +
                         "    AND dsi.tenant_id = 1\n" +
-                        "    AND dsi.group_id = '52';")
+                        "    AND dsi.group_id = '52' limit 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://172.202.112.23:8000/predict");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");
         actionExecutionAudit.setProcessId(2036L);
         actionExecutionAudit.setActionId(21352L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
@@ -57,7 +57,7 @@ public class DeepSiftActionTest {
                 Map.entry("deep.sift.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("copro.request.deep.sift.handler.name", "TRITON"),
-                Map.entry("replicate.request.api.token", ""),
+                Map.entry("pipeline.text.extraction.encryption", "true"),
                 Map.entry("actionId", "21352"),
                 Map.entry("write.batch.size", "5"),
                 Map.entry("deep.sift.page.content.min.length.threshold", "1"),
@@ -74,7 +74,7 @@ public class DeepSiftActionTest {
                 .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://172.202.112.23:8000/predict")
+                .endPoint("http://localhost:5432/xenon-textract")
                 .processId("138980184199100180")
                 .resultTable("transit_data.deep_sift_output_2036")
                 .querySet("SELECT\n" +
@@ -106,7 +106,7 @@ public class DeepSiftActionTest {
                         "    AND dsi.group_id = '52';")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://172.202.112.23:8000/predict");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");
         actionExecutionAudit.setProcessId(2036L);
         actionExecutionAudit.setActionId(21352L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
