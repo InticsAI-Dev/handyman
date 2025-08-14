@@ -11,10 +11,6 @@ import in.handyman.raven.lib.model.deep.sift.DeepSiftConsumerProcess;
 import in.handyman.raven.lib.model.deep.sift.DeepSiftInputTable;
 import in.handyman.raven.lib.model.deep.sift.DeepSiftOutputTable;
 import in.handyman.raven.core.utils.FileProcessingUtils;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -70,7 +66,7 @@ public class DeepSiftAction implements IActionExecution {
       FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
 
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-      log.info(aMarker, "Data Extraction Action for {} has been started", DeepSift.getName());
+      log.info(aMarker, "Deep Sift Action for {} has been started", DeepSift.getName());
 
       String outputTableName = DeepSift.getResultTable();
       final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) " + INSERT_INTO_VALUES;
@@ -94,11 +90,11 @@ public class DeepSiftAction implements IActionExecution {
       coproProcessor.startProducer(DeepSift.getQuerySet(), readBatchSize);
       Thread.sleep(1000);
       coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, DeepSiftConsumerProcess);
-      log.info(aMarker, " Data Extraction Action has been completed {}  ", DeepSift.getName());
+      log.info(aMarker, " Deep Sift Action has been completed {}  ", DeepSift.getName());
     } catch (Exception e) {
       action.getContext().put(DeepSift.getName() + ".isSuccessful", "false");
-      log.error(aMarker, "error in execute method in data extraction", e);
-      throw new HandymanException("error in execute method in data extraction", e, action);
+      log.error(aMarker, "error in execute method in Deep Sift", e);
+      throw new HandymanException("error in execute method in Deep Sift", e, action);
     }
 
   }
@@ -107,15 +103,6 @@ public class DeepSiftAction implements IActionExecution {
   @Override
   public boolean executeIf() throws Exception {
     return DeepSift.getCondition();
-  }
-
-  @Data
-  @AllArgsConstructor
-  @Builder
-  @NoArgsConstructor
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class AssetAttributionResponse {
-    private String pageContent;
   }
 
 }

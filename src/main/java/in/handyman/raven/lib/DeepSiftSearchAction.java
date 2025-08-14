@@ -10,10 +10,6 @@ import in.handyman.raven.lib.model.DeepSiftSearch;
 import in.handyman.raven.lib.model.deepSiftSearch.DeepSiftSearchConsumerProcess;
 import in.handyman.raven.lib.model.deepSiftSearch.DeepSiftSearchInputTable;
 import in.handyman.raven.lib.model.deepSiftSearch.DeepSiftSearchOutputTable;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -122,12 +118,4 @@ public class DeepSiftSearchAction implements IActionExecution {
     return deepSiftSearch.getCondition();
   }
 
-  @Data
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Builder
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class AssetAttributionResponse {
-    private String pageContent;
-  }
 }
