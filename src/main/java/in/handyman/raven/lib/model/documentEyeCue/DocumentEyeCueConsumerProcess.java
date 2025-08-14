@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.documentEyeCue;
 
+import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.EncryptionConstants;
@@ -9,13 +10,13 @@ import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.UploadStoreContentAction;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -55,6 +56,11 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
     }
+
+    private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");
+
+    private static final String KEY_REPOSITORY = "doc.eyecue.storecontent.repository";
+    private static final String KEY_APPLICATION_ID = "doc.eyecue.storecontent.application.id";
 
     @Override
     public List<DocumentEyeCueOutputTable> process(URL endpoint, DocumentEyeCueInputTable entity) throws Exception {
@@ -177,7 +183,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                         : outputFilePath;
             }
 
-            new UploadStoreContentAction(action, entity, outputFilePath).execute();
+            uploadToStoreContent(outputFilePath, entity);
 
             DocumentEyeCueOutputTable outputRecord = DocumentEyeCueOutputTable.builder()
                     .originId(entity.getOriginId())
@@ -204,6 +210,37 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
         } catch (JsonProcessingException e) {
             handleJsonProcessingException(entity, e, resultList, jsonInputRequest, responseBody, endpoint);
+        }
+    }
+
+    private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
+        try {
+            String repository = action.getContext().get(KEY_REPOSITORY);
+            String applicationId = action.getContext().get(KEY_APPLICATION_ID);
+
+            StoreContent storeContent = new StoreContent();
+            StoreContentResponseDto response = storeContent.execute(
+                    filePath,
+                    repository,
+                    applicationId,
+                    entity,
+                    action,
+                    documentEyeCue
+            );
+
+            if (response != null) {
+                log.info(MARKER, "StoreContent upload done for document_id: {} | contentId: {}",
+                        entity.getDocumentId(), response.getContentID());
+            } else {
+                String warnMsg = "StoreContent upload returned null for document_id: " + entity.getDocumentId();
+                HandymanException.insertException(warnMsg, new HandymanException(warnMsg), action);
+                log.warn(MARKER, warnMsg);
+            }
+        } catch (Exception e) {
+            String errorMessage = "StoreContent upload failed for document_id: " + entity.getDocumentId();
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException(errorMessage, handymanException, action);
+            log.error(MARKER, errorMessage, e);
         }
     }
 
