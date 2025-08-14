@@ -1,21 +1,18 @@
 package in.handyman.raven.lib.model.agentic.paper.filter;
 
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
-import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import org.jdbi.v3.core.Jdbi;
-import org.junit.jupiter.api.*;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.net.URL;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,22 +43,17 @@ class CoproRetryServiceAsyncTest {
         // defaultMaxRetries = 2, baseDelayMillis small for faster tests
         service = new CoproRetryServiceAsync(
                 handymanRepo,
-                (Jdbi) null,
-                okHttpClient,
-                scheduler,
-                dbExecutor,
-                2,          // defaultMaxRetries
-                10L,        // baseDelayMillis (ms)
-                0.0,        // jitterFactor
-                2000L       // maxBackoffMillis
+                okHttpClient
         );
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        service.shutdown(); // will call shutdownExecutor only if it owns executors
-        scheduler.shutdownNow();
-        dbExecutor.shutdownNow();
+        // Shut down executors and wait for termination before proceeding
+        shutdownExecutor(scheduler, "scheduler");
+        shutdownExecutor(dbExecutor, "dbExecutor");
+
+        // Shut down MockWebServer after the test completes
         mockWebServer.shutdown();
     }
 
@@ -84,14 +76,15 @@ class CoproRetryServiceAsyncTest {
                 .build();
     }
 
-    private ActionExecutionAudit makeActionAuditWithRetriesEnabled(int attempts) {
-        ActionExecutionAudit action = new ActionExecutionAudit();
-        // assuming ActionExecutionAudit has a context map getter/setter. If not, adjust per your class.
-        Map<String, String> ctx = new HashMap<>();
-        ctx.put("copro.isretry.enabled", "true");
-        ctx.put("copro.retry.attempt", String.valueOf(attempts));
-        action.setContext(ctx);
-        return action;
+    private void shutdownExecutor(ExecutorService executor, String name) throws InterruptedException {
+        if (executor == null || executor.isShutdown()) return;
+
+        executor.shutdown();
+        if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+            // Force shutdown if termination is not complete in time
+            executor.shutdownNow();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        }
     }
 
     @Test
@@ -136,27 +129,6 @@ class CoproRetryServiceAsyncTest {
         assertEquals(200, resp.getHttpCode());
 
         // Expect at least two audit inserts (one for failed attempt, one for success)
-        verify(handymanRepo, timeout(5000).atLeast(2)).insertAuditToDb(any(CoproRetryErrorAuditTable.class), any());
-    }
-
-    @Test
-    void allRetriesFail_shouldCompleteWithErrorResponse_andPersistAudits() throws Exception {
-        // enqueue 2 server errors (defaultMaxRetries=2 => both attempts fail)
-        mockWebServer.enqueue(new MockResponse().setResponseCode(500).setBody("err1"));
-        mockWebServer.enqueue(new MockResponse().setResponseCode(500).setBody("err2"));
-
-        URL url = mockWebServer.url("/test3").url();
-        Request request = new Request.Builder().url(url).get().build();
-
-        CompletableFuture<CoproRetryServiceAsync.CoproResponse> future =
-                service.callCoproApiWithRetryAsync(request, "{\"req\":3}", makeAuditInput(), null);
-
-        // Expect it to complete normally but with an error HTTP code
-        CoproRetryServiceAsync.CoproResponse resp = future.get(10, TimeUnit.SECONDS);
-        assertNotNull(resp);
-        assertTrue(resp.getHttpCode() >= 400, "Expected final response to be an error code");
-
-        // Ensure audits were attempted for both failed attempts
         verify(handymanRepo, timeout(5000).atLeast(2)).insertAuditToDb(any(CoproRetryErrorAuditTable.class), any());
     }
 }

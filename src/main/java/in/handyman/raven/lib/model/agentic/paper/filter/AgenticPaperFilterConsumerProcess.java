@@ -79,9 +79,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             },
             new ThreadPoolExecutor.AbortPolicy()
     );
-    private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(2);
-    private static final ExecutorService DB_EXECUTOR = Executors.newFixedThreadPool(4);
-
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
         this.log = log;
@@ -94,10 +91,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
         this.jdbiResourceName = jdbiResourceName;
 
-        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
-//        HandymanRepo handymanRepo = ResourceAccess.getHandymanRepo(jdbi);
-        coproRetryService = new CoproRetryServiceAsync(handymanRepo, jdbi, httpclient,
-                SCHEDULER, DB_EXECUTOR, 3, 10L, 0.5, 50L);
+        coproRetryService = new CoproRetryServiceAsync(handymanRepo, httpclient);
     }
 
     @Override
@@ -151,8 +145,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             try {
                 CompletableFuture<CoproRetryServiceAsync.CoproResponse> future = tritonRequestKryptonExecutorV2(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
                 // wait up to X seconds for completion. Choose appropriate timeout.
-                future.get(10, TimeUnit.SECONDS);
-            } catch (TimeoutException te) {
+                //future.get(10, TimeUnit.SECONDS);
+            } catch (Exception te) {
                 String errorMessage = "Copro call timed out : " + te.getMessage();
                 log.error(aMarker, errorMessage, te);
                 HandymanException.insertException(errorMessage, new HandymanException(te), this.action);
