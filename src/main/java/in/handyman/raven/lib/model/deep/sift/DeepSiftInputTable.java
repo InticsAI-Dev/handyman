@@ -35,6 +35,7 @@ public class DeepSiftInputTable implements CoproProcessor.Entity {
     private String base64Img;
     private Long processId;
     private String templateName;
+    private Long timeTakenMS;
 
     @Override
     public String getStatus() {
