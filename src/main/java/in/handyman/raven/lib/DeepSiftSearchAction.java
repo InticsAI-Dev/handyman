@@ -30,10 +30,10 @@ public class DeepSiftSearchAction implements IActionExecution {
   public static final String INSERT_COLUMNS =
           "sor_item_id, sor_item_name, sor_container_id, sor_container_name, source_document_type, "
                   + "origin_id, root_pipeline_id, search_id, search_name, batch_id, tenant_id, "
-                  + "created_on, created_by, search_output, paper_no, group_id";
+                  + "created_on, created_by, search_output, paper_no, group_id, timetaken_ms, status";
   public static final String INSERT_INTO = "INSERT INTO ";
   public static final String INSERT_INTO_VALUES =
-          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::timestamp, ?, ?, ?, ?)";
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::timestamp, ?, ?, ?, ?, ?, ?)";
 
   public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String DEEP_SIFT_SEARCH_CONSUMER_API_COUNT = "deep.sift.search.consumer.API.count";

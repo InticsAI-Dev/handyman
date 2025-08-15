@@ -12,8 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-
-import java.sql.Timestamp;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +30,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     @Override
     public List<DeepSiftSearchOutputTable> process(URL endpoint, DeepSiftSearchInputTable entity) {
         List<DeepSiftSearchOutputTable> outputRecords = new ArrayList<>();
+        long startTime = System.currentTimeMillis();
         log.info(marker, "Starting process for sorItemId: {}", entity.getSorItemId());
 
         try {
@@ -39,8 +38,9 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 log.error(marker, "Invalid input for sorItemId: {} - missing required fields", entity.getSorItemId());
                 HandymanException handymanException = new HandymanException("Missing required fields: sorItemId, sorItemName, or searchType");
                 HandymanException.insertException("Deep sift search failed for sorItemId: " + entity.getSorItemId(), handymanException, action);
+                long elapsedTimeMs = System.currentTimeMillis() - startTime;
                 outputRecords.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "Missing required fields"));
+                        "Missing required fields", elapsedTimeMs));
                 return outputRecords;
             }
 
@@ -67,12 +67,14 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                             .matcher(extractedText)
                             .find()) {
                         matchedKeywords.add(keyword);
+                        matchFound = true;
                     }
                 }
             } else if ("contains".equals(searchType)) {
                 for (String kw : keywordList) {
                     if (extractedText.toLowerCase().contains(kw.toLowerCase())) {
                         matchedKeywords.add(kw);
+                        matchFound = true;
                     }
                 }
             } else {
@@ -80,11 +82,13 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 HandymanException handymanException = new HandymanException("Invalid searchType: " + searchType);
                 HandymanException.insertException("Deep sift search failed for sorItemId: " + entity.getSorItemId(),
                         handymanException, action);
+                long elapsedTimeMs = System.currentTimeMillis() - startTime;
                 outputRecords.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "Invalid searchType"));
+                        "Invalid searchType", elapsedTimeMs));
                 return outputRecords;
             }
 
+            long elapsedTimeMs = System.currentTimeMillis() - startTime;
             if (matchFound) {
                 log.info(marker, "Match found for sorItemId: {}, searchType: {}, matched keyword count: {}",
                         entity.getSorItemId(), searchType, matchedKeywords.size());
@@ -105,6 +109,8 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .searchOutput(matchedKeywords)
                         .paperNo(entity.getPaperNo())
                         .groupId(entity.getGroupId())
+                        .timeTakenMS(elapsedTimeMs)
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .build());
             } else {
                 log.info(marker, "No keyword match found for sorItemId: {}", entity.getSorItemId());
@@ -125,29 +131,33 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .searchOutput(matchedKeywords)
                         .paperNo(entity.getPaperNo())
                         .groupId(entity.getGroupId())
+                        .timeTakenMS(elapsedTimeMs)
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                         .build());
             }
 
         } catch (Exception e) {
+            long elapsedTimeMs = System.currentTimeMillis() - startTime;
             log.error(marker, "Exception processing sorItemId: {}", entity.getSorItemId(), e);
             HandymanException handymanException = new HandymanException("Deep sift search failed for sorItemId: " +
                     entity.getSorItemId(), e);
             HandymanException.insertException("Deep sift search failed for sorItemId: " + entity.getSorItemId(),
                     handymanException, action);
             outputRecords.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    ExceptionUtil.toString(e)));
+                    ExceptionUtil.toString(e), elapsedTimeMs));
         }
 
-        log.info(marker, "Completed process for sorItemId: {}, output records: {}",
-                entity.getSorItemId(), outputRecords.size());
+        long elapsedTimeMs = System.currentTimeMillis() - startTime;
+        log.info(marker, "Completed process for sorItemId: {}, output records: {}, time taken: {} ms",
+                entity.getSorItemId(), outputRecords.size(), elapsedTimeMs);
         return outputRecords;
     }
 
-    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message) {
-        return buildOutputTable(entity, status, message, new ArrayList<>());
+    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, long timeTakenMS) {
+        return buildOutputTable(entity, status, message, new ArrayList<>(), timeTakenMS);
     }
 
-    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, List<String> matchedKeywords) {
+    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, List<String> matchedKeywords, long timeTakenMS) {
         log.debug(marker, "Building output table for sorItemId: {} with status: {}", entity.getSorItemId(), status);
         return DeepSiftSearchOutputTable.builder()
                 .sorItemId(entity.getSorItemId())
@@ -166,6 +176,8 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 .searchOutput(matchedKeywords)
                 .paperNo(entity.getPaperNo())
                 .groupId(entity.getGroupId())
+                .timeTakenMS(timeTakenMS)
+                .status(status)
                 .build();
     }
 }

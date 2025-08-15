@@ -35,6 +35,7 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
     private Integer paperNo;
     private Timestamp createdOn;
     private String createdBy;
+    private Long timeTakenMS;
 
     @Override
     public String getStatus() {
@@ -60,7 +61,8 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
                 extractedText,
                 paperNo,
                 createdOn,
-                createdBy
+                createdBy,
+                timeTakenMS
         ).collect(Collectors.toList());
     }
 }
