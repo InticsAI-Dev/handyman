@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
@@ -186,7 +186,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
                 if (modelResponse.isSuccess() && modelResponse.hasInferResponse()) {
                     String extractedContent = modelResponse.getInferResponse();
-                    String encryptSotPageContent = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
+                    String encryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
                     String finalExtractedContent = extractedContent;
                     if ("true".equals(encryptSotPageContent)) {
                         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
@@ -216,6 +216,9 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                             .modelName(modelResponse.getModelName())
                             .timeTakenMS(elapsedTimeMs)
                             .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .request(encryptRequestResponse(jsonRequest))
+                            .response(encryptRequestResponse(responseBody))
+                            .endpoint(String.valueOf(endpoint))
                             .build());
                 } else {
                     String errorMessage = modelResponse.getErrorMessage() != null ? modelResponse.getErrorMessage() : "No infer response";
@@ -275,6 +278,9 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .modelName(entity.getModelName())
                 .timeTakenMS(timeTakenMS)
                 .status(status)
+                .request(encryptRequestResponse(request))
+                .response(encryptRequestResponse(response))
+                .endpoint(String.valueOf(endpoint))
                 .build();
     }
 }

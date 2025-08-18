@@ -33,6 +33,9 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private String modelName;
     private Long timeTakenMS;
     private String status;
+    private String request;
+    private String response;
+    private String endpoint;
 
     @Override
     public List<Object> getRowData() {
@@ -51,7 +54,10 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.modelId,
                 this.modelName,
                 this.timeTakenMS,
-                this.status
+                this.status,
+                this.request,
+                this.response,
+                this.endpoint
         ).collect(Collectors.toList());
     }
 
