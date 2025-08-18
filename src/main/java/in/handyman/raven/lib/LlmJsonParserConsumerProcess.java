@@ -145,6 +145,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .imageWidth(input.getImageWidth())
                                 .sorContainerId(input.getSorContainerId())
                                 .sorItemLabel(parsedEncryptResponse.getLabel())
+                                .sectionAlias(parsedEncryptResponse.getSectionAlias())
                                 .build();
 
                         getInsertIntoKryptonResultTable(handle, insertQueryKrypton, insertData);
@@ -281,6 +282,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 .bind(18, llmJsonQueryOutputTable.getImageWidth())
                 .bind(19, llmJsonQueryOutputTable.getSorContainerId())
                 .bind(20, llmJsonQueryOutputTable.getSorItemLabel())
+                .bind(21,llmJsonQueryOutputTable.getSectionAlias())
                 .execute();
     }
 
@@ -424,8 +426,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         return "INSERT INTO " + llmJsonParser.getOutputTable() +
                 "(created_on, created_user_id, last_updated_on, last_updated_user_id, confidence, sor_item_name, answer, bbox, paper_no, \n" +
                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, \n" +
-                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label) \n" +
-                "VALUES (?::timestamp, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label,section_alias) \n" +
+                "VALUES (?::timestamp, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?);";
     }
 
 
@@ -434,8 +436,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         return "INSERT INTO " + llmJsonParser.getOutputTable() +
                 "(created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, " +
                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
-                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label) "
-                + " VALUES(?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?,?,?)";
+                "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label,section_alias) "
+                + " VALUES(?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?,?,?,?)";
     }
 
 }
