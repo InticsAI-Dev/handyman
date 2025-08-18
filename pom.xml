@@ -75,11 +75,11 @@
                 <version>${jackson.version}</version>
             </dependency>
 
-        <!--        <dependency>-->
-        <!--            <groupId>org.slf4j</groupId>-->
-        <!--            <artifactId>slf4j-simple</artifactId>-->
-        <!--            <version>2.0.3</version>-->
-        <!--        </dependency>-->
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                    <version>2.0.3</version>
+                </dependency>
         <!-- https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client -->
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
@@ -168,6 +168,17 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>
+        </dependency>
+        <!-- Tess4J -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.11.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ahocorasick</groupId>
+            <artifactId>ahocorasick</artifactId>
+            <version>0.4.0</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.antlr/antlr4-runtime -->
