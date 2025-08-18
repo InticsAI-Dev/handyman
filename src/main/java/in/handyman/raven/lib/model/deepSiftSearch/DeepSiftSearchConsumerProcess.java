@@ -139,6 +139,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .searchName(entity.getSearchName())
                         .batchId(entity.getBatchId())
                         .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
                         .createdBy(entity.getTenantId().toString())
                         .searchOutput(matchedKeywords)
                         .paperNo(entity.getPaperNo())
