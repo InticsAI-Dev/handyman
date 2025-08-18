@@ -1,13 +1,20 @@
 package in.handyman.raven.lib.adapters;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
+import in.handyman.raven.lib.model.FieldValidator;
 import org.apache.commons.lang3.StringUtils;
 
 public class AlphaNumericAdapter implements AdapterInterface {
     @Override
-    public boolean getValidationModel(String input, String allowedCharacters) throws Exception {
+    public boolean getValidationModel(String input, String allowedCharacters, ActionExecutionAudit audit) throws Exception {
         input = validateSpecialCharacters(allowedCharacters, input);
         return StringUtils.isAlphanumeric(input);
+    }
+
+    @Override
+    public boolean getNameValidationModel(FieldValidator sentence, String requiredFeature, ActionExecutionAudit audit) throws Exception {
+        return false;
     }
 
     String validateSpecialCharacters(String specialCharacters, String input) {

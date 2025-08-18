@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -40,10 +41,14 @@ public class DropFileAction implements IActionExecution {
         var id = actionExecutionAudit.getActionId();
 
         log.info(aMarker, " id#{}, name#{}, file#{}", id, name, filePath);
-
-        var file = new File(filePath);
-        Files.deleteIfExists(file.toPath());
-        log.info(aMarker, " Completed id#{}, name#{}, file#{}", id, name, file);
+        try {
+            var file = new File(filePath);
+            Files.deleteIfExists(file.toPath());
+            log.info(aMarker, " Completed id#{}, name#{}, file#{}", id, name, file);
+        } catch (Exception e) {
+            log.error(aMarker, "Error in dropping file", e);
+            throw new HandymanException("Error in dropping file", e, actionExecutionAudit);
+        }
     }
 
     @Override

@@ -4,10 +4,11 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.agadia.adapters.MemberIdAdapter;
+import in.handyman.raven.lib.custom.adapters.MemberIdAdapter;
 import in.handyman.raven.lib.interfaces.ScalarEvaluationInterface;
 import in.handyman.raven.lib.model.AgadiaAdapter;
 import in.handyman.raven.lib.model.EvalMemberId;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -46,12 +47,12 @@ public class EvalMemberIdAction implements IActionExecution {
                     .charCountThreshold(evalMemberId.getCharCountThreshold())
                     .validatorDetail(evalMemberId.getSpecialCharacter())
                     .validatorThreshold(evalMemberId.getValidatorThreshold()).build();
-            int score = memberAdapter.getConfidenceScore(evalMemberId.getMemberID(), adapter);
+            int score = memberAdapter.getConfidenceScore(evalMemberId.getMemberID(), adapter,action);
             action.getContext().put(evalMemberId.getName().concat(".score"), String.valueOf(score));
         } catch (Exception ex) {
             action.getContext().put(evalMemberId.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute the eval member id action", ex, action);
         }
     }
 

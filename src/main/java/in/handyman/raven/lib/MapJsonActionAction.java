@@ -3,10 +3,12 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MapJson;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -38,17 +40,22 @@ public class MapJsonActionAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
 
-        final JsonNode value = objectMapper.readTree(this.actionExecutionAudit.getContext().getOrDefault(mapJson.getValue(), "{}"));
-        if (value != null) {
-            actionExecutionAudit.getContext().get(value.toString());
-            if (!value.isArray()) {
-                final Map<String, String> stringStringMap = objectMapper.readValue(value.toString(), new TypeReference<Map<String, String>>() {
-                });
-                final Map<String, String> stringMap = stringStringMap.entrySet().stream().collect(Collectors
-                        .toMap(stringStringEntry -> mapJson.getName() + "." + stringStringEntry.getKey(),
-                                Map.Entry::getValue, (p, q) -> p));
-                actionExecutionAudit.getContext().putAll(stringMap);
+        try {
+            final JsonNode value = objectMapper.readTree(this.actionExecutionAudit.getContext().getOrDefault(mapJson.getValue(), "{}"));
+            if (value != null) {
+                actionExecutionAudit.getContext().get(value.toString());
+                if (!value.isArray()) {
+                    final Map<String, String> stringStringMap = objectMapper.readValue(value.toString(), new TypeReference<>() {
+                    });
+                    final Map<String, String> stringMap = stringStringMap.entrySet().stream().collect(Collectors
+                            .toMap(stringStringEntry -> mapJson.getName() + "." + stringStringEntry.getKey(),
+                                    Map.Entry::getValue, (p, q) -> p));
+                    actionExecutionAudit.getContext().putAll(stringMap);
+                }
             }
+        } catch (Exception e) {
+            log.error(aMarker, "Error in map json action {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Error in map json action", e, actionExecutionAudit);
         }
 
     }

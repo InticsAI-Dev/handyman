@@ -1,16 +1,20 @@
 package in.handyman.raven.lib.adapters;
 
+import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
+import in.handyman.raven.lib.model.FieldValidator;
 import org.apache.commons.lang3.StringUtils;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class NumericAdapter implements AdapterInterface {
     @Override
-    public boolean getValidationModel(String input, String allowedCharacters) throws Exception {
+    public boolean getValidationModel(String input, String allowedCharacters, ActionExecutionAudit audit) throws Exception {
         input = validateSpecialCharacters(allowedCharacters, input);
         return StringUtils.isNumeric(input);
+    }
+
+    @Override
+    public boolean getNameValidationModel(FieldValidator input, String uri, ActionExecutionAudit audit) throws Exception {
+        return false;
     }
 
     String validateSpecialCharacters(String specialCharacters, String input) {

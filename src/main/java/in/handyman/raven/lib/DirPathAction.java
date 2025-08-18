@@ -1,10 +1,12 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.DirPath;
+import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -40,23 +42,27 @@ public class DirPathAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "<-------FileDetails Action for {} has been started------->" + dirPath.getName());
-        File file = new File(dirPath.getFilePath());
-        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dirPath.getResourceConn());
-        DirectoryDetails input = DirectoryDetails.builder()
-                .given_file_path(dirPath.getFilePath())
-                .given_file_checksum(null)
-                .build();
+        log.info(aMarker, "FileDetails Action for {} has been started" , dirPath.getName());
+        try {
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dirPath.getResourceConn());
+            DirectoryDetails input = DirectoryDetails.builder()
+                    .given_file_path(dirPath.getFilePath())
+                    .given_file_checksum(null)
+                    .build();
 
-        jdbi.useTransaction(handle -> {
+            jdbi.useTransaction(handle -> {
 
-            handle.createUpdate("INSERT INTO macro.file_path_details" +
-                            "(given_file_path, given_file_checksum)" +
-                            " VALUES( :given_file_path, :given_file_checksum);")
-                    .bindBean(input).execute();
-            log.debug(aMarker, "inserted {} into true positive result", input);
-            log.info(aMarker, "<-------File Details Action for {} has been Completed------->" + dirPath.getName());
-        });
+                handle.createUpdate("INSERT INTO macro.file_path_details" +
+                                "(given_file_path, given_file_checksum)" +
+                                " VALUES( :given_file_path, :given_file_checksum);")
+                        .bindBean(input).execute();
+                log.debug(aMarker, "inserted {} into true positive result", input);
+                log.info(aMarker, "File Details Action for {} has been Completed" , dirPath.getName());
+            });
+        } catch (Exception e) {
+            log.error(aMarker, "Error in inserting file path details {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Error in inserting file path details", e, action);
+        }
     }
 
     @Override

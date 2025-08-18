@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.DocnetResult;
 import in.handyman.raven.util.CommonQueryUtil;
+import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,11 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -52,14 +49,12 @@ public class DocnetResultAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            log.info(aMarker, "<-------Docnet Result Action for {} has been started------->" + docnetResult.getName());
+            log.info(aMarker, "Docnet Result Action for {} has been started" , docnetResult.getName());
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(docnetResult.getResourceConn());
             final List<Map<String, Object>> results = new ArrayList<>();
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(docnetResult.getCoproResultSqlQuery());
-                formattedQuery.forEach(sqlToExecute -> {
-                    results.addAll(handle.createQuery(sqlToExecute).mapToMap().stream().collect(Collectors.toList()));
-                });
+                formattedQuery.forEach(sqlToExecute -> results.addAll(handle.createQuery(sqlToExecute).mapToMap().stream().collect(Collectors.toList())));
             });
 
             if (results.size() > 0) {
@@ -69,10 +64,10 @@ public class DocnetResultAction implements IActionExecution {
                     final String fileRefId = Optional.ofNullable(jsonData.get("file_ref_id")).map(String::valueOf).orElse(null);
                     final String sorAttributionType = Optional.ofNullable(jsonData.get("sor_item_name")).map(String::valueOf).orElse(null);
                     final String createdUserId = Optional.ofNullable(jsonData.get("created_user_id")).map(String::valueOf).orElse(null);
-                    final String tenantId = Optional.ofNullable(jsonData.get("tenant_id")).map(String::valueOf).orElse(null);
+                    final Long tenantId = Optional.ofNullable(jsonData.get("tenant_id")).map(String::valueOf).map(Long::valueOf).orElse(null);
                     final String response = Optional.ofNullable(jsonData.get("response")).map(String::valueOf).orElse(null);
 
-                    JSONArray jObj = new JSONArray(response);
+                    JSONArray jObj = new JSONArray(Objects.requireNonNull(response));
 
                     jObj.forEach(resultObject -> {
                         JSONObject obj = (JSONObject) resultObject;
@@ -99,11 +94,11 @@ public class DocnetResultAction implements IActionExecution {
             }
         } catch (Exception e) {
             action.getContext().put(docnetResult.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Failed to execute", e, action);
         }
 
-        log.info(aMarker, "<-------Docnut Result Action for {} has been completed------->" + docnetResult.getName());
+        log.info(aMarker, "Docnut Result Action for {} has been completed" , docnetResult.getName());
 
     }
 
@@ -120,9 +115,9 @@ public class DocnetResultAction implements IActionExecution {
         jdbi.useTransaction(handle -> {
             final List<String> formattedQuery = CommonQueryUtil
                     .getFormattedQuery(docnetResult.getWeightageSqlQuery() + " WHERE si.sor_key= '" + docnetResultTable.getSorItemName() + "'");
-            formattedQuery.forEach(sqlToExecute -> {
+            for (String sqlToExecute : formattedQuery) {
                 sorConfigList.addAll(handle.createQuery(sqlToExecute).mapToMap().stream().collect(Collectors.toList()));
-            });
+            }
         });
 
         if (sorConfigList.size() > 0) {
@@ -145,16 +140,14 @@ public class DocnetResultAction implements IActionExecution {
         }
 
 
-        jdbi.useTransaction(handle -> {
-            handle.createUpdate("INSERT INTO macro.docnet_process(file_ref_id,paper_no,group_id,sor_item_id,sor_item_name,question,answer,created_user_id,tenant_id,confidence_score)" +
-                            " select  :fileRefId , :paperNo, :groupId, :sorItemId, :sorItemName, :question, :answer, :createdUserId, :tenantId, :confidenceScore;")
-                    .bindBean(docnetResultTable)
-                    .execute();
-        });
+        jdbi.useTransaction(handle -> handle.createUpdate("INSERT INTO macro.docnet_process(file_ref_id,paper_no,group_id,sor_item_id,sor_item_name,question,answer,created_user_id,tenant_id,confidence_score)" +
+                        " select  :fileRefId , :paperNo, :groupId, :sorItemId, :sorItemName, :question, :answer, :createdUserId, :tenantId, :confidenceScore;")
+                .bindBean(docnetResultTable)
+                .execute());
     }
 
     private Integer createConfidenceScore(TCSConfiguration config) {
-        Integer confidenceScoreNegative = 0;
+        int confidenceScoreNegative = 0;
         try {
             Integer wordCount = config.wordCount;
             Integer charactersCount = config.characterCount;
@@ -181,8 +174,8 @@ public class DocnetResultAction implements IActionExecution {
             int confidenceScore = 100 - confidenceScoreNegative;
             return confidenceScore;
         } catch (Exception ex) {
-            log.info(aMarker, "The Exception occurred in Confidence score validation ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "The Exception occurred in Confidence score validation {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 
@@ -208,7 +201,7 @@ public class DocnetResultAction implements IActionExecution {
         private String question;
         private String answer;
         private String createdUserId;
-        private String tenantId;
+        private Long tenantId;
         private Integer confidenceScore;
     }
 

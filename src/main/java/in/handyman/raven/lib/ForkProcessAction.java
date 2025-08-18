@@ -97,6 +97,7 @@ public class ForkProcessAction implements IActionExecution {
                     try {
                         countDownLatch.await();
                     } catch (InterruptedException e) {
+                        log.error(aMarker, "ForkProcess failed for batch " + batchNo, e);
                         throw new HandymanException("ForkProcess failed for batch " + batchNo, e);
                     }
                 });

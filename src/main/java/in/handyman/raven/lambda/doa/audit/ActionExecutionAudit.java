@@ -19,6 +19,7 @@ import org.slf4j.event.SubstituteLoggingEvent;
 
 import java.util.ArrayDeque;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
 @Setter
@@ -32,11 +33,11 @@ public class ActionExecutionAudit extends AbstractAudit implements IAction {
 
     @JsonIgnore
     private final ArrayDeque<SubstituteLoggingEvent> eventQueue = new ArrayDeque<>();
-    @Builder.Default
-    private Long actionId = UniqueID.getId();
+    private Long actionId ;
     private String actionName;
 
     private String macroName;
+    private String modelPath;
 
     private Long pipelineId;
     private JsonNode input;

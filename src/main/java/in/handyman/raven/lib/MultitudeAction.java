@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.audit.ExecutionGroup;
 import in.handyman.raven.lambda.process.LambdaEngine;
 import in.handyman.raven.lib.model.Multitude;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -15,7 +16,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -59,21 +62,22 @@ public class MultitudeAction implements IActionExecution {
                         return new ActionCallable(actionContext, vAction, null);
                     }).collect(Collectors.toSet());
                     var countDown = new CountDownLatch(actionContexts.size());
+                    ExecutorService executor = null;
                     try {
                         if (isParallel) {
                             log.info(aMarker, "Execution has been started in a Parallel with thread count of {}", threadCount);
-                            var executor = threadCount != 0 ? Executors.newFixedThreadPool(threadCount) : Executors.newWorkStealingPool();
-                            collect.forEach(actionCallable -> {
+                            executor = threadCount != 0 ? Executors.newFixedThreadPool(threadCount) : Executors.newWorkStealingPool();
+                            for (ActionCallable actionCallable : collect) {
                                 executor.submit(() -> {
                                     try {
                                         actionCallable.run();
                                     } catch (Exception e) {
-                                        throw new HandymanException("Failed to execute", e);
+                                        throw new HandymanException("Failed to execute", e, actionExecutionAudit);
                                     } finally {
                                         countDown.countDown();
                                     }
                                 });
-                            });
+                            }
                             log.info(aMarker, "Completed Execution of multitude");
                         } else {
                             log.info(aMarker, "Execution started in a sequential manner");
@@ -81,12 +85,27 @@ public class MultitudeAction implements IActionExecution {
                             log.info(aMarker, "Completed execution of multitude");
                         }
                     } catch (Exception e) {
-                        throw new HandymanException("Failed to execute", e);
+                        log.error(aMarker, "Error in execution in parallel thread {}", ExceptionUtil.toString(e));
+                        throw new HandymanException("Failed to execute", e, actionExecutionAudit);
                     } finally {
+                        if (executor != null) {
+                            executor.shutdown();
+                            try {
+                                if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
+                                    executor.shutdownNow();
+                                }
+                            } catch (InterruptedException e) {
+                                executor.shutdownNow();
+                                Thread.currentThread().interrupt();
+                            }
+                        }
                         try {
                             countDown.await();
                         } catch (InterruptedException e) {
                             log.error("Executors", e);
+                            Thread.currentThread().interrupt();
+                            HandymanException handymanException = new HandymanException("Multitude execution interrupted", e, actionExecutionAudit);
+                            HandymanException.insertException("Multitude execution interrupted",handymanException, actionExecutionAudit);
                         }
                     }
 

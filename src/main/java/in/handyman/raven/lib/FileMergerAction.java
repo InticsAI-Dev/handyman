@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
@@ -7,6 +8,9 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.FileMerger;
+import in.handyman.raven.lib.model.filemergerpdf.FileMergerResponse;
+import in.handyman.raven.lib.model.filemergerpdf.TritonInputRequest;
+import in.handyman.raven.lib.model.filemergerpdf.TritonRequest;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -17,6 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -26,52 +32,120 @@ import java.util.Objects;
         actionName = "FileMerger"
 )
 public class FileMergerAction implements IActionExecution {
-    private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
-    private final ActionExecutionAudit action;
-    private final Logger log;
-    private final FileMerger fileMerger;
-    private final Marker aMarker;
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final String URI;
+  private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
+  public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+  private final ActionExecutionAudit action;
+  private final Logger log;
+  private final FileMerger fileMerger;
+  private final Marker aMarker;
+  private final ObjectMapper mapper = new ObjectMapper();
+  private final String URI;
 
-    public FileMergerAction(final ActionExecutionAudit action, final Logger log,
-                            final Object fileMerger) {
-        this.fileMerger = (FileMerger) fileMerger;
-        this.action = action;
-        this.log = log;
-        this.aMarker = MarkerFactory.getMarker(" FileMerger:" + this.fileMerger.getName());
-        this.URI = action.getContext().get("copro.file-merger.url");
+  public FileMergerAction(final ActionExecutionAudit action, final Logger log,
+                          final Object fileMerger) {
+    this.fileMerger = (FileMerger) fileMerger;
+    this.action = action;
+    this.log = log;
+    this.aMarker = MarkerFactory.getMarker(" FileMerger:" + this.fileMerger.getName());
+    this.URI = action.getContext().get("copro.file-merger.url");
+  }
+
+  @Override
+  public void execute() throws Exception {
+    final OkHttpClient httpclient = InstanceUtil.createOkHttpClient();
+    String requestBody = fileMerger.getRequestBody();
+    ObjectNode inputJSON = (ObjectNode) mapper.readTree(requestBody);
+
+    String outputDir = fileMerger.getOutputDir();
+    final String mergerProcessName="FILE_MERGER";
+    String rootPipelineId= action.getContext().get("gen_id.root_pipeline_id");
+    Long actionId=action.getActionId();
+
+    inputJSON.put("outputDir", outputDir);
+    inputJSON.put("actionId",actionId);
+    inputJSON.put("rootPipelineId",rootPipelineId);
+    inputJSON.put("process",mergerProcessName);
+
+
+    String jsonInputRequest = mapper.writeValueAsString(inputJSON);
+
+    TritonRequest tritonRequestBody = new TritonRequest();
+    tritonRequestBody.setName("MERGER START");
+    tritonRequestBody.setShape(List.of(1, 1));
+    tritonRequestBody.setDatatype("BYTES");
+    tritonRequestBody.setData(Collections.singletonList(jsonInputRequest));
+
+    TritonInputRequest tritonInputRequest = new TritonInputRequest();
+    tritonInputRequest.setInputs(Collections.singletonList(tritonRequestBody));
+
+    String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
+    // BUILD A REQUEST
+
+
+    String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
+    String name = "file-merger-response";
+    if (Objects.equals("false", tritonRequestActivator)) {
+      Request request = new Request.Builder().url(URI)
+              .post(RequestBody.create(jsonInputRequest, MediaTypeJSON)).build();
+      coproRequestBuilder(httpclient,name,request);
+    } else {
+      Request request = new Request.Builder().url(URI)
+              .post(RequestBody.create(jsonRequest, MediaTypeJSON)).build();
+      tritonRequestBuilder(httpclient,name,request);
     }
 
-    @Override
-    public void execute() throws Exception {
-        final OkHttpClient httpclient = InstanceUtil.createOkHttpClient();
-        ObjectNode inputJSON = (ObjectNode) mapper.readTree(fileMerger.getRequestBody());
 
-        inputJSON.put("outputDir", fileMerger.getOutputDir());
-        // BUILD A REQUEST
-        Request request = new Request.Builder().url(URI)
-                .post(RequestBody.create(inputJSON.toString(), MediaTypeJSON)).build();
-        log.info(aMarker, "The request got it successfully the request body and output directory {} {}", fileMerger.getRequestBody()
-                , fileMerger.getOutputDir());
-        try (Response response = httpclient.newCall(request).execute()) {
-            String responseBody = Objects.requireNonNull(response.body()).string();
-            String name = "file-merger-response";
-            if (response.isSuccessful()) {
-                action.getContext().put(name, mapper.readTree(responseBody).toString());
-                log.info(aMarker, "The Successful Response  {} {}", name, responseBody);
-            } else {
-                log.info(aMarker, "The Failure Response  {} {}", name, responseBody);
-            }
-        } catch (Exception e) {
-            log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
-        }
+    if(log.isInfoEnabled()){
+      log.info(aMarker, "The request got it successfully the copro url {} ,request body {} and output directory  {}", URI,requestBody,outputDir);
     }
 
+  }
 
-    @Override
-    public boolean executeIf() throws Exception {
-        return fileMerger.getCondition();
+  private void tritonRequestBuilder(OkHttpClient httpclient, String name,Request request) {
+    try (Response response = httpclient.newCall(request).execute()) {
+      FileMergerResponse modelResponse = mapper.readValue(response.body().string(), FileMergerResponse.class);
+      if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()){
+        modelResponse.getOutputs().forEach(fileMergerOutput -> {
+          fileMergerOutput.getData().forEach(responseBody -> {
+            extractedRequestOutput(name, responseBody);
+          });
+        });
+      }
+
+    } catch (Exception e) {
+      action.getContext().put(name.concat(".error"), "true");
+      throw new HandymanException("Failed to execute", e, action);
     }
+  }
+
+  private void coproRequestBuilder(OkHttpClient httpclient, String name,Request request) {
+    try (Response response = httpclient.newCall(request).execute()) {
+      String responseBody=response.body().string();
+      if(response.isSuccessful()){
+        extractedRequestOutput(name, responseBody);
+      }else{
+        action.getContext().put(name.concat(".error"), "true");
+      }
+
+    } catch (Exception e) {
+      action.getContext().put(name.concat(".error"), "true");
+      throw new HandymanException("Failed to execute", e, action);
+    }
+  }
+
+  private void extractedRequestOutput(String name, String responseBody) {
+    try {
+      action.getContext().put(name, mapper.readTree(responseBody).toString());
+    } catch (JsonProcessingException e) {
+      throw new HandymanException("Error in the the response body binding into the output context name " + name, e,action);
+    }
+    action.getContext().put(name.concat(".success"), "true");
+    log.info(aMarker, "The Successful Response  {} {}", name, responseBody);
+  }
+
+
+  @Override
+  public boolean executeIf() throws Exception {
+    return fileMerger.getCondition();
+  }
 }

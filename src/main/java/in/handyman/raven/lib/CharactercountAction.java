@@ -23,6 +23,7 @@ public class CharactercountAction implements IActionExecution {
     private final Charactercount charactercount;
     private final Marker aMarker;
     static AdapterInterface charCountAdapter;
+    private static int limitedCharCount;
 
 
     public CharactercountAction(final ActionExecutionAudit action, final Logger log,
@@ -31,13 +32,17 @@ public class CharactercountAction implements IActionExecution {
         this.action = action;
         this.log = log;
         this.charCountAdapter = new CharacterCountAdapter();
+        this.limitedCharCount = Integer.parseInt(action.getContext().get("validaiton.char-limit-count"));
         this.aMarker = MarkerFactory.getMarker(" Charactercount:" + this.charactercount.getName());
     }
 
     public static int getCharCount(String input, int countLimit, int threshold) {
         try {
-            int wordCount = charCountAdapter.getThresholdScore(input);
-            return wordCount <= countLimit ? threshold : 0;
+            int charCount = charCountAdapter.getThresholdScore(input);
+            if(charCount<=limitedCharCount){
+                return 0;
+            }
+            return charCount <= countLimit ? threshold : 0;
         } catch (Exception ex) {
             throw new HandymanException("Failed to execute char count", ex);
         }
@@ -46,18 +51,18 @@ public class CharactercountAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            log.info(aMarker, "<-------Character Count Action for {} has been started------->" + charactercount.getName());
+            log.info(aMarker, "Character Count Action for {} has been started" , charactercount.getName());
             AdapterInterface charCountAdapter = new CharacterCountAdapter();
             int wordCount = charCountAdapter.getThresholdScore(charactercount.getInputValue());
             int confidenceScore = wordCount <= Integer.parseInt(charactercount.getCountLimit())
                     ? Integer.parseInt(charactercount.getThresholdValue()) : 0;
             action.getContext().put(charactercount.getName().concat(".score"), String.valueOf(confidenceScore));
-            log.info(aMarker, "<-------Character Count Action for {} has been completed------->" + charactercount.getName());
+            log.info(aMarker, "Character Count Action for {} has been completed" , charactercount.getName());
 
         } catch (Exception ex) {
             action.getContext().put(charactercount.getName().concat(".error"), "true");
             log.info(aMarker, "The Exception occurred ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 

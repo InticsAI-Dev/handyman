@@ -1,0 +1,353 @@
+[
+  {
+    "page_number": 0,
+    "kvp": {
+      "Company Information": {
+        "Name": "Livanta",
+        "Address": "10820 Guilford Road, Suite 202, Annapolis Junction, MD 20701"
+      },
+      "Fax Cover Sheet": {
+        "Date": "4/21/2023 4:53:52 PM",
+        "To": "Anthem Insurance Companies, Inc.",
+        "From": "Livanta",
+        "Phone": "See Next Page",
+        "Fax": "See Next Page",
+        "RE": "Control ID #: CA-1306216-AP",
+        "Message": "Immediate Attention Required",
+        "Note": "Please include this Control ID #: CA-1306216-AP with all correspondence."
+      },
+      "Confidentiality Notice": {
+        "Content": "You are receiving this facsimile at the fax number provided to Livanta for the transmission of such notifications. The document(s) accompanying this fax contains confidential patient information that must be maintained as confidential. If you are not the intended recipient, you are notified that the disclosure, copying, distribution, or retention of the contents of this faxed information is strictly prohibited and could be in violation of a patient's privacy rights.\n\nIF THIS FAX NUMBER IS NO LONGER THE DESIRED RECIPIENT FOR THIS NOTIFICATION, PLEASE CONTACT LIVANTA IMMEDIATELY AT THE PHONE NUMBER ON THE FOLLOWING PAGE FOR INSTRUCTIONS."
+      }
+    },
+    "checkbox": [
+
+    ],
+    "Text":{
+        "lines": [
+          {
+            "line_number": 1,
+            "content": "Quality Improvement Organizations"
+          },
+          {
+            "line_number": 2,
+            "content": "Sharing Knowledge, Improving Health Care."
+          },
+          {
+            "line_number": 3,
+            "content": "CENTERS FOR MEDICARE & MEDICAID SERVICES"
+          },
+          {
+            "line_number": 4,
+            "content": "LIVANTA"
+          },
+          {
+            "line_number": 5,
+            "content": "From practical innovations to results."
+          },
+          {
+            "line_number": 6,
+            "content": "Livanta"
+          },
+          {
+            "line_number": 7,
+            "content": "10820 Guilford Road"
+          },
+          {
+            "line_number": 8,
+            "content": "Suite 202"
+          },
+          {
+            "line_number": 9,
+            "content": "Annapolis Junction, MD. 20701"
+          },
+          {
+            "line_number": 10,
+            "content": "See Next Page"
+          },
+          {
+            "line_number": 11,
+            "content": "Fax Cover Sheet"
+          },
+          {
+            "line_number": 12,
+            "content": "Date: 4/21/2023 4:53:52 PM"
+          },
+          {
+            "line_number": 13,
+            "content": "To: Anthem Insurance Companies, Inc."
+          },
+          {
+            "line_number": 14,
+            "content": "From: Livanta"
+          },
+          {
+            "line_number": 15,
+            "content": "Phone: See Next Page"
+          },
+          {
+            "line_number": 16,
+            "content": "Fax: See Next Page"
+          },
+          {
+            "line_number": 17,
+            "content": "RE: Control ID #: CA-1306216-AP"
+          },
+          {
+            "line_number": 18,
+            "content": "Message: Immediate Attention Required"
+          },
+          {
+            "line_number": 19,
+            "content": "Please include this Control ID #: CA-1306216-AP with all correspondence."
+          },
+          {
+            "line_number": 20,
+            "content": "CONFIDENTIALITY NOTICE:"
+          },
+          {
+            "line_number": 21,
+            "content": "You are receiving this facsimile at the fax number provided to Livanta for the transmission of such notifications. The document(s) accompanying this fax contains confidential patient information that must be maintained as confidential. If you are not the intended recipient, you are notified that the disclosure, copying, distribution, or retention of the contents of this faxed information is strictly prohibited and could be in violation of a patient's privacy rights."
+          },
+          {
+            "line_number": 22,
+            "content": "IF THIS FAX NUMBER IS NO LONGER THE DESIRED RECIPIENT FOR THIS NOTIFICATION, PLEASE CONTACT LIVANTA IMMEDIATELY AT THE PHONE NUMBER ON THE FOLLOWING PAGE FOR INSTRUCTIONS."
+          }
+        ]
+      },
+    "tables": [
+
+    ]
+  },
+    {
+      "page_number": 1,
+      "kvp": {
+        "Immediate Notification of a Medicare Beneficiary Appeal Request: Documentation Request": {
+          "Date": "4/21/2023",
+          "Time": "4:53 PM",
+          "Provider": "East Bay Post Acute",
+          "MA Plan": "Anthem Insurance Companies, Inc.",
+          "Case Control ID": "*CA-1306216-AP*",
+          "EMR Key": "VNVKQR",
+          "CCN": "055239",
+          "NPI": "1811366586",
+          "MA Plan Contract No": "H4036",
+          "Beneficiary": "SNAVELY, ASSUNTA",
+          "DOB": "1/28/1942",
+          "HIC": "991X08526",
+          "MBI": "1E66M31CR68"
+        },
+        "Instructions": {
+          "Detailed Notice": "MUST be sent to the beneficiary and the QIO by close of business today.",
+          "Information Needed": [
+            "Copy of the hospital's Important Message or the provider's Notice of Medicare Non-coverage",
+            "Copy of Detailed Notice of Discharge or Detailed Explanation of Non-coverage",
+            "Copy of the Face Sheet",
+            "Discharge Physician orders and current Physician Progress notes",
+            "Discharge Summary and Discharge planning notes",
+            "Social Services notes with the intended discharge disposition",
+            "Physician’s Admission Order and Admission History and Physical",
+            "Emergency Room notes (if applicable)",
+            "Therapy evaluations and current therapy notes and goals (updated within the last 5 days), (if applicable)",
+            "Radiology and other tests/procedure reports",
+            "Operative Reports / Consultations (if applicable)",
+            "Up to the last two (2) days of the following",
+            "Nurses' notes, vital signs, lab work and flow sheets",
+            "Medication Administrative Records (if applicable)"
+          ],
+          "Burden of Proof": "When a Medicare beneficiary requests a determination by a BFCC-QIO, the burden of proof rests with the provider or the MA organization to demonstrate termination of Medicare coverage is the correct decision, either based on medical necessity, or other Medicare coverage policies."
+        },
+        "Submission Details": {
+          "Deadline": "no later than close of business today.",
+          "Electronic Submission": "Providers may submit medical documentation electronically to Livanta File Transfer (e-LiFT) with the EMR and the case number provided in the Medical Record Request.",
+          "Fax Submission": "If electronic transmission is not possible, medical records may be sent to Livanta by FAX to 855-694-2929.",
+          "Password Protection": "Do NOT send password protected medical record files.",
+          "Contact Information": {
+            "Quality of Care or Appeals": {
+              "Phone": "855-772-8566"
+            },
+            "Complaints or Concerns about Livanta’s work": {
+              "Email": "QIOCONCERNS@cms.hhs.gov"
+            }
+          },
+          "Case Status Check": "Check Case Status online 7/24 at https://livantaqio.com/en/case_lookup"
+        }
+      },
+      "checkbox": [
+
+      ],
+      "Text":
+        {
+          "lines": [
+            {
+              "line_number": 1,
+              "content": "Quality Improvement Organizations | LIVANTA"
+            },
+            {
+              "line_number": 2,
+              "content": "Immediate Notification of a Medicare Beneficiary Appeal Request: Documentation Request"
+            },
+            {
+              "line_number": 3,
+              "content": "This written Immediate Notification document serves to formally notify you that Livanta LLC, the Medicare Quality Improvement Organization (QIO), has received a beneficiary’s request for an expedited appeal of your decision to terminate service as directed under your CMS Code of Federal Regulations."
+            },
+            {
+              "line_number": 4,
+              "content": "Date: 4/21/2023 Time: 4:53 PM"
+            },
+            {
+              "line_number": 5,
+              "content": "Provider: East Bay Post Acute"
+            },
+            {
+              "line_number": 6,
+              "content": "MA Plan: Anthem Insurance Companies, Inc."
+            },
+            {
+              "line_number": 7,
+              "content": "Case Control ID: *CA-1306216-AP*"
+            },
+            {
+              "line_number": 8,
+              "content": "EMR Key: VNVKQR"
+            },
+            {
+              "line_number": 9,
+              "content": "CCN: 055239"
+            },
+            {
+              "line_number": 10,
+              "content": "NPI: 1811366586"
+            },
+            {
+              "line_number": 11,
+              "content": "MA Plan Contract No: H4036"
+            },
+            {
+              "line_number": 12,
+              "content": "Beneficiary: SNAVELY, ASSUNTA"
+            },
+            {
+              "line_number": 13,
+              "content": "DOB: 1/28/1942"
+            },
+            {
+              "line_number": 14,
+              "content": "HIC: 991X08526"
+            },
+            {
+              "line_number": 15,
+              "content": "MBI: 1E66M31CR68"
+            },
+            {
+              "line_number": 16,
+              "content": "Detailed Notice MUST be sent to the beneficiary and the QIO by close of business today. You MUST also supply all information requested by the QIO to review the appeal. The following sections from the medical record are needed to support the provider decision to terminate covered services or discharge."
+            },
+            {
+              "line_number": 17,
+              "content": "- Copy of the hospital's Important Message or the provider's Notice of Medicare Non-coverage"
+            },
+            {
+              "line_number": 18,
+              "content": "- Copy of Detailed Notice of Discharge or Detailed Explanation of Non-coverage"
+            },
+            {
+              "line_number": 19,
+              "content": "- Copy of the Face Sheet"
+            },
+            {
+              "line_number": 20,
+              "content": "- Discharge Physician orders and current Physician Progress notes"
+            },
+            {
+              "line_number": 21,
+              "content": "- Discharge Summary and Discharge planning notes"
+            },
+            {
+              "line_number": 22,
+              "content": "  - Social Services notes with the intended discharge disposition"
+            },
+            {
+              "line_number": 23,
+              "content": "- Physician’s Admission Order and Admission History and Physical"
+            },
+            {
+              "line_number": 24,
+              "content": "- Emergency Room notes (if applicable)"
+            },
+            {
+              "line_number": 25,
+              "content": "- Therapy evaluations and current therapy notes and goals (updated within the last 5 days), (if applicable)"
+            },
+            {
+              "line_number": 26,
+              "content": "- Radiology and other tests/procedure reports"
+            },
+            {
+              "line_number": 27,
+              "content": "- Operative Reports / Consultations (if applicable)"
+            },
+            {
+              "line_number": 28,
+              "content": "- Up to the last two (2) days of the following"
+            },
+            {
+              "line_number": 29,
+              "content": "  - Nurses' notes, vital signs, lab work and flow sheets"
+            },
+            {
+              "line_number": 30,
+              "content": "  - Medication Administrative Records (if applicable)"
+            },
+            {
+              "line_number": 31,
+              "content": "When a Medicare beneficiary requests a determination by a BFCC-QIO, the burden of proof rests with the provider or the MA organization to demonstrate termination of Medicare coverage is the correct decision, either based on medical necessity, or other Medicare coverage policies."
+            },
+            {
+              "line_number": 32,
+              "content": "The information must be received in its entirety, no later than close of business today."
+            },
+            {
+              "line_number": 33,
+              "content": "Providers may submit medical documentation electronically to Livanta File Transfer (e-LiFT) with the EMR and the case number provided in the Medical Record Request."
+            },
+            {
+              "line_number": 34,
+              "content": "If electronic transmission is not possible, medical records may be sent to Livanta by FAX to 855-694-2929."
+            },
+            {
+              "line_number": 35,
+              "content": "Do NOT send password protected medical record files."
+            },
+            {
+              "line_number": 36,
+              "content": "Instructions and details can be found at https://livantaqio.com/en/Provider/Medical_Records."
+            },
+            {
+              "line_number": 37,
+              "content": "Information and questions about quality of care or appeals."
+            },
+            {
+              "line_number": 38,
+              "content": "Contact Livanta at 855-772-8566"
+            },
+            {
+              "line_number": 39,
+              "content": "Complaints or concerns about Livanta’s work?"
+            },
+            {
+              "line_number": 40,
+              "content": "Let CMS know at QIOCONCERNS@cms.hhs.gov."
+            },
+            {
+              "line_number": 41,
+              "content": "Check Case Status online 7/24 at https://livantaqio.com/cn/case_lookup"
+            }
+          ]
+        }
+      ,
+      "tables": [
+
+      ]
+    }
+]

@@ -1,14 +1,7 @@
 package in.handyman.raven.lambda.access.repo;
 
-import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.ActionExecutionStatusAudit;
-import in.handyman.raven.lambda.doa.audit.PipelineExecutionAudit;
-import in.handyman.raven.lambda.doa.audit.PipelineExecutionStatusAudit;
-import in.handyman.raven.lambda.doa.audit.StatementExecutionAudit;
-import in.handyman.raven.lambda.doa.config.SpwCommonConfig;
-import in.handyman.raven.lambda.doa.config.SpwInstanceConfig;
-import in.handyman.raven.lambda.doa.config.SpwProcessConfig;
-import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
+import in.handyman.raven.lambda.doa.audit.*;
+import in.handyman.raven.lambda.doa.config.*;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +27,8 @@ public interface HandymanRepo {
     void update(final SpwInstanceConfig spwInstanceConfig);
 
     List<SpwInstanceConfig> findAllInstances();
+
+    List<DatumDriftConfig> findAllDatumDrifts();
 
     List<SpwInstanceConfig> findAllByInstanceVariable(final String variable);
 
@@ -100,6 +95,12 @@ public interface HandymanRepo {
 
     List<ActionExecutionAudit> findAllActionsByRootPipelineId(final Long rootPipelineId);
 
+    List<ActionExecutionAudit> findAllActionsByPipelineIdAndExecutionStatusId(final Long pipelineId, final Integer statusId);
+
+    List<ActionExecutionAudit> findActionByRootPipelineIdAndActionName(final Long rootPipelineId, final String actionName);
+
+    ActionExecutionAudit findActionByActionId(final Long actionId);
+
     List<PipelineExecutionAudit> findAllPipelinesByParentActionId(final Long parentActionId);
 
     List<PipelineExecutionAudit> findAllPipelines();
@@ -107,4 +108,12 @@ public interface HandymanRepo {
     List<PipelineExecutionAudit> findAllByPipelineName(final String pipelineName);
 
     List<PipelineExecutionAudit> findAllProcessName(final String processName);
+
+    List<HandymanExceptionAuditDetails> findHandymanExceptionsByRootPipelineId(final Integer rootPipelineId);
+
+    List<HandymanExceptionAuditDetails> findAllHandymanExceptions();
+
+    long insertProtegrityAuditRecord(String key, String encryptionType, String endpoint, Long rootPipelineId, Long actionId, String threadName,String uuid);
+
+    void updateProtegrityAuditRecord(long id, String status, String message);
 }

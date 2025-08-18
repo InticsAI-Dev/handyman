@@ -1,0 +1,1094 @@
+[
+  {
+    "page_number": 0,
+    "kvp": {
+      "Document Information": {
+        "From": "norton health",
+        "Phone Number": "5024796446",
+        "Date": "11/12/2024",
+        "Time": "11:43",
+        "Document ID": "#962 P.054/136"
+      },
+      "Interoffice Recoup Packet": {
+        "Lockbox": "-",
+        "PNC Batch": "-",
+        "PNC TID": "-",
+        "Document Date": "11/8/2024",
+        "Document Handle": "450500120"
+      },
+      "Anthem Blue Cross and Blue Shield Provider Inquiry/Refund/Adjustment Form": {
+        "Date": "10/08/2024",
+        "Type of Inquiry": "Underpayment",
+        "Identification Number": "986535292",
+        "Member Name": "KWAK, PEARLIE",
+        "Patient Name": "SAME",
+        "Patient Account No": "",
+        "Claim No": "238227586600",
+        "Service Date/Adm. Date": "01/23/2024",
+        "Billed Amount": "207.00",
+        "Provider Tax ID No": "229082866",
+        "Anthem Provider NPI": "165934997",
+        "Office Contact Name": "SL",
+        "Provider Name": "",
+        "Phone No": "",
+        "Fax No": "",
+        "Remit Address": "P.O. BOX 776351 Chicago, IL 60677-6351",
+        "Reason for Adjustment": {
+          "Late Charges": false,
+          "Workers Compensation/Subrogation": false,
+          "Diagnosis Change": false,
+          "Charge Error": true,
+          "Charges billed in error": false,
+          "Charges incorrect": false,
+          "Duplicate Payment": false,
+          "Medicare/COB": false,
+          "Take Back Requested $63.95": false,
+          "No Take Back Required": false,
+          "Other Comments": "BILLED IN ERROR AS PRIMARY"
+        },
+        "Section 2 - Information to be Added, Deleted, or Replaced": {
+
+        },
+        "Anthem's Reply To Provider": {
+          "Claim Forwarded to Processing": false,
+          "Claim Will be Adjusted": false,
+          "Payment Applied to Deductible": false,
+          "Check Voided": false,
+          "Check Will be Reissued": false,
+          "Please Send Operative Report": false,
+          "Secondary - Refund To Us": false,
+          "Other": false,
+          "Explanation": ""
+        }
+      }
+    },
+    "checkbox": [
+      {
+        "Row": 1,
+        "Column": 1,
+        "Question": "Type of Inquiry",
+        "Options": [
+          {
+            "OptionText": "Underpayment",
+            "Status": "Ticked"
+          },
+          {
+            "OptionText": "Overpayment",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Corrected Claim",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Unknown Type of Inquiry",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Physician",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Facility",
+            "Status": "Ticked"
+          },
+          {
+            "OptionText": "Dental",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Vision",
+            "Status": "Not Ticked"
+          }
+        ]
+      },
+      {
+        "Row": 2,
+        "Column": 1,
+        "Question": "Reason for Adjustment",
+        "Options": [
+          {
+            "OptionText": "Late Charges",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Workers Compensation/Subrogation",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Diagnosis Change",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Charge Error",
+            "Status": "Ticked"
+          },
+          {
+            "OptionText": "Charges billed in error",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Charges incorrect",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Duplicate Payment",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Services paid twice",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Duplicate Claim No.",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Medicare/COB",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Coinsurance incorrect",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Paid as primary",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Take Back Requested $63.95",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "No Take Back Required (Check Enclosed)",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Other Comments: BILLED IN ERROR AS PRIMARY",
+            "Status": "Ticked"
+          }
+        ]
+      },
+      {
+        "Row": 3,
+        "Column": 1,
+        "Question": "Claim Disposition",
+        "Options": [
+          {
+            "OptionText": "Paid",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Denied",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Processed",
+            "Status": "Not Ticked"
+          }
+        ]
+      },
+      {
+        "Row": 4,
+        "Column": 1,
+        "Question": "Denial Reason",
+        "Options": [
+          {
+            "OptionText": "No Record of Billing. Please Resubmit",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Not an Anthem Member",
+            "Status": "Not Ticked"
+          },
+          {
+            "OptionText": "Please send other carrier information",
+            "Status": "Not Ticked"
+          }
+        ]
+      }
+    ],
+    "Text": {
+        "lines": [
+          {
+            "line_number": 1,
+            "content": "From:norton health"
+          },
+          {
+            "line_number": 2,
+            "content": "Interoffice Recoup Packet - Lockbox: - PNC Batch: - PNC TID: - Document Date: 11/8/2024"
+          },
+          {
+            "line_number": 3,
+            "content": "ment Handle: 450500120"
+          },
+          {
+            "line_number": 4,
+            "content": "Anthem."
+          },
+          {
+            "line_number": 5,
+            "content": "ANTHEM BLUE CROSS AND BLUE SHIELD PROVIDER INQUIRY/REFUND/ADJUSTMENT FORM"
+          },
+          {
+            "line_number": 6,
+            "content": "Date:10/08/2024"
+          },
+          {
+            "line_number": 7,
+            "content": "Identification Number"
+          },
+          {
+            "line_number": 8,
+            "content": "986535292"
+          },
+          {
+            "line_number": 9,
+            "content": "Member Name"
+          },
+          {
+            "line_number": 10,
+            "content": "KWAK, PEARLIE"
+          },
+          {
+            "line_number": 11,
+            "content": "Patient Name"
+          },
+          {
+            "line_number": 12,
+            "content": "SAME"
+          },
+          {
+            "line_number": 13,
+            "content": "Claim No."
+          },
+          {
+            "line_number": 14,
+            "content": "238227586600"
+          },
+          {
+            "line_number": 15,
+            "content": "Serv. Date/Adm. Date"
+          },
+          {
+            "line_number": 16,
+            "content": "01/23/2024"
+          },
+          {
+            "line_number": 17,
+            "content": "Billed Amount"
+          },
+          {
+            "line_number": 18,
+            "content": "207.00"
+          },
+          {
+            "line_number": 19,
+            "content": "Provider Tax ID No."
+          },
+          {
+            "line_number": 20,
+            "content": "Anthem Provider"
+          },
+          {
+            "line_number": 21,
+            "content": "NPI_165934997"
+          },
+          {
+            "line_number": 22,
+            "content": "Office Contact Name SL"
+          },
+          {
+            "line_number": 23,
+            "content": "No."
+          },
+          {
+            "line_number": 24,
+            "content": "229082866"
+          },
+          {
+            "line_number": 25,
+            "content": "Provider Name"
+          },
+          {
+            "line_number": 26,
+            "content": "Phone No."
+          },
+          {
+            "line_number": 27,
+            "content": "Fax No."
+          },
+          {
+            "line_number": 28,
+            "content": "Remit Address:P.O. BOX 776351 Chicago, IL 60677-6351"
+          },
+          {
+            "line_number": 29,
+            "content": "Section 1 Check box that best describes reason for adjustment:"
+          },
+          {
+            "line_number": 30,
+            "content": "Late Charges (Fill out Section 2). Note: Late charges can be submitted electronically using the ANSI X12 837 claim format."
+          },
+          {
+            "line_number": 31,
+            "content": "Workers Compensation/Subrogation (Attach EOB) [] Accident Date"
+          },
+          {
+            "line_number": 32,
+            "content": "Diagnosis Change [] Charge Error"
+          },
+          {
+            "line_number": 33,
+            "content": "[] Charges billed in error (Fill out Section 2) Note: Late charges can be submitted electronically using the ANSI X12 837 claim format."
+          },
+          {
+            "line_number": 34,
+            "content": "[] Charges incorrect (Fill out Section 2)"
+          },
+          {
+            "line_number": 35,
+            "content": "[] Duplicate Payment"
+          },
+          {
+            "line_number": 36,
+            "content": "[] Services paid twice"
+          },
+          {
+            "line_number": 37,
+            "content": "[] Duplicate Claim No."
+          },
+          {
+            "line_number": 38,
+            "content": "[] Medicare/COB Note: COB can be submitted electronically using the ANSI X12 837 claim format."
+          },
+          {
+            "line_number": 39,
+            "content": "[] Coinsurance incorrect (Attach Medicare EOB or other carrier EOB)"
+          },
+          {
+            "line_number": 40,
+            "content": "[] Paid as primary (Attach Medicare EOB or other carrier EOB)"
+          },
+          {
+            "line_number": 41,
+            "content": "[] Take Back Requested $63.95"
+          },
+          {
+            "line_number": 42,
+            "content": "[] No Take Back Required (Check Enclosed) Please refer to mailing information on the Adjustment Form Instruction sheet."
+          },
+          {
+            "line_number": 43,
+            "content": "Check No. ____ Check Amt. $____ Check Date _____"
+          },
+          {
+            "line_number": 44,
+            "content": "[] Other Comments: BILLED IN ERROR AS PRIMARY"
+          },
+          {
+            "line_number": 45,
+            "content": "Section 2 - Information to be Added, Deleted, or Replaced. (A for Add - D for Delete - R for Replaced) If you require additional space for items that need to be added, deleted or replaced, please use the second page of this form for these items."
+          },
+          {
+            "line_number": 46,
+            "content": "Add/Delete/Replace"
+          },
+          {
+            "line_number": 47,
+            "content": "Date of service"
+          },
+          {
+            "line_number": 48,
+            "content": "CPT/Revenue Code"
+          },
+          {
+            "line_number": 49,
+            "content": "Line Charge"
+          },
+          {
+            "line_number": 50,
+            "content": "# of Units"
+          },
+          {
+            "line_number": 51,
+            "content": "Total Charges: $_____ Debit + (Pay More) $_____ Credit - (Take Back) $_____"
+          },
+          {
+            "line_number": 52,
+            "content": "Anthem’s Reply To Provider"
+          },
+          {
+            "line_number": 53,
+            "content": "[] Claim Forwarded to Processing"
+          },
+          {
+            "line_number": 54,
+            "content": "[] Claim Will be Adjusted: $_____ Amount _____ Date _____"
+          },
+          {
+            "line_number": 55,
+            "content": "[] Payment Applied to Deductible: $_____ Amount _____ Date _____"
+          },
+          {
+            "line_number": 56,
+            "content": "[] Check Voided ( See explanation below)"
+          },
+          {
+            "line_number": 57,
+            "content": "[] Check Will be Reissued"
+          },
+          {
+            "line_number": 58,
+            "content": "[] Please Send Operative Report"
+          },
+          {
+            "line_number": 59,
+            "content": "[] Secondary - Refund To Us: $_____"
+          },
+          {
+            "line_number": 60,
+            "content": "[] Other: _____ Explanation: _____"
+          },
+          {
+            "line_number": 61,
+            "content": "*This form and supporting documentation may be faxed to 800-376-0247. Please refer to the instruction sheet for additional addresses for mailing."
+          }
+        ]
+      },
+    "tables": [
+      {
+        "Table Name": "Add/Delete/Replace",
+        "Rows": [
+          {
+            "Add/Delete/Replace": "",
+            "Date of service": "",
+            "CPT/Revenue Code": "",
+            "Line Charge": "",
+            "# of Units": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "page_number": 1,
+    "kvp": {
+      "Refund Details": {
+        "Refund Packet #": "76991",
+        "Invoice # *": "4420368750",
+        "Type *": "Refund",
+        "Amount *": "$63.95",
+        "Refund Dept *": "PB",
+        "Payer *": "ANTHEM KY MANAGED CARE PLAN, INC"
+      },
+      "Patient Information": {
+        "Pt. Last Name *": "ANDERSON",
+        "Pt. First Name *": "ILAH RAYNE",
+        "Date of Birth *": "01/08/2024",
+        "Reason *": "OS 01/23/2024, PRIMARY TRICARE PROCESSED THE CLAIM PAID IN FULL. HENCE REQUEST TO RECOUP THE PAYMENT OF $63.95 TO ANTHEM KY MEDICAID."
+      },
+      "Hidden": {
+        "Complete": "No",
+        "Refund packet ready to be entered in Epic?": "N",
+        "Date refund packet entered in Epic": "00/00/00"
+      }
+    },
+    "checkbox": [
+
+    ],
+    "Text":
+      {
+        "lines": [
+          {
+            "line_number": 1,
+            "content": "From:norton health"
+          },
+          {
+            "line_number": 2,
+            "content": "Interoffice Recoup Packet - Lockbox: - PNC Batch: - PNC TID: - Document Date: 11/8/2024"
+          },
+          {
+            "line_number": 3,
+            "content": "Document Handle: 450500120"
+          },
+          {
+            "line_number": 4,
+            "content": "Cash Support - Refund Coversheet"
+          },
+          {
+            "line_number": 5,
+            "content": "Refund Details"
+          },
+          {
+            "line_number": 6,
+            "content": "Refund Packet # Invoice # *"
+          },
+          {
+            "line_number": 7,
+            "content": "76991 4420368750"
+          },
+          {
+            "line_number": 8,
+            "content": "Type * Amount *"
+          },
+          {
+            "line_number": 9,
+            "content": "Refund $63.95"
+          },
+          {
+            "line_number": 10,
+            "content": "Recoupment"
+          },
+          {
+            "line_number": 11,
+            "content": "Refund Dept *"
+          },
+          {
+            "line_number": 12,
+            "content": "PB HB"
+          },
+          {
+            "line_number": 13,
+            "content": "Payer *"
+          },
+          {
+            "line_number": 14,
+            "content": "ANTHEM KY MANAGED CARE PLAN, INC"
+          },
+          {
+            "line_number": 15,
+            "content": "Patient Information"
+          },
+          {
+            "line_number": 16,
+            "content": "Pt. Last Name * Pt. First Name * Date of Birth *"
+          },
+          {
+            "line_number": 17,
+            "content": "ANDERSON ILAH RAYNE 01/08/2024"
+          },
+          {
+            "line_number": 18,
+            "content": "Reason *"
+          },
+          {
+            "line_number": 19,
+            "content": "AS 01/23/2024, PRIMARY TRICARE PROCESSED THE CLAIM PAID IN FULL. HENCE REQUEST TO RECUP THE PAYMENT OF $63.95 TO ANTHEM KY MEDICAID."
+          },
+          {
+            "line_number": 20,
+            "content": "Hidden"
+          },
+          {
+            "line_number": 21,
+            "content": "Complete"
+          },
+          {
+            "line_number": 22,
+            "content": "No"
+          },
+          {
+            "line_number": 23,
+            "content": "Refund packet ready to be entered in Epic?"
+          },
+          {
+            "line_number": 24,
+            "content": "N"
+          },
+          {
+            "line_number": 25,
+            "content": "Date refund packet entered in Epic"
+          },
+          {
+            "line_number": 26,
+            "content": "00/00/00"
+          }
+        ]
+      }
+    ,
+    "tables": [
+
+    ]
+  },
+  {
+    "page_number": 2,
+    "kvp": {
+      "From": "norton health",
+      "Document Number": "5024796446",
+      "Date": "11/12/2024",
+      "Time": "11:44",
+      "Page": "#962 P.056/136",
+      "Interoffice Recoup Packet": {
+        "Lockbox": "-",
+        "PNC Batch": "-",
+        "PNC TID": "-",
+        "Document Date": "11/8/2024",
+        "Document Handle": "450500120"
+      },
+      "Explanation of Benefits": {
+        "Note": "This document is not a bill. Please retain a copy of this document for your own records."
+      },
+      "Payment Information": {
+        "Method": "Automated Clearing House",
+        "Check/EFT Number": "3234435447",
+        "Amount": "13423.20",
+        "Date": "02-26-2024"
+      },
+      "Patient ID": "XTF735800216",
+      "Group/Policy Number": "KYMCDWP0",
+      "Class of Contract": "KENTUCKY ANTHEM MANAGE CA",
+      "Medical Record ID": "EP02953167",
+      "Provider ID": "1912344888",
+      "Total Billed Amount": "207.60",
+      "Total Deducted Amount": "0",
+      "Total Benefit Amount": "83.95"
+    },
+    "checkbox": [
+
+    ],
+    "Text":
+      {
+        "lines": [
+          {
+            "line_number": 1,
+            "content": "From:norton health"
+          },
+          {
+            "line_number": 2,
+            "content": "5024796446"
+          },
+          {
+            "line_number": 3,
+            "content": "11/12/2024 11:44"
+          },
+          {
+            "line_number": 4,
+            "content": "#962 P.056/136"
+          },
+          {
+            "line_number": 5,
+            "content": "Interoffice Recoup Packet - Lockbox: - PNC Batch: - PNC TID: - Document Date: 11/8/2024"
+          },
+          {
+            "line_number": 6,
+            "content": "ument Handle: 450500120"
+          },
+          {
+            "line_number": 7,
+            "content": "THEM KY MANAGED CARE PLAN, INC"
+          },
+          {
+            "line_number": 8,
+            "content": "VANDERCAR WAY"
+          },
+          {
+            "line_number": 9,
+            "content": "INNATI, OH 45209"
+          },
+          {
+            "line_number": 10,
+            "content": "e: 855-661-2023"
+          },
+          {
+            "line_number": 11,
+            "content": "sent Made To:"
+          },
+          {
+            "line_number": 12,
+            "content": "RTON CHILDRENS MEDICAL GROUP"
+          },
+          {
+            "line_number": 13,
+            "content": "BOX 776879"
+          },
+          {
+            "line_number": 14,
+            "content": "ICAGO, IL 60677"
+          },
+          {
+            "line_number": 15,
+            "content": "-eyer ID: 842411303"
+          },
+          {
+            "line_number": 16,
+            "content": "inal Provider ID: 1326695255"
+          },
+          {
+            "line_number": 17,
+            "content": "ity Type Code: 11"
+          },
+          {
+            "line_number": 18,
+            "content": "n Frequency Code: 1"
+          },
+          {
+            "line_number": 19,
+            "content": "s Number: 262712D63900696"
+          },
+          {
+            "line_number": 20,
+            "content": "s Date: 01-23-2024"
+          },
+          {
+            "line_number": 21,
+            "content": "nt Account Number 4420368750"
+          },
+          {
+            "line_number": 22,
+            "content": "int: iLAN R ANDERSON"
+          },
+          {
+            "line_number": 23,
+            "content": "ider: AMANDA CARTER"
+          },
+          {
+            "line_number": 24,
+            "content": "EXPLANATION OF BENEFITS"
+          },
+          {
+            "line_number": 25,
+            "content": "This document is not a bill. Please retain a copy of this document for your own records."
+          },
+          {
+            "line_number": 26,
+            "content": "For questions, concerns, or change of address, please direct your calls to the phone number listed to the left."
+          },
+          {
+            "line_number": 27,
+            "content": "Payment Information"
+          },
+          {
+            "line_number": 28,
+            "content": "Method: Automated Clearing House"
+          },
+          {
+            "line_number": 29,
+            "content": "Check/EFT Number: 3234435447"
+          },
+          {
+            "line_number": 30,
+            "content": "Amount: 13423.20"
+          },
+          {
+            "line_number": 31,
+            "content": "Date: 02-26-2024"
+          },
+          {
+            "line_number": 32,
+            "content": "Patient ID: XTF735800216"
+          },
+          {
+            "line_number": 33,
+            "content": "Group/Policy Number: KYMCDWP0"
+          },
+          {
+            "line_number": 34,
+            "content": "Class of Contract: KENTUCKY ANTHEM MANAGE CA"
+          },
+          {
+            "line_number": 35,
+            "content": "Medical Record ID: EP02953167"
+          },
+          {
+            "line_number": 36,
+            "content": "Provider ID: 1912344888"
+          },
+          {
+            "line_number": 37,
+            "content": "Total Billed Amount: 207.60"
+          },
+          {
+            "line_number": 38,
+            "content": "Total Benefit Amount: 83.95"
+          },
+          {
+            "line_number": 39,
+            "content": "Payment Reason Codes"
+          },
+          {
+            "line_number": 40,
+            "content": "charges exceed your contracted/legislated fee arrangement."
+          },
+          {
+            "line_number": 41,
+            "content": "Claim Codes"
+          },
+          {
+            "line_number": 42,
+            "content": "Consult our contractual agreement for restrictions/billing/payment information related to these charges."
+          },
+          {
+            "line_number": 43,
+            "content": "38 * RCVD:11/12/2024 12:28:15 PM ET * JOB:ct18003760247-20241112080332227-202-3 * CSID:5024796446 * ANI:15024796446 * DUR:84-43 mm:ss"
+          }
+        ]
+      }
+    ,
+    "tables": [
+      {
+        "Table Name": "Explanation of Benefits",
+        "Rows": [
+          {
+            "Date From": "01-23-2024",
+            "Date To": "01-23-2024",
+            "Procedure Code": "HC99213",
+            "Billed Amount": "207.60",
+            "Allowed Amount": "63.95",
+            "Remarks": "N081",
+            "Provider Discount": "",
+            "Deductible": "",
+            "Co-insurance": "",
+            "Other Insurance Covered": "",
+            "Other Adjustment Amount": "143.65",
+            "Benefit Amount": "63.95"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "page_number": 3,
+    "kvp": {
+      "From": "norton health",
+      "Phone Number": "5024796446",
+      "Date": "11/12/2024",
+      "Time": "11:45",
+      "Page Number": "#962 P.057/136",
+      "Interoffice Recoup Packet": "- Lockbox: - PNC Batch: - PNC TID: - Document Date: 11/8/2024",
+      "Document Handle": "450500120",
+      "Explanation of Benefits": {
+        "Note": "This document is not a bill. Please retain a copy of this document for your own records."
+
+      },
+      "Payment Information": {
+        "Method": "Non-Payment Date",
+        "Check/EFT Number": "C0032842913",
+        "Amount": "0.00",
+        "Date": "03-11-2024"
+      },
+      "Patient Information": {
+        "Patient ID": "404457636",
+        "Insured ID": "404457636"
+      },
+      "Service Details": {
+        "Service Date": "2024-01-23",
+        "Procedure Code": "HG69213",
+        "Billed Amount": "267.00",
+        "Allowed Amount": "80.63",
+        "Remarks": "N1",
+        "Provider Copay": "0.00",
+        "Deductible": "128.37",
+        "Co-Insurance": "45",
+        "Other Adjustment": "80.63",
+        "Benefit Amount": "80.63"
+      },
+      "Total Billed Amount": "267.00",
+      "Total Benefit Amount": "80.63",
+      "Adjustment Reason Codes": "Charges exceed your contracted/ legislated fee arrangement.",
+      "Claim Adjustments": "You may appeal this decision in writing within the required time limits following receipt of this notice by following the instructions included in your contract or plan benefit documents."
+    },
+    "checkbox": [
+
+    ],
+    "Text":
+      {
+        "lines": [
+          {
+            "line_number": 1,
+            "content": "From:norton health"
+          },
+          {
+            "line_number": 2,
+            "content": "5024796446"
+          },
+          {
+            "line_number": 3,
+            "content": "11/12/2024 11:45"
+          },
+          {
+            "line_number": 4,
+            "content": "#962 P.057/136"
+          },
+          {
+            "line_number": 5,
+            "content": "Interoffice Recoup Packet - Lockbox: - PNC Batch: - PNC TID: - Document Date: 11/8/2024"
+          },
+          {
+            "line_number": 6,
+            "content": "Document Handle: 450500120"
+          },
+          {
+            "line_number": 7,
+            "content": "CARE EAST"
+          },
+          {
+            "line_number": 8,
+            "content": "EXPLANATION OF BENEFITS"
+          },
+          {
+            "line_number": 9,
+            "content": "This document is not a bill. Please retain a copy of this document for your own records."
+          },
+          {
+            "line_number": 10,
+            "content": "For questions, concerns, or change of address, please direct your calls to the phone number listed to the left."
+          },
+          {
+            "line_number": 11,
+            "content": "Payment Information"
+          },
+          {
+            "line_number": 12,
+            "content": "Method: Non-Payment Date"
+          },
+          {
+            "line_number": 13,
+            "content": "Check/EFT Number: C0032842913"
+          },
+          {
+            "line_number": 14,
+            "content": "Amount: 0.00"
+          },
+          {
+            "line_number": 15,
+            "content": "Date: 03-11-2024"
+          },
+          {
+            "line_number": 16,
+            "content": "Sent Made To:"
+          },
+          {
+            "line_number": 17,
+            "content": "RTON CHILDRENS MEDICAL GROUP"
+          },
+          {
+            "line_number": 18,
+            "content": "BOX 776879"
+          },
+          {
+            "line_number": 19,
+            "content": "ICAGO, IL 60677"
+          },
+          {
+            "line_number": 20,
+            "content": "National Provider ID: 1326695255"
+          },
+          {
+            "line_number": 21,
+            "content": "Entity Type Code: 11"
+          },
+          {
+            "line_number": 22,
+            "content": "Claim Number: 20240578040073"
+          },
+          {
+            "line_number": 23,
+            "content": "Patient ID: 404457636"
+          },
+          {
+            "line_number": 24,
+            "content": "Insured ID: 404457636"
+          },
+          {
+            "line_number": 25,
+            "content": "Claim Amount Number: 4424892280"
+          },
+          {
+            "line_number": 26,
+            "content": "Insured: ILAH RAYNE ANDERSON"
+          },
+          {
+            "line_number": 27,
+            "content": "Insured: DEVAN JANNARD ANDERSON"
+          },
+          {
+            "line_number": 28,
+            "content": "Service Dates: 2024-01-23 to 2024-01-23"
+          },
+          {
+            "line_number": 29,
+            "content": "HCPCS Code: 99213"
+          },
+          {
+            "line_number": 30,
+            "content": "Billed Amount: 267.00"
+          },
+          {
+            "line_number": 31,
+            "content": "Allowed Amount: 80.63"
+          },
+          {
+            "line_number": 32,
+            "content": "Remarks: N1"
+          },
+          {
+            "line_number": 33,
+            "content": "Provider Copay: 0.00"
+          },
+          {
+            "line_number": 34,
+            "content": "Deductible: 0.00"
+          },
+          {
+            "line_number": 35,
+            "content": "Other: 0.00"
+          },
+          {
+            "line_number": 36,
+            "content": "Not Covered: 0.00"
+          },
+          {
+            "line_number": 37,
+            "content": "Other Adjustment: 0.00"
+          },
+          {
+            "line_number": 38,
+            "content": "Benefit: 80.63"
+          },
+          {
+            "line_number": 39,
+            "content": "Total Billed Amount: 267.00"
+          },
+          {
+            "line_number": 40,
+            "content": "Total Benefit Amount: 80.63"
+          },
+          {
+            "line_number": 41,
+            "content": "Adjustment Reason Codes: Charges exceed your contracted/ legislated fee arrangement."
+          },
+          {
+            "line_number": 42,
+            "content": "You may appeal this decision in writing within the required time limits following receipt of this notice by following the instructions included in your contract or plan benefit documents."
+          },
+          {
+            "line_number": 43,
+            "content": "38 * RCVD:11/12/2024 12:28:15 PM ET * JOB:ct18003760247-20241112080332227-202-3 * CSID:5024796446 * ANI:15024796446 * DUR:84-43 mm-ss"
+          }
+        ]
+      }
+    ,
+    "tables": [
+      {
+        "Table Name": "Explanation of Benefits",
+        "Rows": [
+          {
+            "Service Dates": "2024-01-23-2024",
+            "Procedure Code": "HG69213",
+            "Billed Amount": "267.00",
+            "Allowed Amount": "80.63",
+            "Remarks": "N1",
+            "Provider Discount": "128.37",
+            "Copay": "45",
+            "Deductible": "",
+            "Co-Insurance": "",
+            "Other Insurance": "",
+            "Other Adjustment": "",
+            "Benefit Amount": "80.63"
+          }
+        ]
+      }
+    ]
+  }
+]

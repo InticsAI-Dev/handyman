@@ -38,7 +38,7 @@ public class AssignAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "<-------Assign Action for {} has been started------->" + assign.getName());
+        log.info(aMarker, "Assign Action for {} has been started" , assign.getName());
         final String dbSrc = assign.getSource();
         log.info(aMarker, " input variables id: {}, name: {}, source-database: {} ", actionExecutionAudit.getActionId(), assign.getName(), dbSrc);
         log.debug(aMarker, "Sql input post parameter ingestion \n {}", assign.getValue());
@@ -56,10 +56,10 @@ public class AssignAction implements IActionExecution {
                     }));
                 });
             });
-            log.info(aMarker, "<-------Assign Action for {} has been Completed------->" + assign.getName());
+            log.info(aMarker, "Assign Action for {} has been Completed" , assign.getName());
         } catch (Exception e) {
             log.error(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            throw new HandymanException("Failed to execute", e, actionExecutionAudit);
         }
     }
 

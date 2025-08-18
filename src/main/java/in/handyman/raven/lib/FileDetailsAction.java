@@ -1,10 +1,12 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.FileDetails;
+import in.handyman.raven.util.ExceptionUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,44 +53,50 @@ public class FileDetailsAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(fileDetails.getResourceConn());
+        try {
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(fileDetails.getResourceConn());
 
-        List<Path> pathList = new ArrayList<>();
-        try (var files = Files.walk(Path.of(fileDetails.getDirpath())).filter(Files::isRegularFile)) {
-            files.forEach(pathList::add);
-        }
-        pathList.forEach(path -> {
-            File file = new File(path.toUri());
-            String sha1Hex;
-            try (InputStream is = Files.newInputStream(Path.of(file.getPath()))) {
-                sha1Hex = org.apache.commons.codec.digest.DigestUtils.sha1Hex(is);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            List<Path> pathList = new ArrayList<>();
+            try (var files = Files.walk(Path.of(fileDetails.getDirpath())).filter(Files::isRegularFile)) {
+                files.forEach(pathList::add);
             }
+            pathList.forEach(path -> {
+                File file = new File(path.toUri());
+                String sha1Hex;
+                try (InputStream is = Files.newInputStream(Path.of(file.getPath()))) {
+                    sha1Hex = org.apache.commons.codec.digest.DigestUtils.sha1Hex(is);
+                } catch (IOException e) {
+                    log.error(aMarker, "Error in reading the input stream {}", ExceptionUtil.toString(e));
+                    throw new HandymanException("Error in reading the input stream", e, action);
+                }
 
-            var fileSize = file.length() / 1024;
-            FileInfo fileInfo = FileInfo.builder()
-                    .file_ref_id(file.getName().toUpperCase() + " - " + (int) (900000 * random() + 100000))
-                    .file_path(file.getPath())
-                    .file_name(FilenameUtils.removeExtension(file.getName()))
-                    .file_checksum(sha1Hex)
-                    .file_size(fileSize)
-                    .file_extension(FilenameUtils.getExtension(file.getName()))
-                    .group_id(fileDetails.getGroup_id())
-                    .created_user_id(-1)
-                    .tenant_id(-1)
-                    .inbound_id(Integer.valueOf(fileDetails.getInbound_id()))
-                    .build();
+                var fileSize = file.length() / 1024;
+                FileInfo fileInfo = FileInfo.builder()
+                        .file_ref_id(file.getName().toUpperCase() + " - " + (int) (900000 * random() + 100000))
+                        .file_path(file.getPath())
+                        .file_name(FilenameUtils.removeExtension(file.getName()))
+                        .file_checksum(sha1Hex)
+                        .file_size(fileSize)
+                        .file_extension(FilenameUtils.getExtension(file.getName()))
+                        .group_id(fileDetails.getGroup_id())
+                        .created_user_id(-1)
+                        .tenant_id(-1)
+                        .inbound_id(Integer.valueOf(fileDetails.getInbound_id()))
+                        .build();
 
-            jdbi.useTransaction(handle -> {
-                handle.createUpdate("INSERT INTO ingestion.source_of_origin (file_ref_id, file_path, file_name, file_checksum, file_size, file_extension, group_id, created_user_id, tenant_id, inbound_id) " +
-                                "VALUES( :file_ref_id, :file_path, :file_name, :file_checksum, :file_size, :file_extension, :group_id, :created_user_id, :tenant_id, :inbound_id );")
-                        .bindBean(fileInfo).execute();
-                log.debug(aMarker, "inserted {} into source of origin", fileInfo);
+                jdbi.useTransaction(handle -> {
+                    handle.createUpdate("INSERT INTO ingestion.source_of_origin (file_ref_id, file_path, file_name, file_checksum, file_size, file_extension, group_id, created_user_id, tenant_id, inbound_id) " +
+                                    "VALUES( :file_ref_id, :file_path, :file_name, :file_checksum, :file_size, :file_extension, :group_id, :created_user_id, :tenant_id, :inbound_id );")
+                            .bindBean(fileInfo).execute();
+                    log.debug(aMarker, "inserted {} into source of origin", fileInfo);
+                });
+                action.getContext().put("group_id", fileDetails.getGroup_id());
+
             });
-            action.getContext().put("group_id", fileDetails.getGroup_id());
-
-        });
+        } catch (Exception e) {
+            log.error(aMarker, "Error in file details action with exception {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Error in file details action", e, action);
+        }
     }
 
     @Override

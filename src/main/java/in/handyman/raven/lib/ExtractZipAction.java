@@ -80,16 +80,16 @@ public class ExtractZipAction implements IActionExecution {
         extractZipFile(sourceFile, destDir, buffer);
     }
 
-    public void extractZipFile(File sourceFile, File destDir, int bufferSize) throws IOException {
+    public void extractZipFile(File sourceFile, File destDir, int bufferSize) {
         try (ZipFile zip = new ZipFile(sourceFile)) {
             boolean parentDirFlag = destDir.getParentFile().mkdirs();
             if (parentDirFlag)
                 log.info(aMarker, "Create parent directory : {}", destDir.getParentFile());
             else
                 log.info(aMarker, "Failed to create the parent directory: {}", destDir.getParentFile());
-            Enumeration zipFileEntries = zip.entries();
+            Enumeration<? extends ZipEntry> zipFileEntries = zip.entries();
             while (zipFileEntries.hasMoreElements()) {
-                ZipEntry entry = (ZipEntry) zipFileEntries.nextElement();
+                ZipEntry entry = zipFileEntries.nextElement();
                 String currentEntry = entry.getName();
                 File destFile = new File(destDir, currentEntry);
                 File destinationParent = destFile.getParentFile();
@@ -102,7 +102,7 @@ public class ExtractZipAction implements IActionExecution {
                 if (!entry.isDirectory()) {
                     processDirectory(bufferSize, zip, entry, destFile);
                 } else {
-                    destFile.mkdirs();
+                    log.info(aMarker, "Created destination directory : {}", destFile.mkdirs());
                 }
                 if (currentEntry.endsWith(".zip")) {
                     extractZipFile(destFile, destinationParent, bufferSize);

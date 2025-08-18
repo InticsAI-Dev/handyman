@@ -1,10 +1,14 @@
 package in.handyman.raven.util;
 
 import in.handyman.raven.lambda.process.HRequestResolver;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
+import org.jasypt.util.text.AES256TextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,22 +26,54 @@ public class PropertyHandler {
 
     static {
 
-        try (var input = HRequestResolver.class.getClassLoader().getResourceAsStream("config.properties")) {
+        String configPath = System.getProperty("config.file");
+        if (configPath == null || configPath.isEmpty()) {
+            LOGGER.info("Config file is not present, loading from default config.properties");
+            try (var input = HRequestResolver.class.getClassLoader().getResourceAsStream(CONFIG_PROPERTIES)) {
 
-            var prop = new Properties();
-            //load a properties file from class path, inside static method
-            prop.load(input);
-            var maps = prop.entrySet().stream().collect(
-                    Collectors.toMap(
-                            e -> String.valueOf(e.getKey()),
-                            e -> String.valueOf(e.getValue()),
-                            (prev, next) -> next, HashMap::new
-                    ));
-            PROPS = Collections.unmodifiableMap(maps);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Sorry, unable to load " + CONFIG_PROPERTIES, e);
+                var prop = new Properties();
+                //load a properties file from class path, inside static method
+                prop.load(input);
+                var maps = prop.entrySet().stream().collect(
+                        Collectors.toMap(
+                                e -> String.valueOf(e.getKey()),
+                                e -> String.valueOf(e.getValue()),
+                                (prev, next) -> next, HashMap::new
+                        ));
+                PROPS = Collections.unmodifiableMap(maps);
+                LOGGER.info("Successfully loaded properties from config.properties ");
+            } catch (IOException e) {
+                throw new UncheckedIOException("Sorry, unable to load " + CONFIG_PROPERTIES, e);
+            }
+        } else {
+            final String encryptionPassword = System.getenv("JASYPT_ENCRYPTOR_PASSWORD");
+            final AES256TextEncryptor aesEncryptor = new AES256TextEncryptor();
+
+            if (encryptionPassword != null && !encryptionPassword.isEmpty()) {
+                aesEncryptor.setPassword(encryptionPassword);
+            } else {
+                LOGGER.error("Encryption password is not set");
+            }
+            LOGGER.info("config.file is present");
+            Map<String, String> tempProps;
+            try (InputStream input = new FileInputStream(configPath)) {
+                Properties prop = new Properties();
+                prop.load(input);
+                tempProps = prop.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                e -> String.valueOf(e.getKey()),
+                                e -> ConfigEncryptionUtils.fromEnv().decryptProperty(String.valueOf(e.getValue())),
+                                (prev, next) -> next, HashMap::new));
+                LOGGER.info("Successfully loaded properties from config.file argument : {}", configPath);
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to load config.properties from path: " + configPath, e);
+            }
+            PROPS = Collections.unmodifiableMap(tempProps);
         }
+
+
     }
+
 
     private PropertyHandler() {
     }

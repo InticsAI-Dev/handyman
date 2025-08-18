@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.TriageAttribution;
+import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -60,8 +61,8 @@ public class TriageAttributionAction implements IActionExecution {
         objectNode.put("labelledClassifierModelFilePath", triageAttribution.getLabelledClassifierModelFilePath());
         objectNode.put("handwrittenClassifierModelFilePath", triageAttribution.getHandwrittenClassifierModelFilePath());
         objectNode.put("checkboxClassifierModelFilePath", triageAttribution.getCheckboxClassifierModelFilePath());
-        objectNode.put("synonyms", mapper.readTree(triageAttribution.getSynonyms()));
-        objectNode.put("labelledClassifierLabels", mapper.readTree(triageAttribution.getLabelledClassifierLabels()));
+        objectNode.set("synonyms", mapper.readTree(triageAttribution.getSynonyms()));
+        objectNode.set("labelledClassifierLabels", mapper.readTree(triageAttribution.getLabelledClassifierLabels()));
         objectNode.put("viltConfigLabel", triageAttribution.getViltConfigLabel());
         objectNode.put("isViltCocoOverride", triageAttribution.getIsViltCocoOverride());
         objectNode.put("viltCocoThreshold", triageAttribution.getViltCocoThreshold());
@@ -88,8 +89,8 @@ public class TriageAttributionAction implements IActionExecution {
         } catch (Exception e) {
             action.getContext().put(triageAttribution.getTriageAttributionResponseName().concat(".error"), "true");
             action.getContext().put(triageAttribution.getTriageAttributionResponseName().concat(".errorMessage"), e.getMessage());
-            log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Failed to execute", e, action);
         }
     }
 

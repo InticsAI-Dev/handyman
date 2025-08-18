@@ -7,7 +7,8 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.NumericAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Numericvalidator;
-import in.handyman.raven.lib.model.Validator;
+import in.handyman.raven.lib.model.FieldValidator;
+import in.handyman.raven.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -38,12 +39,13 @@ public class NumericvalidatorAction implements IActionExecution {
         this.aMarker = MarkerFactory.getMarker(" Numericvalidator:" + this.numericvalidator.getName());
     }
 
-    int getNumericScore(Validator adapter) {
+    public int getNumericScore(FieldValidator adapter) {
         try {
-            boolean validator = numericAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar());
+            boolean validator = numericAdapter.getValidationModel(adapter.getInputValue(), adapter.getAllowedSpecialChar(), action);
             return validator ? adapter.getThreshold() : 0;
         } catch (Exception ex) {
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "Error in getting numeric score");
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 
@@ -51,17 +53,17 @@ public class NumericvalidatorAction implements IActionExecution {
     public void execute() throws Exception {
         try {
 
-            log.info(aMarker, "<-------Numeric Validator Action for {} has been started------->" + numericvalidator.getName());
+            log.info(aMarker, "Numeric Validator Action for {} has been started" , numericvalidator.getName());
             AdapterInterface numericAdapter = new NumericAdapter();
-            boolean validator = numericAdapter.getValidationModel(numericvalidator.getInputValue(), numericvalidator.getAllowedSpecialCharacters());
-            int confidenceScore = validator ? Integer.valueOf(numericvalidator.getThresholdValue()) : 0;
+            boolean validator = numericAdapter.getValidationModel(numericvalidator.getInputValue(), numericvalidator.getAllowedSpecialCharacters(), action);
+            int confidenceScore = validator ? Integer.parseInt(numericvalidator.getThresholdValue()) : 0;
             action.getContext().put("validator.score", String.valueOf(confidenceScore));
-            log.info(aMarker, "<-------Numeric Validator Action for {} has been completed------->" + numericvalidator.getName());
+            log.info(aMarker, "Numeric Validator Action for {} has been completed" , numericvalidator.getName());
 
         } catch (Exception ex) {
             action.getContext().put(numericvalidator.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", ex);
-            throw new HandymanException("Failed to execute", ex);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Failed to execute", ex, action);
         }
     }
 

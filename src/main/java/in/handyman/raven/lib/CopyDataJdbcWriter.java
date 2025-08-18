@@ -89,23 +89,24 @@ public class CopyDataJdbcWriter implements Callable<Void> {
 
     private void writeToDb() {
 
-        var hikariDataSource = ResourceAccess.rdbmsConn(target);
-        try (final Connection sourceConnection = hikariDataSource.getConnection()) {
-            sourceConnection.setAutoCommit(false);
-            log.info("Writing to database using conn: {}", target);
-            final Long statementId = UniqueID.getId();
-            //TODO audit
-            try (final Statement stmt = sourceConnection.createStatement()) {
-                for (var s : writeBuffer) {
-                    stmt.addBatch(s);
+        try (var hikariDataSource = ResourceAccess.rdbmsConn(target)) {
+            try (final Connection sourceConnection = hikariDataSource.getConnection()) {
+                sourceConnection.setAutoCommit(false);
+                log.info("Writing to database using conn: {}", target);
+                final Long statementId = UniqueID.getId();
+                //TODO audit
+                try (final Statement stmt = sourceConnection.createStatement()) {
+                    for (var s : writeBuffer) {
+                        stmt.addBatch(s);
+                    }
+                    stmt.executeBatch();
+                    sourceConnection.commit();
+                    writeBuffer.clear();
                 }
-                stmt.executeBatch();
-                sourceConnection.commit();
-                writeBuffer.clear();
+            } catch (Exception ex) {
+                log.error("CopyDataWriter: {} error closing source connection for database: {} ", actionExecutionAudit.getActionId(), target, ex);
+                throw new HandymanException("writeToDb failed", ex, actionExecutionAudit);
             }
-        } catch (Exception ex) {
-            log.error("CopyDataWriter: {} error closing source connection for database: {} ", actionExecutionAudit.getActionId(), target, ex);
-            throw new HandymanException("writeToDb failed", ex);
         }
     }
 

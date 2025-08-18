@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -55,9 +56,10 @@ public class TransferFileDirectoryAction implements IActionExecution {
             if (Files.exists(destinationPath)) {
                 Files.copy(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
             }
-            log.info("Source File copied to Destination has Deleted", sourcePath);
+            log.info("Source File copied to Destination has Deleted {}", sourcePath);
         } else {
-            log.info("Source file -{} not exists", sourcePath);
+            log.error("Source file -{} does not exists", sourcePath);
+            throw new HandymanException("Source file does not exists");
         }
     }
 

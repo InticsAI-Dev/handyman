@@ -11,6 +11,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.DocnetAttribution;
 import in.handyman.raven.util.CommonQueryUtil;
+import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -59,7 +60,7 @@ public class DocnetAttributionAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
-            log.info(aMarker, "<-------Docnut Attribution Action for {} has been started------->" + docnetAttribution.getName());
+            log.info(aMarker, "Docnut Attribution Action for {} has been started" , docnetAttribution.getName());
             final OkHttpClient httpclient = new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.MINUTES)
                     .writeTimeout(10, TimeUnit.MINUTES)
@@ -69,9 +70,7 @@ public class DocnetAttributionAction implements IActionExecution {
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(docnetAttribution.getAttributeQuestionSql());
-                formattedQuery.forEach(sqlToExecute -> {
-                    questions.addAll(handle.createQuery(sqlToExecute).mapToMap().stream().collect(Collectors.toList()));
-                });
+                formattedQuery.forEach(sqlToExecute -> questions.addAll(handle.createQuery(sqlToExecute).mapToMap().stream().collect(Collectors.toList())));
             });
             final String docnetAttributionAsResponse = docnetAttribution.getDocnetAttributionAsResponse();
             final ArrayNode finalRes = mapper.createArrayNode();
@@ -113,7 +112,7 @@ public class DocnetAttributionAction implements IActionExecution {
                     } catch (Exception e) {
                         log.error(aMarker, "The Exception occurred ", e);
                         action.getContext().put(docnetAttributionAsResponse.concat(".error"), "true");
-                        throw new HandymanException("Failed to execute", e);
+                        throw new HandymanException("Failed to execute", e, action);
                     }
                 }
 
@@ -122,10 +121,10 @@ public class DocnetAttributionAction implements IActionExecution {
             action.getContext().put(docnetAttributionAsResponse.concat(".response"), finalRes.toString().replace("'", "''"));
         } catch (Exception e) {
             action.getContext().put(docnetAttribution.getName().concat(".error"), "true");
-            log.info(aMarker, "The Exception occurred ", e);
-            throw new HandymanException("Failed to execute", e);
+            log.error(aMarker, "The Exception occurred {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Failed to execute the docnet attribution action", e, action);
         }
-        log.info(aMarker, "<-------Docnut Attribution Action for {} has been completed------->" + docnetAttribution.getName());
+        log.info(aMarker, "Docnut Attribution Action for {} has been completed" , docnetAttribution.getName());
 
     }
 

@@ -16,6 +16,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.LoadExtractedData;
+import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,6 +36,7 @@ import org.slf4j.MarkerFactory;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -91,7 +93,7 @@ public class LoadExtractedDataAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
 
-        log.info(aMarker, "<-------Store Data in Elastic Search Action for {} has been started------->" + loadExtractedData.getName());
+        log.info(aMarker, "Store Data in Elastic Search Action for {} has been started" , loadExtractedData.getName());
         final OkHttpClient httpclient = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.MINUTES)
                 .writeTimeout(10, TimeUnit.MINUTES)
@@ -119,7 +121,7 @@ public class LoadExtractedDataAction implements IActionExecution {
                     .post(RequestBody.create(objectNode.toString(), MediaTypeJSON)).build();
 
             try (Response response = httpclient.newCall(request).execute()) {
-                String responseBody = response.body().string();
+                String responseBody = Objects.requireNonNull(response.body()).string();
                 JsonNode extractedResult = mapper.readTree(responseBody);
                 String name = loadExtractedData.getName() + "_response";
                 if (response.isSuccessful()) {
@@ -139,7 +141,7 @@ public class LoadExtractedDataAction implements IActionExecution {
                 indexNode.put("intics_reference_id", loadExtractedData.getInticsReferenceId());
                 indexNode.put("page_no", loadExtractedData.getPaperNo());
                 indexNode.put("batch_id", loadExtractedData.getBatchId());
-                indexNode.put("page_content", extractedResult.get("pageContent"));
+                indexNode.set("page_content", extractedResult.get("pageContent"));
                 IndexResponse indexResponse = elasticsearchClient.index(IndexRequest.of(indexReq -> indexReq
                         .index(indexName)
                         .id(indexId)
@@ -148,10 +150,11 @@ public class LoadExtractedDataAction implements IActionExecution {
                 log.info(aMarker, "response status {} payloadID {}", indexResponse.index(), indexResponse.id());
             } catch (Exception e) {
                 log.info(aMarker, "The Exception occurred ", e);
-                throw new HandymanException("Failed to execute", e);
+                throw new HandymanException("Failed to execute", e, action);
             }
         } catch (IOException ex) {
-            throw new Exception("Index save failed", ex);
+            log.info(aMarker, "Index save failed {}", ExceptionUtil.toString(ex));
+            throw new HandymanException("Index save failed", ex, action);
         }
     }
 

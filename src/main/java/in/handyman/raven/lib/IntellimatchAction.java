@@ -1,9 +1,6 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.net.MediaType;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -14,24 +11,25 @@ import in.handyman.raven.lib.model.Intellimatch;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
-import java.util.ArrayList;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.sql.Types;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Optional;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.util.CommonQueryUtil;
+import in.handyman.raven.lib.model.common.IntellimatchConsumerProcess;
+import in.handyman.raven.lib.model.common.IntellimatchInputTable;
+import in.handyman.raven.lib.model.common.IntellimatchOutputTable;
+import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.InstanceUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.result.ResultIterable;
-import org.jdbi.v3.core.statement.Query;
-import org.jdbi.v3.core.statement.Update;
+import org.jdbi.v3.core.argument.Arguments;
+import org.jdbi.v3.core.argument.NullArgument;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -43,185 +41,84 @@ import org.slf4j.MarkerFactory;
         actionName = "Intellimatch"
 )
 public class IntellimatchAction implements IActionExecution {
-    private final ActionExecutionAudit action;
+  private final ActionExecutionAudit action;
 
-    private final Logger log;
+  private final Logger log;
 
-    private final Intellimatch intellimatch;
-    final String URI;
-    private final Marker aMarker;
-    final ObjectMapper MAPPER;
-    final OkHttpClient httpclient;
-    private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
+  private final Intellimatch intellimatch;
 
-    private final Integer writeBatchSize = 1000;
-
-    public IntellimatchAction(final ActionExecutionAudit action, final Logger log,
-                              final Object intellimatch) {
-        this.intellimatch = (Intellimatch) intellimatch;
-        this.action = action;
-        this.log = log;
-        this.URI = action.getContext().get("copro.intelli-match.url");
-        this.MAPPER = new ObjectMapper();
-        this.httpclient = InstanceUtil.createOkHttpClient();
-        this.aMarker = MarkerFactory.getMarker(" Intellimatch:" + this.intellimatch.getName());
-    }
-
-    @Override
-    public void execute() throws Exception {
-        log.info(aMarker, "<-------intelli match process for {} has been started------->" + intellimatch.getName());
-        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(intellimatch.getResourceConn());
-
-        final List<MatchResultSet> inputResult = new ArrayList<>();
-        jdbi.useTransaction(handle -> {
-            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(intellimatch.getInputSet());
-            AtomicInteger i = new AtomicInteger(0);
-            formattedQuery.forEach(sqlToExecute -> {
-                log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
-                Query query = handle.createQuery(sqlToExecute);
-                ResultIterable<MatchResultSet> resultIterable = query.mapToBean(MatchResultSet.class);
-                List<MatchResultSet> detailList = resultIterable.stream().collect(Collectors.toList());
-                inputResult.addAll(detailList);
-                log.info(aMarker, "executed query from index {}", i.get());
-            });
-        });
-
-        List<MatchResultSet> resultQueue = new ArrayList<>();
-        inputResult.forEach(result -> {
-            if (result.getActualValue() != null) {
-                final ObjectNode objectNode = MAPPER.createObjectNode();
-                List<String> comparableSentence = Arrays.asList(result.getExtractedValue());
-                objectNode.put("inputSentence", result.getActualValue());
-                objectNode.putPOJO("sentences", comparableSentence);
-                final Request request = new Request.Builder().url(URI)
-                        .post(RequestBody.create(objectNode.toString(), MediaTypeJSON)).build();
-                try (Response response = httpclient.newCall(request).execute()) {
-                    String responseBody = Objects.requireNonNull(response.body()).string();
-                    if (response.isSuccessful()) {
-                        List<IntelliMatchCopro> output = MAPPER.readValue(responseBody, new TypeReference<>() {
-                        });
-                        result.setIntelliMatch(output.get(0).getSimilarityPercent());
-                        resultQueue.add(result);
-
-                    } else {
-                        insertSummaryAudit(jdbi, 0, 0, 1, "failed on" + result.getFileName());
-                        throw new HandymanException(responseBody);
-                    }
-                } catch (Throwable t) {
-                    log.error(aMarker, "error inserting row {}", result, t);
-                }
-            } else {
-                result.setIntelliMatch(0);
-                resultQueue.add(result);
-            }
-            if (resultQueue.size() == this.writeBatchSize) {
-                log.info(aMarker, "executing  batch {}", resultQueue.size());
-                consumerBatch(jdbi, resultQueue);
-                log.info(aMarker, "executed  batch {}", resultQueue.size());
-                insertSummaryAudit(jdbi, inputResult.size(), resultQueue.size(), 0, "batch inserted");
-                resultQueue.clear();
-                log.info(aMarker, "cleared batch {}", resultQueue.size());
-            }
-        });
-
-        if (!resultQueue.isEmpty()) {
-            log.info(aMarker, "executing final batch {}", resultQueue.size());
-            consumerBatch(jdbi, resultQueue);
-            log.info(aMarker, "executed final batch {}", resultQueue.size());
-            insertSummaryAudit(jdbi, inputResult.size(), resultQueue.size(), 0, "final batch inserted");
-            resultQueue.clear();
-            log.info(aMarker, "cleared final batch {}", resultQueue.size());
-        }
-    }
+  private final Marker aMarker;
+  final String URI;
+  final OkHttpClient httpclient;
+  private static String httpClientTimeout = new String();
+  private static final MediaType MediaTypeJSON = MediaType.parse("application/json; charset=utf-8");
 
 
-    void consumerBatch(final Jdbi jdbi, List<MatchResultSet> resultQueue) {
+  public IntellimatchAction(final ActionExecutionAudit action, final Logger log,
+                            final Object intellimatch) {
+    this.intellimatch = (Intellimatch) intellimatch;
+    this.URI = action.getContext().get("copro.intelli-match.url");
+    this.action = action;
+    this.httpclient = InstanceUtil.createOkHttpClient();
+    this.log = log;
+    this.aMarker = MarkerFactory.getMarker(" Intellimatch:" + this.intellimatch.getName());
+    this.httpClientTimeout = action.getContext().get("okhttp.client.timeout");
+
+  }
+
+  @Override
+  public void execute() throws Exception {
+
+    log.info(aMarker, "master data comparison process for {} has been started", intellimatch.getName());
+    try {
+
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(intellimatch.getResourceConn());
+      jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+      // build insert prepare statement with output table columns
+      final String insertQuery = "INSERT INTO " + intellimatch.getMatchResult() +
+              " (file_name,origin_id,group_id,created_on,root_pipeline_id,actual_value, extracted_value,confidence_score,intelli_match,status,stage,message,model_name,model_version,tenant_id, batch_id,request,response,endpoint)" +
+              " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?);";
+      log.info(aMarker, "intelli match Insert query {}", insertQuery);
+
+      //3. initiate copro processor and copro urls
+      final List<URL> urls = Optional.ofNullable(action.getContext().get("copro.intelli-match.url")).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
         try {
-            resultQueue.forEach(insert -> {
-                        jdbi.useTransaction(handle -> {
-                            try {
-                                Update update = handle.createUpdate(" INSERT INTO " + intellimatch.getMatchResult() +
-                                        " ( file_name, created_on, actual_value, extracted_value, similarity, levenshtein, perfect_match, text_match, intelli_match)" +
-                                        " VALUES( :fileName, NOW(), :actualValue, :extractedValue,  " +
-                                        " similarity(lower(:actualValue),:extractedValue), " +
-                                        " levenshtein(:actualValue,:extractedValue), " +
-                                        " (CASE WHEN lower(:actualValue)=:extractedValue THEN 'yes' ELSE 'no' end ), " +
-                                        " (CASE WHEN lower(:actualValue) like concat('%',:extractedValue,'%') THEN 'yes'" +
-                                        "                       WHEN lower(:actualValue) = :extractedValue THEN 'yes' ELSE 'no' end)," +
-                                        "  :intelliMatch )");
-                                Update bindBean = update.bindBean(insert);
-                                bindBean.execute();
-                            } catch (Throwable t) {
-                                insertSummaryAudit(jdbi, 0, 0, 1, "failed in bactch for " + insert.getFileName());
-                                log.error(aMarker, "error inserting result {}", resultQueue, t);
-                            }
-                        });
-                    }
-            );
-        } catch (Throwable t) {
-            insertSummaryAudit(jdbi, 0, 0, resultQueue.size(), "failed in batch insert");
-            log.error(aMarker, "error inserting result {}", resultQueue, t);
+          return new URL(s1);
+        } catch (MalformedURLException e) {
+          log.error("Error in processing the URL ", e);
+          throw new HandymanException("Error in processing the URL", e, action);
         }
+      }).collect(Collectors.toList())).orElse(Collections.emptyList());
+      log.info(aMarker, "intelli match copro urls {}", urls);
+
+      final CoproProcessor<IntellimatchInputTable, IntellimatchOutputTable> coproProcessor =
+              new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                      IntellimatchOutputTable.class,
+                      IntellimatchInputTable.class,
+                      intellimatch.getResourceConn(), log,
+                      new IntellimatchInputTable(), urls, action);
+      log.info(aMarker, "intelli match copro Processor initialization  {}", coproProcessor);
+
+      //4. call the method start producer from coproprocessor
+      Integer readBatchSize = Integer.valueOf(action.getContext().get("read.batch.size"));
+      coproProcessor.startProducer(intellimatch.getInputSet(), readBatchSize);
+      log.info(aMarker, "intelli match startProducer called read batch size {}", readBatchSize);
+      Thread.sleep(1000);
+      Integer consumerCount = Integer.valueOf(action.getContext().get("consumer.intellimatch.API.count"));
+      Integer writeBatchSize = Integer.valueOf(action.getContext().get("write.batch.size"));
+      coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize,
+              new IntellimatchConsumerProcess(log, aMarker, action));
+      log.info(aMarker, "intelli match coproProcessor startConsumer called consumer count {} write batch count {} ", consumerCount, writeBatchSize);
+
+    } catch (Exception ex) {
+      log.error(aMarker, "Error in execute method for Drug Match {} ", ExceptionUtil.toString(ex));
+      throw new HandymanException("Error in execute method for Drug Match", ex, action);
     }
+    log.info(aMarker, "Intellimatch process for {} has been completed", intellimatch.getName());
+  }
 
-    void insertSummaryAudit(final Jdbi jdbi, int rowCount, int executeCount, int errorCount, String comments) {
-        SanitarySummary summary = new SanitarySummary().builder()
-                .rowCount(rowCount)
-                .correctRowCount(executeCount)
-                .errorRowCount(errorCount)
-                .comments(comments)
-                .build();
-        jdbi.useTransaction(handle -> {
-            Update update = handle.createUpdate("  INSERT INTO " + intellimatch.getAuditTable() +
-                    " ( row_count, correct_row_count, error_row_count,comments, created_at) " +
-                    " VALUES(:rowCount, :correctRowCount, :errorRowCount, :comments, NOW());");
-            Update bindBean = update.bindBean(summary);
-            bindBean.execute();
-        });
-    }
-
-    @Override
-    public boolean executeIf() throws Exception {
-        return intellimatch.getCondition();
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SanitarySummary {
-        int rowCount;
-        int correctRowCount;
-        int errorRowCount;
-        String comments;
-
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class IntelliMatchCopro {
-        String sentence;
-        double similarityPercent;
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class MatchResultSet {
-
-        String fileName;
-        String actualValue;
-        String extractedValue;
-        double similarity;
-        double levenshtein;
-        String perfectMatch;
-        String textMatch;
-        double intelliMatch;
-    }
+  @Override
+  public boolean executeIf() throws Exception {
+    return intellimatch.getCondition();
+  }
 }

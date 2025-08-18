@@ -1,9 +1,11 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.FileSize;
+import in.handyman.raven.util.ExceptionUtil;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -37,16 +39,24 @@ public class FileSizeAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-        log.info(aMarker, "<-------Filesize Action for {} has been started------->" + fileSize.getName());
-        String filePath = fileSize.getFilePath();
-        File file = new File(filePath);
+        try {
+            log.info(aMarker, "Filesize Action for {} has been started", fileSize.getName());
+            String filePath = fileSize.getFilePath();
+            File file = new File(filePath);
 
-        if (file.exists()) {
-            BigInteger sizeBig = file.isDirectory() ? FileUtils.sizeOfDirectoryAsBigInteger(file) : FileUtils.sizeOfAsBigInteger(file);
-            action.getContext().put(fileSize.getName(), sizeBig.toString());
-            log.debug(aMarker, "File size {} for file {} ", fileSize, filePath);
+            if (file.exists()) {
+                BigInteger sizeBig = file.isDirectory() ? FileUtils.sizeOfDirectoryAsBigInteger(file) : FileUtils.sizeOfAsBigInteger(file);
+                action.getContext().put(fileSize.getName(), sizeBig.toString());
+                log.info(aMarker, "File size {} for file {} ", fileSize, filePath);
+            } else {
+                log.error(aMarker, "Error in getting the file size for file {} ", filePath);
+                throw new HandymanException("Error in getting the file size");
+            }
+            log.info(aMarker, "Filesize Action for {} has been Completed", fileSize.getName());
+        } catch (Exception e) {
+            log.error("Error in getting the file size {}", ExceptionUtil.toString(e));
+            throw new HandymanException("Error in getting the file size", e, action);
         }
-        log.info(aMarker, "<-------Filesize Action for {} has been Completed------->" + fileSize.getName());
     }
 
     @Override

@@ -22,8 +22,7 @@ import lombok.ToString;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ActionExecutionStatusAudit extends Auditable {
 
-    @Builder.Default
-    private Long id = UniqueID.getId();
+    private Long id ;
     private Long actionId;
     private Long pipelineId;
     private Integer executionStatusId;
