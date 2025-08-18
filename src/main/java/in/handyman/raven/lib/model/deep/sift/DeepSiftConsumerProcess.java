@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
@@ -200,6 +201,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                             .groupId(modelResponse.getGroupId().intValue())
                             .paperNo(entity.getPaperNo())
                             .createdOn(entity.getCreatedOn())
+                            .createdBy(entity.getTenantId())
                             .rootPipelineId(modelResponse.getRootPipelineId())
                             .tenantId(modelResponse.getTenantId())
                             .batchId(modelResponse.getBatchId())
@@ -246,7 +248,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
+        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         if ("true".equals(encryptReqRes)) {
             InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
             return encryption.encrypt(request, ENCRYPTION_ALGORITHM, TEXT_DATA_TYPE);
@@ -262,6 +264,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .groupId(entity.getGroupId())
                 .paperNo(entity.getPaperNo())
                 .createdOn(entity.getCreatedOn())
+                .createdBy(entity.getTenantId())
                 .rootPipelineId(entity.getRootPipelineId())
                 .tenantId(entity.getTenantId())
                 .batchId(entity.getBatchId())
