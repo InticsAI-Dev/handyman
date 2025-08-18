@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
@@ -50,14 +49,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         this.fileProcessingUtils = fileProcessingUtils;
         this.objectMapper = new ObjectMapper();
 
-        String timeoutStr = action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT, "100");
-        int timeOut;
-        try {
-            timeOut = Integer.parseInt(timeoutStr);
-        } catch (NumberFormatException e) {
-            log.error(aMarker, "Invalid timeout value: {}, defaulting to 100", timeoutStr, e);
-            timeOut = 100;
-        }
+        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT, "100"));
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(timeOut, TimeUnit.MINUTES)
                 .writeTimeout(timeOut, TimeUnit.MINUTES)
@@ -254,10 +246,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     }
 
     public String encryptRequestResponse(String request) {
-        String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
+        String encryptReqRes = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
         if ("true".equals(encryptReqRes)) {
             InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-            return encryption.encrypt(request, ENCRYPTION_ALGORITHM, COPRO_REQUEST_TYPE);
+            return encryption.encrypt(request, ENCRYPTION_ALGORITHM, TEXT_DATA_TYPE);
         }
         return request;
     }

@@ -1,5 +1,7 @@
 package in.handyman.raven.lib.model.deepSiftSearch;
 
+import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
@@ -18,6 +20,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
+
 @Data
 @AllArgsConstructor
 @Builder
@@ -26,6 +30,8 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private final Logger log;
     private final Marker marker;
     private final ActionExecutionAudit action;
+    private static final String ENCRYPTION_ALGORITHM = "AES256";
+    private static final String TEXT_DATA_TYPE = "TEXT_DATA";
 
     @Override
     public List<DeepSiftSearchOutputTable> process(URL endpoint, DeepSiftSearchInputTable entity) {
@@ -45,7 +51,14 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             }
 
             String searchType = entity.getSearchName().trim().toLowerCase();
-            String extractedText = entity.getExtractedText() != null ? entity.getExtractedText().toLowerCase() : "";
+
+            String decryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
+            String extractedText = entity.getExtractedText() != null ? entity.getExtractedText(): "";
+            String finalExtractedText = extractedText;
+            if ("true".equals(decryptSotPageContent)) {
+                InticsIntegrity decryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+                finalExtractedText = decryption.decrypt(extractedText, ENCRYPTION_ALGORITHM, TEXT_DATA_TYPE);
+            }
 
             List<String> keywordList = new ArrayList<>();
             if (entity.getKeywords() != null && !entity.getKeywords().trim().isEmpty()) {
@@ -64,7 +77,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 for (String keyword : keywordList) {
                     String pattern = "\\b" + Pattern.quote(keyword) + "\\b";
                     if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
-                            .matcher(extractedText)
+                            .matcher(finalExtractedText)
                             .find()) {
                         matchedKeywords.add(keyword);
                         matchFound = true;
@@ -72,7 +85,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 }
             } else if ("contains".equals(searchType)) {
                 for (String kw : keywordList) {
-                    if (extractedText.toLowerCase().contains(kw.toLowerCase())) {
+                    if (finalExtractedText.toLowerCase().contains(kw.toLowerCase())) {
                         matchedKeywords.add(kw);
                         matchFound = true;
                     }

@@ -56,6 +56,7 @@ public class DeepSiftSearchActionTest {
                 Map.entry("deep.sift.consumer.API.count", "1"),
                 Map.entry("deep.sift.page.content.min.length.threshold", "1"),
                 Map.entry("triton.request.activator", "true"),
+                Map.entry("pipeline.deep.sift.encryption", "true"),
                 Map.entry("copro.request.deep.sift.handler.name", "TRITON"),
                 Map.entry("replicate.request.api.token", ""),
                 Map.entry("actionId", "42182"),
