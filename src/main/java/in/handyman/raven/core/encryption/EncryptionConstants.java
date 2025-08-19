@@ -10,6 +10,7 @@ public final class EncryptionConstants {
     public static final String DOC_EYECUE_ENCRYPTION = "doc.eyecue.encryption";
     public static final String ENCRYPT_TEXT_EXTRACTION_OUTPUT = "pipeline.text.extraction.encryption";
     public static final String ENCRYPT_AGENTIC_FILTER_OUTPUT = "pipeline.agentic.paper.filter.encryption";
+    public static final String ENCRYPT_DEEP_SIFT_OUTPUT = "pipeline.deep.sift.encryption";
     public static final String ENCRYPT_TRANSFORM_QUERY = "transform.sql.encryption.activator";
 
     public static final String PROTEGRITY_ENCRYPT_URL = "protegrity.enc.api.url";

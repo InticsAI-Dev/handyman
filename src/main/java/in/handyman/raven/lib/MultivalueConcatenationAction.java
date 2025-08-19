@@ -39,6 +39,7 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
     actionName = "MultivalueConcatenation"
 )
 public class MultivalueConcatenationAction implements IActionExecution {
+  public static final String AES_256 = "AES256";
   private final ActionExecutionAudit action;
 
   private final Logger log;
@@ -136,13 +137,20 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
       List<String> valuesToConcat = new ArrayList<>();
 
+      String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
       for (MultivalueConcatenationInput input : groupList) {
         String originalValue = input.getPredictedValue();
         String value = originalValue;
 
         if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
           try {
-            value = encryption.decrypt(value, input.getEncryptionPolicy(), input.getSorItemName());
+            if("false".equalsIgnoreCase(scalarAdapterActivator)){
+              log.info("Scalar activator is disabled, running decryption in AES256 mode when decrypting");
+              value = encryption.decrypt(value, AES_256, input.getSorItemName());
+            }else {
+              log.info("Scalar activator is enabled, running decryption in policy mode when decrypting");
+              value = encryption.decrypt(value, input.getEncryptionPolicy(), input.getSorItemName());
+            }
             log.debug("Decrypted value for originId={}, sorItemName={}", input.getOriginId(), input.getSorItemName());
           } catch (Exception e) {
             log.error("Decryption failed for originId={}, sorItemName={}: {}", input.getOriginId(), input.getSorItemName(), e.getMessage(), e);
@@ -169,7 +177,13 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
       if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(firstInput.getIsEncrypted())) {
         try {
-          concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
+          if("false".equalsIgnoreCase(scalarAdapterActivator)){
+            log.info("Scalar activator is disabled, running decryption in AES256 mode when encrypting");
+            concatenatedValue = encryption.encrypt(concatenatedValue, AES_256, firstInput.getSorItemName());
+          }else {
+            log.info("Scalar activator is enabled, running decryption in policy mode when encrypting");
+            concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
+          }
           log.info("Encrypted concatenated value for originId={}, sorItemName={}", firstInput.getOriginId(), firstInput.getSorItemName());
         } catch (Exception e) {
           log.error("Encryption failed for originId={}, sorItemName={}: {}", firstInput.getOriginId(), firstInput.getSorItemName(), e.getMessage(), e);

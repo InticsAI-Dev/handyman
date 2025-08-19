@@ -168,8 +168,10 @@ public class PdfItemizerWithStreaming {
 
     private void writeOutputItemizedImages(List<PaperItemizerOutputTable> parentObj, PaperItemizerInputTable entity, String basePath, String originalName, int i, BufferedImage image, String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {
         log.info("Writing output itemized image for page {} of file: {}", i + 1, originalName);
-        final String fileName = removeExtension(originalName) + "_" + (i + 1) + "." + normalizedFormat;
-        final Path out = createOutputFile(basePath, fileName, originalName);
+        String fileNameWithoutExtension = removeExtension(originalName);
+        final String fileName = fileNameWithoutExtension + "_" + (i + 1) + "." + normalizedFormat;
+        final String folderName = fileNameWithoutExtension;
+        final Path out = createOutputFile(basePath, fileName, folderName);
 
         if (!ImageIO.write(image, normalizedFormat, out.toFile())) {
             PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeFailedOutput(entity, pageCount, startTime);
