@@ -119,12 +119,13 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         }
 
         String jsonRequest = getXenonRequest(requestPayload);
+        String dbJsonRequest = sanitizeRequestForDb(requestPayload);
 
         Request request = new Request.Builder()
                 .url(endpoint)
                 .post(RequestBody.create(jsonRequest, MEDIA_TYPE))
                 .build();
-        requestExecutor(entity, request, parentObj, jsonRequest, endpoint, startTime);
+        requestExecutor(entity, request, parentObj, jsonRequest, dbJsonRequest, endpoint, startTime);
 
         return parentObj;
     }
@@ -161,14 +162,36 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         return objectMapper.writeValueAsString(customRequest);
     }
 
+    private String sanitizeRequestForDb(DeepSiftRequest deepSiftRequest) {
+        try {
+            XenonRequest sanitizedRequest = XenonRequest.builder()
+                    .originId(deepSiftRequest.getOriginId())
+                    .batchId(deepSiftRequest.getBatchId())
+                    .processId(deepSiftRequest.getProcessId())
+                    .groupId(deepSiftRequest.getGroupId())
+                    .tenantId(deepSiftRequest.getTenantId())
+                    .rootPipelineId(deepSiftRequest.getRootPipelineId())
+                    .process(deepSiftRequest.getProcess())
+                    .modelName(deepSiftRequest.getModelName())
+                    .actionId(deepSiftRequest.getActionId())
+                    .inputFilePath(deepSiftRequest.getInputFilePath())
+                    .build();
+            return objectMapper.writeValueAsString(sanitizedRequest);
+        } catch (JsonProcessingException e) {
+            log.error(aMarker, "Failed to sanitize request for DB", e);
+            return "{}";
+        }
+    }
+
+
     private void requestExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
-                                 String jsonRequest, URL endpoint, long startTime) {
+                                 String jsonRequest,String dbJsonRequest, URL endpoint, long startTime) {
         try (Response response = httpClient.newCall(request).execute()) {
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
             if (response.body() == null) {
                 log.error(aMarker, "Response body is null for request to {} for model {}", endpoint, entity.getModelName());
                 parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "Response body is null", jsonRequest, "", endpoint.toString(), elapsedTimeMs));
+                        "Response body is null", dbJsonRequest, "", endpoint.toString(), elapsedTimeMs));
                 return;
             }
             String responseBody = response.body().string();
@@ -190,7 +213,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                             modelResponse.getTenantId() == null || modelResponse.getRootPipelineId() == null) {
                         log.error(aMarker, "Invalid response from model {}: missing required fields", entity.getModelName());
                         parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                                "Invalid response: missing required fields", jsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
+                                "Invalid response: missing required fields", dbJsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
                         return;
                     }
 
@@ -210,25 +233,25 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                             .modelName(modelResponse.getModelName())
                             .timeTakenMS(elapsedTimeMs)
                             .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                            .request(encryptRequestResponse(jsonRequest))
+                            .request(encryptRequestResponse(dbJsonRequest))
                             .response(encryptRequestResponse(responseBody))
                             .endpoint(String.valueOf(endpoint))
                             .build());
                 } else {
                     String errorMessage = modelResponse.getErrorMessage() != null ? modelResponse.getErrorMessage() : "No infer response";
                     parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                            errorMessage, jsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
+                            errorMessage, dbJsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
                 }
             } else {
                 parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "HTTP request failed: " + response.message(), jsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
+                        "HTTP request failed: " + response.message(), dbJsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
             }
         } catch (Exception e) {
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
             log.error(aMarker, "Exception occurred while processing request for originId: {} and model: {}",
                     entity.getOriginId(), entity.getModelName(), e);
             parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    ExceptionUtil.toString(e), jsonRequest, "Error in response", endpoint.toString(), elapsedTimeMs));
+                    ExceptionUtil.toString(e), dbJsonRequest, "Error in response", endpoint.toString(), elapsedTimeMs));
             HandymanException handymanException = new HandymanException("Deep sift consumer failed for model " + entity.getModelName(), e);
             HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
                     " paper no " + entity.getPaperNo() + " model " + entity.getModelName(), handymanException, action);
