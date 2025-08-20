@@ -248,8 +248,8 @@ class PostProcessingExecutorActionTest {
                 "    }\n" +
                 "}");
         action.getContext().put("MedicaidMemberIdValidator", "");
-        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
-        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
+        String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8190/vulcan/api/encryption/decrypt";
         action.setRootPipelineId(929L);
         action.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
         action.getContext().put("protegrity.enc.api.url",encryptionUrl);

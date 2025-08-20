@@ -2,7 +2,7 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import in.handyman.raven.core.encryption.SecurityEngine;
-import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
+import in.handyman.raven.core.encryption.impl.EncryptionRequest;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -92,7 +92,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
                     // Decrypt actual values if actualEncryption is true
                     if (actualEncryption) {
-                        List<EncryptionRequestClass> actualValueFields = encryptedItems.stream()
+                        List<EncryptionRequest> actualValueFields = encryptedItems.stream()
                                 .filter(r -> {
                                     if (r.getActualValue() == null || r.getActualValue().trim().isEmpty()) {
                                         log.info(aMarker, "Skipping decryption for actualValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
@@ -101,13 +101,13 @@ public class ControlDataComparisonAction implements IActionExecution {
                                     }
                                     return true;
                                 })
-                                .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getActualValue(), r.getSorItemName()))
+                                .map(r -> new EncryptionRequest(r.getEncryptionPolicy(), r.getActualValue(), r.getSorItemName()))
                                 .collect(Collectors.toList());
 
                         if (!actualValueFields.isEmpty()) {
                             try {
                                 log.info(aMarker, "Decrypting ACTUAL values for originId: {}", originId);
-                                List<EncryptionRequestClass> decryptedActuals = encryption.decrypt(actualValueFields);
+                                List<EncryptionRequest> decryptedActuals = encryption.decrypt(actualValueFields);
                                 decryptedActuals.forEach(decrypted -> {
                                     String key = originId + "|" + decrypted.getKey();
                                     decryptedActualMap.put(key, decrypted.getValue());
@@ -120,7 +120,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                     }
 
                     // Decrypt extracted values
-                    List<EncryptionRequestClass> extractedValueFields = encryptedItems.stream()
+                    List<EncryptionRequest> extractedValueFields = encryptedItems.stream()
                             .filter(r -> {
                                 if (r.getExtractedValue() == null || r.getExtractedValue().trim().isEmpty()) {
                                     log.info(aMarker, "Skipping decryption for extractedValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
@@ -129,13 +129,13 @@ public class ControlDataComparisonAction implements IActionExecution {
                                 }
                                 return true;
                             })
-                            .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
+                            .map(r -> new EncryptionRequest(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
                             .collect(Collectors.toList());
 
                     if (!extractedValueFields.isEmpty()) {
                         try {
                             log.info(aMarker, "Decrypting EXTRACTED values for originId: {}", originId);
-                            List<EncryptionRequestClass> decryptedExtracted = encryption.decrypt(extractedValueFields);
+                            List<EncryptionRequest> decryptedExtracted = encryption.decrypt(extractedValueFields);
                             decryptedExtracted.forEach(decrypted -> {
                                 String key = originId + "|" + decrypted.getKey();
                                 decryptedExtractedMap.put(key, decrypted.getValue());
@@ -172,7 +172,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                                           String outputTable,
                                           String kafkaComparison,
                                           InticsIntegrity encryption) throws JsonProcessingException {
-        List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+        List<EncryptionRequest> encryptionRequests = new ArrayList<>();
         Map<String, ControlDataComparisonQueryInputTable> recordMap = new HashMap<>();
         boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
         boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
@@ -202,14 +202,14 @@ public class ControlDataComparisonAction implements IActionExecution {
                 if (actualEncryption) {
                     // Re-encrypt both actual and extracted values
                     if (actualValue != null && !actualValue.trim().isEmpty()) {
-                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), actualValue, sorItemName + "|actual"));
+                        encryptionRequests.add(new EncryptionRequest(record.getEncryptionPolicy(), actualValue, sorItemName + "|actual"));
                         recordMap.put(sorItemName + "|actual", record);
                         log.info(aMarker, "Preparing re-encryption for actualValue for sorItemName: {}, originId: {}", sorItemName, originId);
                     } else {
                         log.info(aMarker, "Skipping re-encryption for actualValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
                     }
                     if (extractedValue != null && !extractedValue.trim().isEmpty()) {
-                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
+                        encryptionRequests.add(new EncryptionRequest(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
                         recordMap.put(sorItemName + "|extracted", record);
                         log.info(aMarker, "Preparing re-encryption for extractedValue for sorItemName: {}, originId: {}", sorItemName, originId);
                     } else {
@@ -218,7 +218,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                 } else {
                     // Re-encrypt only extracted values
                     if (extractedValue != null && !extractedValue.trim().isEmpty()) {
-                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
+                        encryptionRequests.add(new EncryptionRequest(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
                         recordMap.put(sorItemName + "|extracted", record);
                         log.info(aMarker, "Preparing re-encryption for extractedValue for sorItemName: {}, originId: {}", sorItemName, originId);
                     } else {
@@ -232,7 +232,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         if (!encryptionRequests.isEmpty()) {
             try {
                 log.info(aMarker, "Starting batch encryption/re-encryption for {} items", encryptionRequests.size());
-                List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptionRequests);
+                List<EncryptionRequest> encryptedResults = encryption.encrypt(encryptionRequests);
                 encryptedResults.forEach(result -> {
                     String[] keyParts = result.getKey().split("\\|");
                     String sorItemName = keyParts[0];
@@ -261,7 +261,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
     }
 
-    private String doControlDataValidation(ControlDataComparisonQueryInputTable controlDataComparisonQueryInputTable, Jdbi jdbi, String outputTable, String kafkaComparison, InticsIntegrity encryption, List<EncryptionRequestClass> encryptionRequests, Map<String, ControlDataComparisonQueryInputTable> recordMap) throws JsonProcessingException {
+    private String doControlDataValidation(ControlDataComparisonQueryInputTable controlDataComparisonQueryInputTable, Jdbi jdbi, String outputTable, String kafkaComparison, InticsIntegrity encryption, List<EncryptionRequest> encryptionRequests, Map<String, ControlDataComparisonQueryInputTable> recordMap) throws JsonProcessingException {
         log.info("Processing the Control Data Comparison input data ControlDataComparisonQueryInputTable for origin id: {} and paper no: {} and sor item name: {}", controlDataComparisonQueryInputTable.getOriginId(), controlDataComparisonQueryInputTable.getPaperNo(), controlDataComparisonQueryInputTable.getSorItemName());
 
         Long tenantId = controlDataComparisonQueryInputTable.getTenantId();

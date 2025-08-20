@@ -26,12 +26,12 @@ public class SHAEncryptionImpl implements InticsDataEncryptionApi {
         throw new HandymanException("SHA-256 is a one-way hash and cannot be decrypted.");
     }
     @Override
-    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+    public List<EncryptionRequest> encrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return List.of();
     }
 
     @Override
-    public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+    public List<EncryptionRequest> decrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return List.of();
     }
     @Override

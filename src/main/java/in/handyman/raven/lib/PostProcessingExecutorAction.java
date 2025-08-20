@@ -2,6 +2,7 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.impl.EncryptionRequest;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -22,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -70,8 +72,8 @@ public class PostProcessingExecutorAction implements IActionExecution {
         postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
         log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
 
-        postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
-
+        //postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
+        processEncryption(postProcessingExecutorInputs,crypt,encryptEnabled);
         String outputTable = postProcessingExecutor.getOutputTable();
         log.info(aMarker, "Started batch insert into {}", outputTable);
         jdbi.useHandle(handle -> executeBatchInsert(handle, postProcessingExecutorInputs));
@@ -85,22 +87,27 @@ public class PostProcessingExecutorAction implements IActionExecution {
                         .mapToBean(PostProcessingExecutorInput.class)
                         .stream())
                 .collect(Collectors.toList());
+        List<EncryptionRequest> decrypytList = setValueForDecrypt(postProcessingExecutorInputs,crypt);
         log.info(aMarker, "Total rows fetched: {}", postProcessingExecutorInputs.size());
         if (encryptEnabled) {
+            String scalarActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
+            for (int i = 0; i < postProcessingExecutorInputs.size(); i++) {
             if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
                 log.info("Scalar activator is disabled, running decryption in AES256 mode");
-                postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
-                    if ("t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
-                        postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), "AES256", postProcessingExecutorInput.getSorItemName()));
+                //postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                    if ("t".equalsIgnoreCase(postProcessingExecutorInputs.get(i).getIsEncrypted())) {
+                        //postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), "AES256", postProcessingExecutorInput.getSorItemName()));
+                        postProcessingExecutorInputs.get(i).setExtractedValue(decrypytList.get(i).getValue());
                     }
-                });
-            } else {
+                }
+             else {
                 log.info("Scalar activator is enabled, running decryption in policy mode");
-                postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
-                    if ("t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
-                        postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
-                    }
-                });
+                //postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                if ("t".equalsIgnoreCase(postProcessingExecutorInputs.get(i).getIsEncrypted())) {
+                    //postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
+                    postProcessingExecutorInputs.get(i).setExtractedValue(decrypytList.get(i).getValue());
+                }
+            }
             }
         }
     }
@@ -189,4 +196,83 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String isEncrypted;
         private String lineItemType;
     }
+
+    private List<EncryptionRequest> setValueForDecrypt(List<PostProcessingExecutorInput> input,InticsIntegrity crypt){
+        List<EncryptionRequest> entireRequestList = new ArrayList<EncryptionRequest>();
+        for(int i=0;i<input.size();i++){
+            EncryptionRequest request = new EncryptionRequest();
+            request.setPolicy(input.get(i).getEncryptionPolicy()!=null && !input.get(i).getEncryptionPolicy().isEmpty()?input.get(i).getEncryptionPolicy():"AES256");
+            request.setValue(input.get(i).getExtractedValue());
+            request.setKey(input.get(i).getSorItemName());
+            entireRequestList.add(request);
+        }
+        List<EncryptionRequest> decryptList = crypt.decrypt(entireRequestList);
+        return decryptList;
+    }
+    private void processEncryption(List<PostProcessingExecutorInput> inputs, InticsIntegrity crypt, boolean encryptEnabled) {
+        // Create a list to store all EncryptionRequest objects
+        List<EncryptionRequest> requestList = new ArrayList<>();
+
+        // Iterate over the PostProcessingExecutorInput list
+        for (PostProcessingExecutorInput input : inputs) {
+            // Handle Single Value Encryption
+            if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+                EncryptionRequest request = new EncryptionRequest();
+                request.setPolicy(input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
+                        ? input.getEncryptionPolicy()
+                        : "AES256");
+                request.setValue(input.getExtractedValue());
+                request.setKey(input.getSorItemName());
+                requestList.add(request);
+            }
+
+            // Handle Multi-Value Encryption
+            if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
+                String[] parts = input.getExtractedValue().split(",");
+                for (String part : parts) {
+                    if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+                        EncryptionRequest request = new EncryptionRequest();
+                        request.setPolicy(input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
+                                ? input.getEncryptionPolicy()
+                                : "AES256");
+                        request.setValue(part.trim());
+                        request.setKey(input.getSorItemName());
+                        requestList.add(request);
+                    }
+                }
+            }
+        }
+
+        // If the requestList is not empty, perform encryption
+        if (!requestList.isEmpty()) {
+            List<EncryptionRequest> encryptedList = crypt.encrypt(requestList);
+
+            // Set the encrypted values back to the PostProcessingExecutorInput list
+            int encryptedIndex = 0;
+            for (PostProcessingExecutorInput input : inputs) {
+                // Handle Single Value Encrypted Inputs
+                if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+                    input.setExtractedValue(encryptedList.get(encryptedIndex).getValue());
+                    encryptedIndex++;
+                }
+
+                // Handle Multi-Value Encrypted Inputs
+                if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
+                    String[] parts = input.getExtractedValue().split(",");
+                    List<String> reEncrypted = new ArrayList<>();
+                    for (String part : parts) {
+                        // Check if there are more encrypted values and add them to the list
+                        if (encryptedIndex < encryptedList.size()) {
+                            reEncrypted.add(encryptedList.get(encryptedIndex).getValue());
+                            encryptedIndex++;
+                        } else {
+                            reEncrypted.add(part.trim()); // Keep original value if no encryption is found
+                        }
+                    }
+                    input.setExtractedValue(String.join(",", reEncrypted));
+                }
+            }
+        }
+    }
+
 }

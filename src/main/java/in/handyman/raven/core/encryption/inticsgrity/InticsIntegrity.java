@@ -1,6 +1,6 @@
 package in.handyman.raven.core.encryption.inticsgrity;
 
-import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
+import in.handyman.raven.core.encryption.impl.EncryptionRequest;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
 
@@ -27,12 +27,12 @@ public class InticsIntegrity implements InticsDataEncryptionApi {
 
 
     @Override
-    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+    public List<EncryptionRequest> encrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return encryptionImpl.encrypt(requestList);
     }
 
     @Override
-    public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+    public List<EncryptionRequest> decrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return encryptionImpl.decrypt(requestList);
     }
 

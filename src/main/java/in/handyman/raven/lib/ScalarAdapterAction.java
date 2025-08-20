@@ -2,6 +2,8 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.impl.EncryptionRequest;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestParent;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -174,17 +176,22 @@ public class ScalarAdapterAction implements IActionExecution {
     private void performFieldValidation(final Jdbi jdbi, List<ValidatorConfigurationDetail> listOfDetails) {
         try {
             List<ValidatorConfigurationDetail> resultQueue = new ArrayList<>();
+
+            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+            String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+            List<EncryptionRequestParent> entireList = callingProtegrity(listOfDetails,encryption);
+            System.out.println(entireList);
+            int index=0;
             for (ValidatorConfigurationDetail result : listOfDetails) {
+                // --------------
+                result.setInputValue(settingInputValue(encryptData,result.getIsEncrypted(),entireList,result.getInputValue(),index,"dec"));
 
-                InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-                String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
-                if (Objects.equals(encryptData, "true")) {
-                    if (Objects.equals(result.getIsEncrypted(), "t")) {
-                        result.setInputValue(encryption.decrypt(result.getInputValue(), "AES256", result.getSorItemName()));
-                    }
-                }
-
-
+//                if (Objects.equals(encryptData, "true")) {
+//                    if (Objects.equals(result.getIsEncrypted(), "t")) {
+//                        result.setInputValue(encryption.decrypt(result.getInputValue(), "AES256", result.getSorItemName()));
+//                    }
+//                }
+              // --------------
                 if (!result.getInputValue().isEmpty() && !result.getInputValue().isBlank()) {
 
                     log.info(aMarker, "Build 19- scalar executing  validator {} and item {} ", result.getOriginId(), result.getSorItemName());
@@ -241,12 +248,14 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setMessage("scalar validation macro completed");
                     result.setCategory(result.getCategory());
 
-
-                    if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(result.getIsEncrypted(), "t")) {
-                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
-                        }
-                    }
+                  // --------------
+//                    if (Objects.equals(encryptData, "true")) {
+//                        if (Objects.equals(result.getIsEncrypted(), "t")) {
+//                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+//                        }
+//                    }
+                    result.setInputValue(settingInputValue(encryptData,result.getIsEncrypted(),entireList,result.getInputValue(),index,"enc"));
+                  // --------------
 
                     resultQueue.add(result);
                     log.info(aMarker, "executed  validator {} and {} ", result.getOriginId(), result.getSorItemName());
@@ -265,17 +274,18 @@ public class ScalarAdapterAction implements IActionExecution {
                     result.setStatus("COMPLETED");
                     result.setStage("SCALAR_VALIDATION");
                     result.setMessage("scalar validation macro completed");
-
-                    if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(result.getIsEncrypted(), "t")) {
-                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
-                        }
-                    }
-
+                   // --------------
+//                    if (Objects.equals(encryptData, "true")) {
+//                        if (Objects.equals(result.getIsEncrypted(), "t")) {
+//                            result.setInputValue(encryption.encrypt(result.getInputValue(), result.getEncryptionPolicy(), result.getSorItemName()));
+//                        }
+//                    }
+                    result.setInputValue(settingInputValue(encryptData,result.getIsEncrypted(),entireList,result.getInputValue(),index,"enc"));
+                    //-------------------
                     resultQueue.add(result);
                     log.info(aMarker, "executed  validator for originId {} , paperNo {} ,sorItemName {}", result.getOriginId(), result.getPaperNo(), result.getSorItemName());
                 }
-
+                    index++;
             }
             if (!resultQueue.isEmpty()) {
                 log.info(aMarker, "executing final batch {}", resultQueue.size());
@@ -616,5 +626,43 @@ public class ScalarAdapterAction implements IActionExecution {
         private String isEncrypted;
         private String encryptionPolicy;
     }
+
+  private List<EncryptionRequestParent> callingProtegrity(List<ValidatorConfigurationDetail> result,InticsIntegrity encryption){
+      List<EncryptionRequest> entireRequestList = new ArrayList<EncryptionRequest>();
+      for (ValidatorConfigurationDetail list : result) {
+          EncryptionRequest request = new EncryptionRequest();
+          request.setPolicy(list.getEncryptionPolicy()!=null && !list.getEncryptionPolicy().isEmpty()?list.getEncryptionPolicy():"AES256");
+          request.setValue(list.getInputValue());
+          request.setKey(list.getSorItemName()!=null && !list.getSorItemName().isEmpty() ?list.getSorItemName():list.getSorKey());
+          entireRequestList.add(request);
+      }
+      List<EncryptionRequest> decryptList = encryption.decrypt(entireRequestList);
+      List<EncryptionRequest> encryptList = encryption.encrypt(decryptList);
+
+
+      List<EncryptionRequestParent> response = new ArrayList<>();
+      EncryptionRequestParent parent = new EncryptionRequestParent();
+      parent.setEncryptionList(encryptList);
+      parent.setDecryptionList(decryptList);
+      response.add(parent);
+      return response;
+  }
+
+  private String settingInputValue(String encryptData,String isEncrypted ,List<EncryptionRequestParent> entireList,String inputValue,int index,String type){
+      if (!entireList.isEmpty() && index >= 0 && index < entireList.get(0).getEncryptionList().size()){
+          String value="";
+          if(type.equalsIgnoreCase("enc")){
+              value = entireList.get(0).getEncryptionList().get(index).getValue();
+          }else{
+              value = entireList.get(0).getDecryptionList().get(index).getValue();
+          }
+        if (Objects.equals(encryptData, "true")) {
+          if (Objects.equals(isEncrypted, "t")) {
+              return value;
+          }
+      }
+      }
+      return inputValue;
+  }
 
 }
