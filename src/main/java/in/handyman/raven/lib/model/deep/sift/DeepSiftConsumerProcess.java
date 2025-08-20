@@ -65,28 +65,16 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
         if (!VALID_MODELS.contains(entity.getModelName())) {
             log.error(aMarker, "Invalid model name: {} for originId: {}", entity.getModelName(), entity.getOriginId());
-            long elapsedTimeMs = System.currentTimeMillis() - startTime;
-            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    "Invalid model name: " + entity.getModelName(), "", "", endpoint.toString(), elapsedTimeMs));
-            return parentObj;
         }
 
         String inputFilePath = entity.getInputFilePath();
         if (inputFilePath == null || inputFilePath.trim().isEmpty()) {
             log.error(aMarker, "Input file path is null or empty for originId: {}", entity.getOriginId());
-            long elapsedTimeMs = System.currentTimeMillis() - startTime;
-            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    "Input file path is null or empty", "", "", endpoint.toString(), elapsedTimeMs));
-            return parentObj;
         }
 
         File inputFile = new File(inputFilePath);
         if (!inputFile.exists() || !inputFile.canRead()) {
             log.error(aMarker, "Input file does not exist or is not readable: {}", inputFilePath);
-            long elapsedTimeMs = System.currentTimeMillis() - startTime;
-            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    "Input file does not exist or is not readable: " + inputFilePath, "", "", endpoint.toString(), elapsedTimeMs));
-            return parentObj;
         }
 
         log.info(aMarker, "Executing {} handler for endpoint: {}", entity.getModelName(), endpoint);
@@ -96,10 +84,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             base64ForPath = getBase64ForPath(inputFilePath);
             if (base64ForPath == null || base64ForPath.isEmpty()) {
                 log.error(aMarker, "Base64 conversion returned null or empty for file: {}", inputFilePath);
-                long elapsedTimeMs = System.currentTimeMillis() - startTime;
-                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "Base64 conversion failed", "", "", endpoint.toString(), elapsedTimeMs));
-                return parentObj;
             }
             requestPayload.setBase64Img(base64ForPath);
             log.info(aMarker, "Base64 image generated for file: {}", inputFilePath);
@@ -190,9 +174,9 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
             if (response.body() == null) {
                 log.error(aMarker, "Response body is null for request to {} for model {}", endpoint, entity.getModelName());
-                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "Response body is null", dbJsonRequest, "", endpoint.toString(), elapsedTimeMs));
-                return;
+                throw new HandymanException(
+                        "Response body is null for request to " + endpoint + " for model " + entity.getModelName()
+                );
             }
             String responseBody = response.body().string();
             log.info(aMarker, "{} response: code={}, message={}", entity.getModelName(), response.code(), response.message());
@@ -212,8 +196,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     if (modelResponse.getOriginId() == null || modelResponse.getGroupId() == null ||
                             modelResponse.getTenantId() == null || modelResponse.getRootPipelineId() == null) {
                         log.error(aMarker, "Invalid response from model {}: missing required fields", entity.getModelName());
-                        parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                                "Invalid response: missing required fields", dbJsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
                         return;
                     }
 
@@ -237,21 +219,12 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                             .response(encryptRequestResponse(responseBody))
                             .endpoint(String.valueOf(endpoint))
                             .build());
-                } else {
-                    String errorMessage = modelResponse.getErrorMessage() != null ? modelResponse.getErrorMessage() : "No infer response";
-                    parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                            errorMessage, dbJsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
                 }
-            } else {
-                parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                        "HTTP request failed: " + response.message(), dbJsonRequest, responseBody, endpoint.toString(), elapsedTimeMs));
             }
         } catch (Exception e) {
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
             log.error(aMarker, "Exception occurred while processing request for originId: {} and model: {}",
                     entity.getOriginId(), entity.getModelName(), e);
-            parentObj.add(buildOutputTable(entity, ConsumerProcessApiStatus.FAILED.getStatusDescription(),
-                    ExceptionUtil.toString(e), dbJsonRequest, "Error in response", endpoint.toString(), elapsedTimeMs));
             HandymanException handymanException = new HandymanException("Deep sift consumer failed for model " + entity.getModelName(), e);
             HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
                     " paper no " + entity.getPaperNo() + " model " + entity.getModelName(), handymanException, action);
