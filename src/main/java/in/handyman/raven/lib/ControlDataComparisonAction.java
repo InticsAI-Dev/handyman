@@ -423,13 +423,16 @@ public class ControlDataComparisonAction implements IActionExecution {
         String normalizedExtracted = extractedData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
         String normalizedActual = actualData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
 
+
         int distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
+        double similarity = distance == 0 ? 1.0 : (1.0 - (double) distance / distance);
+
 
         if (distance == 0) {
             return 0L;
         }
 
-        if (normalizedExtracted.contains(normalizedActual)) {
+        if (similarity > Double.parseDouble(action.getContext().getOrDefault("similarity.score","70"))) {
             return 0L;
         }
 
