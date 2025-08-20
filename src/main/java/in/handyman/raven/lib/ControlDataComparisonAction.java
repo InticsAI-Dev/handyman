@@ -425,7 +425,9 @@ public class ControlDataComparisonAction implements IActionExecution {
 
 
         int distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
-        double similarity = distance == 0 ? 1.0 : (1.0 - (double) distance / distance);
+        int maxLength = Math.max(normalizedExtracted.length(), normalizedActual.length());
+
+        double similarity = maxLength == 0 ? 1.0 : (1.0 - (double) distance / maxLength);
 
 
         if (distance == 0) {
