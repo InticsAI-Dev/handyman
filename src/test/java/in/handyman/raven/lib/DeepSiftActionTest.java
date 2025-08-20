@@ -16,7 +16,7 @@ public class DeepSiftActionTest {
                 .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://192.168.10.241:10100/xenon-textract")
+                .endPoint("http://localhost:5432/xenon-textract")
                 .processId("5443")
                 .resultTable("deep_sift.deep_sift_output_audit")
                 .forkBatchSize("8")
