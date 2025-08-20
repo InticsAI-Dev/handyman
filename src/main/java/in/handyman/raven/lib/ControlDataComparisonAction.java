@@ -427,14 +427,14 @@ public class ControlDataComparisonAction implements IActionExecution {
         int distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
         int maxLength = Math.max(normalizedExtracted.length(), normalizedActual.length());
 
-        double similarity = maxLength == 0 ? 1.0 : (1.0 - (double) distance / maxLength);
+        double similarity = (maxLength == 0 ? 1.0 : (1.0 - (double) distance / maxLength)) * 100;
 
 
         if (distance == 0) {
             return 0L;
         }
 
-        if (similarity > Double.parseDouble(action.getContext().getOrDefault("similarity.score","70"))) {
+        else if (similarity > Double.parseDouble(action.getContext().getOrDefault("similarity.score","70"))) {
             return 0L;
         }
 
