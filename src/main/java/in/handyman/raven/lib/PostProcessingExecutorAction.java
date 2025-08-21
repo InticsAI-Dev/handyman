@@ -90,7 +90,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         List<EncryptionRequest> decrypytList = setValueForDecrypt(postProcessingExecutorInputs,crypt);
         log.info(aMarker, "Total rows fetched: {}", postProcessingExecutorInputs.size());
         if (encryptEnabled) {
-            String scalarActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
+            //String scalarActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
             for (int i = 0; i < postProcessingExecutorInputs.size(); i++) {
             if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
                 log.info("Scalar activator is disabled, running decryption in AES256 mode");

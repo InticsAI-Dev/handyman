@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -107,13 +108,58 @@ public class AESEncryptionImpl implements InticsDataEncryptionApi {
     }
     @Override
     public List<EncryptionRequest> encrypt(List<EncryptionRequest> requestList) throws HandymanException {
-        return List.of();
-    }
+        {
+            List<EncryptionRequest> list = new ArrayList<>();
+            try {
+                if (requestList==null || requestList.isEmpty()) {
+                    LOGGER.warn("encrypt skipped: List is Empty.");
+                    return null;
+                }
+                for(int i=0;i<requestList.size();i++) {
+                    LOGGER.info("encrypt data for sorItem: {}, encryptionPolicy: {}", requestList.get(i).getKey(), requestList.get(i).getPolicy());
+                    Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                    cipher.init(Cipher.DECRYPT_MODE, secretKey);
+
+                    byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(requestList.get(i).getValue()));
+                    String decryptedString = new String(decrypted);
+                    LOGGER.info("encrypt successful for sorItem: {}", requestList.get(i).getKey());
+                    list.add(new EncryptionRequest(requestList.get(i).getPolicy(),requestList.get(i).getValue(),requestList.get(i).getKey()));
+                }
+                return list;
+
+            } catch (Exception e) {
+                LOGGER.error("Error during AES-256 encrypt"+e.getMessage());
+                throw new HandymanException("Error during AES-256 encrypt.", e);
+            }
+    }}
 
     @Override
     public List<EncryptionRequest> decrypt(List<EncryptionRequest> requestList) throws HandymanException {
-        return List.of();
-    }
+            {
+                List<EncryptionRequest> list = new ArrayList<>();
+                try {
+                    if (requestList==null || requestList.isEmpty()) {
+                        LOGGER.warn("Decryption skipped: Input list is empty.");
+                        return null;
+                    }
+                    for(int i=0;i<requestList.size();i++) {
+                        LOGGER.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", requestList.get(i).getKey(), requestList.get(i).getPolicy());
+                        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                        cipher.init(Cipher.DECRYPT_MODE, secretKey);
+
+                        byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(requestList.get(i).getValue()));
+                        String decryptedString = new String(decrypted);
+                        LOGGER.info("Decryption successful ");
+                        list.add(new EncryptionRequest(requestList.get(i).getPolicy(),requestList.get(i).getValue(),requestList.get(i).getKey()));
+
+                    }
+                    return list;
+
+                } catch (Exception e) {
+                    LOGGER.error("Error during AES-256 decryption"+e);
+                    throw new HandymanException("Error during AES-256 decryption.", e);
+                }
+    }}
 
     @Override
     public String getEncryptionMethod() {

@@ -66,7 +66,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
                 jsonResponse = decryptData(encryptOutputSorItem,extractedContent,"AES256","LLM_OUTPUT_JSON",encryption);
-                System.out.println("jsonResponse : "+jsonResponse);
 //                if (Objects.equals(encryptOutputSorItem, "true")) {
 //                    jsonResponse = encryption.decrypt(extractedContent, "AES256", "LLM_OUTPUT_JSON");
 //                } else {
@@ -76,7 +75,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(input.getSorMetaDetail(), new TypeReference<>() {
                 });
                 JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
-                System.out.println("stringObjectMap : "+stringObjectMap);
                 if (stringObjectMap != null && stringObjectMap.isObject()) {
 
                     final String insertQueryXenon = buildInsertQueryXenon();
@@ -86,11 +84,9 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     log.info(marker, "Llm json parser insert query {}", insertQueryXenon);
 
                     parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
-                    System.out.println("innerParsedResponses"+innerParsedResponses);
 
 
                     List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
-                    System.out.println("parsedResponses"+parsedResponses);
                     for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
 
                         getInsertIntoXenonResultTable(handle, input, parsedResponse, insertQueryXenon);
@@ -114,7 +110,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 new TypeReference<List<LlmJsonParserKvpKrypton>>() {
                                 }
                         );
-                        System.out.println("innerParsedResponsesKrypton"+innerParsedResponsesKrypton);
                     } catch (Exception e) {
                         action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
                         HandymanException handymanException = new HandymanException(e);
@@ -135,7 +130,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
 
                         LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
-                        System.out.println("parsedEncryptResponse"+parsedEncryptResponse);
                         LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
                                 .createdOn(String.valueOf(input.getCreatedOn()))
                                 .tenantId(input.getTenantId())
@@ -191,14 +185,12 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             metaMap.put(meta.getSorItemName(), meta);
         }
         List<EncryptionRequest> responseData=encryptData(responses,inticsIntegrity,encryptData,metaMap,"AES256",action);
-        System.out.println("responseData"+responseData);
         AtomicInteger index = new AtomicInteger(0);
         // Process encryption
         return responses.stream().map(response -> {
             try {
                 LlmJsonQueryInputTableSorMeta meta = metaMap.get(response.getSorItemName());
                 int currentIndex = index.getAndIncrement();
-                System.out.println("currentIndex"+currentIndex);
                 if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
 
                     if (Objects.equals(encryptData, "true")) {
@@ -471,7 +463,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
        String response = "";
         try{
             List<EncryptionRequest> decryptList = new ArrayList<EncryptionRequest>();
-            System.out.println("encryptOutputSorItem"+encryptOutputSorItem);
             if (Objects.equals(encryptOutputSorItem, "true")) {
                 List<EncryptionRequest> list = new ArrayList<EncryptionRequest>();
                 EncryptionRequest request = new EncryptionRequest(

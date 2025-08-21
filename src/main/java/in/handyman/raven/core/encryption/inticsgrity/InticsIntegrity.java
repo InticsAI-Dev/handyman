@@ -25,13 +25,10 @@ public class InticsIntegrity implements InticsDataEncryptionApi {
         return encryptionImpl.decrypt(encryptedToken, encryptionPolicy, sorItem);
     }
 
-
-    @Override
     public List<EncryptionRequest> encrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return encryptionImpl.encrypt(requestList);
     }
 
-    @Override
     public List<EncryptionRequest> decrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return encryptionImpl.decrypt(requestList);
     }

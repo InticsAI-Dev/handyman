@@ -14,6 +14,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import okhttp3.*;
 import org.slf4j.Logger;
+import in.handyman.raven.core.encryption.impl.EncryptionRequest;
 
 import java.io.IOException;
 import java.util.*;
@@ -54,7 +55,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         return callProtegrityApi(inputToken, encryptionPolicy, sorItem, protegrityEncApiUrl);
     }
 
-    public List<in.handyman.raven.core.encryption.impl.EncryptionRequest> encrypt(List<in.handyman.raven.core.encryption.impl.EncryptionRequest> requestList) throws HandymanException {
+    public List<EncryptionRequest> encrypt(List<EncryptionRequest> requestList) throws HandymanException {
         if (requestList == null || requestList.isEmpty()) {
             //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
             return Collections.emptyList();
@@ -76,7 +77,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     }
 
     @Override
-    public List<in.handyman.raven.core.encryption.impl.EncryptionRequest> decrypt(List<in.handyman.raven.core.encryption.impl.EncryptionRequest> requestList) throws HandymanException {
+    public List<EncryptionRequest> decrypt(List<EncryptionRequest> requestList) throws HandymanException {
         if (requestList == null || requestList.isEmpty()) {
             //logger.warn("Decryption skipped: encryptedToken is null or blank for sorItem: {}", sorItem);
             return Collections.emptyList();
@@ -190,7 +191,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         }
     }
 
-    private List<in.handyman.raven.core.encryption.impl.EncryptionRequest> callProtegrityListApi(List<in.handyman.raven.core.encryption.impl.EncryptionRequest> protegrityList, String endpoint) throws HandymanException {
+    private List<EncryptionRequest> callProtegrityListApi(List<EncryptionRequest> protegrityList, String endpoint) throws HandymanException {
         long auditId = -1;
         String uuid = UUID.randomUUID().toString();
         long startTime = System.currentTimeMillis();
@@ -240,7 +241,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
                 // Parse the JSON response from the Protegrity API
                 JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                List<in.handyman.raven.core.encryption.impl.EncryptionRequest> encryptedValues = new ArrayList<>();
+                List<EncryptionRequest> encryptedValues = new ArrayList<>();
 
                 // Iterate over the response JSON array and map to EncryptionRequestClass
                 for (int i = 0; i < jsonResponse.size(); i++) {
@@ -248,7 +249,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                     String encryptedValue = responseItem.get("value").asText();
 
                     // Map the encrypted value back to EncryptionRequestClass
-                    in.handyman.raven.core.encryption.impl.EncryptionRequest encryptedRequest = new in.handyman.raven.core.encryption.impl.EncryptionRequest(
+                    EncryptionRequest encryptedRequest = new EncryptionRequest(
                             responseItem.get("policy").asText(), // Assuming policy is in the response
                             encryptedValue,
                             responseItem.get("key").asText() // Assuming key is in the response
@@ -330,27 +331,17 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         return "";
     }
 
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Data
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    public static class EncryptionRequest {
-        private String policy;
-        private String value;
-        private String key;
-    }
-
-    public static String createJsonFromEncryptionRequests(List<in.handyman.raven.core.encryption.impl.EncryptionRequest> protegrityList) throws Exception {
+    public static String createJsonFromEncryptionRequests(List<EncryptionRequest> protegrityList) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> keysMap = new HashMap<>();
-        for (in.handyman.raven.core.encryption.impl.EncryptionRequest request : protegrityList) {
-            String key = request.getKey();
-            if (!keysMap.containsKey(key)) {
-                keysMap.put(key, key);
+        Set<String> seenKeys = new HashSet<>();
+        List<EncryptionRequest> uniqueRequests = new ArrayList<>();
+        for (EncryptionRequest request : protegrityList) {
+            if (!seenKeys.contains(request.getKey())) {
+                seenKeys.add(request.getKey());
+                uniqueRequests.add(request);
             }
         }
-        return objectMapper.writeValueAsString(keysMap);
+        return objectMapper.writeValueAsString(uniqueRequests);
     }
 
 }
