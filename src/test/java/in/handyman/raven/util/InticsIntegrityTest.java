@@ -3,7 +3,7 @@ package in.handyman.raven.util;
 import java.util.Arrays;
 import java.util.List;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
-import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
+import in.handyman.raven.core.encryption.impl.EncryptionRequest;
 import in.handyman.raven.core.encryption.impl.ProtegrityApiEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -40,16 +40,16 @@ class InticsIntegrityTest {
         actionExecutionAudit.setRootPipelineId(1L);
         // Create an instance of ProtegrityApiEncryptionImpl
         // with the necessary parameters
-        List<EncryptionRequestClass> requestList = Arrays.asList(
-                new EncryptionRequestClass("AES256", "{\n" +
+        List<EncryptionRequest> requestList = Arrays.asList(
+                new EncryptionRequest("AES256", "{\n" +
                         "  \"member_address_line1\": \"15, patti street\"\n" +
                         "}", "key123"),
-                new EncryptionRequestClass("AES256", "{\n" +
+                new EncryptionRequest("AES256", "{\n" +
                         "  \"member_address_line1\": \"15, T Nagar\"\n" +
                         "}", "key456")
         );
         ProtegrityApiEncryptionImpl protegrityApiEncryption=new ProtegrityApiEncryptionImpl(encryptionUrl,decryptionUrl, actionExecutionAudit, log);
-        List<EncryptionRequestClass> encryptedString = protegrityApiEncryption.encrypt(requestList);
+        List<EncryptionRequest> encryptedString = protegrityApiEncryption.encrypt(requestList);
     }
 
 

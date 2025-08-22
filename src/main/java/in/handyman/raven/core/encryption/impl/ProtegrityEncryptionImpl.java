@@ -20,12 +20,12 @@ public class ProtegrityEncryptionImpl implements InticsDataEncryptionApi {
         return new String();
     }
     @Override
-    public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+    public List<EncryptionRequest> encrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return List.of();
     }
 
     @Override
-    public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
+    public List<EncryptionRequest> decrypt(List<EncryptionRequest> requestList) throws HandymanException {
         return List.of();
     }
     @Override

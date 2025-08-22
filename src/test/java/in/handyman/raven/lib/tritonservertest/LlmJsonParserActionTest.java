@@ -28,7 +28,7 @@ public class LlmJsonParserActionTest {
                         "                    on a.origin_id = b.origin_id and a.batch_id = b.batch_id and a.tenant_id =b.tenant_id\n" +
                         "                    left join sor_meta.sor_item si on si.sor_container_id =b.sor_container_id\n" +
                         "                    join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
-                        "                    WHERE a.tenant_id = 1 and a.group_id ='16' and a.batch_id ='BATCH-16_1'\n" +
+                        "                    WHERE a.tenant_id = 1 and a.group_id ='12' and a.batch_id ='BATCH-12_0'\n" +
                         "                    group by b.total_response_json, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
                         "                    b.model_registry, b.category, a.created_on,si.sor_container_id;")
                 .build();
@@ -46,7 +46,11 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("llm.json.parser.consumer.API.count","10");
         ac.getContext().put("copro.processor.thread.creator", "FIXED_THREAD");
         ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
-
+        String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8190/vulcan/api/encryption/decrypt";
+        ac.getContext().put("protegrity.enc.api.url",encryptionUrl);
+        ac.getContext().put("protegrity.dec.api.url",decryptionUrl);
+        ac.getContext().put("pipeline.end.to.end.encryption","true");
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 

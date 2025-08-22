@@ -42,8 +42,8 @@ class ScalarAdapterActionTest {
 
                 .build();
 
-        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
-        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
+        String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8190/vulcan/api/encryption/decrypt";
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
@@ -52,6 +52,7 @@ class ScalarAdapterActionTest {
         action.getContext().put("validation.restricted-answers", "No,None of the above");
         action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("validaiton.char-limit-count", "1");
+        action.getContext().put("pipeline.end.to.end.encryption", "true");
 
         action.getContext().put("scalar.adapter.scrubbing.alpha.activator", "true");
         action.getContext().put("scalar.adapter.scrubbing.numeric.activator", "false");
