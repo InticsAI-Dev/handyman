@@ -35,4 +35,6 @@ public class DeepSift implements IActionContext {
   private String querySet;
 
   private Boolean condition = true;
+
+  private String forkBatchSize;
 }
