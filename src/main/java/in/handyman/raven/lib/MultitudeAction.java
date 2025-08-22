@@ -88,6 +88,14 @@ public class MultitudeAction implements IActionExecution {
                         log.error(aMarker, "Error in execution in parallel thread {}", ExceptionUtil.toString(e));
                         throw new HandymanException("Failed to execute", e, actionExecutionAudit);
                     } finally {
+                        try {
+                            countDown.await();
+                        } catch (InterruptedException e) {
+                            log.error("Executors", e);
+                            Thread.currentThread().interrupt();
+                            HandymanException handymanException = new HandymanException("Multitude execution interrupted", e, actionExecutionAudit);
+                            HandymanException.insertException("Multitude execution interrupted",handymanException, actionExecutionAudit);
+                        }
                         if (executor != null) {
                             executor.shutdown();
                             try {
@@ -99,14 +107,7 @@ public class MultitudeAction implements IActionExecution {
                                 Thread.currentThread().interrupt();
                             }
                         }
-                        try {
-                            countDown.await();
-                        } catch (InterruptedException e) {
-                            log.error("Executors", e);
-                            Thread.currentThread().interrupt();
-                            HandymanException handymanException = new HandymanException("Multitude execution interrupted", e, actionExecutionAudit);
-                            HandymanException.insertException("Multitude execution interrupted",handymanException, actionExecutionAudit);
-                        }
+
                     }
 
 
