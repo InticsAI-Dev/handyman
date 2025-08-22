@@ -434,7 +434,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             return 0L;
         }
 
-        else if (similarity > Double.parseDouble(action.getContext().getOrDefault("similarity.score","70"))) {
+        else if (similarity > Double.parseDouble(action.getContext().getOrDefault("controldata.comparision.similarity.score","70"))) {
             return 0L;
         }
 
