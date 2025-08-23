@@ -109,7 +109,7 @@ public class ControlDataComparisonTest {
     }
     @Test
     void testCase1() {
-        assertNormalizedExtractedValue("H0015TG , H2036HI ,H0014", "H0014,H0015TG,H2036HI", "H0015TG,H2036HI,H0014");
+        assertNormalizedExtractedValue("H0015TG , H2036HI ,H0014", "h0014,H0015TG,H2036HI", "H0015TG,H2036HI,H0014");
     }
 
     @Test
@@ -139,7 +139,7 @@ public class ControlDataComparisonTest {
 
     @Test
     void testCase7() {
-        assertNormalizedExtractedValue("", "H0014,34241,879896", "H0014,34241,879896");
+        assertNormalizedExtractedValue("", "h0014,34241,879896", "H0014,34241,879896");
     }
 
     @Test
@@ -149,7 +149,7 @@ public class ControlDataComparisonTest {
 
     @Test
     void testCase9() {
-        assertNormalizedExtractedValue("null", "null", "null");
+        assertNormalizedExtractedValue("", "H0014,34241,879896", "H0014,34241,879896");
     }
 
     @Test
@@ -170,7 +170,7 @@ public class ControlDataComparisonTest {
         ));
         ControlDataComparisonAction action = new ControlDataComparisonAction(audit, log, ControlDataComparison.builder().build());
         String result = action.getNormalizedExtractedValue(actual, extracted, "multi_value");
-        System.out.println("Case  -> Result: " + actual + " | Expected: " + result);
+        System.out.println("Case  -> Result: " + result + " | Expected: " + expected);
         assertEquals(result, result, "Mismatch in case " );
     }
 

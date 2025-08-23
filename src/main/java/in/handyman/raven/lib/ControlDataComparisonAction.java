@@ -331,42 +331,55 @@ public class ControlDataComparisonAction implements IActionExecution {
         String classification = determineClassification(actualValue, extractedValue, matchStatus);
         jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ");").bind("rootPipelineId", rootPipelineId).bind("createdOn", LocalDate.now()).bind("groupId", groupId).bind("fileName", fileName).bind("originId", originId).bind("batchId", batchId).bind("paperNo", paperNo).bind("actualValue", actualValue).bind("extractedValue", extractedValue).bind("matchStatus", matchStatus).bind("mismatchCount", mismatchCount).bind("tenantId", tenantId).bind("classification", classification).bind("sorContainerId", sorContainerId).bind("sorItemName", sorItemName).bind("sorItemId", sorItemId).execute());
     }
-
     public String getNormalizedExtractedValue(String actualValue, String extractedValue, String lineItemType) {
-        if ("multi_value".equals(lineItemType) && actualValue != null && extractedValue != null) {
-
-            List<String> orderedTokens = new ArrayList<>();
-            Map<String, String> trimmedToOriginalMap = new LinkedHashMap<>();
-
-            Matcher matcher = Pattern.compile("\\s*[^,]+").matcher(actualValue);
-            while (matcher.find()) {
-                String fullToken = matcher.group();       // e.g., " H0015TG"
-                String trimmed = fullToken.trim();        // e.g., "H0015TG"
-                if (!trimmedToOriginalMap.containsKey(trimmed)) {
-                    trimmedToOriginalMap.put(trimmed, fullToken);
-                    orderedTokens.add(trimmed);
-                }
-            }
-
-            Set<String> extractedSet = Arrays.stream(extractedValue.split(","))
-                    .map(String::trim)
-                    .collect(Collectors.toSet());
-
-            StringBuilder result = new StringBuilder();
-            boolean first = true;
-            for (String token : orderedTokens) {
-                if (extractedSet.contains(token)) {
-                    if (!first) result.append(",");
-                    result.append(trimmedToOriginalMap.get(token));
-                    first = false;
-                }
-            }
-
-            return result.toString();
+        if (!"multi_value".equals(lineItemType) || actualValue == null || actualValue.trim().isEmpty()) {
+            return extractedValue;
         }
 
-        return extractedValue;
+        List<String> orderedTokens = new ArrayList<>();
+        Map<String, String> trimmedToOriginalMap = new LinkedHashMap<>();
+        Set<String> actualLowerSet = new HashSet<>();
+
+        // Extract and store tokens from actualValue (preserve order and original casing)
+        Matcher matcher = Pattern.compile("\\s*[^,]+").matcher(actualValue);
+        while (matcher.find()) {
+            String fullToken = matcher.group();         // e.g., " H0015TG"
+            String trimmed = fullToken.trim();          // e.g., "H0015TG"
+            String lowerTrimmed = trimmed.toLowerCase();
+            if (!trimmedToOriginalMap.containsKey(lowerTrimmed)) {
+                trimmedToOriginalMap.put(lowerTrimmed, fullToken);
+                orderedTokens.add(lowerTrimmed);
+                actualLowerSet.add(lowerTrimmed);
+            }
+        }
+
+        // Process extracted values
+        Set<String> extractedSet = Arrays.stream(extractedValue.split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+
+        // Check if all extracted tokens (case-insensitive) are present in actualValue
+        for (String token : extractedSet) {
+            if (!actualLowerSet.contains(token.toLowerCase())) {
+                return extractedValue;  // At least one value not found in actual -> return original
+            }
+        }
+
+        // Build normalized result
+        StringBuilder result = new StringBuilder();
+        boolean first = true;
+        for (String token : orderedTokens) {
+            if (extractedSet.stream().anyMatch(t -> t.equalsIgnoreCase(token))) {
+                if (!first) result.append(",");
+                result.append(trimmedToOriginalMap.get(token));
+                first = false;
+            }
+        }
+
+        return result.toString();
+
     }
+
 
     private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
