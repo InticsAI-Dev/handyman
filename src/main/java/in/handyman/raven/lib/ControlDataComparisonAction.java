@@ -336,48 +336,24 @@ public class ControlDataComparisonAction implements IActionExecution {
             return extractedValue;
         }
 
-        List<String> orderedTokens = new ArrayList<>();
-        Map<String, String> trimmedToOriginalMap = new LinkedHashMap<>();
-        Set<String> actualLowerSet = new HashSet<>();
-
-        // Extract and store tokens from actualValue (preserve order and original casing)
+        Map<String, String> actualMap = new LinkedHashMap<>();
         Matcher matcher = Pattern.compile("\\s*[^,]+").matcher(actualValue);
         while (matcher.find()) {
-            String fullToken = matcher.group();         // e.g., " H0015TG"
-            String trimmed = fullToken.trim();          // e.g., "H0015TG"
-            String lowerTrimmed = trimmed.toLowerCase();
-            if (!trimmedToOriginalMap.containsKey(lowerTrimmed)) {
-                trimmedToOriginalMap.put(lowerTrimmed, fullToken);
-                orderedTokens.add(lowerTrimmed);
-                actualLowerSet.add(lowerTrimmed);
-            }
+            String token = matcher.group().trim();
+            actualMap.putIfAbsent(token.toLowerCase(), token);
         }
 
-        // Process extracted values
-        Set<String> extractedSet = Arrays.stream(extractedValue.split(","))
-                .map(String::trim)
-                .collect(Collectors.toSet());
-
-        // Check if all extracted tokens (case-insensitive) are present in actualValue
-        for (String token : extractedSet) {
-            if (!actualLowerSet.contains(token.toLowerCase())) {
-                return extractedValue;  // At least one value not found in actual -> return original
-            }
-        }
-
-        // Build normalized result
+        // Split extracted values and normalize them using actualValue casing
         StringBuilder result = new StringBuilder();
-        boolean first = true;
-        for (String token : orderedTokens) {
-            if (extractedSet.stream().anyMatch(t -> t.equalsIgnoreCase(token))) {
-                if (!first) result.append(",");
-                result.append(trimmedToOriginalMap.get(token));
-                first = false;
-            }
+        String[] extractedTokens = extractedValue.split(",");
+        for (int i = 0; i < extractedTokens.length; i++) {
+            String token = extractedTokens[i].trim();
+            String normalized = actualMap.getOrDefault(token.toLowerCase(), token);  // fallback to original if not found
+            if (i > 0) result.append(",");
+            result.append(normalized);
         }
 
         return result.toString();
-
     }
 
 
