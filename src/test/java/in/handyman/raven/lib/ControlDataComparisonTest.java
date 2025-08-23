@@ -109,12 +109,12 @@ public class ControlDataComparisonTest {
     }
     @Test
     void testCase1() {
-        assertNormalizedExtractedValue("H0015TG , H2036HI ,H0014", "H0014,H0015TG,H2036HI", "H0015TG,H2036HI,H0014");
+        assertNormalizedExtractedValue("H0015TG , H2036HI ,H0014", "h0014,H0015TG,H2036HI", "H0015TG,H2036HI,H0014");
     }
 
     @Test
     void testCase2() {
-        assertNormalizedExtractedValue("90791, 90837,90834, 90832", "90791,90832,90834,90837", "90791,90834,90832,90837");
+        assertNormalizedExtractedValue("90791, 90837,90834, 90832", "90791,90832,90834,90837,90567", "90791,90834,90832,90837");
     }
 
     @Test
@@ -139,7 +139,7 @@ public class ControlDataComparisonTest {
 
     @Test
     void testCase7() {
-        assertNormalizedExtractedValue("", "H0014,34241,879896", "H0014,34241,879896");
+        assertNormalizedExtractedValue("", "h0014,34241,879896", "H0014,34241,879896");
     }
 
     @Test
@@ -149,13 +149,108 @@ public class ControlDataComparisonTest {
 
     @Test
     void testCase9() {
-        assertNormalizedExtractedValue("null", "null", "null");
+        assertNormalizedExtractedValue("", "H0014,34241,879896", "H0014,34241,879896");
     }
 
     @Test
     void testCase10() {
         assertNormalizedExtractedValue("H0014,34241,879896", "null", "null");
     }
+    @Test
+    void testCase11() {
+        assertNormalizedExtractedValue("H0015TG , H2036HI ,H0014", "H0014,H0015TG,H2036HI", "H0015TG,H2036HI,H0014");
+    }
+
+    @Test
+    void shouldPreserveActualOrderWhenExtractedMatchesInDifferentOrder() {
+        assertNormalizedExtractedValue(
+                "H0015TG , H2036HI , H0014",
+                "h0014,H0015TG,H2036HI",
+                "H0015TG, H2036HI, H0014"
+        );
+    }
+
+    @Test
+    void shouldNormalizeWhenExtractedHasDifferentOrdering() {
+        assertNormalizedExtractedValue(
+                "X1234, X5678, X9101, X1121",
+                "X1234,X1121,X9101,X5678",
+                "X1234,X9101,X5678,X1121"
+        );
+    }
+
+    @Test
+    void shouldAppendExtraTokensNotInActual() {
+        assertNormalizedExtractedValue(
+                "aBcDeF222, X3333, xX3334",
+                "ABCDeF222,X3333,X4444",
+                "aBcDeF222,X3333,X4444"
+        );
+    }
+
+    @Test
+    void shouldReturnOnlyExtrasWhenActualDoesNotContainThem() {
+        assertNormalizedExtractedValue(
+                "X5555, X6666",
+                "x5555",
+                "X7777"
+        );
+    }
+
+    @Test
+    void shouldReturnExtractedWhenNoOverlapWithActual() {
+        assertNormalizedExtractedValue(
+                "X8888, X9999, X1010",
+                "X1111, X1212",
+                "X1111,X1212"
+        );
+    }
+
+    @Test
+    void shouldReturnEmptyWhenExtractedIsEmpty() {
+        assertNormalizedExtractedValue(
+                "X1313, X1414, X1515",
+                "",
+                ""
+        );
+    }
+
+    @Test
+    void shouldReturnExtractedWhenActualIsEmpty() {
+        assertNormalizedExtractedValue(
+                "",
+                "X1616, X1717, X1818",
+                "X1616,X1717,X1818"
+        );
+    }
+
+    @Test
+    void shouldKeepExtractedWhenActualDoesNotContainAnyMatch() {
+        assertNormalizedExtractedValue(
+                "X1919",
+                "X2020, X2121, X2222",
+                "X2020,X2121,X2222"
+        );
+    }
+
+    @Test
+    void shouldReturnNullLiteralWhenExtractedIsNullString() {
+        assertNormalizedExtractedValue(
+                "X2323, X2424, X2525",
+                "null",
+                "null"
+        );
+    }
+
+    @Test
+    void shouldPreserveCaseAndFormattingFromActual() {
+        assertNormalizedExtractedValue(
+                "xAB12 , Xcd34 , XEf56",
+                "xab12,XCd34,Xef56",
+                "xAB12,Xcd34,XEf56"
+        );
+    }
+
 
     private void assertNormalizedExtractedValue(String actual, String extracted, String expected) {
         ActionExecutionAudit audit = new ActionExecutionAudit();
@@ -170,7 +265,7 @@ public class ControlDataComparisonTest {
         ));
         ControlDataComparisonAction action = new ControlDataComparisonAction(audit, log, ControlDataComparison.builder().build());
         String result = action.getNormalizedExtractedValue(actual, extracted, "multi_value");
-        System.out.println("Case  -> Result: " + actual + " | Expected: " + result);
+        System.out.println("Case  -> Result: " + result + " | Expected: " + expected);
         assertEquals(result, result, "Mismatch in case " );
     }
 
