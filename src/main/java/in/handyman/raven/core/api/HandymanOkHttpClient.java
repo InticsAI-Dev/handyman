@@ -140,7 +140,7 @@ public class HandymanOkHttpClient {
                 audit.setTimeTakenSec(duration);
             }
 
-            HandymanActorSystemAccess.insertApiAudit(audit);
+//            HandymanActorSystemAccess.insertApiAudit(audit);
 
         } catch (Exception e) {
             // Log audit failure but don't throw to avoid breaking the main flow
@@ -175,7 +175,7 @@ public class HandymanOkHttpClient {
                 audit.setTimeTakenSec(duration);
             }
 
-            HandymanActorSystemAccess.insertApiAudit(audit);
+//            HandymanActorSystemAccess.insertApiAudit(audit);
 
         } catch (Exception e) {
             System.err.println("Failed to audit failed request: " + e.getMessage());
@@ -202,7 +202,7 @@ public class HandymanOkHttpClient {
                     .retryCount(context.getRetryCount())
                     .build();
 
-            HandymanActorSystemAccess.insertApiAudit(audit);
+//            HandymanActorSystemAccess.insertApiAudit(audit);
 
         } catch (Exception e) {
             System.err.println("Failed to audit retry: " + e.getMessage());
