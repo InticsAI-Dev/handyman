@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.adapters;
+package in.handyman.raven.lib.adapters.scalar;
 
 import org.slf4j.Logger;
 
