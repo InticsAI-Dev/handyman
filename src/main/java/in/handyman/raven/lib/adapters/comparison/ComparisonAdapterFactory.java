@@ -17,6 +17,6 @@ public class ComparisonAdapterFactory {
     }
 
     public static ComparisonAdapter getAdapter(String type) {
-        return registry.getOrDefault(type.toLowerCase(), registry.get("string"));
+        return registry.getOrDefault(type.toLowerCase(), registry.get("alpha"));
     }
 }

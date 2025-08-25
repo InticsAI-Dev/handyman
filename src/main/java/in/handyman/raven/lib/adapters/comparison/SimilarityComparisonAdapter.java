@@ -78,10 +78,6 @@ public class SimilarityComparisonAdapter implements ComparisonAdapter{
             return 0L;
         }
 
-        else if (similarity > Double.parseDouble(action.getContext().getOrDefault("controldata.comparision.similarity.score","70"))) {
-            return 0L;
-        }
-
         Set<String> extractedWords = new HashSet<>(Arrays.asList(extractedData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
         Set<String> actualWords = new HashSet<>(Arrays.asList(actualData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
 

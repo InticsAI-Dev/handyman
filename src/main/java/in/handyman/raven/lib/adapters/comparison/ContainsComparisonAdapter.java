@@ -64,17 +64,16 @@ public class ContainsComparisonAdapter implements ComparisonAdapter{
             return (long) normalizedExtracted.length();
         }
 
-        String normalizeData = normalizedExtracted.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        String normalizeExtractedData = normalizedExtracted.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
         String normalizedActual = actualData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        int maxLength = Math.max(normalizedExtracted.length(), normalizedActual.length());
 
 
-        int distance = LevenshteinDistance.getDefaultInstance().apply(normalizeData, normalizedActual);
+
+        int distance = LevenshteinDistance.getDefaultInstance().apply(normalizeExtractedData, normalizedActual);
+
 
         if (distance == 0) {
-            return 0L;
-        }
-
-        if (normalizeData.contains(normalizedActual)) {
             return 0L;
         }
 

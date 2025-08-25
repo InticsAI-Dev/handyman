@@ -2,6 +2,7 @@ package in.handyman.raven.lib.adapters.comparison;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 
@@ -61,5 +62,11 @@ class ComparisonAdapterFactoryTest {
         assertNotNull(fetched);
         assertEquals("custom", fetched.getName());
         assertEquals(42L, fetched.validate(new ControlDataComparisonQueryInputTable(), null, null));
+    }
+
+    @Test
+    void checkLevensteinDistance() {
+        int distance = LevenshteinDistance.getDefaultInstance().apply("generation world", "generationworld");
+        System.out.println("Distance: "+distance);
     }
 }
