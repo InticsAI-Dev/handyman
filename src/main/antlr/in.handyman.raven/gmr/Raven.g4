@@ -749,7 +749,7 @@ deepSift:
 	'result-table' resultTable=STRING
 	'copro-url' endPoint=STRING
 	'process-id' processId=STRING
-	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
 
 deepSiftSearch:
 	'deepSiftSearch' 'as' name=STRING
