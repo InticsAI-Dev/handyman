@@ -44,7 +44,7 @@ public class DeepSiftActionTest {
                         "    AND dsi.group_id = '129'")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.241:10100/xenon-textract");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");
         actionExecutionAudit.setProcessId(5443L);
         actionExecutionAudit.setActionId(21352L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
