@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -103,11 +104,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     public static void checkJDBIConnection() {
-        try (var ignored = JDBI.open()) {
-            log.info("Jdbi connection is open, initiating the transaction");
+        try {
+            JDBI.withHandle(handle -> {
+                handle.execute("SELECT 1");
+                log.debug("JDBI connection healthy");
+                return null;
+            });
         } catch (Exception e) {
-            log.error("Jdbi connection is closed, recreating the connection");
-            getDatabaseConnectionByConnectionType();
+            log.error("JDBI connection failed, reconnecting...", e);
+            getDatabaseConnectionByConnectionType(); // if needed
         }
     }
 
@@ -296,7 +301,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     public void insertStatement(final StatementExecutionAudit audit) {
         checkJDBIConnection();
         audit.setLastModifiedDate(LocalDateTime.now());
-        JDBI.useHandle(handle -> handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
+        JDBI.useHandle(handle ->
+                handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
                 .bindBean(audit).execute());
     }
 
@@ -574,6 +580,51 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                 .bindBean(exceptionAuditDetails).execute());
         log.info("inserting exception audit details has been completed");
 
+    }
+
+    public void updateProtegrityAuditRecord(
+            long id,
+            String status,
+            String message
+    ) {
+        checkJDBIConnection();
+        JDBI.withHandle(handle -> handle.createUpdate(" UPDATE audit.protegrity_api_audit " +
+                        " SET completed_on = :completed_on, status = :status, message = :message" +
+                        "            WHERE id = :id")
+                .bind("completed_on", Timestamp.valueOf(LocalDateTime.now()))
+                .bind("status", status)
+                .bind("message", message)
+                .bind("id", id)
+                .execute());
+    }
+
+    public long insertProtegrityAuditRecord(
+            String key,
+            String encryptionType,
+            String endpoint,
+            Long rootPipelineId,
+            Long actionId,
+            String threadName,
+            String uuid
+    ) {
+        checkJDBIConnection();
+
+        return JDBI.withHandle(handle ->
+                handle.createUpdate("INSERT INTO audit.protegrity_api_audit " +
+                                "(key, encryption_type, endpoint, started_on, root_pipeline_id, action_id, thread_name, uuid) " +
+                                "VALUES (:key, :encryption_type, :endpoint, :started_on, :root_pipeline_id, :action_id, :thread_name, :uuid)")
+                        .bind("key", key)
+                        .bind("encryption_type", encryptionType)
+                        .bind("endpoint", endpoint)
+                        .bind("started_on", Timestamp.valueOf(LocalDateTime.now()))
+                        .bind("root_pipeline_id", rootPipelineId)
+                        .bind("action_id", actionId)
+                        .bind("thread_name", threadName)
+                        .bind("uuid", uuid)
+                        .executeAndReturnGeneratedKeys("id")
+                        .mapTo(Long.class)
+                        .one()
+        );
     }
 
 

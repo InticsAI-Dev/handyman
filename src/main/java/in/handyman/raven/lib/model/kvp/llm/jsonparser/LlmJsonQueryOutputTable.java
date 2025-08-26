@@ -1,18 +1,23 @@
 package in.handyman.raven.lib.model.kvp.llm.jsonparser;
 
+import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class LlmJsonQueryOutputTable {
+public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
     private String createdOn;
     private Long tenantId;
     private Timestamp lastUpdatedOn;
@@ -33,4 +38,19 @@ public class LlmJsonQueryOutputTable {
     private Long imageWidth;
     private Long sorContainerId;
     private String sorItemLabel;
+    private String sectionAlias;
+
+    @Override
+    public List<Object> getRowData() {
+        return Stream.of(this.createdOn, this.tenantId, this.lastUpdatedOn, this.lastUpdatedUserId,
+                this.confidenceScore, this.sorItemName, this.answer, this.boundingBox, this.paperNo,
+                this.originId, this.groupId, this.rootPipelineId, this.batchId, this.modelRegistry,
+                this.extractedImageUnit, this.imageDpi, this.imageHeight, this.imageWidth,
+                this.sorContainerId, this.sorItemLabel,this.sectionAlias).collect(Collectors.toList());
+    }
+
+    @Override
+    public String getStatus() {
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+    }
 }

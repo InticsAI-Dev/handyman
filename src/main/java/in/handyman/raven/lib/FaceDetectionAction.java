@@ -128,7 +128,7 @@ public class FaceDetectionAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             FaceDetectionQueryOutputTable.class,
                             FaceDetectionQueryInputTable.class,
-                            jdbi, log, faceDetectionQueryInputTable, urls, action);
+                            faceDetection.getResourceConn(), log, faceDetectionQueryInputTable, urls, action);
 
             coproProcessor.startProducer(faceDetection.getQuerySet(), readBatchSize);
             Thread.sleep(threadSleepTime);

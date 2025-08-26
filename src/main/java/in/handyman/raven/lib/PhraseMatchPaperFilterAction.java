@@ -72,7 +72,7 @@ public class PhraseMatchPaperFilterAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             PhraseMatchOutputTable.class,
                             PhraseMatchInputTable.class,
-                            jdbi, log,
+                            phraseMatchPaperFilter.getResourceConn(), log,
                             new PhraseMatchInputTable(), urls, action);
             coproProcessor.startProducer(phraseMatchPaperFilter.getQuerySet(), Integer.parseInt(phraseMatchPaperFilter.getReadBatchSize()));
             Thread.sleep(1000);

@@ -60,11 +60,11 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     @Override
     public List<PaperItemizerOutputTable> process(URL endpoint, PaperItemizerInputTable entity) throws Exception {
         log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
-        PdfToPaperItemizer pdfToPaperItemizer = new PdfToPaperItemizer(action, log);
-        List<PaperItemizerOutputTable> parentObj = new ArrayList<>();
+        PdfItemizerWithStreaming pdfToPaperItemizer = new PdfItemizerWithStreaming(action, log);
+        List<PaperItemizerOutputTable> parentObj;
         String selectedModelName = action.getContext().get(modelRegistry);
 
-
+        log.info(aMarker, "Paper itemizer consumer process started with model name {}", selectedModelName);
         if (ModelRegistry.ARGON.name().equals(selectedModelName)) {
             parentObj = paperItemizationCoproApi(entity, action, endpoint, paperItemizer.getOutputDir());
         } else if (ModelRegistry.XENON.name().equals(selectedModelName)) {
@@ -238,7 +238,7 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

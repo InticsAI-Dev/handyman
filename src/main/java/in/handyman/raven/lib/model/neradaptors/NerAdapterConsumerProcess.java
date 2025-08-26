@@ -3,8 +3,8 @@ package in.handyman.raven.lib.model.neradaptors;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.*;
-import in.handyman.raven.lib.adapters.AlphaAdapter;
-import in.handyman.raven.lib.adapters.NameAdapter;
+import in.handyman.raven.lib.adapters.scalar.AlphaAdapter;
+import in.handyman.raven.lib.adapters.scalar.NameAdapter;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
@@ -81,7 +81,7 @@ public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess
     @Override
     public List<NerOutputTable> process(URL endpoint, NerInputTable result) throws Exception {
 
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action);
+        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action,log);
         String encryptData = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         if (Objects.equals(encryptData, "true")) {
             if (Objects.equals(result.getIsEncrypted(), "true")) {

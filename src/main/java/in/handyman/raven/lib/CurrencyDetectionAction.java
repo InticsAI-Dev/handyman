@@ -122,7 +122,7 @@ public class CurrencyDetectionAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             CurrencyDetectionOutputQuerySet.class,
                             CurrencyDetectionInputQuerySet.class,
-                            jdbi, log,
+                            currencyDetection.getResourceConn(), log,
                             currencyDetectionInputQuerySet, urls, action);
 
             coproProcessor.startProducer(currencyDetection.getQuerySet(), readBatchSize);

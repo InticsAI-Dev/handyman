@@ -133,7 +133,7 @@ public class BulletInExtractionAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       BulletinQueryOutputTable.class,
                       BulletinQueryInputTable.class,
-                      jdbi, log,
+                      bulletInExtraction.getResourceConn(), log,
                       bulletinQueryInputTable, urls, action);
 
       coproProcessor.startProducer(bulletInExtraction.getQuerySet(), readBatchSize);

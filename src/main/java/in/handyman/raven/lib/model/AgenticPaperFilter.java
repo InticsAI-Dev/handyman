@@ -36,4 +36,5 @@ public class AgenticPaperFilter implements IActionContext {
 
   private Boolean condition = true;
 
+  private String forkBatchSize;
 }

@@ -36,23 +36,24 @@ class ScalarAdapterActionTest {
                         "join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id\n" +
                         "join sor_meta.sor_container sc on si.sor_container_id=sc.sor_container_id and si.tenant_id=sc.tenant_id\n" +
                         "join sor_transaction.sor_transaction_payload_queue_archive st on st.origin_id=dp.origin_id\n" +
-                        "WHERE dp.transaction_id =1145 AND si.allowed_adapter !='ner'\n" +
-                        "AND dp.answer is not null and sc.document_type='HEALTH_CARE';")
+                        "WHERE dp.transaction_id =1441 AND si.allowed_adapter !='ner'\n" +
+                        "AND dp.answer is not null and sc.document_type='UMFAX';")
                 .resourceConn("intics_zio_db_conn")
 
                 .build();
 
-
+        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
         final ActionExecutionAudit action = ActionExecutionAudit.builder()
                 .build();
         action.setRootPipelineId(11011L);
+        action.setProcessId(12345L);
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
         action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
-        action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("validaiton.char-limit-count", "1");
 
-        action.getContext().put("scalar.adapter.scrubbing.alpha.activator", "false");
+        action.getContext().put("scalar.adapter.scrubbing.alpha.activator", "true");
         action.getContext().put("scalar.adapter.scrubbing.numeric.activator", "false");
         action.getContext().put("scalar.adapter.scrubbing.date.activator", "true");
 
@@ -66,7 +67,9 @@ class ScalarAdapterActionTest {
         action.getContext().put("temp_schema_name", "transist_data");
 
         action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
-
+        action.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
+        action.getContext().put("protegrity.enc.api.url",encryptionUrl);
+        action.getContext().put("protegrity.dec.api.url",decryptionUrl);
         //action.getContext().put("copro.text-validation.url", "http://localhost:10189/copro/text-validation/patient");
         final ScalarAdapterAction scalarAdapterAction = new ScalarAdapterAction(action, log, build);
         scalarAdapterAction.execute();
@@ -221,7 +224,6 @@ class ScalarAdapterActionTest {
         action.getContext().put("validation.restricted-answers", "No,None of the above");
         action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("scalar.data.formats.deduct.century", "true");
-        action.getContext().put("pipeline.encryption.default.holder", "");
         action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
         action.getContext().put("validaiton.char-limit-count", "1");
 

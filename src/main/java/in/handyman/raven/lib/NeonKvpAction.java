@@ -138,7 +138,7 @@ public class NeonKvpAction implements IActionExecution {
             new CoproProcessor<>(new LinkedBlockingQueue<>(),
                     NeonQueryOutputTable.class,
                     NeonQueryInputTable.class,
-                    jdbi, log,
+                    neonKvp.getResourceConn(), log,
                     neonQueryInputTable, urls, action);
 
     coproProcessor.startProducer(neonKvp.getQuerySet(), readBatchSize);

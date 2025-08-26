@@ -84,7 +84,7 @@ public class OutboundKvpResponseAction implements IActionExecution {
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       AlchemyKvpOutputEntity.class,
                       AlchemyKvpInputEntity.class,
-                      jdbi, log,
+                      outboundKvpResponse.getResourceConn(), log,
                       new AlchemyKvpInputEntity(), urls, action);
 
       log.info(aMarker, "alchemy kvp copro coproProcessor initialization  {}", coproProcessor);

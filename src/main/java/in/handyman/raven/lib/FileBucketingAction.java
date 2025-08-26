@@ -111,9 +111,10 @@ public class FileBucketingAction implements IActionExecution {
     }
 
     private static int getNumberOfPages(String inputFile) throws IOException {
-        try (PDDocument document = PDDocument.load(new File(inputFile))) {
-            return document.getNumberOfPages();
-        }
+//        try (PDDocument document = PDDocument.load(new File(inputFile))) {
+//            return document.getNumberOfPages();
+//        }
+        return 0;
     }
 
     @Override

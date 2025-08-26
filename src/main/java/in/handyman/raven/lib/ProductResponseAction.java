@@ -83,7 +83,7 @@ public class ProductResponseAction implements IActionExecution {
                     new CoproProcessor<>(new LinkedBlockingQueue<>(),
                             ProductResponseAction.ProductResponseOutputTable.class,
                             ProductResponseAction.ProductResponseInputTable.class,
-                            jdbi, log,
+                            productResponse.getResourceConn(), log,
                             new ProductResponseAction.ProductResponseInputTable(), urls, action);
             coproProcessor.startProducer(productResponse.getQuerySet(), Integer.valueOf(action.getContext().get("read.batch.size")));
             Thread.sleep(1000);
