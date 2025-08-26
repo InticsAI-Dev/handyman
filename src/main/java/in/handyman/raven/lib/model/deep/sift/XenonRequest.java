@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class XenonRequest {
     private String originId;
     private String batchId;
+    private Integer paperNo;
     private Long processId;
     private Long groupId;
     private Long tenantId;

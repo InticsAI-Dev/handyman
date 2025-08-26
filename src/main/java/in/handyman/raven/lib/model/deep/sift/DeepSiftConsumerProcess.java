@@ -126,6 +126,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         deepSiftRequest.setProcessId(entity.getRootPipelineId());
         deepSiftRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         deepSiftRequest.setModelName(entity.getModelName());
+        deepSiftRequest.setPaperNo(entity.getPaperNo());
         return deepSiftRequest;
     }
 
@@ -133,6 +134,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         XenonRequest customRequest = XenonRequest.builder()
                 .originId(deepSiftRequest.getOriginId())
                 .batchId(deepSiftRequest.getBatchId())
+                .paperNo(deepSiftRequest.getPaperNo())
                 .processId(deepSiftRequest.getProcessId())
                 .groupId(deepSiftRequest.getGroupId())
                 .tenantId(deepSiftRequest.getTenantId())
@@ -151,6 +153,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             XenonRequest sanitizedRequest = XenonRequest.builder()
                     .originId(deepSiftRequest.getOriginId())
                     .batchId(deepSiftRequest.getBatchId())
+                    .paperNo(deepSiftRequest.getPaperNo())
                     .processId(deepSiftRequest.getProcessId())
                     .groupId(deepSiftRequest.getGroupId())
                     .tenantId(deepSiftRequest.getTenantId())
