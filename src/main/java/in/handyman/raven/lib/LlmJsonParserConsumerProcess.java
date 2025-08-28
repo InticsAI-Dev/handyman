@@ -144,7 +144,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .imageHeight(input.getImageHeight())
                                 .imageWidth(input.getImageWidth())
                                 .sorContainerId(input.getSorContainerId())
-                                .sorItemLabel(parsedEncryptResponse.getLabel())
+                                .sorItemLabel(normalizeLabel(parsedEncryptResponse.getLabel()))
                                 .sectionAlias(parsedEncryptResponse.getSectionAlias())
                                 .build();
 
@@ -281,7 +281,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 .bind(17, llmJsonQueryOutputTable.getImageHeight())
                 .bind(18, llmJsonQueryOutputTable.getImageWidth())
                 .bind(19, llmJsonQueryOutputTable.getSorContainerId())
-                .bind(20, llmJsonQueryOutputTable.getSorItemLabel())
+                .bind(20, normalizeLabel(llmJsonQueryOutputTable.getSorItemLabel()))
                 .bind(21,llmJsonQueryOutputTable.getSectionAlias())
                 .execute();
     }
@@ -438,6 +438,13 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 "origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry," +
                 "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label,section_alias) "
                 + " VALUES(?::timestamp,?,?,?,?,?,?,?,?,?,?,?,?,?  ,?,?,?,?,?,?,?)";
+    }
+
+    private static String normalizeLabel(String labelValue) {
+        if (labelValue == null || labelValue.trim().isEmpty()) {
+            return "absent";
+        }
+        return labelValue;
     }
 
 }
