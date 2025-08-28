@@ -152,6 +152,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setTenantId(tenantId);
         radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
+        radonKvpExtractionRequest.setSorContainerId(entity.getSorContainerId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
 
 
@@ -332,7 +333,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             }
 
             parentObj.add(RadonQueryOutputTable.builder()
-                    .createdOn(CreateTimeStamp.currentTimestamp())
+                    .createdOn(entity.getCreatedOn())
                     .createdUserId(tenantId)
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)
