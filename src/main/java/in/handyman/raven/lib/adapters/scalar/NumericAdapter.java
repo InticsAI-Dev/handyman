@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.adapters;
+package in.handyman.raven.lib.adapters.scalar;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.interfaces.AdapterInterface;

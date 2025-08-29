@@ -9,12 +9,15 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.adapters.comparison.ComparisonAdapter;
+import in.handyman.raven.lib.adapters.comparison.ComparisonAdapterFactory;
 import in.handyman.raven.lib.model.ControlDataComparison;
 import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.Query;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -54,21 +57,8 @@ public class ControlDataComparisonAction implements IActionExecution {
             log.info(aMarker, "Control Data Comparison Action for {} has been started", controlDataComparison.getName());
 
             String outputTable = controlDataComparison.getOutputTable();
-            final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = new ArrayList<>();
-
-            jdbi.useTransaction(handle -> {
-                final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(controlDataComparison.getQuerySet());
-                AtomicInteger i = new AtomicInteger(0);
-                formattedQuery.forEach(sqlToExecute -> {
-                    log.info(aMarker, "Executing query {} from index {}", sqlToExecute, i.getAndIncrement());
-                    Query query = handle.createQuery(sqlToExecute);
-                    List<ControlDataComparisonQueryInputTable> results = query
-                            .mapToBean(ControlDataComparisonQueryInputTable.class)
-                            .list();
-                    controlDataComparisonQueryInputTables.addAll(results);
-                    log.info(aMarker, "Executed query from index {}", i.get());
-                });
-            });
+            String querySet = controlDataComparison.getQuerySet();
+            final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = getControlDataComparisonQueryInputTables(jdbi,querySet);
 
             log.info(aMarker, "Total rows returned from the query: {}", controlDataComparisonQueryInputTables.size());
 
@@ -165,6 +155,26 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
     }
 
+    @NotNull
+    public List<ControlDataComparisonQueryInputTable> getControlDataComparisonQueryInputTables(Jdbi jdbi,String querySet) {
+        final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = new ArrayList<>();
+
+        jdbi.useTransaction(handle -> {
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(querySet);
+            AtomicInteger i = new AtomicInteger(0);
+            formattedQuery.forEach(sqlToExecute -> {
+                log.info(aMarker, "Executing query {} from index {}", sqlToExecute, i.getAndIncrement());
+                Query query = handle.createQuery(sqlToExecute);
+                List<ControlDataComparisonQueryInputTable> results = query
+                        .mapToBean(ControlDataComparisonQueryInputTable.class)
+                        .list();
+                controlDataComparisonQueryInputTables.addAll(results);
+                log.info(aMarker, "Executed query from index {}", i.get());
+            });
+        });
+        return controlDataComparisonQueryInputTables;
+    }
+
     public void invokeValidationPerRecord(List<ControlDataComparisonQueryInputTable> originalRecords,
                                           Map<String, String> decryptedActualMap,
                                           Map<String, String> decryptedExtractedMap,
@@ -195,7 +205,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             String isEncrypted = record.getIsEncrypted();
 
             // Perform validation with decrypted values
-            doControlDataValidation(record, jdbi, outputTable, kafkaComparison, encryption, encryptionRequests, recordMap);
+            doControlDataValidationByAdapters(record, jdbi, outputTable);
 
             // Prepare for re-encryption based on conditions
             if (itemWiseEncryption && "t".equalsIgnoreCase(isEncrypted)) {
@@ -261,112 +271,91 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
     }
 
-    private String doControlDataValidation(ControlDataComparisonQueryInputTable controlDataComparisonQueryInputTable, Jdbi jdbi, String outputTable, String kafkaComparison, InticsIntegrity encryption, List<EncryptionRequestClass> encryptionRequests, Map<String, ControlDataComparisonQueryInputTable> recordMap) throws JsonProcessingException {
-        log.info("Processing the Control Data Comparison input data ControlDataComparisonQueryInputTable for origin id: {} and paper no: {} and sor item name: {}", controlDataComparisonQueryInputTable.getOriginId(), controlDataComparisonQueryInputTable.getPaperNo(), controlDataComparisonQueryInputTable.getSorItemName());
+    private String doControlDataValidationByAdapters(
+            ControlDataComparisonQueryInputTable comparisonInputLineItem,
+            Jdbi jdbi,
+            String outputTable) {
+        String lowTouch = action.getContext().get("control.data.low.touch.threshold");
+        String oneTouch = action.getContext().get("control.data.one.touch.threshold");
 
-        Long tenantId = controlDataComparisonQueryInputTable.getTenantId();
-        String originId = controlDataComparisonQueryInputTable.getOriginId();
-        Long groupId = controlDataComparisonQueryInputTable.getGroupId();
-        Long paperNo = controlDataComparisonQueryInputTable.getPaperNo();
-        String batchId = controlDataComparisonQueryInputTable.getBatchId();
-        Long rootPipelineId = controlDataComparisonQueryInputTable.getRootPipelineId();
-        String extractedValue = controlDataComparisonQueryInputTable.getExtractedValue();
-        String actualValue = controlDataComparisonQueryInputTable.getActualValue();
-        String allowedAdapters = controlDataComparisonQueryInputTable.getAllowedAdapter();
-        String fileName = controlDataComparisonQueryInputTable.getFileName();
-        String sorItemName = controlDataComparisonQueryInputTable.getSorItemName();
-        String encryptionPolicy = controlDataComparisonQueryInputTable.getEncryptionPolicy();
-        String isEncrypted = controlDataComparisonQueryInputTable.getIsEncrypted();
-        Long sorItemId = controlDataComparisonQueryInputTable.getSorItemId();
-        Long sorContainerId = controlDataComparisonQueryInputTable.getSorContainerId();
-        String lineItemType = controlDataComparisonQueryInputTable.getLineItemType();
+        String adapterKey = comparisonInputLineItem.getAllowedAdapter() != null ? comparisonInputLineItem.getAllowedAdapter() : "string";
+        ComparisonAdapter adapter = ComparisonAdapterFactory.getAdapter(adapterKey);
 
-        Long mismatchCount;
-        if (allowedAdapters.equals("date") || allowedAdapters.equals("date_reg")) {
-            try {
-                String finalDateFormat = action.getContext().get("control.data.date.comparison.format");
-                mismatchCount = dateValidation(extractedValue, actualValue, finalDateFormat, originId, paperNo, sorItemName, tenantId);
-                String matchStatus = calculateValidationScores(mismatchCount);
-                log.info("Inserting date type data validation at {}:", outputTable);
-                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
-                return extractedValue;
-            } catch (HandymanException e) {
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error while inserting date type data validation origin Id" + originId + " paper No " + paperNo, handymanException, action);
-                return null;
-            }
-        } else if (allowedAdapters.equals("gender")) {
-            try {
-                mismatchCount = genderValidation(extractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
-                String matchStatus = calculateValidationScores(mismatchCount);
-                log.info("Inserting gender type data validation at {}:", outputTable);
-                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
-                return extractedValue;
-            } catch (HandymanException e) {
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error while inserting gender type data validation origin Id " + originId + " paper No " + paperNo, handymanException, action);
-                return null;
-            }
-        } else {
-            try {
-                String finalExtractedValue = getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
-                mismatchCount = dataValidation(finalExtractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
-                String matchStatus = calculateValidationScores(mismatchCount);
-                log.info("Inserting string type data validation at {}:", outputTable);
-                insertExecutionInfo(jdbi, outputTable, rootPipelineId, groupId, tenantId, originId, batchId, paperNo, actualValue, extractedValue, matchStatus, mismatchCount, fileName, sorItemName, sorItemId, sorContainerId);
-                return extractedValue;
-            } catch (HandymanException e) {
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error while inserting generic type data validation origin Id : " + originId + " paper No " + paperNo, handymanException, action);
-                return null;
-            }
-        }
+        Long mismatchCount = adapter.validate(comparisonInputLineItem, action, log);
+
+        String matchStatus = calculateValidationScores(mismatchCount,oneTouch,lowTouch);
+
+        log.info("Inserting {} type data validation at {}:", adapterKey, outputTable);
+        insertExecutionInfo(
+                jdbi,
+                outputTable,
+                matchStatus,
+                mismatchCount,
+                comparisonInputLineItem
+        );
+        return comparisonInputLineItem.getExtractedValue();
     }
 
-    private void insertExecutionInfo(Jdbi jdbi, String outputTable, Long rootPipelineId, Long groupId,
-                                     Long tenantId, String originId, String batchId, Long paperNo,
-                                     String actualValue, String extractedValue, String matchStatus,
-                                     Long mismatchCount, String fileName, String sorItemName,
-                                     Long sorItemId, Long sorContainerId) {
-        String classification = determineClassification(actualValue, extractedValue, matchStatus);
-        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ");").bind("rootPipelineId", rootPipelineId).bind("createdOn", LocalDate.now()).bind("groupId", groupId).bind("fileName", fileName).bind("originId", originId).bind("batchId", batchId).bind("paperNo", paperNo).bind("actualValue", actualValue).bind("extractedValue", extractedValue).bind("matchStatus", matchStatus).bind("mismatchCount", mismatchCount).bind("tenantId", tenantId).bind("classification", classification).bind("sorContainerId", sorContainerId).bind("sorItemName", sorItemName).bind("sorItemId", sorItemId).execute());
+//    private String doControlDataValidation(ControlDataComparisonQueryInputTable controlDataComparisonQueryInputTable, Jdbi jdbi, String outputTable, String kafkaComparison, InticsIntegrity encryption, List<EncryptionRequestClass> encryptionRequests, Map<String, ControlDataComparisonQueryInputTable> recordMap) throws JsonProcessingException {
+//        log.info("Processing the Control Data Comparison input data ControlDataComparisonQueryInputTable for origin id: {} and paper no: {} and sor item name: {}", controlDataComparisonQueryInputTable.getOriginId(), controlDataComparisonQueryInputTable.getPaperNo(), controlDataComparisonQueryInputTable.getSorItemName());
+//
+//        Long tenantId = controlDataComparisonQueryInputTable.getTenantId();
+//        String originId = controlDataComparisonQueryInputTable.getOriginId();
+//        Long paperNo = controlDataComparisonQueryInputTable.getPaperNo();
+//        String extractedValue = controlDataComparisonQueryInputTable.getExtractedValue();
+//        String actualValue = controlDataComparisonQueryInputTable.getActualValue();
+//        String allowedAdapters = controlDataComparisonQueryInputTable.getAllowedAdapter();
+//        String sorItemName = controlDataComparisonQueryInputTable.getSorItemName();
+//        String lineItemType = controlDataComparisonQueryInputTable.getLineItemType();
+//
+//        Long mismatchCount;
+//        if (allowedAdapters.equals("date") || allowedAdapters.equals("date_reg")) {
+//            try {
+//                String finalDateFormat = action.getContext().get("control.data.date.comparison.format");
+//                mismatchCount = dateValidation(extractedValue, actualValue, finalDateFormat, originId, paperNo, sorItemName, tenantId);
+//                String matchStatus = calculateValidationScores(mismatchCount);
+//                log.info("Inserting date type data validation at {}:", outputTable);
+//                insertExecutionInfo(jdbi, outputTable, matchStatus, mismatchCount, controlDataComparisonQueryInputTable);
+//                return extractedValue;
+//            } catch (HandymanException e) {
+//                HandymanException handymanException = new HandymanException(e);
+//                HandymanException.insertException("Error while inserting date type data validation origin Id" + originId + " paper No " + paperNo, handymanException, action);
+//                return null;
+//            }
+//        } else if (allowedAdapters.equals("gender")) {
+//            try {
+//                mismatchCount = genderValidation(extractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
+//                String matchStatus = calculateValidationScores(mismatchCount);
+//                log.info("Inserting gender type data validation at {}:", outputTable);
+//                insertExecutionInfo(jdbi, outputTable, matchStatus, mismatchCount, controlDataComparisonQueryInputTable);
+//                return extractedValue;
+//            } catch (HandymanException e) {
+//                HandymanException handymanException = new HandymanException(e);
+//                HandymanException.insertException("Error while inserting gender type data validation origin Id " + originId + " paper No " + paperNo, handymanException, action);
+//                return null;
+//            }
+//        } else {
+//            try {
+//                String finalExtractedValue = getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
+//                mismatchCount = dataValidation(finalExtractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
+//                String matchStatus = calculateValidationScores(mismatchCount);
+//                log.info("Inserting string type data validation at {}:", outputTable);
+//                insertExecutionInfo(jdbi, outputTable, matchStatus, mismatchCount, controlDataComparisonQueryInputTable);
+//                return extractedValue;
+//            } catch (HandymanException e) {
+//                HandymanException handymanException = new HandymanException(e);
+//                HandymanException.insertException("Error while inserting generic type data validation origin Id : " + originId + " paper No " + paperNo, handymanException, action);
+//                return null;
+//            }
+//        }
+//    }
+
+    private void insertExecutionInfo(Jdbi jdbi, String outputTable, String matchStatus,
+                                     Long mismatchCount,ControlDataComparisonQueryInputTable controlDataInputLineItem) {
+        String classification = determineClassification(controlDataInputLineItem.getActualValue(), controlDataInputLineItem.getExtractedValue(), matchStatus);
+        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ");").bind("rootPipelineId", controlDataInputLineItem.getRootPipelineId()).bind("createdOn", LocalDate.now()).bind("groupId", controlDataInputLineItem.getGroupId()).bind("fileName", controlDataInputLineItem.getFileName()).bind("originId", controlDataInputLineItem.getOriginId()).bind("batchId", controlDataInputLineItem.getBatchId()).bind("paperNo", controlDataInputLineItem.getPaperNo()).bind("actualValue", controlDataInputLineItem.getActualValue()).bind("extractedValue", controlDataInputLineItem.getExtractedValue()).bind("matchStatus", matchStatus).bind("mismatchCount", mismatchCount).bind("tenantId", controlDataInputLineItem.getTenantId()).bind("classification", classification).bind("sorContainerId", controlDataInputLineItem.getSorContainerId()).bind("sorItemName", controlDataInputLineItem.getSorItemName()).bind("sorItemId", controlDataInputLineItem.getSorItemId()).execute());
     }
 
-    public String getNormalizedExtractedValue(String actualValue, String extractedValue, String lineItemType) {
-        if ("multi_value".equals(lineItemType) && actualValue != null && extractedValue != null) {
-
-            List<String> orderedTokens = new ArrayList<>();
-            Map<String, String> trimmedToOriginalMap = new LinkedHashMap<>();
-
-            Matcher matcher = Pattern.compile("\\s*[^,]+").matcher(actualValue);
-            while (matcher.find()) {
-                String fullToken = matcher.group();       // e.g., " H0015TG"
-                String trimmed = fullToken.trim();        // e.g., "H0015TG"
-                if (!trimmedToOriginalMap.containsKey(trimmed)) {
-                    trimmedToOriginalMap.put(trimmed, fullToken);
-                    orderedTokens.add(trimmed);
-                }
-            }
-
-            Set<String> extractedSet = Arrays.stream(extractedValue.split(","))
-                    .map(String::trim)
-                    .collect(Collectors.toSet());
-
-            StringBuilder result = new StringBuilder();
-            boolean first = true;
-            for (String token : orderedTokens) {
-                if (extractedSet.contains(token)) {
-                    if (!first) result.append(",");
-                    result.append(trimmedToOriginalMap.get(token));
-                    first = false;
-                }
-            }
-
-            return result.toString();
-        }
-
-        return extractedValue;
-    }
 
     private String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
@@ -394,10 +383,9 @@ public class ControlDataComparisonAction implements IActionExecution {
         return "UNKNOWN";
     }
 
-    public String calculateValidationScores(Long mismatchCount) {
+    public static String calculateValidationScores(Long mismatchCount,String oneTouch,String lowTouch) {
         String matchStatus;
-        String lowTouch = action.getContext().get("control.data.low.touch.threshold");
-        String oneTouch = action.getContext().get("control.data.one.touch.threshold");
+
         if (mismatchCount == 0) {
             matchStatus = "NO TOUCH";
         } else if (mismatchCount <= Long.parseLong(oneTouch)) {
@@ -410,187 +398,6 @@ public class ControlDataComparisonAction implements IActionExecution {
         return matchStatus;
     }
 
-    public Long dataValidation(String extractedData, String actualData, String originId, Long paperNo, String sorItemName, Long tenantId) {
-        if (extractedData == null || extractedData.isEmpty()) {
-            log.warn("Invalid input encountered for extractedData. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return actualData == null ? 0L : (long) actualData.length();
-        }
-        if (actualData == null || actualData.isEmpty()) {
-            log.warn("Invalid input encountered for actualData. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return (long) extractedData.length();
-        }
-
-        String normalizedExtracted = extractedData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-        String normalizedActual = actualData.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-
-
-        int distance = LevenshteinDistance.getDefaultInstance().apply(normalizedExtracted, normalizedActual);
-        int maxLength = Math.max(normalizedExtracted.length(), normalizedActual.length());
-
-        double similarity = (maxLength == 0 ? 1.0 : (1.0 - (double) distance / maxLength)) * 100;
-
-
-        if (distance == 0) {
-            return 0L;
-        }
-
-        else if (similarity > Double.parseDouble(action.getContext().getOrDefault("controldata.comparision.similarity.score","70"))) {
-            return 0L;
-        }
-
-        Set<String> extractedWords = new HashSet<>(Arrays.asList(extractedData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
-        Set<String> actualWords = new HashSet<>(Arrays.asList(actualData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
-
-        if (extractedWords.equals(actualWords)) {
-            return 0L;
-        }
-
-        return (long) distance;
-    }
-
-    public Long dateValidation(String extractedDate, String actualDate, String inputFormat, String originId, Long paperNo, String sorItemName, Long tenantId) {
-        if (extractedDate == null || extractedDate.isEmpty()) {
-            log.warn("Invalid input encountered for extractedDate. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return actualDate == null ? 0L : (long) actualDate.length();
-        }
-        if (actualDate == null || actualDate.isEmpty()) {
-            log.warn("Invalid input encountered for actualDate. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return (long) extractedDate.length();
-        }
-
-        String extractedLocalDate = null;
-
-        try {
-            if (extractedDate.matches("\\d{8}")) {
-                extractedLocalDate = parseEightDigitDate(extractedDate, inputFormat, originId, paperNo, sorItemName, tenantId);
-            }
-
-            if (extractedLocalDate == null) {
-                extractedLocalDate = parseDateWithFormat(extractedDate, inputFormat, originId, paperNo, sorItemName, tenantId);
-            }
-        } catch (DateTimeParseException e) {
-            log.warn("Invalid extracted date format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return (long) actualDate.length();
-        }
-
-        String actualLocalDate;
-        try {
-            actualLocalDate = parseDateWithFormat(actualDate, inputFormat, originId, paperNo, sorItemName, tenantId);
-        } catch (DateTimeParseException e) {
-            log.warn("Invalid actual date format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return (long) actualDate.length();
-        }
-
-        return getMismatchCount(extractedLocalDate, actualLocalDate);
-    }
-
-    private String parseDateWithFormat(String date, String inputFormat, String originId, Long paperNo, String sorItemName, Long tenantId) {
-        String allowedFormats = action.getContext().get("date.input.formats");
-
-        List<DateTimeFormatter> dateInputFormats = Optional.of(allowedFormats).map(s -> Arrays.stream(s.split(";")).map(DateTimeFormatter::ofPattern).collect(Collectors.toList())).orElse(Collections.emptyList());
-
-        for (DateTimeFormatter inputFormatter : dateInputFormats) {
-            try {
-                LocalDate parsedDate = LocalDate.parse(date, inputFormatter);
-
-                DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
-                return parsedDate.format(outputFormatter);
-            } catch (DateTimeParseException ignored) {
-                log.warn("Error in parsing the date format from given input format to specified output format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            }
-        }
-        return date;
-    }
-
-    private String parseEightDigitDate(String date, String inputFormat, String originId, Long paperNo, String sorItemName, Long tenantId) {
-        String[] possibleFormats = {"yyyyMMdd", "MMddyyyy", "ddMMyyyy", "MMyyyydd"};
-
-        for (String format : possibleFormats) {
-            try {
-                String reformattedDate = reformatEightDigitDate(date, format, originId, paperNo, sorItemName, tenantId);
-                if (reformattedDate.isEmpty()) continue;
-
-                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                LocalDate parsedDate = LocalDate.parse(reformattedDate, inputFormatter);
-
-                DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(inputFormat);
-                return parsedDate.format(outputFormatter);
-            } catch (DateTimeParseException | NullPointerException ignored) {
-                log.warn("Error in parsing the Eight digit date format from given input format to specified output format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            }
-        }
-        return null;
-    }
-
-    private String reformatEightDigitDate(String date, String format, String originId, Long paperNo, String sorItemName, Long tenantId) {
-        if (date.length() != 8) return "";
-        try {
-            switch (format) {
-                case "yyyyMMdd":
-                    return date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
-                case "MMddyyyy":
-                    return date.substring(4, 8) + "-" + date.substring(0, 2) + "-" + date.substring(2, 4);
-                case "ddMMyyyy":
-                    return date.substring(4, 8) + "-" + date.substring(2, 4) + "-" + date.substring(0, 2);
-            }
-        } catch (Exception ignored) {
-            log.warn("Error in reformatting the Eight digit date format from given input format to specified output format. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-        }
-        return "";
-    }
-
-    public Long genderValidation(String extractedGender, String generatedGender, String originId, Long paperNo, String sorItemName, Long tenantId) {
-        if (extractedGender == null) {
-            log.warn("Invalid input for extractedGender. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return generatedGender == null ? 0L : (long) generatedGender.length();
-        }
-        if (generatedGender == null) {
-            log.warn("Invalid input for generatedGender. Details - Origin ID: {}, Sor Item Name: {}, Paper No: {}, Tenant ID: {}", originId, sorItemName, paperNo, tenantId);
-            return (long) extractedGender.length();
-        }
-        String formattedExtractedGender = normalizeGender(extractedGender);
-        String formattedGeneratedGender = normalizeGender(generatedGender);
-
-        if (formattedExtractedGender.equals("Invalid") || formattedGeneratedGender.equals("Invalid")) {
-            return 1L;
-        }
-
-        return formattedExtractedGender.equalsIgnoreCase(formattedGeneratedGender) ? 0L
-                : (long) formattedExtractedGender.length();
-    }
-
-    private String normalizeGender(String gender) {
-        if (gender == null) return "Invalid";
-
-        gender = gender.trim().toLowerCase();
-
-        switch (gender) {
-            case "m":
-            case "male":
-                return "Male";
-            case "f":
-            case "female":
-                return "Female";
-            default:
-                return "Invalid";
-        }
-    }
-
-    private Long getMismatchCount(String str1, String str2) {
-        int mismatchCount = 0;
-        int length = Math.max(str1.length(), str2.length());
-
-        for (int i = 0; i < length; i++) {
-            char c1 = (i < str1.length()) ? str1.charAt(i) : '\0';
-            char c2 = (i < str2.length()) ? str2.charAt(i) : '\0';
-
-            if (c1 != c2) {
-                mismatchCount++;
-            }
-        }
-
-        return (long) mismatchCount;
-    }
 
     @Override
     public boolean executeIf() throws Exception {
