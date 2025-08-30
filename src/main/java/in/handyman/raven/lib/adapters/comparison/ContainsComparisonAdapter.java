@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class ContainsComparisonAdapter implements ComparisonAdapter{
     @Override
@@ -77,9 +78,14 @@ public class ContainsComparisonAdapter implements ComparisonAdapter{
             return 0L;
         }
 
-        Set<String> extractedWords = new HashSet<>(Arrays.asList(normalizedExtracted.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
-        Set<String> actualWords = new HashSet<>(Arrays.asList(actualData.replaceAll("[^a-zA-Z0-9 ]", "").toLowerCase().split("\\s+")));
-
+        Set<String> extractedWords = Arrays.stream(normalizeExtractedData.replaceAll("[^a-zA-Z0-9,]", "").toLowerCase().split("[\\s,]+"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+        Set<String> actualWords = Arrays.stream(actualData.replaceAll("[^a-zA-Z0-9,]", "").toLowerCase().split("[\\s,]+"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
         if (extractedWords.equals(actualWords)) {
             return 0L;
         }
