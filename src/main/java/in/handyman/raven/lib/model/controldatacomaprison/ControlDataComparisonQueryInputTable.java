@@ -13,6 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class ControlDataComparisonQueryInputTable {
+    private Long id;
     private String originId;
 
     private Long groupId;
