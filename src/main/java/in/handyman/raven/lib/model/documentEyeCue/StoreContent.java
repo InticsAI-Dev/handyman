@@ -23,7 +23,11 @@ import java.util.Properties;
 
 public class StoreContent {
     public DocumentEyeCue documentEyeCue;
-    public Logger log;
+    private static Logger log;
+
+    public StoreContent(Logger log) {
+        this.log = log;
+    }
 
     private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");
 
@@ -52,6 +56,7 @@ public class StoreContent {
                                            DocumentEyeCueInputTable entity,
                                            ActionExecutionAudit action,
                                            DocumentEyeCue documentEyeCue) {
+        log.info("{} - Initiating StoreContent upload for file: {}", MARKER, filePath);
 
         StoreContentResponseDto responseDto = null;
         File file = new File(filePath);
@@ -62,7 +67,7 @@ public class StoreContent {
             log.error(MARKER, errorMessage);
             return null;
         }
-
+        log.info("{} - File found: {}", MARKER, filePath);
         try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
 
             String envUrlStream = action.getContext().get(KEY_STREAMING_URL);
@@ -76,6 +81,7 @@ public class StoreContent {
             StoreContentRequestDto requestDto = new StoreContentRequestDto();
             requestDto.setRepository(Repository.valueOf(repository));
             requestDto.setApplicationID(applicationId);
+
 
             HashMap<String, String> contentMetadata = new HashMap<>();
             String updatedFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
