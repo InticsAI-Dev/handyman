@@ -220,6 +220,8 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
     private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
         try {
+            log.info(MARKER, "StoreContent upload started for document_id: {} | filePath: {}",
+                    entity.getDocumentId(), filePath);
             String repository = action.getContext().get(KEY_REPOSITORY);
             String applicationId = action.getContext().get(KEY_APPLICATION_ID);
 
