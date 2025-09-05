@@ -3,7 +3,6 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
-import in.handyman.raven.core.encryption.impl.ProtegrityApiEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -54,16 +53,8 @@ public class ControlDataComparisonAction implements IActionExecution {
 
     @Override
     public void execute() throws Exception {
-
-        ProtegrityApiEncryptionImpl protegrityApiEncryptionImpl =
-                new ProtegrityApiEncryptionImpl(
-                        action.getContext().get("protegrity.enc.url"),
-                        action.getContext().get("protegrity.dec.url"),
-                        actionExecutionAudit,
-                        log
-                );
-
         try {
+            action.getContext().put("DEFAULT_ENCRYPTION_ALGORITHM", "PROTEGRITY_API_ENC");
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(controlDataComparison.getResourceConn());
             log.info(aMarker, "Control Data Comparison Action for {} has been started", controlDataComparison.getName());
 
@@ -75,6 +66,8 @@ public class ControlDataComparisonAction implements IActionExecution {
             log.info(aMarker, "Total rows returned from the query: {}", controlDataComparisonQueryInputTables.size());
 
             String kafkaComparison = action.getContext().getOrDefault("kafka.production.activator", "false");
+
+            InticsIntegrity encryptionHandler = SecurityEngine.getInticsIntegrityMethod(action, log);
 
             Map<String, String> decryptedActualMap = new HashMap<>();
             Map<String, String> decryptedExtractedMap = new HashMap<>();
@@ -107,15 +100,15 @@ public class ControlDataComparisonAction implements IActionExecution {
                         if (!actualValueFields.isEmpty()) {
                             try {
                                 log.info(aMarker, "Calling Protegrity API to decrypt ACTUAL values for originId: {}", originId);
-                                List<EncryptionRequestClass> decryptedActuals = protegrityApiEncryptionImpl.decrypt(actualValueFields);
+                                List<EncryptionRequestClass> decryptedActuals = encryptionHandler.decrypt(actualValueFields);
 
                                 decryptedActuals.forEach(decrypted -> {
                                     String key = originId + "|" + decrypted.getKey();
                                     decryptedActualMap.put(key, decrypted.getValue());
                                 });
-                                log.info(aMarker, "Actual value decryption via Protegrity successful for originId: {}", originId);
+                                log.info(aMarker, "Actual value decryption successful for originId: {}", originId);
                             } catch (Exception e) {
-                                log.error(aMarker, "Actual value decryption via Protegrity failed for originId: {}", originId, e);
+                                log.error(aMarker, "Actual value decryption failed for originId: {}", originId, e);
                             }
                         }
                     }
@@ -130,15 +123,15 @@ public class ControlDataComparisonAction implements IActionExecution {
                     if (!extractedValueFields.isEmpty()) {
                         try {
                             log.info(aMarker, "Calling Protegrity API to decrypt EXTRACTED values for originId: {}", originId);
-                            List<EncryptionRequestClass> decryptedExtracted = protegrityApiEncryptionImpl.decrypt(extractedValueFields);
+                            List<EncryptionRequestClass> decryptedExtracted = encryptionHandler.decrypt(extractedValueFields);
 
                             decryptedExtracted.forEach(decrypted -> {
                                 String key = originId + "|" + decrypted.getKey();
                                 decryptedExtractedMap.put(key, decrypted.getValue());
                             });
-                            log.info(aMarker, "Extracted value decryption via Protegrity successful for originId: {}", originId);
+                            log.info(aMarker, "Extracted value decryption successful for originId: {}", originId);
                         } catch (Exception e) {
-                            log.error(aMarker, "Extracted value decryption via Protegrity failed for originId: {}", originId, e);
+                            log.error(aMarker, "Extracted value decryption failed for originId: {}", originId, e);
                         }
                     }
                 }
@@ -148,7 +141,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
             invokeValidationPerRecord(controlDataComparisonQueryInputTables,
                     decryptedActualMap, decryptedExtractedMap,
-                    jdbi, outputTable, kafkaComparison, protegrityApiEncryptionImpl);
+                    jdbi, outputTable, kafkaComparison, encryptionHandler);
 
             log.info(aMarker, "Control Data Comparison Action has been completed: {}", controlDataComparison.getName());
             action.getContext().put(controlDataComparison.getName() + ".isSuccessful", "true");
@@ -188,7 +181,8 @@ public class ControlDataComparisonAction implements IActionExecution {
                                           Jdbi jdbi,
                                           String outputTable,
                                           String kafkaComparison,
-                                          ProtegrityApiEncryptionImpl protegrityApiEncryptionImpl) throws JsonProcessingException {
+                                          InticsIntegrity inticsIntegrity) throws JsonProcessingException {
+
         List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
         Map<String, ControlDataComparisonQueryInputTable> recordMap = new HashMap<>();
         boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
@@ -249,7 +243,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         if (!encryptionRequests.isEmpty()) {
             try {
                 log.info(aMarker, "Starting batch encryption/re-encryption for {} items", encryptionRequests.size());
-                List<EncryptionRequestClass> encryptedResults = protegrityApiEncryptionImpl.encrypt(encryptionRequests);
+                List<EncryptionRequestClass> encryptedResults = inticsIntegrity.encrypt(encryptionRequests); // ✅ use InticsIntegrity wrapper
                 encryptedResults.forEach(result -> {
                     String[] keyParts = result.getKey().split("\\|");
                     String id = keyParts[0];
