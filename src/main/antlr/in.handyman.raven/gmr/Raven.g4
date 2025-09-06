@@ -190,6 +190,7 @@ action:
     |kafkaOutboundComparison
     |pipelineEventActionAudit
     |multiValueMemberMapper
+    |entityLineItemProcessor
     );
 
 
@@ -1508,6 +1509,15 @@ multiValueMemberMapper:
     'batch-id' batchId=STRING
     'using' '{'
     	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+entityLineItemProcessor:
+    'entityLineItemProcessor' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
 //rules
