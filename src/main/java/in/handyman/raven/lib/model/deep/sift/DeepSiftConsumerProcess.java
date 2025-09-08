@@ -177,10 +177,17 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
             if (response.body() == null) {
                 log.error(aMarker, "Response body is null for request to {} for model {}", endpoint, entity.getModelName());
-                throw new HandymanException(
-                        "Response body is null for request to " + endpoint + " for model " + entity.getModelName()
-                );
+                HandymanException handymanException = new HandymanException("Deep sift consumer failed for model " + entity.getModelName());
+                HandymanException.insertException("Response body is null for request to " + endpoint + " for model " + entity.getModelName(), handymanException, action);
             }
+
+            if (response.code() != 200) {
+                String errorMessage = "Response code is " + response.code() + " for request to " + endpoint + " for model " + entity.getModelName();
+                log.error(aMarker, errorMessage);
+                HandymanException handymanException = new HandymanException(errorMessage);
+                HandymanException.insertException(errorMessage, handymanException, action);
+            }
+
             String responseBody = response.body().string();
             log.info(aMarker, "{} response: code={}, message={}", entity.getModelName(), response.code(), response.message());
 
