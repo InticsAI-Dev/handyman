@@ -89,17 +89,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             log.info(aMarker, "Base64 image generated for file: {}", inputFilePath);
         } catch (IOException e) {
             log.error(aMarker, "Failed to convert file to Base64: {}", inputFilePath, e);
-            long elapsedTimeMs = System.currentTimeMillis() - startTime;
             throw new HandymanException("Error converting file to Base64 for model " + entity.getModelName(), e, action);
-        }
-
-        String modelPayloadString;
-        try {
-            modelPayloadString = objectMapper.writeValueAsString(requestPayload);
-        } catch (JsonProcessingException e) {
-            log.error(aMarker, "Failed to serialize payload for model {}", entity.getModelName(), e);
-            long elapsedTimeMs = System.currentTimeMillis() - startTime;
-            throw new HandymanException("Error serializing payload for model " + entity.getModelName(), e, action);
         }
 
         String jsonRequest = getXenonRequest(requestPayload);
