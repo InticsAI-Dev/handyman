@@ -34,4 +34,6 @@ public class ControlDataComparisonQueryInputTable {
     private Long sorItemId;
     private Long sorContainerId;
     private String lineItemType;
+    private Long mismatchCount;
+    private String matchStatus;
 }

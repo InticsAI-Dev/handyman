@@ -5,6 +5,6 @@ import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQu
 import org.slf4j.Logger;
 
 public interface ComparisonAdapter {
-    Long validate(ControlDataComparisonQueryInputTable record, ActionExecutionAudit action, Logger log);
+    Long validate(ControlDataComparisonQueryInputTable comparisonInputLineItem, ActionExecutionAudit action, Logger log);
     String getName();
 }
