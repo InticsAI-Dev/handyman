@@ -14,10 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -68,8 +68,7 @@ public class StoreContent {
             return null;
         }
         log.info("{} - File found: {}", MARKER, filePath);
-        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
-
+        try {
             String envUrlStream = action.getContext().get(KEY_STREAMING_URL);
             String envUrlNonStream = action.getContext().get(KEY_NONSTREAMING_URL);
 
@@ -115,7 +114,13 @@ public class StoreContent {
                 headers.put("Authorization", "Bearer " + bearerToken);
             }
             requestDto.setHeaderMap(headers);
-            requestDto.setContentData(bis);
+
+            byte[] fileBytes = Files.readAllBytes(file.toPath());
+            String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
+
+            InputStream base64Stream = new ByteArrayInputStream(encodedFile.getBytes(StandardCharsets.UTF_8));
+            requestDto.setContentData(base64Stream);
+
 
             Acmastorecontentclient client = AcmastorecontentclientFactory.createInstance(clientProps);
             responseDto = client.storeContent(requestDto);
@@ -160,6 +165,7 @@ public class StoreContent {
                     responseDto.getMessage(),
                     responseDto.getContentID(),
                     entity.getProcessId(),
+                    entity.getRootPipelineId(),
                     entity.getBatchId(),
                     documentEyeCue.getEndpoint()
             ));
