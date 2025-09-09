@@ -16,6 +16,9 @@ public class BearerTokenProvider {
     private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");
 
     private static final String ACCESS_TOKEN_FIELD = "access_token";
+    private static final String KEY_STORECONTENT_API_KEY = "storecontent.api.key";
+    private static final String KEY_APIGEE_TOKEN_URL = "apigee.token.url";
+    private static final String KEY_AUTHORIZATION_HEADER = "storecontent.authorization.header";
     private static final MediaType FORM_URLENCODED = MediaType.parse("application/x-www-form-urlencoded");
     public static String fetchBearerToken(ActionExecutionAudit action) {
         String token = "";
@@ -23,9 +26,9 @@ public class BearerTokenProvider {
             String requestBodyStr = "grant_type=client_credentials&scope=public";
             RequestBody body = RequestBody.create(requestBodyStr, FORM_URLENCODED);
 
-            String storeContentApiKey = action.getContext().get("storecontent.api.key");
-            String apigeeTokenUrl = action.getContext().get("apigee.token.url");
-            String authorizationHeader =action.getContext().get("storecontent.authorization.header");
+            String storeContentApiKey = action.getContext().get(KEY_STORECONTENT_API_KEY);
+            String apigeeTokenUrl = action.getContext().get(KEY_APIGEE_TOKEN_URL);
+            String authorizationHeader =action.getContext().get(KEY_AUTHORIZATION_HEADER);
 
 
             Request request = new Request.Builder()
@@ -38,8 +41,12 @@ public class BearerTokenProvider {
 
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    throw new HandymanException("Failed to fetch bearer token: HTTP "
-                            + response.code() + " - " + response.message());
+                    String errorMessage = "Failed to fetch bearer token: HTTP "
+                            + response.code() + " - " + response.message();
+                    HandymanException handymanException = new HandymanException(errorMessage);
+                    HandymanException.insertException(errorMessage, handymanException, action);
+                    log.error(MARKER, errorMessage);
+                    return token;
                 }
 
                 try (ResponseBody responseBody = response.body()) {
@@ -49,16 +56,23 @@ public class BearerTokenProvider {
                     if (json.has(ACCESS_TOKEN_FIELD)) {
                         token = json.get(ACCESS_TOKEN_FIELD).asText();
                     } else {
-                        throw new HandymanException("Bearer token not found in response: " + bodyStr);
+                        String errorMessage = "Bearer token not found in response: " + bodyStr;
+                        HandymanException handymanException = new HandymanException(errorMessage);
+                        HandymanException.insertException(errorMessage, handymanException, action);
+                        log.error(MARKER, errorMessage);
                     }
                 }
+            } catch (Exception e) {
+                String errorMessage = "Unexpected error while fetching bearer token";
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException(errorMessage, handymanException, action);
+                log.error(MARKER, errorMessage, e);
             }
         } catch (Exception e) {
             String errorMessage = "Error fetching bearer token from Anthem OAuth";
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(errorMessage, handymanException, action);
             log.error(MARKER, errorMessage, e);
-            throw handymanException;
         } finally {
             log.info(MARKER, "Bearer token fetch attempt completed. Success = {}", !token.isEmpty());
         }
