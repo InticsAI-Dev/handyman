@@ -4,7 +4,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.adapters.NumericAdapter;
+import in.handyman.raven.lib.adapters.scalar.NumericAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.model.Numericvalidator;
 import in.handyman.raven.lib.model.FieldValidator;

@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.adapters;
+package in.handyman.raven.lib.adapters.scalar;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

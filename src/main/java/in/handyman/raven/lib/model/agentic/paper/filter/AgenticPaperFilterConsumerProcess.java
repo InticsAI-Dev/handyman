@@ -156,6 +156,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
+        Timestamp createdOn = CreateTimeStamp.currentTimestamp();
+        entity.setCreatedOn(createdOn);
         try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
