@@ -65,8 +65,10 @@ public class ControlDataComparisonAction implements IActionExecution {
             log.info(aMarker, "Total rows returned from the query: {}", controlDataComparisonQueryInputTables.size());
 
             InticsIntegrity encryptionHandler = SecurityEngine.getInticsIntegrityMethod(action, log);
+            log.info(aMarker, "Encryption Handler initialized: {}", encryptionHandler.getEncryptionMethod());
 
             performDecryption(controlDataComparisonQueryInputTables, encryptionHandler);
+            log.info(aMarker, "Decryption process completed");
 
             invokeValidationPerRecord(controlDataComparisonQueryInputTables, jdbi, outputTable, encryptionHandler);
 
@@ -85,6 +87,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     //DEBUG ON YOUR OWN RISK
     private void performDecryption(List<ControlDataComparisonQueryInputTable> records,
                                    InticsIntegrity encryptionHandler) {
+        log.info(aMarker, "Total records to process for decryption: {}", records.size());
         boolean itemWiseEncryption = Boolean.parseBoolean(
                 action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
         boolean actualEncryption = Boolean.parseBoolean(
@@ -103,6 +106,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         } else {
             log.info(aMarker, "Skipping Decryption as actualEncryption is false");
         }
+
     }
 
     //DEBUG ON YOUR OWN RISK
@@ -110,6 +114,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables,
             InticsIntegrity encryptionHandler
     ) {
+        log.info(aMarker, "Total records to process for encryption: {}", controlDataComparisonQueryInputTables.size());
         boolean itemWiseEncryption = Boolean.parseBoolean(
                 action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false")
         );
@@ -137,6 +142,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             InticsIntegrity encryptionHandler,
             boolean isExtracted
     ) {
+        log.info(aMarker, "Total records to process for decryption (isExtracted={}): {}", isExtracted, records.size());
         List<EncryptionRequestClass> requests = buildDecryptionRequests(records, isExtracted);
 
         if (requests.isEmpty()) {
@@ -180,6 +186,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     private void addMultiValueRequests(List<EncryptionRequestClass> requests,
                                        ControlDataComparisonQueryInputTable record,
                                        String rawVal) {
+        log.info("Adding multi-value requests for record ID: {}", record.getId());
         String[] parts = rawVal.split(",");
         for (int i = 0; i < parts.length; i++) {
             String trimmed = parts[i].trim();
@@ -193,6 +200,7 @@ public class ControlDataComparisonAction implements IActionExecution {
      * Builds a single request object.
      */
     private EncryptionRequestClass newRequest(String key, String value, String policy) {
+        log.info("Creating request - Key: {}, Policy: {}", key, policy);
         return EncryptionRequestClass.builder()
                 .key(key)
                 .value(value)
@@ -206,6 +214,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     private Map<String, List<EncryptionRequestClass>> groupResponsesByRecordId(
             List<EncryptionRequestClass> responses
     ) {
+        log.info("Grouping responses by record ID, total responses: {}", responses.size());
         return responses.stream()
                 .collect(Collectors.groupingBy(resp -> {
                     String key = resp.getKey();
@@ -219,6 +228,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     private void applyDecryptedValues(List<ControlDataComparisonQueryInputTable> records,
                                       Map<String, List<EncryptionRequestClass>> groupedResponses,
                                       boolean isExtracted) {
+        log.info(aMarker, "Applying decrypted values to records (isExtracted={}): {}", isExtracted, records.size());
         for (ControlDataComparisonQueryInputTable r : records) {
             List<EncryptionRequestClass> respList = groupedResponses.get(String.valueOf(r.getId()));
             if (respList == null) continue;
@@ -247,6 +257,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             InticsIntegrity encryptionHandler,
             boolean isExtracted
     ) {
+        log.info(aMarker, "Total records to process for encryption (isExtracted={}): {}", isExtracted, records.size());
         List<EncryptionRequestClass> requests = buildEncryptionRequests(records, isExtracted);
 
         if (requests.isEmpty()) {
@@ -268,6 +279,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             List<ControlDataComparisonQueryInputTable> records,
             boolean isExtracted
     ) {
+        log.info("Building encryption requests (isExtracted={}): {}", isExtracted, records.size());
         List<EncryptionRequestClass> requests = new ArrayList<>();
 
         for (ControlDataComparisonQueryInputTable r : records) {
@@ -292,6 +304,7 @@ public class ControlDataComparisonAction implements IActionExecution {
     private void applyEncryptedValues(List<ControlDataComparisonQueryInputTable> records,
                                       Map<String, List<EncryptionRequestClass>> groupedResponses,
                                       boolean isExtracted) {
+        log.info(aMarker, "Applying encrypted values to records (isExtracted={}): {}", isExtracted, records.size());
         for (ControlDataComparisonQueryInputTable r : records) {
             List<EncryptionRequestClass> respList = groupedResponses.get(String.valueOf(r.getId()));
             if (respList == null) continue;
@@ -318,6 +331,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
     @NotNull
     public List<ControlDataComparisonQueryInputTable> getControlDataComparisonQueryInputTables(Jdbi jdbi, String querySet) {
+        log.info(aMarker,"{}: Executing query set to fetch input data",querySet);
         final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = new ArrayList<>();
 
         jdbi.useTransaction(handle -> {
@@ -331,6 +345,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                 log.info(aMarker, "Executed query from index {}", i.get());
             });
         });
+        log.info(aMarker, "Total records fetched: {}", controlDataComparisonQueryInputTables.size());
         return controlDataComparisonQueryInputTables;
     }
 
@@ -339,7 +354,8 @@ public class ControlDataComparisonAction implements IActionExecution {
             Jdbi jdbi,
             String outputTable,
             InticsIntegrity encryptionHandler
-    ) throws JsonProcessingException {
+    ) {
+        log.info(aMarker, "Starting validation for {} records", originalRecords.size());
 
         if (originalRecords == null || originalRecords.isEmpty()) {
             return;
@@ -350,8 +366,9 @@ public class ControlDataComparisonAction implements IActionExecution {
                 originalRecords.stream()
                         .map(this::doControlDataValidationByAdapters)
                         .collect(Collectors.toList());
+        log.info(aMarker, "Completed validation and returned {} records", processedRecords.size());
 
-
+        log.info(aMarker, "Started Encryption for {} records", processedRecords.size());
         // if performEncryption must be on validated records
         performEncryption(processedRecords, encryptionHandler);
 
@@ -362,6 +379,11 @@ public class ControlDataComparisonAction implements IActionExecution {
 
 
     private ControlDataComparisonQueryInputTable doControlDataValidationByAdapters(ControlDataComparisonQueryInputTable comparisonInputLineItem) {
+        log.info(aMarker, "Validating record ID: {}, Origin ID: {}, Paper No: {}, Sor Item Name: {}",
+                comparisonInputLineItem.getId(),
+                comparisonInputLineItem.getOriginId(),
+                comparisonInputLineItem.getPaperNo(),
+                comparisonInputLineItem.getSorItemName());
         String lowTouch = action.getContext().get("control.data.low.touch.threshold");
         String oneTouch = action.getContext().get("control.data.one.touch.threshold");
 
@@ -374,6 +396,8 @@ public class ControlDataComparisonAction implements IActionExecution {
 
         comparisonInputLineItem.setMatchStatus(matchStatus);
         comparisonInputLineItem.setMismatchCount(mismatchCount);
+        log.info("Record ID: {}, Validation result - Match Status: {}, Mismatch Count: {}",
+                comparisonInputLineItem.getId(), matchStatus, mismatchCount);
         return comparisonInputLineItem;
     }
 
@@ -381,7 +405,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         if (controlDataInputLineItems == null || controlDataInputLineItems.isEmpty()) {
             return;
         }
-
+        log.info(aMarker, "Inserting {} records into output table: {}", controlDataInputLineItems.size(), outputTable);
         jdbi.useHandle(handle -> {
             String sql = "INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ")";
 
