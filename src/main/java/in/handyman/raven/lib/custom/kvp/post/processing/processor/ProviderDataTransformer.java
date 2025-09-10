@@ -111,9 +111,8 @@ public class ProviderDataTransformer {
                 .batchId(entity.getBatchId())
                 .category(entity.getCategory())
                 .request(encryptRequestResponse(request))
-                .response(encryptRequestResponse(responsePayload))
+                .answer(encryptRequestResponse(responsePayload))
                 .endpoint(String.valueOf(endpoint))
-                .sorContainerId(entity.getSorContainerId())
                 .build());
         log.error(message);
         handleHandymanExceptionInsert(message, e);
@@ -307,9 +306,8 @@ public class ProviderDataTransformer {
                 .message("Radon KVP mapping completed")
                 .category(entity.getCategory())
                 .request(encryptReqResIfRequired(request))
-                .response(encryptReqResIfRequired(apiResponse))
+                .answer(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
-                .sorContainerId(Long.valueOf(containerId))
                 .build();
     }
 }

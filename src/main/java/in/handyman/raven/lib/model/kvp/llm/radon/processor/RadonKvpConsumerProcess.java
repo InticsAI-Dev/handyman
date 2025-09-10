@@ -36,6 +36,8 @@ import static in.handyman.raven.core.utils.DatabaseUtility.fetchBshResultByClass
 public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<RadonQueryInputTable, RadonQueryOutputTable> {
 
     public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.radon.kvp.activator";
+    public static final String AWS_EXTRACTION_ACTIVATOR = "aws.textract.activator";
+
     public static final String PROCESS_NAME = PipelineName.RADON_KVP_ACTION.getProcessName();
     private final Logger log;
     private final Marker aMarker;
@@ -193,7 +195,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
         Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-        tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
+        if(action.getContext().getOrDefault(AWS_EXTRACTION_ACTIVATOR,"true").equals("true")){
+            tritonAwsRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
+        }else{
+            tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
+
+        }
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
         return parentObj;
@@ -248,10 +255,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .lastUpdatedUserId(tenantId)
                         .category(entity.getCategory())
                         .request(encryptRequestResponse(jsonRequest))
-                        .response(encryptRequestResponse(errorBody))
+                        .answer(encryptRequestResponse(errorBody))
                         .endpoint(String.valueOf(endpoint))
-                        .sorItemId(entity.getSorItemId())
-                                .sorItemName(entity.getSorItemName())
+                        .sorItemName(entity.getSorItemName())
                         .build());
                 HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + errorBody);
                 HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -266,6 +272,76 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
         }
     }
+
+
+    private void tritonAwsRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonRequest, URL endpoint) {
+        Long groupId = entity.getGroupId();
+        Long processId = entity.getProcessId();
+        Long tenantId = entity.getTenantId();
+        Integer paperNo = entity.getPaperNo();
+        Long rootPipelineId = entity.getRootPipelineId();
+
+        Timestamp createdOn = CreateTimeStamp.currentTimestamp();
+        entity.setCreatedOn(createdOn);
+        try (Response response = httpclient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                assert response.body() != null;
+                String responseBody = response.body().string();
+                RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
+                if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
+                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
+                        try {
+                            extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonRequest, responseBody, endpoint.toString());
+                        } catch (IOException | EvalError e) {
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
+                        }
+                    }));
+
+                }
+            } else {
+                String errorBody = response.body() != null ? response.body().string() : "No response body or detail found for the request.";
+
+                parentObj.add(RadonQueryOutputTable.builder()
+                        .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                        .paperNo(paperNo)
+                        .groupId(groupId)
+                        .inputFilePath(entity.getInputFilePath())
+                        .tenantId(tenantId)
+                        .actionId(action.getActionId())
+                        .processId(processId)
+                        .rootPipelineId(rootPipelineId)
+                        .process(entity.getProcess())
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .stage(entity.getApiName())
+                        .message(encryptRequestResponse(response.message()))
+                        .batchId(entity.getBatchId())
+                        .createdOn(entity.getCreatedOn())
+                        .createdUserId(tenantId)
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .lastUpdatedUserId(tenantId)
+                        .category(entity.getCategory())
+                        .request(encryptRequestResponse(jsonRequest))
+                        .answer(encryptRequestResponse(errorBody))
+                        .endpoint(String.valueOf(endpoint))
+                        .sorItemName(entity.getSorItemName())
+                        .build());
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + response.code() + " message : " + errorBody);
+                HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+
+                log.error(aMarker, "Error in getting response from triton api {}", errorBody);
+            }
+        } catch (IOException e) {
+            handleErrorParentObject(entity, parentObj, e);
+
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+            log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
+        }
+    }
+
+
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(RadonQueryInputTable entity, URL endPoint) {
         CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
@@ -306,8 +382,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(entity.getTenantId())
                 .category(entity.getCategory())
-                 .sorItemId(entity.getSorItemId())
-                        .sorItemName(entity.getSorItemName())
+                .sorItemName(entity.getSorItemName())
                 .build());
     }
 
@@ -351,7 +426,64 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 parentObj.addAll(providerParentObj);
             }
 
-        } else {
+        } else if(action.getContext().getOrDefault(AWS_EXTRACTION_ACTIVATOR,"true").equals("true")){
+            String inferResponse = modelResponse.getInferResponse();
+
+            // Step 1: Decide if you want encryption on individual values or the whole blob
+            boolean encryptEnabled = Objects.equals(encryptOutputJsonContent, "true");
+
+            // Step 2: Parse inferResponse string into key=value pairs
+            String cleaned = inferResponse.replaceAll("[{}]", "");
+            String[] parts = cleaned.split(",");
+
+            for (String part : parts) {
+                String[] kv = part.split("=", 2); // split only on first '='
+                if (kv.length == 2) {
+                    String key = kv[0].trim();
+                    String value = kv[1].trim();
+
+                    if (!key.isEmpty() && !value.isEmpty()) {
+                        String finalValue = value;
+                        if (encryptEnabled) {
+                            finalValue = encryption.encrypt(value, "AES256", "RADON_KVP_JSON");
+                        }
+
+                        RadonQueryOutputTable row = RadonQueryOutputTable.builder()
+                                .createdOn(entity.getCreatedOn())
+                                .createdUserId(tenantId)
+                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                                .lastUpdatedUserId(tenantId)
+                                .originId(originId)
+                                .paperNo(paperNo)
+                                .groupId(groupId)
+                                .inputFilePath(processedFilePaths)
+                                .actionId(this.action.getActionId())
+                                .tenantId(tenantId)
+                                .processId(processId)
+                                .rootPipelineId(rootPipelineId)
+                                .process(entity.getProcess())
+                                .batchId(modelResponse.getBatchId())
+                                .modelRegistry(entity.getModelRegistry())
+                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                                .stage(entity.getApiName())
+                                .category(entity.getCategory())
+                                .message("Radon kvp action macro completed")
+                                .request(this.encryptRequestResponse(request))
+                                .sorItemName(key)      // key from inferResponse
+                                .answer(finalValue)  // value from inferResponse
+                                .endpoint(String.valueOf(endpoint))
+                                .build();
+
+                        parentObj.add(row);
+                    }
+                }
+            }
+
+        }
+
+
+
+        else {
             if (Objects.equals(encryptOutputJsonContent, "true")) {
                 extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
             } else {
@@ -381,10 +513,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .category(entity.getCategory())
                     .message("Radon kvp action macro completed")
                     .request(encryptRequestResponse(request))
-                    .response(encryptRequestResponse(response))
-                    .sorContainerId(entity.getSorContainerId())
-                    .sorItemId(entity.getSorItemId())
-                            .sorItemName(entity.getSorItemName())
+                    .answer(encryptRequestResponse(response))
+                    .sorItemName(entity.getSorItemName())
                     .endpoint(String.valueOf(endpoint))
                     .build()
             );
@@ -435,11 +565,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .batchId(entity.getBatchId())
                         .category(entity.getCategory())
                         .request(encryptRequestResponse(jsonInputRequest))
-                        .response(encryptRequestResponse(response.message()))
+                        .answer(encryptRequestResponse(response.message()))
                         .endpoint(String.valueOf(endpoint))
-                        .sorContainerId(entity.getSorContainerId())
-                         .sorItemId(entity.getSorItemId())
-                                .sorItemName(entity.getSorItemName())
+                        .sorItemName(entity.getSorItemName())
                         .build());
                 HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + response.message());
                 HandymanException.insertException("Radon KVP consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -462,8 +590,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .message(ExceptionUtil.toString(e))
                     .batchId(entity.getBatchId())
                     .category(entity.getCategory())
-                    .sorContainerId(entity.getSorContainerId())
-                            .sorItemId(entity.getSorItemId())
                             .sorItemName(entity.getSorItemName())
                     .build());
 
@@ -507,11 +633,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .message("Radon kvp action macro completed")
                 .category(entity.getCategory())
                 .request(encryptRequestResponse(request))
-                .response(encryptRequestResponse(response))
+                .answer(encryptRequestResponse(response))
                 .endpoint(String.valueOf(endpoint))
-                .sorContainerId(entity.getSorContainerId())
-                .sorItemId(entity.getSorItemId())
-                        .sorItemName(entity.getSorItemName())
+                .sorItemName(entity.getSorItemName())
                 .build()
         );
     }
