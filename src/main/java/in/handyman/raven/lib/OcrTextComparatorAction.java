@@ -45,12 +45,16 @@ public class OcrTextComparatorAction implements IActionExecution {
     private final OcrTextComparator ocrTextComparator;
     private final Marker aMarker;
     private final List<OcrTextComparatorInput> ocrTextComparatorInputs = new ArrayList<>();
-    private static final Pattern NAME_PATTERN = Pattern.compile("\\b[A-Z][a-zA-Z]+\\s+[A-Z][a-zA-Z]+\\b");
-    private static final Pattern ADDRESS_PATTERN = Pattern.compile(
-            "\\d+\\s+[A-Za-z0-9\\s]+(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Blvd)\\b",
+    private static final Pattern COMMON_PATTERN = Pattern.compile(
+            "(" +
+                    "\\b[A-Z][a-zA-Z]+\\s+[A-Z][a-zA-Z]+\\b" +                       // NAME_PATTERN
+                    "|" +
+                    "\\d+\\s+[A-Za-z0-9\\s]+(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Blvd)\\b" + // ADDRESS_PATTERN
+                    "|" +
+                    "\\b[A-Z0-9]{5,15}\\b" +                                         // MEMBER_ID_PATTERN
+                    ")",
             Pattern.CASE_INSENSITIVE
     );
-    private static final Pattern MEMBER_ID_PATTERN = Pattern.compile("\\b[A-Z0-9]{5,15}\\b");
 
     public OcrTextComparatorAction(final ActionExecutionAudit action, final Logger log,
                                    final Object ocrTextComparator) {
@@ -95,7 +99,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                         batchId, encryption, fuzzyMatchThreshold);
             } catch (Exception e) {
                 log.error(aMarker, "OCR text comparison failed for batchId: {}", batchId, e);
-                auditSkippedEntry(jdbi, null, null, batchId, "Processing failed: " + e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("OCR text comparison failed", handymanException, action);
             }
@@ -119,22 +122,24 @@ public class OcrTextComparatorAction implements IActionExecution {
         Map<String, List<OcrTextComparatorInput>> groupedInputs = inputs.stream()
                 .collect(Collectors.groupingBy(input -> input.getOriginId() + "|" + input.getSorItemName()));
 
-        // Audit entries that are not in groupedInputs
+        // Track processed keys
         List<String> processedKeys = new ArrayList<>();
         FuzzyScore fuzzyScore = new FuzzyScore(Locale.ENGLISH);
 
-        for (Map.Entry<String, List<OcrTextComparatorInput>> entry : groupedInputs.entrySet()) {
-            List<OcrTextComparatorInput> groupList = entry.getValue();
+        // Process grouped inputs using streams
+        groupedInputs.entrySet().stream().parallel().forEach(entry -> {
             String key = entry.getKey();
-            processedKeys.add(key);
+            List<OcrTextComparatorInput> groupList = entry.getValue();
+            synchronized (processedKeys) {
+                processedKeys.add(key);
+            }
 
             if (groupList.isEmpty()) {
                 String[] parts = key.split("\\|");
                 String originId = parts[0];
                 String sorItemName = parts.length > 1 ? parts[1] : "";
                 log.warn(aMarker, "Empty group for originId={}, sorItemName={}", originId, sorItemName);
-                auditSkippedEntry(jdbi, originId, sorItemName, batchId, "Empty group after grouping");
-                continue;
+                return;
             }
 
             OcrTextComparatorInput firstInput = groupList.get(0);
@@ -146,36 +151,27 @@ public class OcrTextComparatorAction implements IActionExecution {
             String answer = firstInput.getAnswer(); // Default to first answer
             String extractedText = firstInput.getExtractedText();
             int bestScore = -1; // Track best fuzzy score
-            String regexPattern = "NONE"; // Track regex pattern used
+            String regexPattern = "COMMON_PATTERN"; // Track regex pattern used
             String candidatesList = ""; // Track candidates extracted
-
-            String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
 
             // Check if comparison is needed (is_ocr_field_comparable = "t")
             if ("t".equalsIgnoreCase(firstInput.getIsOcrFieldComparable())) {
                 log.debug(aMarker, "Performing OCR comparison for sorItemName={} (is_ocr_field_comparable='t')",
                         firstInput.getSorItemName());
 
-                // Decrypt extracted_text and answer if needed
+                // Decrypt extracted_text (AES256) and answer (policy-based) if needed
                 if (pipelineEndToEndEncryptionActivator) {
                     try {
-                        if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
-                            log.info(aMarker, "Scalar activator is disabled, running decryption in AES256 mode");
-                            extractedText = encryption.decrypt(extractedText, AES_256, firstInput.getSorItemName());
-                            answer = encryption.decrypt(answer, AES_256, firstInput.getSorItemName());
-                        } else {
-                            log.info(aMarker, "Scalar activator is enabled, running decryption in policy mode");
-                            extractedText = encryption.decrypt(extractedText, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
-                            answer = encryption.decrypt(answer, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
-                        }
+                        log.info(aMarker, "Decrypting extracted_text with AES256 and answer with policy for originId={}, sorItemName={}",
+                                firstInput.getOriginId(), firstInput.getSorItemName());
+                        extractedText = encryption.decrypt(extractedText, AES_256, firstInput.getSorItemName());
+                        answer = encryption.decrypt(answer, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
                         log.debug(aMarker, "Decrypted answer and extracted_text for originId={}, sorItemName={}",
                                 firstInput.getOriginId(), firstInput.getSorItemName());
                     } catch (Exception e) {
                         log.error(aMarker, "Decryption failed for originId={}, sorItemName={}: {}",
                                 firstInput.getOriginId(), firstInput.getSorItemName(), e.getMessage(), e);
-                        auditSkippedEntry(jdbi, firstInput.getOriginId(), firstInput.getSorItemName(), batchId,
-                                "Decryption failed: " + e.getMessage());
-                        throw e;
+                        return;
                     }
                 }
 
@@ -183,27 +179,8 @@ public class OcrTextComparatorAction implements IActionExecution {
                 answer = (answer == null) ? "" : answer.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
                 extractedText = (extractedText == null) ? "" : extractedText;
 
-                // Select regex pattern based on sor_item_name
-                Pattern pattern;
-                boolean usePartialRatio = false;
-                String sorItemName = firstInput.getSorItemName().toLowerCase();
-                if (sorItemName.equals("member_full_name") || sorItemName.equals("member_last_name") || sorItemName.equals("member_first_name")) {
-                    pattern = NAME_PATTERN;
-                    regexPattern = "NAME_PATTERN";
-                } else if (sorItemName.equals("member_address_line1")) {
-                    pattern = ADDRESS_PATTERN;
-                    regexPattern = "ADDRESS_PATTERN";
-                } else if (sorItemName.equals("member_id")) {
-                    pattern = MEMBER_ID_PATTERN;
-                    regexPattern = "MEMBER_ID_PATTERN";
-                    usePartialRatio = true;
-                } else {
-                    pattern = NAME_PATTERN; // Default to name pattern
-                    regexPattern = "NAME_PATTERN";
-                }
-
-                log.debug(aMarker, "Selected pattern {} for originId={}, sorItemName={}",
-                        regexPattern, firstInput.getOriginId(), firstInput.getSorItemName());
+                // Use COMMON_PATTERN for all fields
+                Pattern pattern = COMMON_PATTERN;
 
                 // Extract candidates from extracted_text
                 List<String> candidates = new ArrayList<>();
@@ -215,17 +192,28 @@ public class OcrTextComparatorAction implements IActionExecution {
 
                 if (!candidates.isEmpty() && !answer.isEmpty()) {
                     // Find the best match to check if answer is present in extracted_text
-                    String bestMatch = null;
-                    bestScore = -1;
+                    final String finalAnswer = answer;
+                    class MatchResult {
+                        final String bestMatch;
+                        final int bestScore;
 
-                    for (String candidate : candidates) {
-                        // Approximate partial_ratio
-                        int score = fuzzyScore.fuzzyScore(answer, candidate); // Approximate ratio
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestMatch = candidate;
+                        MatchResult(String bestMatch, int bestScore) {
+                            this.bestMatch = bestMatch;
+                            this.bestScore = bestScore;
                         }
                     }
+
+                    MatchResult matchResult = candidates.stream()
+                            .map(candidate -> {
+                                // Approximate partial_ratio
+                                int score = fuzzyScore.fuzzyScore(finalAnswer, candidate); // Approximate ratio
+                                return new MatchResult(candidate, score);
+                            })
+                            .reduce((a, b) -> a.bestScore > b.bestScore ? a : b)
+                            .orElse(new MatchResult(null, -1));
+
+                    bestScore = matchResult.bestScore;
+                    String bestMatch = matchResult.bestMatch;
 
                     // Check if the best score meets the threshold (> 70 as per Python code)
                     if (bestScore > fuzzyMatchThreshold) {
@@ -249,26 +237,19 @@ public class OcrTextComparatorAction implements IActionExecution {
                             firstInput.getOriginId(), firstInput.getSorItemName());
                 }
 
-                // Encrypt answer and extracted_text if needed
+                // Encrypt extracted_text (AES256) and answer (policy-based) if needed
                 if (pipelineEndToEndEncryptionActivator) {
                     try {
-                        if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
-                            log.info(aMarker, "Scalar activator is disabled, running encryption in AES256 mode");
-                            answer = encryption.encrypt(answer, AES_256, firstInput.getSorItemName());
-                            extractedText = encryption.encrypt(extractedText, AES_256, firstInput.getSorItemName());
-                        } else {
-                            log.info(aMarker, "Scalar activator is enabled, running encryption in policy mode");
-                            answer = encryption.encrypt(answer, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
-                            extractedText = encryption.encrypt(extractedText, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
-                        }
+                        log.info(aMarker, "Encrypting extracted_text with AES256 and answer with policy for originId={}, sorItemName={}",
+                                firstInput.getOriginId(), firstInput.getSorItemName());
+                        extractedText = encryption.encrypt(extractedText, AES_256, firstInput.getSorItemName());
+                        answer = encryption.encrypt(answer, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
                         log.info(aMarker, "Encrypted answer and extracted_text for originId={}, sorItemName={}",
                                 firstInput.getOriginId(), firstInput.getSorItemName());
                     } catch (Exception e) {
                         log.error(aMarker, "Encryption failed for originId={}, sorItemName={}: {}",
                                 firstInput.getOriginId(), firstInput.getSorItemName(), e.getMessage(), e);
-                        auditSkippedEntry(jdbi, firstInput.getOriginId(), firstInput.getSorItemName(), batchId,
-                                "Encryption failed: " + e.getMessage());
-                        throw e;
+                        return;
                     }
                 }
             } else {
@@ -301,48 +282,21 @@ public class OcrTextComparatorAction implements IActionExecution {
             } catch (HandymanException e) {
                 log.error(aMarker, "Insert failed for originId={}, sorItemName={}, paperNo={}: {}",
                         firstInput.getOriginId(), firstInput.getSorItemName(), selectedPageNo, e.getMessage(), e);
-                auditSkippedEntry(jdbi, firstInput.getOriginId(), firstInput.getSorItemName(), batchId,
-                        "Insert failed: " + e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error inserting for originId " +
                         firstInput.getOriginId() + ", sorItemName " + firstInput.getSorItemName(), handymanException, null);
             }
-        }
+        });
 
-        // Audit inputs that were not processed (not in groupedInputs)
-        for (OcrTextComparatorInput input : ocrTextComparatorInputs) {
-            String key = input.getOriginId() + "|" + input.getSorItemName();
-            if (!processedKeys.contains(key)) {
-                log.warn(aMarker, "Input not processed for originId={}, sorItemName={}",
-                        input.getOriginId(), input.getSorItemName());
-                auditSkippedEntry(jdbi, input.getOriginId(), input.getSorItemName(), batchId,
-                        "Not included in grouped inputs");
-            }
-        }
+        // Log unprocessed inputs
+        ocrTextComparatorInputs.stream()
+                .filter(input -> !processedKeys.contains(input.getOriginId() + "|" + input.getSorItemName()))
+                .forEach(input -> {
+                    log.warn(aMarker, "Input not processed for originId={}, sorItemName={}",
+                            input.getOriginId(), input.getSorItemName());
+                });
 
         log.info(aMarker, "Completed OCR text comparison for batchId: {}", batchId);
-    }
-
-    private void auditSkippedEntry(Jdbi jdbi, String originId, String sorItemName, String batchId, String reason) {
-        try {
-            jdbi.useHandle(handle -> handle.createUpdate(
-                            "INSERT INTO macro.ocr_text_comparator_audit (" +
-                                    "created_on, origin_id, sor_item_name, batch_id, reason" +
-                                    ") VALUES (" +
-                                    ":createdOn, :originId, :sorItemName, :batchId, :reason" +
-                                    ");")
-                    .bind("createdOn", LocalDateTime.now())
-                    .bind("originId", originId)
-                    .bind("sorItemName", sorItemName)
-                    .bind("batchId", batchId)
-                    .bind("reason", reason)
-                    .execute());
-            log.info(aMarker, "Audited skipped entry for originId={}, sorItemName={}, reason={}",
-                    originId, sorItemName, reason);
-        } catch (Exception e) {
-            log.error(aMarker, "Failed to audit skipped entry for originId={}, sorItemName={}: {}",
-                    originId, sorItemName, e.getMessage(), e);
-        }
     }
 
     private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId,
