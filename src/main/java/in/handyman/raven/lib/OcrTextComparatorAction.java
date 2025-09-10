@@ -94,7 +94,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                 doOcrTextComparison(ocrTextComparatorInputs, jdbi, outputTableName, pipelineEndToEndEncryptionActivator,
                         batchId, encryption, fuzzyMatchThreshold);
             } catch (Exception e) {
-                // Audit failed processing
                 log.error(aMarker, "OCR text comparison failed for batchId: {}", batchId, e);
                 auditSkippedEntry(jdbi, null, null, batchId, "Processing failed: " + e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
@@ -184,26 +183,20 @@ public class OcrTextComparatorAction implements IActionExecution {
                 answer = (answer == null) ? "" : answer.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
                 extractedText = (extractedText == null) ? "" : extractedText;
 
-                // Select regex pattern based on extracted_text
+                // Select regex pattern based on sor_item_name
                 Pattern pattern;
                 boolean usePartialRatio = false;
-                Matcher addressMatcher = ADDRESS_PATTERN.matcher(extractedText);
-                Matcher memberIdMatcher = MEMBER_ID_PATTERN.matcher(extractedText);
-                Matcher nameMatcher = NAME_PATTERN.matcher(extractedText);
-
-                if (addressMatcher.find()) {
-                    pattern = ADDRESS_PATTERN;
-                    regexPattern = "ADDRESS_PATTERN";
-                    addressMatcher.reset(); // Reset matcher for candidate extraction
-                } else if (memberIdMatcher.find()) {
-                    pattern = MEMBER_ID_PATTERN;
-                    regexPattern = "MEMBER_ID_PATTERN";
-                    usePartialRatio = true; // Use partial ratio for member IDs
-                    memberIdMatcher.reset(); // Reset matcher for candidate extraction
-                } else if (nameMatcher.find()) {
+                String sorItemName = firstInput.getSorItemName().toLowerCase();
+                if (sorItemName.equals("member_full_name") || sorItemName.equals("member_last_name") || sorItemName.equals("member_first_name")) {
                     pattern = NAME_PATTERN;
                     regexPattern = "NAME_PATTERN";
-                    nameMatcher.reset(); // Reset matcher for candidate extraction
+                } else if (sorItemName.equals("member_address_line1")) {
+                    pattern = ADDRESS_PATTERN;
+                    regexPattern = "ADDRESS_PATTERN";
+                } else if (sorItemName.equals("member_id")) {
+                    pattern = MEMBER_ID_PATTERN;
+                    regexPattern = "MEMBER_ID_PATTERN";
+                    usePartialRatio = true;
                 } else {
                     pattern = NAME_PATTERN; // Default to name pattern
                     regexPattern = "NAME_PATTERN";
@@ -226,25 +219,24 @@ public class OcrTextComparatorAction implements IActionExecution {
                     bestScore = -1;
 
                     for (String candidate : candidates) {
-                        int score = usePartialRatio ?
-                                fuzzyScore.fuzzyScore(answer, candidate) : // Approximate partial_ratio
-                                fuzzyScore.fuzzyScore(answer, candidate); // Approximate ratio
+                        // Approximate partial_ratio
+                        int score = fuzzyScore.fuzzyScore(answer, candidate); // Approximate ratio
                         if (score > bestScore) {
                             bestScore = score;
                             bestMatch = candidate;
                         }
                     }
 
-                    // Check if the best score meets or exceeds the threshold
-                    if (bestScore >= fuzzyMatchThreshold) {
+                    // Check if the best score meets the threshold (> 70 as per Python code)
+                    if (bestScore > fuzzyMatchThreshold) {
                         isOcrFieldComparable = true;
-                        // Use the OCR candidate if answer is present (score >= 70)
+                        // Use the OCR candidate if answer is present (score > 70)
                         answer = bestMatch;
                         log.debug(aMarker, "Answer present in extracted_text with score {} for originId={}, sorItemName={}",
                                 bestScore, firstInput.getOriginId(), firstInput.getSorItemName());
                     } else {
                         isOcrFieldComparable = false;
-                        // Use the original answer if not present or score < 70
+                        // Use the original answer if not present or score <= 70
                         answer = firstInput.getAnswer();
                         log.debug(aMarker, "Answer not present in extracted_text with sufficient score for originId={}, sorItemName={}",
                                 firstInput.getOriginId(), firstInput.getSorItemName());
