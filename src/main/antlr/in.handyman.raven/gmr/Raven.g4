@@ -190,6 +190,7 @@ action:
     |kafkaOutboundComparison
     |pipelineEventActionAudit
     |multiValueMemberMapper
+    |ocrTextComparator
     );
 
 
@@ -1508,6 +1509,15 @@ multiValueMemberMapper:
     'batch-id' batchId=STRING
     'using' '{'
     	querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+ocrTextComparator:
+    'ocrTextComparator' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'batch-id' batchId=STRING
+    'using' '{'
+        querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
 //rules
