@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -17,34 +18,34 @@ import java.util.stream.Stream;
 @Builder
 public class MultiValueMemberMapperOutputTable implements CoproProcessor.Entity{
 
-    private Long minScoreId;
-    private String originId;
-    private Long paperNo;
-    private String sorItemName;
-    private Long weightScore;
-    private String predictedValue;
+    private LocalDateTime createdOn;
+    private Long createdUserId;
+    private LocalDateTime lastUpdatedOn;
+    private Long lastUpdatedUserId;
+    private String status;
+    private Integer version;
+    private Long frequency;
     private String bBox;
     private Long confidenceScore;
-    private Long frequency;
-    private Long cummulativeScore;
+    private String extractedValue;
+    private Long filterScore;
+    private Long groupId;
+    private Long maximumScore;
+    private String originId;
+    private Long paperNo;
     private Long questionId;
+    private Long rootPipelineId;
+    private String sorItemName;
     private Long synonymId;
     private Long tenantId;
     private String modelRegistry;
-    private Long rootPipelineId;
     private String batchId;
 
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.minScoreId, this.originId, this.paperNo, this.sorItemName, this.weightScore,
-                this.predictedValue, this.bBox, this.confidenceScore, this.frequency, this.cummulativeScore,
-                this.questionId, this.synonymId, this.tenantId, this.modelRegistry, this.rootPipelineId,
-                this.batchId).collect(Collectors.toList());
-    }
-
-    @Override
-    public String getStatus() {
-        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+        return Stream.of(this.createdOn, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId, this.status, this.version, this.frequency, this.bBox, this.confidenceScore,
+                this.extractedValue, this.filterScore, this.groupId, this.maximumScore, this.originId, this.paperNo, this.questionId, this.rootPipelineId,
+                this.sorItemName, this.synonymId, this.tenantId, this.modelRegistry, this.batchId).collect(Collectors.toList());
     }
 }
