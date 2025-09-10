@@ -15,7 +15,6 @@ import java.lang.Override;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -23,7 +22,6 @@ import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapper
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
-import in.handyman.raven.lib.model.scalar.ValidatorByBeanShellExecutor;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -56,11 +54,11 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   public static final String MULTI_MEMBER_CONSUMER_API_COUNT = "multi.member.consumer.API.count";
 
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
   private List<MultiValueMemberMapperOutputTable> multiValueMemberMapperOutputTables;
 
-  public static final String INSERT_COLUMNS_UPDATED = "min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score, question_id, synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id";
+  public static final String INSERT_COLUMNS_UPDATED = "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id";
 
   private final String PIPELINE_END_TO_END_ENCRYPTION = "pipeline.end.to.end.encryption";
 
@@ -155,15 +153,14 @@ public class MultiValueMemberMapperAction implements IActionExecution {
               List<extractedSorItemList> sorItems = inputRows.stream()
                       .map(row -> {
                         extractedSorItemList item = extractedSorItemList.builder()
-                                .minScoreId(row.getScoreId())
+                                .groupId(row.getGroupId())
+                                .paperNo(row.getPaperNo())
                                 .paperNo(row.getPaperNo())
                                 .sorItemName(row.getSorItemName())
-                                .weightScore(row.getWeightScore())
                                 .predictedValue(processAndDecryptMultiValue(row, pipelineEndToEndEncryptionActivator, encryption))
                                 .bBox(row.getBBox())
                                 .confidenceScore(row.getScoreId())
                                 .frequency(row.getFrequency())
-                                .cummulativeScore(row.getCummulativeScore())
                                 .questionId(row.getQuestionId())
                                 .synonymId(row.getSynonymId())
                                 .tenantId(row.getTenantId())
@@ -207,22 +204,28 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
     try (PreparedBatch batch = handle.prepareBatch(insertQuery)) {
       rows.forEach(row -> {
-        batch.bind(0, row.getMinScoreId())
-                .bind(1, row.getOriginId())
-                .bind(2, row.getPaperNo())
-                .bind(3, row.getSorItemName())
-                .bind(4, row.getWeightScore())
-                .bind(5, row.getPredictedValue())
-                .bind(6, row.getBBox())
-                .bind(7, row.getConfidenceScore())
-                .bind(8, row.getFrequency())
-                .bind(9, row.getCummulativeScore())
-                .bind(10, row.getQuestionId())
-                .bind(11, row.getSynonymId())
-                .bind(12, row.getTenantId())
-                .bind(13, row.getModelRegistry())
-                .bind(14, row.getRootPipelineId())
-                .bind(15, row.getBatchId());
+        batch.bind(0, row.getCreatedOn())
+                .bind(1, row.getTenantId())
+                .bind(2, row.getLastUpdatedOn())
+                .bind(3, row.getTenantId())
+                .bind(4, "ACTIVE")
+                .bind(5, row.getVersion())
+                .bind(6, row.getFrequency())
+                .bind(7, row.getBBox())
+                .bind(8, row.getConfidenceScore())
+                .bind(9, row.getExtractedValue())
+                .bind(10, row.getFilterScore())
+                .bind(11, row.getGroupId())
+                .bind(12, row.getConfidenceScore())
+                .bind(13, row.getOriginId())
+                .bind(14, row.getPaperNo())
+                .bind(15, row.getQuestionId())
+                .bind(16, row.getRootPipelineId())
+                .bind(17, row.getSorItemName())
+                .bind(18, row.getSynonymId())
+                .bind(19, row.getTenantId())
+                .bind(20, row.getModelRegistry())
+                .bind(21, row.getBatchId());
         batch.add();
       });
       int[] counts = batch.execute();
