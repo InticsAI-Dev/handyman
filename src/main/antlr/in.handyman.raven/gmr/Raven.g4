@@ -1419,7 +1419,6 @@ postProcessingExecutor:
     'output-table' outputTable=STRING
     'group-id' groupId = STRING
     'batch-id' batchId = STRING
-     'input-table' inputTable=STRING
     'using'  '{'
         querySet=STRING
     '}'
