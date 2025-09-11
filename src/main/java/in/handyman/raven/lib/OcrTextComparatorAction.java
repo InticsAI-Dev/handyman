@@ -74,7 +74,7 @@ public class OcrTextComparatorAction implements IActionExecution {
 
             String batchId = ocrTextComparator.getBatchId();
             String outputTableName = ocrTextComparator.getOutputTable();
-            int fuzzyMatchThreshold = Integer.parseInt(action.getContext().getOrDefault("fuzzy.match.threshold", "70"));
+            int fuzzyMatchThreshold = Integer.parseInt(action.getContext().getOrDefault("fuzzy.match.threshold", "0"));
 
             // Execute queries and collect input data
             jdbi.useTransaction(handle -> {
