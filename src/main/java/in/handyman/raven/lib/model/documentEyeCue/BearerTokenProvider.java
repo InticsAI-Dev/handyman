@@ -34,7 +34,6 @@ public class BearerTokenProvider {
             Request request = new Request.Builder()
                     .url(apigeeTokenUrl)
                     .post(body)
-                    .header("Content-Type", "application/x-www-form-urlencoded")
                     .header("Authorization", "Basic " + authorizationHeader)
                     .header("apikey", storeContentApiKey)
                     .build();
@@ -43,6 +42,17 @@ public class BearerTokenProvider {
                 if (!response.isSuccessful()) {
                     String errorMessage = "Failed to fetch bearer token: HTTP "
                             + response.code() + " - " + response.message();
+
+                    try (ResponseBody errorBody = response.body()) {
+                        if (errorBody != null) {
+                            String errorBodyStr = errorBody.string();
+                            log.error(MARKER, "Error response body: {}", errorBodyStr);
+                            errorMessage += ". Response body: " + errorBodyStr;
+                        }
+                    } catch (Exception e) {
+                        log.warn(MARKER, "Could not read error response body", e);
+                    }
+
                     HandymanException handymanException = new HandymanException(errorMessage);
                     HandymanException.insertException(errorMessage, handymanException, action);
                     log.error(MARKER, errorMessage);
@@ -51,9 +61,12 @@ public class BearerTokenProvider {
 
                 try (ResponseBody responseBody = response.body()) {
                     String bodyStr = (responseBody != null) ? responseBody.string() : "";
+                    log.info(MARKER, "Success response body: {}", bodyStr);
+
                     JsonNode json = new ObjectMapper().readTree(bodyStr);
                     if (json.has(ACCESS_TOKEN_FIELD)) {
                         token = json.get(ACCESS_TOKEN_FIELD).asText();
+                        log.info(MARKER, "Successfully extracted bearer token");
                     } else {
                         String errorMessage = "Bearer token not found in response: " + bodyStr;
                         HandymanException handymanException = new HandymanException(errorMessage);
