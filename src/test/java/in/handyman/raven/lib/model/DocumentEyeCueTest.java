@@ -105,7 +105,7 @@ class DocumentEyeCueTest {
                 Map.entry("apigee.token.url", "http://localhost:5000/oauth/accesstoken"),
 
                 // StoreContent configs
-                Map.entry("storecontent.base.url", "https://uat.api.anthem.com"),
+                Map.entry("storecontent.base.url", "http://localhost:8081"),
                 Map.entry("storecontent.streaming.url", "http://localhost:8080/storecontent/upload/streaming"),
                 Map.entry("storecontent.nonstreaming.url", "http://localhost:8080/storecontent/upload"),
                 Map.entry("storecontent.api.key", "dummy_api_key"),
