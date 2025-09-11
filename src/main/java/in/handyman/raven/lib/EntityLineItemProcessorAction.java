@@ -1,6 +1,5 @@
 package in.handyman.raven.lib;
 
-import bsh.EvalError;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
@@ -56,7 +55,6 @@ public class EntityLineItemProcessorAction implements IActionExecution {
     private final Logger log;
     private final Marker aMarker;
     private final InticsIntegrity securityEngine;
-
     private final int threadSleepTime;
     private final int writeBatchSize;
     private int readBatchSize;
@@ -137,7 +135,7 @@ public class EntityLineItemProcessorAction implements IActionExecution {
 
         doPromptInferencing(executorService, fileProcessingUtils, countDownLatch);
 
-        EntitySectionValidator multiSectionValidator = new EntitySectionValidator(actionExecutionAudit, log, aMarker, securityEngine, jdbi);
+        EntitySectionValidator multiSectionValidator = new EntitySectionValidator(actionExecutionAudit, log, aMarker, jdbi);
         List<RadonMultiSectionOutputTable> multiSectionOutputTables = multiSectionValidator.doValidation(parentObj, radonMultiSectionOutputTables);
 
         safeLogInfo("Entity Line Item Processor Action completed for {}", entityLineItemProcessor.getName());
@@ -447,9 +445,9 @@ public class EntityLineItemProcessorAction implements IActionExecution {
                     modelResponse.getOutputs().forEach(output -> output.getData().forEach(radonDataItem -> {
                         try {
                             extractTritonOutputDataResponse(entity, radonDataItem, entityObj, jsonRequest, responseString, endpoint.toString());
-                        } catch (IOException | EvalError e) {
+                        } catch (IOException e) {
                             HandymanException handymanException = new HandymanException(e);
-                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.actionExecutionAudit);
+                            HandymanException.insertException("Radon kvp consumer failed for group -" + groupId + " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo(), handymanException, this.actionExecutionAudit);
                             log.error(aMarker, "Error converting triton output: {}", ExceptionUtil.toString(e));
                         }
                     }));
@@ -518,7 +516,7 @@ public class EntityLineItemProcessorAction implements IActionExecution {
                 .build());
     }
 
-    private void extractTritonOutputDataResponse(RadonMultiSectionQueryInputTable entity, String radonDataItem, List<RadonMultiSectionResponseTable> entityObj, String request, String response, String endpoint) throws IOException, EvalError {
+    private void extractTritonOutputDataResponse(RadonMultiSectionQueryInputTable entity, String radonDataItem, List<RadonMultiSectionResponseTable> entityObj, String request, String response, String endpoint) throws IOException {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();

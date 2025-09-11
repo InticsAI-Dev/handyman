@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
-import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
@@ -32,21 +31,22 @@ public class EntitySectionValidator {
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
     private final Marker aMarker;
-    private final InticsIntegrity securityEngine;
-    private static final String ENCRYPTION_POLICY = "AES256";
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Pattern JSON_MARKER_PATTERN = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
-    private static final String CONTAINER_CONSOLIDATION_FLAG_BY_PAGE = "CONSOLIDATED_BY_PAGE";
-    private static final String CONTAINER_CONSOLIDATION_FLAG_BY_DOCUMENT = "CONSOLIDATED_BY_DOCUMENT";
-
-
     private final Jdbi jdbi;
 
-    public EntitySectionValidator(ActionExecutionAudit action, Logger log, Marker aMarker, InticsIntegrity securityEngine, Jdbi jdbi) {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final Pattern JSON_MARKER_PATTERN = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
+    private static final String ENCRYPTION_POLICY = "AES256";
+    private static final String CONTAINER_CONSOLIDATION_FLAG_BY_PAGE = "CONSOLIDATED_BY_PAGE";
+    private static final String CONTAINER_CONSOLIDATION_FLAG_BY_DOCUMENT = "CONSOLIDATED_BY_DOCUMENT";
+    private static final String SOR_CONTAINER_ID_COL = "sorContainerId";
+    private static final String DETAILED_INFO_NODE = "detailedInfo";
+    private static final String RESPONSE_NODE = "response";
+    private static final String EMPTY_STRING = "";
+
+    public EntitySectionValidator(ActionExecutionAudit action, Logger log, Marker aMarker, Jdbi jdbi) {
         this.log = log;
         this.aMarker = aMarker;
-        this.securityEngine = securityEngine;
         this.actionExecutionAudit = action;
         this.jdbi = jdbi;
     }
@@ -91,7 +91,7 @@ public class EntitySectionValidator {
             radonMultiSectionResponseTablesByContainer.forEach((sorContainerId, entityList) -> {
 
                 Map<String, Integer> sectionAlias = getSectionAliasInput(sorContainerId);
-                Map<String, List<String>> allowedKeywords = getAllowedKeywords();
+                Map<String, List<String>> allowedKeywords = getAllowedKeywords(sorContainerId);
                 Map<String, List<String>> blackListedKeywords = getBlackListedKeywords(sorContainerId, actionExecutionAudit.getContext().get("root-pipeline-name"));
 
                 boolean isConsolidateByDocument = getConsolidatedPresentByContainer(sorContainerId, CONTAINER_CONSOLIDATION_FLAG_BY_DOCUMENT);
@@ -160,8 +160,8 @@ public class EntitySectionValidator {
         try {
             JsonNode consolidatedRoot = mapper.readTree(consolidatedJson);
             if (consolidatedRoot.isObject() && !consolidatedRoot.isEmpty()) {
-                JsonNode responseNode = consolidatedRoot.path("detailedInfo").path("response");
-                JsonNode paperNo = consolidatedRoot.path("detailedInfo").path("page_no");
+                JsonNode responseNode = consolidatedRoot.path(DETAILED_INFO_NODE).path(RESPONSE_NODE);
+                JsonNode paperNo = consolidatedRoot.path(DETAILED_INFO_NODE).path("page_no");
                 String responseJson = responseNode.toString();
                 int pageNo = paperNo.isInt() ? paperNo.intValue() : Integer.parseInt(paperNo.asText());
 
@@ -219,10 +219,10 @@ public class EntitySectionValidator {
         });
 
         for (Map<String, Object> obj : parsedList) {
-            String responseString = (String) obj.get("response");
+            String responseString = (String) obj.get(RESPONSE_NODE);
             List<Map<String, Object>> responseList = mapper.readValue(responseString, new TypeReference<>() {
             });
-            obj.put("response", responseList);
+            obj.put(RESPONSE_NODE, responseList);
         }
         return parsedList;
     }
@@ -248,7 +248,7 @@ public class EntitySectionValidator {
         responseMap.put("id", 1);
         responseMap.put("page_no", pageNo);
         responseMap.put("section_alias", sectionAlias);
-        responseMap.put("response", inputMap);
+        responseMap.put(RESPONSE_NODE, inputMap);
 
         return responseMap;
     }
@@ -309,7 +309,7 @@ public class EntitySectionValidator {
         }
 
         try {
-            totalResponseJson = parseAndPossiblyConsolidateResponse(entity, postProcessedJson, sorContainerId, sectionAlias, allowedKeywords, blackListedKeywords);
+            totalResponseJson = parseAndPossiblyConsolidateResponse(postProcessedJson, sorContainerId, sectionAlias, allowedKeywords, blackListedKeywords);
         } catch (JsonProcessingException e) {
             log.error(aMarker, "Error parsing post-processed JSON for rootPipelineId={}", entity.getRootPipelineId(), e);
             HandymanException.insertException("Error parsing post-processed JSON", new HandymanException(e), actionExecutionAudit);
@@ -319,7 +319,7 @@ public class EntitySectionValidator {
     }
 
 
-    private String parseAndPossiblyConsolidateResponse(RadonMultiSectionResponseTable entity, String postProcessedJson, Long sorContainerId, Map<String, Integer> sectionAlias, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) throws JsonProcessingException {
+    private String parseAndPossiblyConsolidateResponse(String postProcessedJson, Long sorContainerId, Map<String, Integer> sectionAlias, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) throws JsonProcessingException {
         JsonNode rootNode = MAPPER.readTree(postProcessedJson);
         if (!rootNode.isArray()) {
             return postProcessedJson;
@@ -353,12 +353,12 @@ public class EntitySectionValidator {
             return "{}";
         }
 
-        JsonNode responseNode = consolidatedRoot.path("detailedInfo").path("response");
+        JsonNode responseNode = consolidatedRoot.path(DETAILED_INFO_NODE).path(RESPONSE_NODE);
         return extractResponseNodeAsString(responseNode);
     }
 
     private String extractResponseFromArray(ArrayNode arrayNode) {
-        JsonNode responseNode = arrayNode.get(0).get("response");
+        JsonNode responseNode = arrayNode.get(0).get(RESPONSE_NODE);
         return extractResponseNodeAsString(responseNode);
     }
 
@@ -459,7 +459,7 @@ public class EntitySectionValidator {
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Error executing class script", handymanException, actionExecutionAudit);
         }
-        return null;
+        return EMPTY_STRING;
     }
 
     private String getValidationPostProcessingResponse(String sourceCode, ArrayNode validationInput, Map<String, Integer> sectionAliasInput, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) {
@@ -477,7 +477,7 @@ public class EntitySectionValidator {
 
             JSONArray validationInputJson = new JSONArray(validationInput.toString());
             JSONObject sectionAliasJson = new JSONObject(sectionAliasInput);
-            JSONObject allowedKeywordsJson = new JSONObject(blackListedKeywords);
+            JSONObject allowedKeywordsJson = new JSONObject(allowedKeywords);
             JSONObject blackListedKeywordsJson = new JSONObject(blackListedKeywords);
 
             interpreter.set("inputMap", validationInputJson);
@@ -504,7 +504,7 @@ public class EntitySectionValidator {
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Error executing class script", handymanException, actionExecutionAudit);
         }
-        return null;
+        return EMPTY_STRING;
     }
 
     private boolean getConsolidatedPresentByContainer(Long sorContainerId, String entity) {
@@ -513,7 +513,7 @@ public class EntitySectionValidator {
                                 "sor_meta.multi_entity_processing " +
                                 "WHERE sor_container_id = :sorContainerId AND entity = :entity and status = true " +
                                 "LIMIT 1")
-                        .bind("sorContainerId", sorContainerId)
+                        .bind(SOR_CONTAINER_ID_COL, sorContainerId)
                         .bind("entity", entity)
                         .mapTo(Integer.class)
                         .findFirst()
@@ -524,9 +524,9 @@ public class EntitySectionValidator {
     private String getConsolidatedPostProcessingScript(Long sorContainerId, String entity) {
         return jdbi.withHandle(handle ->
                 handle.createQuery("SELECT postprocessing_script " +
-                                "FROM sor_meta.multi_entity_processing WHERE " +
-                                "sor_container_id = :sorContainerId AND entity = :entity and status = true LIMIT 1")
-                        .bind("sorContainerId", sorContainerId)
+                                "FROM sor_meta.multi_entity_processing " +
+                                "WHERE sor_container_id = :sorContainerId AND entity = :entity and status = true LIMIT 1")
+                        .bind(SOR_CONTAINER_ID_COL, sorContainerId)
                         .bind("entity", entity)
                         .mapTo(String.class)
                         .findFirst()
@@ -536,8 +536,10 @@ public class EntitySectionValidator {
 
     private Map<String, Integer> getSectionAliasInput(Long sorContainerId) {
         Map<String, Integer> sectionAliasMap = jdbi.withHandle(handle ->
-                handle.createQuery("SELECT truth_entity, priority_level FROM sor_meta.truth_entity_priority WHERE sor_container_id = :sorContainerId")
-                        .bind("sorContainerId", sorContainerId)
+                handle.createQuery("SELECT truth_entity, priority_level " +
+                                "FROM sor_meta.truth_entity_priority " +
+                                "WHERE sor_container_id = :sorContainerId")
+                        .bind(SOR_CONTAINER_ID_COL, sorContainerId)
                         .map((rs, ctx) -> Map.entry(
                                 rs.getString("truth_entity"),
                                 rs.getInt("priority_level")
@@ -560,7 +562,7 @@ public class EntitySectionValidator {
                                         "AND sor_container_id = :sorContainerId"
                         )
                         .bind("instanceName", instanceName)
-                        .bind("sorContainerId", sorContainerId)
+                        .bind(SOR_CONTAINER_ID_COL, sorContainerId)
                         .map((rs, ctx) -> Map.entry(
                                 rs.getString("sor_item_name"),
                                 rs.getString("black_list_keyword")
@@ -575,9 +577,25 @@ public class EntitySectionValidator {
     }
 
 
-    private Map<String, List<String>> getAllowedKeywords() {
-        //TODO implement allowed keywords fetch
-        return Map.of();
+    private Map<String, List<String>> getAllowedKeywords(Long sorContainerId) {
+        Map<String, List<String>> allowedKeywordsMap = jdbi.withHandle(handle ->
+                handle.createQuery(
+                                "SELECT sor_item_name, allowed_keyword " +
+                                        "FROM sor_meta.sor_item_allowed_keywords " +
+                                        "WHERE sor_container_id = :sorContainerId"
+                        )
+                        .bind(SOR_CONTAINER_ID_COL, sorContainerId)
+                        .map((rs, ctx) -> Map.entry(
+                                rs.getString("sor_item_name"),
+                                rs.getString("allowed_keyword")
+                        ))
+                        .collect(Collectors.groupingBy(
+                                Map.Entry::getKey,
+                                Collectors.mapping(Map.Entry::getValue, Collectors.toList())
+                        ))
+        );
+        log.info(aMarker, "Allowed keywords map for container {}: {}", sorContainerId, allowedKeywordsMap);
+        return allowedKeywordsMap;
     }
 
     public String formattedJsonString(String jsonResponse) {
