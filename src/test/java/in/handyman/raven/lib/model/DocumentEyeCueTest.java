@@ -32,7 +32,7 @@ class DocumentEyeCueTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
-                Map.entry("document.eye.cue.api.url", "http://192.168.10.239:7999/intics-copro/document-eye-cue"),
+                Map.entry("document.eye.cue.api.url", "http://localhost:7999/intics-copro/document-eye-cue"),
                 Map.entry("document.eye.cue.read.batch.size", "5"),
                 Map.entry("document.eye.cue.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
@@ -87,7 +87,7 @@ class DocumentEyeCueTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
-                Map.entry("document.eye.cue.api.url", "http://192.168.10.239:7999/intics-copro/document-eye-cue"),
+                Map.entry("document.eye.cue.api.url", "http://localhost:7999/intics-copro/document-eye-cue"),
                 Map.entry("document.eye.cue.read.batch.size", "5"),
                 Map.entry("document.eye.cue.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
@@ -124,7 +124,7 @@ class DocumentEyeCueTest {
 
                 // For backward compatibility (if required by your API)
                 Map.entry("authorization_header",
-                        "MTY4ZTVjNjQxMWZlNDZlZThhYjRhMDVmZjVhOGEzMmM6N2I5ZmVmMDcwZmMyNTJlZjdhODczYjc2YzIwY2UyMmI4MTRjODUxZTUzNjQxNTVhMTAwZjFhOTU2YWYxZDQwYg==")
+                        "")
         ));
         actionExecutionAudit.setActionId(1L);
 
