@@ -17,43 +17,28 @@ void execute() throws Exception {
             .condition(true)
             .outputTable("macro.ocr_text_comparison_result")
             .resourceConn("intics_zio_db_conn")
-            .querySet("SELECT  \n" +
-                    "                        1, \n" +
-                    "                        vt.origin_id, \n" +
-                    "                        vt.group_id, \n" +
-                    "                        vt.paper_no, \n" +
-                    "                        vt.sor_question, \n" +
-                    "                        vt.answer, \n" +
-                    "                        vt.vqa_score, \n" +
-                    "                        vt.score, \n" +
-                    "                        vt.weight, \n" +
-                    "                        vt.sor_item_attribution_id, \n" +
-                    "                        vt.sor_item_name, \n" +
-                    "                        vt.document_id, \n" +
-                    "                        vt.b_box, \n" +
-                    "                        vt.root_pipeline_id, \n" +
-                    "                        vt.question_id, \n" +
-                    "                        vt.synonym_id, \n" +
-                    "                        vt.model_registry, \n" +
-                    "                        vt.category, \n" +
-                    "                        vt.batch_id, \n" +
-                    "                        si.is_ocr_field_comparable, \n" +
-                    "                        dsoa.extracted_text\n" +
-                    "                      FROM sor_transaction.vqa_transaction vt \n" +
-                    "                    JOIN deep_sift.deep_sift_output_audit dsoa  \n" +
-                    "                        ON dsoa.origin_id = vt.origin_id  \n" +
-                    "                       AND dsoa.paper_no = vt.paper_no \n" +
-                    "                    JOIN sor_meta.sor_container sc  \n" +
-                    "                        ON sc.document_type = 'MEDICAL_GBD' \n" +
-                    "                       AND vt.tenant_id = sc.tenant_id \n" +
-                    "                    JOIN sor_meta.sor_item si  \n" +
-                    "                        ON si.sor_container_id = sc.sor_container_id   \n" +
-                    "                        AND si.tenant_id = sc.tenant_id  \n" +
-                    "                        and si.sor_item_name =vt.sor_item_name      \n" +
-                    "                    WHERE vt.group_id =71 \n" +
-                    "                      AND vt.tenant_id =1  \n" +
-                    "                      AND vt.batch_id = 'BATCH-71_0' \n" +
-                    "                      and sc.status ='ACTIVE' and si.status ='ACTIVE'")
+            .querySet("SELECT tenant_id,\n" +
+                    "                   origin_id,\n" +
+                    "                   group_id,\n" +
+                    "                   paper_no,\n" +
+                    "                   sor_question,\n" +
+                    "                   answer,\n" +
+                    "                   vqa_score,\n" +
+                    "                   score,\n" +
+                    "                   weight,\n" +
+                    "                   sor_item_attribution_id,\n" +
+                    "                   sor_item_name,\n" +
+                    "                   document_id,\n" +
+                    "                   b_box,\n" +
+                    "                   root_pipeline_id,\n" +
+                    "                   question_id,\n" +
+                    "                   synonym_id,\n" +
+                    "                   model_registry,\n" +
+                    "                   category,\n" +
+                    "                   batch_id,\n" +
+                    "                   is_ocr_field_comparable,\n" +
+                    "                   extracted_text\n" +
+                    "            FROM transit_data.ocr_text_comparison_input_11817")
             .build();
 
     final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
