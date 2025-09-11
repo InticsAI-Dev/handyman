@@ -135,6 +135,16 @@ public class EntityLineItemProcessorAction implements IActionExecution {
         final ExecutorService executorService = createExecutorService(consumerApiCount);
         final CountDownLatch countDownLatch = new CountDownLatch(Math.max(1, consumerApiCount));
 
+        doPromptInferencing(executorService, fileProcessingUtils, countDownLatch);
+
+        EntitySectionValidator multiSectionValidator = new EntitySectionValidator(actionExecutionAudit, log, aMarker, securityEngine, jdbi);
+        List<RadonMultiSectionOutputTable> multiSectionOutputTables = multiSectionValidator.doValidation(parentObj, radonMultiSectionOutputTables);
+
+        safeLogInfo("Entity Line Item Processor Action completed for {}", entityLineItemProcessor.getName());
+        saveMultiSectionOutputDetails(multiSectionOutputTables, jdbi);
+    }
+
+    private void doPromptInferencing(ExecutorService executorService, FileProcessingUtils fileProcessingUtils, CountDownLatch countDownLatch) {
         try {
             for (RadonMultiSectionQueryInputTable input : radonMultiSectionApiInputTables) {
                 executorService.submit(() -> {
@@ -165,12 +175,6 @@ public class EntityLineItemProcessorAction implements IActionExecution {
                 }
             }
         }
-
-        EntitySectionValidator multiSectionValidator = new EntitySectionValidator(actionExecutionAudit, log, aMarker, securityEngine, jdbi);
-        List<RadonMultiSectionOutputTable> multiSectionOutputTables = multiSectionValidator.doValidation(parentObj, radonMultiSectionOutputTables);
-
-        safeLogInfo("Entity Line Item Processor Action completed for {}", entityLineItemProcessor.getName());
-        saveMultiSectionOutputDetails(multiSectionOutputTables, jdbi);
     }
 
     private ExecutorService createExecutorService(int consumerApiCount) {

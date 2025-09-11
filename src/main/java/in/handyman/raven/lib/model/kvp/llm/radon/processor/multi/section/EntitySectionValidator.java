@@ -89,11 +89,15 @@ public class EntitySectionValidator {
                     .collect(Collectors.groupingBy(RadonMultiSectionResponseTable::getSorContainerId, LinkedHashMap::new, Collectors.toList()));
 
             radonMultiSectionResponseTablesByContainer.forEach((sorContainerId, entityList) -> {
+
+                Map<String, Integer> sectionAlias = getSectionAliasInput(sorContainerId);
+                Map<String, List<String>> allowedKeywords = getAllowedKeywords();
+                Map<String, List<String>> blackListedKeywords = getBlackListedKeywords(sorContainerId, actionExecutionAudit.getContext().get("root-pipeline-name"));
+
                 boolean isConsolidateByDocument = getConsolidatedPresentByContainer(sorContainerId, CONTAINER_CONSOLIDATION_FLAG_BY_DOCUMENT);
                 if (isConsolidateByDocument) {
                     String consolidatedPostProcessingScript = getConsolidatedPostProcessingScript(sorContainerId, CONTAINER_CONSOLIDATION_FLAG_BY_DOCUMENT);
-                    doConsolidationByDocumentWithContainerId(consolidatedPostProcessingScript, sorContainerId, entityList, radonMultiSectionOutputTables);
-
+                    doConsolidationByDocumentWithContainerId(consolidatedPostProcessingScript, sorContainerId, entityList, radonMultiSectionOutputTables, sectionAlias, allowedKeywords, blackListedKeywords);
                 } else {
                     entityList.forEach(entity -> {
                         Long tenantId = entity.getTenantId();
@@ -105,7 +109,7 @@ public class EntitySectionValidator {
                         String status = entity.getStatus();
 
                         if ("COMPLETED".equalsIgnoreCase(status)) {
-                            doCompletedFilesResponseBuilder(radonMultiSectionOutputTables, entity, tenantId, originId, paperNo, groupId, processedFilePaths, processId, rootPipelineId);
+                            doCompletedFilesResponseBuilder(radonMultiSectionOutputTables, entity, tenantId, originId, paperNo, groupId, processedFilePaths, processId, rootPipelineId, sectionAlias, allowedKeywords, blackListedKeywords);
                         } else {
                             log.debug(aMarker, "Skipping entity with unexpected status {} for origin {} paper {}", status, maskForLog(originId), paperNo);
                         }
@@ -118,7 +122,7 @@ public class EntitySectionValidator {
     }
 
 
-    private void doConsolidationByDocumentWithContainerId(String consolidatedPostProcessingScript, Long sorContainerId, List<RadonMultiSectionResponseTable> entityList, List<RadonMultiSectionOutputTable> radonMultiSectionOutputTables) {
+    private void doConsolidationByDocumentWithContainerId(String consolidatedPostProcessingScript, Long sorContainerId, List<RadonMultiSectionResponseTable> entityList, List<RadonMultiSectionOutputTable> radonMultiSectionOutputTables, Map<String, Integer> sectionAlias, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) {
         ObjectMapper mapper = new ObjectMapper();
         List<Map<String, Object>> finalConsolidatedList = new ArrayList<>();
         entityList.forEach(radonMultiSectionResponseTable -> {
@@ -128,12 +132,11 @@ public class EntitySectionValidator {
 
             try {
                 if (postprocessingScript != null && !postprocessingScript.isEmpty()) {
-                    String postProcessedJson = getParserPostProcessingResponse(postprocessingScript, totalResponseJson, paperNo);
+                    String postProcessedJson = getParserPostProcessingResponse(postprocessingScript, totalResponseJson, paperNo, allowedKeywords, blackListedKeywords);
 
                     List<Map<String, Object>> postProcessedList = parsePostProcessedJson(postProcessedJson);
                     finalConsolidatedList.addAll(postProcessedList);
-                }
-                else {
+                } else {
                     List<Map<String, Object>> totalInputMap = parseJsonArray(totalResponseJson);
                     Map<String, Object> formattedTotal = formatSectionAliasResponse(paperNo, totalInputMap);
                     finalConsolidatedList.add(formattedTotal);
@@ -145,66 +148,68 @@ public class EntitySectionValidator {
             }
         });
 
-        if (consolidatedPostProcessingScript != null && !consolidatedPostProcessingScript.isEmpty()){
-            ArrayNode validationInput = mapper.valueToTree(finalConsolidatedList);
-            Map<String, Integer> sectionAliasInput = getSectionAliasInput(sorContainerId);
-            Map<String, List<String>> blackListedKeywords = getBlackListedKeywords(sorContainerId, actionExecutionAudit.getContext().get("root-pipeline-name"));
-            String consolidatedJson = getValidationPostProcessingResponse(consolidatedPostProcessingScript, validationInput, sectionAliasInput, blackListedKeywords);
-            try {
-                JsonNode consolidatedRoot = mapper.readTree(consolidatedJson);
-                if (consolidatedRoot.isObject() && !consolidatedRoot.isEmpty()) {
-                    JsonNode responseNode = consolidatedRoot.path("detailedInfo").path("response");
-                    JsonNode paperNo = consolidatedRoot.path("detailedInfo").path("page_no");
-                    String responseJson = responseNode.toString();
-                    int pageNo = paperNo.isInt() ? paperNo.intValue() : Integer.parseInt(paperNo.asText());
+        if (consolidatedPostProcessingScript != null && !consolidatedPostProcessingScript.isEmpty()) {
+            executeDocumentConsolidatePostProcessing(consolidatedPostProcessingScript, sorContainerId, entityList, radonMultiSectionOutputTables, sectionAlias, allowedKeywords, blackListedKeywords, mapper, finalConsolidatedList);
+        }
+    }
 
+    private void executeDocumentConsolidatePostProcessing(String consolidatedPostProcessingScript, Long sorContainerId, List<RadonMultiSectionResponseTable> entityList, List<RadonMultiSectionOutputTable> radonMultiSectionOutputTables, Map<String, Integer> sectionAlias,
+                                                          Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords, ObjectMapper mapper, List<Map<String, Object>> finalConsolidatedList) {
+        ArrayNode validationInput = mapper.valueToTree(finalConsolidatedList);
+        String consolidatedJson = getValidationPostProcessingResponse(consolidatedPostProcessingScript, validationInput, sectionAlias, allowedKeywords, blackListedKeywords);
+        try {
+            JsonNode consolidatedRoot = mapper.readTree(consolidatedJson);
+            if (consolidatedRoot.isObject() && !consolidatedRoot.isEmpty()) {
+                JsonNode responseNode = consolidatedRoot.path("detailedInfo").path("response");
+                JsonNode paperNo = consolidatedRoot.path("detailedInfo").path("page_no");
+                String responseJson = responseNode.toString();
+                int pageNo = paperNo.isInt() ? paperNo.intValue() : Integer.parseInt(paperNo.asText());
 
-                    Optional<RadonMultiSectionResponseTable> optionalEntity = entityList.stream()
-                            .filter(radonMultiSectionResponseTable -> radonMultiSectionResponseTable.getPaperNo().equals(pageNo))
-                            .findFirst();
+                Optional<RadonMultiSectionResponseTable> optionalEntity = entityList.stream()
+                        .filter(radonMultiSectionResponseTable -> radonMultiSectionResponseTable.getPaperNo().equals(pageNo))
+                        .findFirst();
 
-                    optionalEntity.ifPresent(entity -> {
-                        Long tenantId = entity.getTenantId();
-                        Long groupId = entity.getGroupId();
-                        String originId = entity.getOriginId();
-                        String processedFilePaths = entity.getInputFilePath();
-                        Long processId = entity.getProcessId();
-                        Long rootPipelineId = entity.getRootPipelineId();
+                optionalEntity.ifPresent(entity -> {
+                    Long tenantId = entity.getTenantId();
+                    Long groupId = entity.getGroupId();
+                    String originId = entity.getOriginId();
+                    String processedFilePaths = entity.getInputFilePath();
+                    Long processId = entity.getProcessId();
+                    Long rootPipelineId = entity.getRootPipelineId();
 
-                        radonMultiSectionOutputTables.add(RadonMultiSectionOutputTable.builder()
-                                .createdOn(entity.getCreatedOn())
-                                .createdUserId(tenantId)
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .lastUpdatedUserId(tenantId)
-                                .originId(originId)
-                                .paperNo(pageNo)
-                                .totalResponseJson(encryptRequestResponse(responseJson))
-                                .groupId(groupId)
-                                .inputFilePath(processedFilePaths)
-                                .actionId(actionExecutionAudit.getActionId())
-                                .tenantId(tenantId)
-                                .processId(processId)
-                                .rootPipelineId(rootPipelineId)
-                                .process(entity.getProcess())
-                                .batchId(entity.getBatchId())
-                                .modelRegistry(entity.getModelRegistry())
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .stage(entity.getMessage())
-                                .category(entity.getCategory())
-                                .message("Radon kvp action macro completed")
-                                .request(encryptRequestResponse(entity.getRequest()))
-                                .response(encryptRequestResponse(entity.getResponse()))
-                                .sorContainerId(sorContainerId)
-                                .endpoint(String.valueOf(entity.getEndpoint()))
-                                .build());
-                    });
-                } else {
-                    log.info("Consolidated JSON is an empty object");
-                }
-            } catch (JsonProcessingException e) {
-                log.error(aMarker, "Error parsing consolidated JSON", e);
-                HandymanException.insertException("Error parsing consolidated JSON", new HandymanException(e), actionExecutionAudit);
+                    radonMultiSectionOutputTables.add(RadonMultiSectionOutputTable.builder()
+                            .createdOn(entity.getCreatedOn())
+                            .createdUserId(tenantId)
+                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                            .lastUpdatedUserId(tenantId)
+                            .originId(originId)
+                            .paperNo(pageNo)
+                            .totalResponseJson(encryptRequestResponse(responseJson))
+                            .groupId(groupId)
+                            .inputFilePath(processedFilePaths)
+                            .actionId(actionExecutionAudit.getActionId())
+                            .tenantId(tenantId)
+                            .processId(processId)
+                            .rootPipelineId(rootPipelineId)
+                            .process(entity.getProcess())
+                            .batchId(entity.getBatchId())
+                            .modelRegistry(entity.getModelRegistry())
+                            .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                            .stage(entity.getMessage())
+                            .category(entity.getCategory())
+                            .message("Radon kvp action macro completed")
+                            .request(encryptRequestResponse(entity.getRequest()))
+                            .response(encryptRequestResponse(entity.getResponse()))
+                            .sorContainerId(sorContainerId)
+                            .endpoint(String.valueOf(entity.getEndpoint()))
+                            .build());
+                });
+            } else {
+                log.info("Consolidated JSON is an empty object");
             }
+        } catch (JsonProcessingException e) {
+            log.error(aMarker, "Error parsing consolidated JSON", e);
+            HandymanException.insertException("Error parsing consolidated JSON", new HandymanException(e), actionExecutionAudit);
         }
     }
 
@@ -280,8 +285,10 @@ public class EntitySectionValidator {
             Long groupId,
             String processedFilePaths,
             Long processId,
-            Long rootPipelineId
-    ) {
+            Long rootPipelineId,
+            Map<String, Integer> sectionAlias,
+            Map<String, List<String>> allowedKeywords,
+            Map<String, List<String>> blackListedKeywords) {
         String totalResponseJson = entity.getTotalResponseJson();
         String formattedJsonString = formattedJsonString(totalResponseJson);
         String postProcessingScript = entity.getPostprocessingScript();
@@ -293,7 +300,7 @@ public class EntitySectionValidator {
             return;
         }
 
-        String postProcessedJson = getParserPostProcessingResponse(postProcessingScript, formattedJsonString, entity.getPaperNo());
+        String postProcessedJson = getParserPostProcessingResponse(postProcessingScript, formattedJsonString, entity.getPaperNo(), allowedKeywords, blackListedKeywords);
 
         if (postProcessedJson == null) {
             log.info(aMarker, "Post-processing produced null result for rootPipelineId={}, origin={}", entity.getRootPipelineId(), maskForLog(originId));
@@ -302,7 +309,7 @@ public class EntitySectionValidator {
         }
 
         try {
-            totalResponseJson = parseAndPossiblyConsolidateResponse(entity, postProcessedJson, sorContainerId);
+            totalResponseJson = parseAndPossiblyConsolidateResponse(entity, postProcessedJson, sorContainerId, sectionAlias, allowedKeywords, blackListedKeywords);
         } catch (JsonProcessingException e) {
             log.error(aMarker, "Error parsing post-processed JSON for rootPipelineId={}", entity.getRootPipelineId(), e);
             HandymanException.insertException("Error parsing post-processed JSON", new HandymanException(e), actionExecutionAudit);
@@ -312,7 +319,7 @@ public class EntitySectionValidator {
     }
 
 
-    private String parseAndPossiblyConsolidateResponse(RadonMultiSectionResponseTable entity, String postProcessedJson, Long sorContainerId) throws JsonProcessingException {
+    private String parseAndPossiblyConsolidateResponse(RadonMultiSectionResponseTable entity, String postProcessedJson, Long sorContainerId, Map<String, Integer> sectionAlias, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) throws JsonProcessingException {
         JsonNode rootNode = MAPPER.readTree(postProcessedJson);
         if (!rootNode.isArray()) {
             return postProcessedJson;
@@ -322,22 +329,19 @@ public class EntitySectionValidator {
         boolean isConsolidatedPresent = getConsolidatedPresentByContainer(sorContainerId, CONTAINER_CONSOLIDATION_FLAG_BY_PAGE);
 
         if (isConsolidatedPresent) {
-            return handleConsolidatedResponse(sorContainerId, arrayNode);
+            return handleConsolidatedResponse(sorContainerId, arrayNode, sectionAlias, allowedKeywords, blackListedKeywords);
         } else {
             return extractResponseFromArray(arrayNode);
         }
     }
 
-    private String handleConsolidatedResponse(Long sorContainerId, ArrayNode arrayNode) throws JsonProcessingException {
+    private String handleConsolidatedResponse(Long sorContainerId, ArrayNode arrayNode, Map<String, Integer> sectionAlias, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) throws JsonProcessingException {
         String consolidatedScript = getConsolidatedPostProcessingScript(sorContainerId, CONTAINER_CONSOLIDATION_FLAG_BY_PAGE);
         if (isNullOrEmpty(consolidatedScript)) {
             return "{}";
         }
 
-        Map<String, Integer> sectionAliasInput = getSectionAliasInput(sorContainerId);
-        Map<String, List<String>> blackListedKeywords = getBlackListedKeywords(sorContainerId, actionExecutionAudit.getContext().get("root-pipeline-name"));
-
-        String consolidatedJson = getValidationPostProcessingResponse(consolidatedScript, arrayNode, sectionAliasInput, blackListedKeywords);
+        String consolidatedJson = getValidationPostProcessingResponse(consolidatedScript, arrayNode, sectionAlias, allowedKeywords, blackListedKeywords);
 
         if (isNullOrEmpty(consolidatedJson) || "{}".equals(consolidatedJson.trim())) {
             return "{}";
@@ -413,7 +417,7 @@ public class EntitySectionValidator {
     }
 
 
-    private String getParserPostProcessingResponse(String sourceCode, String sourceJson, Integer paperNo) {
+    private String getParserPostProcessingResponse(String sourceCode, String sourceJson, Integer paperNo, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) {
         try {
             Interpreter interpreter = new Interpreter();
             interpreter.eval(sourceCode);
@@ -427,10 +431,16 @@ public class EntitySectionValidator {
             interpreter.eval(classInstantiation);
             log.info("Class instantiated: {} for parsing", classInstantiation);
 
-            interpreter.set("inputMap", sourceJson);
+            JSONObject validationInputJson = new JSONObject(sourceJson);
+            JSONObject allowedKeywordsJson = new JSONObject(allowedKeywords);
+            JSONObject blacklistedJson = new JSONObject(blackListedKeywords);
+
+            interpreter.set("inputMap", validationInputJson);
+            interpreter.set("allowedKeywords", allowedKeywordsJson);
+            interpreter.set("blackListedKeywords", blacklistedJson);
             interpreter.set("pageNo", paperNo);
 
-            interpreter.eval("resultMap = mapper.multiSectionTransformer(inputMap, pageNo);");
+            interpreter.eval("resultMap = mapper.multiSectionTransformer(inputMap, allowedKeywords, blackListedKeywords, pageNo);");
 
             Object result = interpreter.get("resultMap");
             if (result instanceof String) {
@@ -452,7 +462,7 @@ public class EntitySectionValidator {
         return null;
     }
 
-    private String getValidationPostProcessingResponse(String sourceCode, ArrayNode validationInput, Map<String, Integer> sectionAliasInput, Map<String, List<String>> blackListedKeywords) {
+    private String getValidationPostProcessingResponse(String sourceCode, ArrayNode validationInput, Map<String, Integer> sectionAliasInput, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) {
         try {
             Interpreter interpreter = new Interpreter();
             interpreter.eval(sourceCode);
@@ -467,13 +477,15 @@ public class EntitySectionValidator {
 
             JSONArray validationInputJson = new JSONArray(validationInput.toString());
             JSONObject sectionAliasJson = new JSONObject(sectionAliasInput);
-            JSONObject blacklistedJson = new JSONObject(blackListedKeywords);
+            JSONObject allowedKeywordsJson = new JSONObject(blackListedKeywords);
+            JSONObject blackListedKeywordsJson = new JSONObject(blackListedKeywords);
 
-            interpreter.set("validationInput", validationInputJson);
+            interpreter.set("inputMap", validationInputJson);
             interpreter.set("sectionAliasInput", sectionAliasJson);
-            interpreter.set("blacklistedKeywords", blacklistedJson);
+            interpreter.set("allowedKeywords", allowedKeywordsJson);
+            interpreter.set("blackListedKeywords", blackListedKeywordsJson);
 
-            interpreter.eval("resultMap = mapper.process(validationInput, sectionAliasInput, blacklistedKeywords);");
+            interpreter.eval("resultMap = mapper.process(inputMap, sectionAliasInput, allowedKeywords, blackListedKeywords);");
 
             Object result = interpreter.get("resultMap");
             if (result instanceof String) {
