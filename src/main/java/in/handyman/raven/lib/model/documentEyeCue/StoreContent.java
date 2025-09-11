@@ -14,10 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -33,7 +33,6 @@ public class StoreContent {
 
     private static final String KEY_STREAMING_URL = "storecontent.streaming.url";
     private static final String KEY_NONSTREAMING_URL = "storecontent.nonstreaming.url";
-    private static final String KEY_API_KEY = "storecontent.api.key";
 
     private static final String BASE_URL_STREAM = "BASE_URL_STORECONTENTSTREAM";
     private static final String BASE_URL_NONSTREAM = "BASE_URL_STORECONTENTNONSTREAM";
@@ -42,6 +41,9 @@ public class StoreContent {
     private static final String DEFAULT_MIME_TYPE = "application/pdf";
     private static final String VERSIONING_FLAG = "Y";
     private static final String CONTENT_KEY_TYPE = "DCN";
+    private static final String CHANNEL_TYPE_VALUE = "SMRTINT";
+    private static final String DOC_TYPE_VALUE = "LETTER";
+    private static final String PLAN_VALUE         = "SMARTINTAKE_WC_CLAIMS";
 
     private static final String SQL_INSERT_AUDIT =
             "INSERT INTO doc_eyecue.storecontent_upload_audit " +
@@ -51,6 +53,7 @@ public class StoreContent {
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, now(), ?)";
 
     public StoreContentResponseDto execute(String filePath,
+                                           String processedPdfBase64,
                                            String repository,
                                            String applicationId,
                                            DocumentEyeCueInputTable entity,
@@ -68,8 +71,8 @@ public class StoreContent {
             return null;
         }
         log.info("{} - File found: {}", MARKER, filePath);
-        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
 
+        try {
             String envUrlStream = action.getContext().get(KEY_STREAMING_URL);
             String envUrlNonStream = action.getContext().get(KEY_NONSTREAMING_URL);
 
@@ -82,20 +85,22 @@ public class StoreContent {
             requestDto.setRepository(Repository.valueOf(repository));
             requestDto.setApplicationID(applicationId);
 
-
             HashMap<String, String> contentMetadata = new HashMap<>();
             String updatedFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
-                    ? entity.getFileName() + "_updated"
-                    : file.getName() + "_updated";
+                    ? entity.getFileName()
+                    : file.getName();
             contentMetadata.put("FileName", updatedFileName);
             contentMetadata.put("MimeType",
                     Files.probeContentType(file.toPath()) != null
                             ? Files.probeContentType(file.toPath())
                             : DEFAULT_MIME_TYPE);
+            contentMetadata.put("CHANNEL_TYPE", CHANNEL_TYPE_VALUE);
+            contentMetadata.put("DocType", DOC_TYPE_VALUE);
             requestDto.setContentMetaData(contentMetadata);
 
             HashMap<String, String> additionalParams = new HashMap<>();
             additionalParams.put("versioning", VERSIONING_FLAG);
+
             if (entity != null && entity.getDocumentId() != null) {
                 additionalParams.put("contentkey", entity.getDocumentId());
             } else {
@@ -104,18 +109,42 @@ public class StoreContent {
                 log.warn(MARKER, warnMsg);
                 additionalParams.put("contentkey", "");
             }
+
             additionalParams.put("contentkeytype", CONTENT_KEY_TYPE);
+            additionalParams.put("plan", PLAN_VALUE);
             requestDto.setAddtionalParams(additionalParams);
 
             HashMap<String, String> headers = new HashMap<>();
             headers.put("apikey", ApiKeyProvider.getDecryptedApiKey(action));
             headers.put("Accept", "application/json;charset=UTF-8");
-            String bearerToken = BearerTokenProvider.fetchBearerToken(action);
-            if (bearerToken != null && !bearerToken.isBlank()) {
-                headers.put("Authorization", "Bearer " + bearerToken);
-            }
+             String bearerToken = BearerTokenProvider.fetchBearerToken(action);
+             if (bearerToken != null && !bearerToken.isBlank()) {
+                 headers.put("Authorization", "Bearer " + bearerToken);
+             }
             requestDto.setHeaderMap(headers);
-            requestDto.setContentData(bis);
+
+            if (processedPdfBase64 != null && !processedPdfBase64.isBlank()) {
+                InputStream base64Stream = new ByteArrayInputStream(processedPdfBase64.getBytes(StandardCharsets.UTF_8));
+                requestDto.setContentData(base64Stream);
+
+                byte[] decodedBytes = Base64.getDecoder().decode(processedPdfBase64);
+                requestDto.setSize(decodedBytes.length);
+
+                log.info(MARKER, "Using processedPdfBase64 for StoreContent upload.");
+            } else if (file.exists() && file.isFile()) {
+                byte[] fileBytes = Files.readAllBytes(file.toPath());
+                String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
+
+                InputStream base64Stream = new ByteArrayInputStream(encodedFile.getBytes(StandardCharsets.UTF_8));
+                requestDto.setContentData(base64Stream);
+                requestDto.setSize(fileBytes.length);
+
+                log.info(MARKER, "Using file content for StoreContent upload.");
+            } else {
+                String errorMessage = "Neither processedPdfBase64 nor valid file available for StoreContent upload.";
+                HandymanException.insertException(errorMessage, new HandymanException(errorMessage), action);
+                log.error(MARKER, errorMessage);
+            }
 
             Acmastorecontentclient client = AcmastorecontentclientFactory.createInstance(clientProps);
             responseDto = client.storeContent(requestDto);
@@ -160,6 +189,7 @@ public class StoreContent {
                     responseDto.getMessage(),
                     responseDto.getContentID(),
                     entity.getProcessId(),
+                    entity.getRootPipelineId(),
                     entity.getBatchId(),
                     documentEyeCue.getEndpoint()
             ));
