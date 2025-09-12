@@ -16,6 +16,7 @@ import org.slf4j.MarkerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Properties;
@@ -201,9 +202,11 @@ public class StoreContent {
                     responseDto.getStatus(),
                     responseDto.getMessage(),
                     responseDto.getContentID(),
+                    LocalDateTime.now(),
                     entity.getProcessId(),
                     entity.getRootPipelineId(),
                     entity.getBatchId(),
+                    LocalDateTime.now(),
                     endpointUrl
             ));
 
