@@ -162,7 +162,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                     log.debug(aMarker, "Cleaned answer: '{}', Cleaned extracted text length: {}", cleanedAnswer, cleanedExtractedText.length());
 
                     // Get adapter type from input (default to "name" if not specified)
-                    OcrComparisonAdapter adapter = OcrComparisonAdapterFactory.getAdapter("alpha");
+                    OcrComparisonAdapter adapter = OcrComparisonAdapterFactory.getAdapter(input.getAdaptorCode());
                     log.debug(aMarker, "Using adapter: {} for sorItemName={}", adapter.getName(), sorItemName);
 
                     // Use adapter for comparison
@@ -352,6 +352,7 @@ public class OcrTextComparatorAction implements IActionExecution {
         private Boolean isOcrFieldComparable;
         private String extractedText;
         private String encryptionPolicy;
-        private String adapterType;
+        private String adaptorCode;
+
     }
 }

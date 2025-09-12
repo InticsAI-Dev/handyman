@@ -7,10 +7,9 @@ public class OcrComparisonAdapterFactory {
     private static final Map<String, OcrComparisonAdapter> registry = new HashMap<>();
 
     static {
-            register(new NameComparisonAdaptor());  // Assuming corrected
+            register(new NameComparisonAdaptor());
             register(new AddressAdaptor());
-            register(new IdAdaptor());  // Add this for member_id
-            // Add more default adapters as needed\
+            register(new IdAdaptor());
     }
 
     public static void register(OcrComparisonAdapter adapter) {
@@ -20,6 +19,6 @@ public class OcrComparisonAdapterFactory {
 
 
     public static OcrComparisonAdapter getAdapter(String type) {
-        return registry.getOrDefault(type.toLowerCase(), registry.get("alpha"));
+        return registry.getOrDefault(type.toLowerCase(), registry.get("NAME_ALPHA"));
     }
 }

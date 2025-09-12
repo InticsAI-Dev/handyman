@@ -1,15 +1,12 @@
 package in.handyman.raven.lib.adapters.ocr;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 
 public class AddressAdaptor implements OcrComparisonAdapter {
 
@@ -37,31 +34,9 @@ public class AddressAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Normalize: trim, lowercase, remove punctuation, standardize address terms
-        String cleanedExpected = normalizeText(expectedValue);
-        String cleanedExtracted = normalizeText(extractedText);
-
-        // Split into tokens (words)
-        String[] tokens = cleanedExtracted.split("\\s+");
-        List<String> candidates = new ArrayList<>();
-
-        // Generate candidates: single words, 2-4 word phrases (common for addresses: street name, number, etc.)
-        for (int i = 0; i < tokens.length; i++) {
-            if (!tokens[i].isEmpty()) {
-                candidates.add(tokens[i]); // single word (e.g., "Main")
-                if (i < tokens.length - 1 && !tokens[i].isEmpty() && !tokens[i + 1].isEmpty()) {
-                    candidates.add(tokens[i] + " " + tokens[i + 1]); // two-word (e.g., "Main Street")
-                }
-                if (i < tokens.length - 2 && !tokens[i].isEmpty() && !tokens[i + 1].isEmpty() && !tokens[i + 2].isEmpty()) {
-                    candidates.add(tokens[i] + " " + tokens[i + 1] + " " + tokens[i + 2]); // three-word (e.g., "123 Main Street")
-                }
-                if (i < tokens.length - 3 && !tokens[i].isEmpty() && !tokens[i + 1].isEmpty() && !tokens[i + 2].isEmpty() && !tokens[i + 3].isEmpty()) {
-                    candidates.add(tokens[i] + " " + tokens[i + 1] + " " + tokens[i + 2] + " " + tokens[i + 3]); // four-word (e.g., "123 Main Street Apt")
-                }
-            }
-        }
-
-        String candidatesList = candidates.stream().collect(Collectors.joining(","));
+        // Extract all potential address-like strings from OCR text
+        List<String> candidates = extractAllAddressCandidates(extractedText);
+        String candidatesList = String.join(";", candidates);
 
         if (candidates.isEmpty()) {
             return OcrComparisonResult.builder()
@@ -73,74 +48,119 @@ public class AddressAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Find best match using Jaro-Winkler
-        double bestScoreDouble = 0.0;
-        String bestMatchCandidate = cleanedExpected;
+        // Find best match using pure fuzzy matching
+        BestMatchResult bestMatch = findBestMatch(expectedValue, candidates);
 
-        for (String candidate : candidates) {
-            double score = SIMILARITY.apply(cleanedExpected, candidate);
-            if (score > bestScoreDouble) {
-                bestScoreDouble = score;
-                bestMatchCandidate = candidate;
-            }
-        }
+        boolean isMatch = bestMatch.score >= threshold;
+        int finalScore = (int) (bestMatch.score * 100);
 
-        int bestScore = (int) (bestScoreDouble * 100);
-        boolean isMatch = bestScoreDouble > threshold;
-
-        // Restore original casing for best match
-        String finalBestMatch = isMatch ? restoreOriginalCasing(bestMatchCandidate, extractedText) : expectedValue;
-
-        String method = "JARO_WINKLER_ADDRESS";
-        if (!isMatch) {
-            method = bestScore == 0 ? "NO_MATCH_ADDRESS" : method;
+        String method = isMatch ? "ADDRESS_MATCH" : "NO_ADDRESS_MATCH";
+        if (isMatch && bestMatch.score == 1.0) {
+            method = "EXACT_ADDRESS_MATCH";
         }
 
         return OcrComparisonResult.builder()
                 .isMatch(isMatch)
-                .bestMatch(finalBestMatch)
-                .bestScore(bestScore)
+                .bestMatch(bestMatch.matchedText)
+                .bestScore(finalScore)
                 .matchingMethod(method)
-                .candidatesList(candidatesList)
+                .candidatesList(candidatesList + "|SCORE:" + String.format("%.2f", bestMatch.score))
                 .build();
+    }
+
+    /**
+     * Extracts all potential address-like strings from text
+     */
+    private List<String> extractAllAddressCandidates(String text) {
+        List<String> candidates = new ArrayList<>();
+
+        // Extract lines (common way addresses appear in OCR)
+        String[] lines = text.split("\n");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (isPotentialAddress(trimmed)) {
+                candidates.add(trimmed);
+            }
+        }
+
+        // Extract phrases that look like addresses within lines
+        extractAddressPhrases(text, candidates);
+
+        return candidates.stream()
+                .distinct()
+                .filter(candidate -> candidate.length() >= 5) // Minimum reasonable address length
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Checks if text could be an address (very permissive)
+     */
+    private boolean isPotentialAddress(String text) {
+        if (text == null || text.length() < 5) return false;
+
+        // Very basic check: contains both letters and numbers, or looks like a street name
+        boolean hasLetters = text.matches(".*[A-Za-z]+.*");
+        boolean hasNumbers = text.matches(".*\\d+.*");
+        boolean hasSpaces = text.contains(" ");
+
+        return (hasLetters && hasNumbers) || (hasLetters && hasSpaces);
+    }
+
+    /**
+     * Extracts address-like phrases from within text lines
+     */
+    private void extractAddressPhrases(String text, List<String> candidates) {
+        // Look for patterns that might be addresses within longer text
+        Pattern addressLikePattern = Pattern.compile(
+                "\\b(?:\\d+[A-Za-z0-9]*\\s+)?[A-Za-z0-9\\s]{3,50}\\b",
+                Pattern.CASE_INSENSITIVE
+        );
+
+        Matcher matcher = addressLikePattern.matcher(text);
+        while (matcher.find()) {
+            String phrase = matcher.group().trim();
+            if (isPotentialAddress(phrase) && !phrase.contains("\n")) {
+                candidates.add(phrase);
+            }
+        }
+    }
+
+    /**
+     * Finds the best match using pure fuzzy matching
+     */
+    private BestMatchResult findBestMatch(String expected, List<String> candidates) {
+        double bestScore = 0.0;
+        String bestCandidate = expected;
+        String normalizedExpected = expected.toLowerCase();
+
+        for (String candidate : candidates) {
+            String normalizedCandidate = candidate.toLowerCase();
+            double score = SIMILARITY.apply(normalizedExpected, normalizedCandidate);
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = candidate;
+            }
+
+            if (score == 1.0) {
+                break;
+            }
+        }
+
+        BestMatchResult result = new BestMatchResult();
+        result.score = bestScore;
+        result.matchedText = bestCandidate;
+        return result;
     }
 
     @Override
     public String getName() {
-        return "member_address_line1";
+        return "ADDR_ALPHANUMERIC";
     }
 
-    /**
-     * Normalizes text for address comparison by trimming, converting to lowercase,
-     * removing punctuation, and standardizing common address terms.
-     */
-    private String normalizeText(String text) {
-        if (text == null) {
-            return "";
-        }
-        String normalized = text.trim().toLowerCase();
-        normalized = normalized.replaceAll("[^A-Za-z0-9\\s]", ""); // Remove punctuation
-        normalized = normalized.replaceAll("\\bst\\b", "street")
-                .replaceAll("\\bave\\b", "avenue")
-                .replaceAll("\\brd\\b", "road")
-                .replaceAll("\\bblvd\\b", "boulevard")
-                .replaceAll("\\s+", " "); // Normalize spaces
-        return normalized.trim();
-    }
-
-    /**
-     * Restores the original casing from the extractedText for the best match candidate.
-     */
-    private String restoreOriginalCasing(String lowerCandidate, String originalExtracted) {
-        if (originalExtracted == null || lowerCandidate.isEmpty()) {
-            return lowerCandidate;
-        }
-        String lowerExtracted = originalExtracted.toLowerCase();
-        int index = lowerExtracted.indexOf(lowerCandidate);
-        if (index != -1) {
-            int end = index + lowerCandidate.length();
-            return originalExtracted.substring(index, end);
-        }
-        return lowerCandidate;
+    // Helper class
+    private static class BestMatchResult {
+        double score;
+        String matchedText;
     }
 }

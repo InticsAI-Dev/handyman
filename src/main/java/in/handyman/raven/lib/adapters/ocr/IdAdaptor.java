@@ -1,16 +1,17 @@
 package in.handyman.raven.lib.adapters.ocr;
 
+import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-
 public class IdAdaptor implements OcrComparisonAdapter {
 
-    private static final Pattern MEMBER_ID_PATTERN = Pattern.compile("\\b[A-Z0-9]{6,12}\\b"); // 6-12 alphanumeric chars
+    private static final JaroWinklerSimilarity SIMILARITY = new JaroWinklerSimilarity();
 
     @Override
     public OcrComparisonResult compareValues(String expectedValue, String extractedText, double threshold) {
@@ -34,20 +35,14 @@ public class IdAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Normalize: trim, uppercase, remove non-alphanumeric characters
-        String cleanedExpected = normalizeText(expectedValue);
-        String cleanedExtracted = normalizeText(extractedText);
+        // Split expected values by comma and clean them
+        List<String> expectedValues = splitByCommaAndClean(expectedValue);
 
-        // Extract potential member IDs using regex
-        Matcher matcher = MEMBER_ID_PATTERN.matcher(cleanedExtracted);
-        List<String> candidates = new ArrayList<>();
-        while (matcher.find()) {
-            candidates.add(matcher.group());
-        }
+        // Extract all individual words from OCR text (including comma-separated values)
+        List<String> ocrWords = extractAllWordsAndPhrases(extractedText);
+        String candidatesList = String.join(",", ocrWords);
 
-        String candidatesList = candidates.stream().collect(Collectors.joining(","));
-
-        if (candidates.isEmpty()) {
+        if (ocrWords.isEmpty()) {
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -57,65 +52,246 @@ public class IdAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Exact match for member IDs
-        double bestScoreDouble = 0.0;
-        String bestMatchCandidate = cleanedExpected;
+        // Find best matches for each expected value against all OCR words/phrases
+        List<MatchResult> allMatches = new ArrayList<>();
+
+        for (String expected : expectedValues) {
+            String cleanedExpected = expected.toLowerCase().trim();
+            MatchResult bestMatch = findBestMatch(cleanedExpected, ocrWords, extractedText);
+            bestMatch.originalExpected = expected; // Store original expected value
+            allMatches.add(bestMatch);
+        }
+
+        // Determine overall result
+        return buildFinalResult(allMatches, expectedValue, candidatesList, threshold);
+    }
+
+    /**
+     * Splits text by comma and cleans each part
+     */
+    private List<String> splitByCommaAndClean(String text) {
+        return Arrays.stream(text.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Extracts all individual words and phrases from text (dynamic)
+     */
+    private List<String> extractAllWordsAndPhrases(String text) {
+        List<String> wordsAndPhrases = new ArrayList<>();
+
+        if (text == null || text.trim().isEmpty()) {
+            return wordsAndPhrases;
+        }
+
+        // First, split by comma to get phrases
+        List<String> commaSeparated = splitByCommaAndClean(text);
+        wordsAndPhrases.addAll(commaSeparated);
+
+        // Then extract all individual words
+        List<String> individualWords = extractAllWords(text);
+        wordsAndPhrases.addAll(individualWords);
+
+        // Also extract common multi-word patterns
+        extractCommonPatterns(text, wordsAndPhrases);
+
+        return wordsAndPhrases.stream()
+                .distinct()
+                .filter(s -> s.length() >= 2) // Filter out very short strings
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Extracts all individual words from text
+     */
+    private List<String> extractAllWords(String text) {
+        List<String> words = new ArrayList<>();
+
+        if (text == null || text.trim().isEmpty()) {
+            return words;
+        }
+
+        // Use regex to extract words (alphanumeric sequences)
+        Pattern wordPattern = Pattern.compile("[\\p{L}\\p{N}'-]+");
+        Matcher matcher = wordPattern.matcher(text.toLowerCase());
+
+        while (matcher.find()) {
+            String word = matcher.group().trim();
+            if (!word.isEmpty()) {
+                words.add(word);
+            }
+        }
+
+        return words;
+    }
+
+    /**
+     * Extracts common multi-word patterns from text
+     */
+    private void extractCommonPatterns(String text, List<String> results) {
+        String lowerText = text.toLowerCase();
+
+        // Extract 2-word phrases
+        Pattern twoWordPattern = Pattern.compile("\\b[\\p{L}\\p{N}'-]+\\s+[\\p{L}\\p{N}'-]+\\b");
+        Matcher matcher = twoWordPattern.matcher(lowerText);
+        while (matcher.find()) {
+            results.add(matcher.group());
+        }
+
+        // Extract 3-word phrases
+        Pattern threeWordPattern = Pattern.compile("\\b[\\p{L}\\p{N}'-]+\\s+[\\p{L}\\p{N}'-]+\\s+[\\p{L}\\p{N}'-]+\\b");
+        matcher = threeWordPattern.matcher(lowerText);
+        while (matcher.find()) {
+            results.add(matcher.group());
+        }
+    }
+
+    /**
+     * Finds the best match for a single expected value against all OCR words/phrases
+     */
+    private MatchResult findBestMatch(String expectedValue, List<String> candidates, String originalExtracted) {
+        double bestScore = 0.0;
+        String bestCandidate = expectedValue;
+        String bestOriginalCandidate = expectedValue;
 
         for (String candidate : candidates) {
-            if (candidate.equals(cleanedExpected)) {
-                bestScoreDouble = 1.0;
-                bestMatchCandidate = candidate;
+            double score = SIMILARITY.apply(expectedValue, candidate);
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = candidate;
+                bestOriginalCandidate = findOriginalInText(candidate, originalExtracted);
+            }
+
+            // Early exit if we find a perfect match
+            if (score == 1.0) {
                 break;
             }
         }
 
-        int bestScore = (int) (bestScoreDouble * 100);
-        boolean isMatch = bestScoreDouble >= threshold;
+        MatchResult result = new MatchResult();
+        result.score = bestScore;
+        result.candidate = bestCandidate;
+        result.restoredMatch = bestOriginalCandidate;
 
-        // Restore original casing for best match
-        String finalBestMatch = isMatch ? restoreOriginalCasing(bestMatchCandidate, extractedText) : expectedValue;
+        return result;
+    }
 
-        String method = isMatch ? "REGEX_MEMBER_ID" : "NO_MATCH_MEMBER_ID";
+    /**
+     * Finds the original text in the extracted text with proper casing
+     */
+    private String findOriginalInText(String searchText, String originalText) {
+        if (originalText == null || searchText == null || searchText.isEmpty()) {
+            return searchText;
+        }
+
+        // Use regex to find the exact text with original casing
+        Pattern pattern = Pattern.compile("\\b" + Pattern.quote(searchText) + "\\b", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(originalText);
+
+        if (matcher.find()) {
+            return originalText.substring(matcher.start(), matcher.end());
+        }
+
+        return searchText;
+    }
+
+    private OcrComparisonResult buildFinalResult(List<MatchResult> matches, String originalExpected,
+                                                 String candidatesList, double threshold) {
+        // Check if all expected values have a match above threshold
+        boolean allMatch = matches.stream().allMatch(match -> match.score >= threshold);
+
+        // Check if any expected value has a match above threshold
+        boolean anyMatch = matches.stream().anyMatch(match -> match.score >= threshold);
+
+        // Get only matched values above threshold
+        List<MatchResult> matchedValues = matches.stream()
+                .filter(match -> match.score >= threshold)
+                .collect(Collectors.toList());
+
+        // Build result based on matching strategy
+        String method = determineMatchingMethod(matches, threshold);
+
+        // Create a summary of all matches for detailed analysis
+        String matchSummary = matches.stream()
+                .map(match -> String.format("%s:%.2f->%s", match.originalExpected, match.score, match.candidate))
+                .collect(Collectors.joining("|"));
+
+        String finalBestMatch;
+        int finalScore;
+
+        if (anyMatch) {
+            // Reconstruct the best match using comma separation for multiple values
+            finalBestMatch = reconstructCommaSeparatedMatch(matches, threshold);
+
+            // Calculate average score
+            double avgScore = matchedValues.stream()
+                    .mapToDouble(match -> match.score)
+                    .average()
+                    .orElse(0.0);
+            finalScore = (int) (avgScore * 100);
+        } else {
+            // No matches found, return original expected
+            finalBestMatch = originalExpected;
+            finalScore = matches.stream()
+                    .mapToInt(match -> (int) (match.score * 100))
+                    .max()
+                    .orElse(0);
+        }
 
         return OcrComparisonResult.builder()
-                .isMatch(isMatch)
+                .isMatch(allMatch)
                 .bestMatch(finalBestMatch)
-                .bestScore(bestScore)
+                .bestScore(finalScore)
                 .matchingMethod(method)
-                .candidatesList(candidatesList)
+                .candidatesList(candidatesList + "|MATCHES:" + matchSummary)
                 .build();
+    }
+
+    /**
+     * Reconstructs comma-separated match preserving original order
+     */
+    private String reconstructCommaSeparatedMatch(List<MatchResult> matches, double threshold) {
+        List<String> matchedParts = new ArrayList<>();
+
+        for (MatchResult match : matches) {
+            if (match.score >= threshold) {
+                matchedParts.add(match.restoredMatch);
+            } else {
+                matchedParts.add(match.originalExpected);
+            }
+        }
+
+        return String.join(", ", matchedParts);
+    }
+
+    private String determineMatchingMethod(List<MatchResult> matches, double threshold) {
+        long matchCount = matches.stream()
+                .filter(match -> match.score >= threshold)
+                .count();
+        long totalCount = matches.size();
+
+        if (matchCount == 0) {
+            return "NO_MATCH";
+        } else if (matchCount == totalCount) {
+            return "ALL_MATCH";
+        } else {
+            return "PARTIAL_MATCH_" + matchCount + "_OF_" + totalCount;
+        }
     }
 
     @Override
     public String getName() {
-        return "member_id";
+        return "ID_ALPHANUMERIC";
     }
 
-    /**
-     * Normalizes text for member ID comparison by trimming, converting to uppercase,
-     * and removing non-alphanumeric characters.
-     */
-    private String normalizeText(String text) {
-        if (text == null) {
-            return "";
-        }
-        return text.trim().toUpperCase().replaceAll("[^A-Za-z0-9]", "");
-    }
-
-    /**
-     * Restores the original casing from the extractedText for the best match candidate.
-     */
-    private String restoreOriginalCasing(String candidate, String originalExtracted) {
-        if (originalExtracted == null || candidate.isEmpty()) {
-            return candidate;
-        }
-        String lowerExtracted = originalExtracted.toUpperCase(); // Member IDs typically uppercase
-        int index = lowerExtracted.indexOf(candidate);
-        if (index != -1) {
-            int end = index + candidate.length();
-            return originalExtracted.substring(index, end);
-        }
-        return candidate;
+    // Helper class to store match results
+    private static class MatchResult {
+        double score = 0.0;
+        String candidate = "";
+        String restoredMatch = "";
+        String originalExpected = "";
     }
 }
-
