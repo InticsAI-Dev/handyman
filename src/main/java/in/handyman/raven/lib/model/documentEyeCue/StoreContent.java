@@ -190,6 +190,7 @@ public class StoreContent {
                                        ActionExecutionAudit action) {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(documentEyeCue.getResourceConn());
+            String endpointUrl = documentEyeCue.getEndpoint();
 
             jdbi.useHandle(handle -> handle.execute(SQL_INSERT_AUDIT,
                     entity.getOriginId(),
@@ -203,7 +204,7 @@ public class StoreContent {
                     entity.getProcessId(),
                     entity.getRootPipelineId(),
                     entity.getBatchId(),
-                    documentEyeCue.getEndpoint()
+                    endpointUrl
             ));
 
             log.info(MARKER, "StoreContent upload audit inserted for origin_id {}", entity.getOriginId());
