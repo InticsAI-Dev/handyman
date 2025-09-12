@@ -43,6 +43,7 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
     private String endpoint;
     private Integer containerId;
     private String promptType;
+    private String layout;
 
 
     @Override
@@ -51,6 +52,6 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
                 ,this.processId,this.filePath, this.extractedText, this.containerName, this.containerValue,this.paperNo,this.fileName
                 ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
                 ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn,
-                this.request, this.response, this.endpoint,this.containerId,this.promptType).collect(Collectors.toList());
+                this.request, this.response, this.endpoint,this.containerId,this.promptType,this.layout).collect(Collectors.toList());
     }
 }

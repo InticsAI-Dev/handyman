@@ -270,15 +270,17 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://localhost:8000/predict")
+                .endPoint("https://adi.intics.ai/predict")
                 .processId("138980184199100180")
-                .resultTable("paper_filter.agentic_paper_filter_output")
-                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt " +
-                        "                                     FROM paper_filter.agentic_paper_filter_input_data_audit a " +
-                        "                                     WHERE a.root_pipeline_id=8032 limit 1;")
+                .resultTable("paper_filter.agentic_paper_filter_output_audit")
+                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no," +
+                        "'/data/multipart-files/vulcan_data/output/1/transaction/TRZ-110/b9afae96-242d-4b89-99bf-bba7bfebba31/139762303590360112/processed_images/04-09-2025_03_09_39/tenant_1/group_113/preprocess/paper_itemizer/pdf_to_image/processed/MCR_P3_Expedited2/MCR_P3_Expedited2_1.png' file_path," +
+                        " a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt " +
+                        "                                     FROM transit_data.agentic_paper_filter_input_data_1132 a " +
+                        "")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:8000/predict");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "https://adi.intics.ai/predict");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
@@ -289,7 +291,7 @@ class DataExtractionActionTest {
                 Map.entry("agentic.paper.filter.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.agentic.paper.filter.model.name", "KRYPTON"),
-                Map.entry("pipeline.copro.api.process.file.format", "FILE"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
                 Map.entry("encrypt.agentic.filter.output", "false"),
                 Map.entry("agentic.paper.filter.activator","true"),
                 Map.entry(ENCRYPT_AGENTIC_FILTER_OUTPUT, "false"),
