@@ -8,6 +8,7 @@ import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,6 +25,8 @@ public class MultiValueMemberConsumerProcess {
     private final ExecutorService executor;
 
     private final String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
+
+    private final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
 
     public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables, Long tenantId, Integer threadCount) {
         this.log = log;
@@ -170,22 +173,30 @@ public class MultiValueMemberConsumerProcess {
             mmIndicatorRow = mmIndicatorRowOpt.get();
         }
 
+        Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
+
         return MultiValueMemberMapperOutputTable.builder()
-                .minScoreId(mmIndicatorRow.getMinScoreId())
+                .createdOn(LocalDateTime.now())
+                .createdUserId(mmIndicatorRow.getTenantId())
+                .lastUpdatedOn(LocalDateTime.now())
+                .lastUpdatedUserId(mmIndicatorRow.getTenantId())
+                .status("ACTIVE")
+                .version(1)
+                .frequency(mmIndicatorRow.getFrequency())
+                .bBox("")
+                .confidenceScore(defaultConfidenceScore)
+                .extractedValue(extractedValue)
+                .filterScore(0L)
+                .groupId(mmIndicatorRow.getGroupId())
+                .maximumScore(defaultConfidenceScore)
                 .originId(multiValueMemberMapperTransformInputTable.getOriginId())
                 .paperNo(mmIndicatorRow.getPaperNo())
-                .sorItemName("multiple_member_indicator")
-                .weightScore(mmIndicatorRow.getWeightScore())
-                .predictedValue(extractedValue)
-                .bBox("")
-                .confidenceScore(mmIndicatorRow.getConfidenceScore())
-                .frequency(mmIndicatorRow.getFrequency())
-                .cummulativeScore(mmIndicatorRow.getCummulativeScore())
                 .questionId(mmIndicatorRow.getQuestionId())
+                .rootPipelineId(mmIndicatorRow.getRootPipelineId())
+                .sorItemName("multiple_member_indicator")
                 .synonymId(mmIndicatorRow.getSynonymId())
                 .tenantId(mmIndicatorRow.getTenantId())
                 .modelRegistry(mmIndicatorRow.getModelRegistry())
-                .rootPipelineId(mmIndicatorRow.getRootPipelineId())
                 .batchId(mmIndicatorRow.getBatchId())
                 .build();
     }

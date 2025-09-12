@@ -136,7 +136,7 @@ public class ProductResponseAction implements IActionExecution {
 
             String originId = entity.getOriginId();
 
-            Request request = getUrlFromFeature(endpoint, entity.getFeature(), entity.getTransactionId(), originId, entity.getTenantId(), requestBody);
+            Request request = getUrlFromFeature(endpoint, entity.getFeature(), entity.getTransactionId(), originId, entity.getTenantId(), requestBody, entity.getPipelineStatus());
 
 
             try (Response response = httpclient.newCall(request).execute()) {
@@ -201,11 +201,11 @@ public class ProductResponseAction implements IActionExecution {
         }
 
         @NotNull
-        public Request getUrlFromFeature(URL baseUrl, @NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody) throws MalformedURLException {
+        public Request getUrlFromFeature(URL baseUrl, @NotNull String feature, String transactionId, String originId, Long tenantId, RequestBody requestBody, String pipelineStatus) throws MalformedURLException {
             Request request;
             if (Objects.equals(feature, "Product")) {
 
-                URL url = new URL(baseUrl + "response/" + transactionId + "/" + originId + "/?tenantId=" + tenantId);
+                URL url = new URL(baseUrl + "response/" + transactionId + "/" + originId + "/"+ pipelineStatus +"/?tenantId=" + tenantId);
                 log.info(aMarker, "product api called with the url {}", url);
                 request = new Request.Builder().url(url)
                         .addHeader("accept", "*/*")
@@ -257,6 +257,7 @@ public class ProductResponseAction implements IActionExecution {
         private String baseUrl;
         private String feature;
         private String batchId;
+        private String pipelineStatus;
 
         @Override
         public List<Object> getRowData() {
