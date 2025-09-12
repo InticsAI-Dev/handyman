@@ -14,6 +14,7 @@ import org.slf4j.Marker;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,34 +137,73 @@ public class SorItemConsumerProcess implements CoproProcessor.ConsumerProcess<So
                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);\n";
     }
 
-    public  boolean transform(SorItemMappingInputTable input) {
+    public boolean transform(SorItemMappingInputTable input) {
 
         Map<String, List<String>> synonymMap = new HashMap<>();
-        List<String> memberNameList  = new ArrayList<>();
-        memberNameList.add("Patient name");
-        memberNameList.add("Patient full name");
-        memberNameList.add("Subscriber name");
-        memberNameList.add("Subscriber full name");
-        memberNameList.add("Patient name");
-        memberNameList.add("Patient full name");
-        memberNameList.add("member name");
-        memberNameList.add("member full name");
-        synonymMap.put("member_full_name",memberNameList);
 
+        // ---- member full name ----
+        synonymMap.put("member_full_name", Arrays.asList(
+                "Patient name",
+                "Patient full name",
+                "Subscriber name",
+                "Subscriber full name",
+                "member name",
+                "member full name"
+        ));
+
+        // ---- gender ----
+        synonymMap.put("member_gender", Arrays.asList(
+                "gender",
+                "member gender",
+                "patient gender",
+                "subscriber gender",
+                "Secured Gender"
+        ));
+
+        // ---- date of birth ----
+        synonymMap.put("member_date_of_birth", Arrays.asList(
+                "dob",
+                "dateofbirth",
+                "date of birth",
+                "d.o.b",
+                "birth date",
+                "member dob",
+                "patient dob",
+                "DOB"
+        ));
+
+        // ---- service code / procedure code ----
+        synonymMap.put("service_code", Arrays.asList(
+                "service code",
+                "procedure code",
+                "svc code"
+        ));
+
+        // ---- diagnosis code ----
+        synonymMap.put("diagnosis_code", Arrays.asList(
+                "diagnosis code",
+                "dx code",
+                "icd code",
+                "icd10 code"
+        ));
 
         String sorItemName = input.getSorItemName();
         boolean matched = false;
 
         if (sorItemName != null) {
+            String cleaned = sorItemName.replaceAll("[^a-zA-Z0-9 ]", "").trim();
+
             for (Map.Entry<String, List<String>> entry : synonymMap.entrySet()) {
                 String key = entry.getKey();
                 List<String> values = entry.getValue();
 
-                // check case-insensitive match with synonyms
                 for (String value : values) {
-                    String cleaned = sorItemName.replaceAll("[^a-zA-Z0-9 ]", "");
-                    if (cleaned.equalsIgnoreCase(value)) {
-                        input.setSorItemName(key); // replace with canonical key
+                    // clean value too (so d.o.b → dob)
+                    String cleanedValue = value.replaceAll("[^a-zA-Z0-9 ]", "").trim();
+
+                    if (cleaned.equalsIgnoreCase(cleanedValue) ||
+                            cleaned.toLowerCase().contains(cleanedValue.toLowerCase())) {
+                        input.setSorItemName(key);
                         matched = true;
                         break;
                     }
