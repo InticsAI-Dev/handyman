@@ -50,8 +50,8 @@ public class StoreContent {
             "INSERT INTO doc_eyecue.storecontent_upload_audit " +
                     "(origin_id, document_id, group_id, tenant_id, processed_file_path, " +
                     "storecontent_status, storecontent_message, storecontent_content_id, " +
-                    "created_on, process_id, batch_id, last_updated_on, endpoint) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, now(), ?)";
+                    "created_on, process_id, root_pipeline_id, batch_id, last_updated_on, endpoint) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, ?, now(), ?)";
 
     public StoreContentResponseDto execute(String filePath,
                                            String processedPdfBase64,
