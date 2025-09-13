@@ -324,7 +324,7 @@ public class AgenticPaperFilterCoproKryptonClient {
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
             String containerName = entry.getKey();
-            if(entry.getValue().isTextual()){
+            if(entry.getValue().isBoolean()){
                 String containerValue = entry.getValue().asText();
                 parentObj.add(AgenticPaperFilterOutput.builder()
                         .filePath(entity.getFilePath())
@@ -385,7 +385,33 @@ public class AgenticPaperFilterCoproKryptonClient {
                         .layout(layout)
                         .build());
             }
-
+            else {
+                parentObj.add(AgenticPaperFilterOutput.builder()
+                        .filePath(entity.getFilePath())
+                        .extractedText(extractedContent)
+                        .originId(dataExtractionDataItem.getOriginId())
+                        .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
+                        .paperNo(dataExtractionDataItem.getPaperNo())
+                        .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .stage(PROCESS_NAME)
+                        .message("Agentic Paper Filter macro completed with krypton triton api call " + entity.getModelName())
+                        .createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .isBlankPage(flag)
+                        .tenantId(dataExtractionDataItem.getTenantId())
+                        .templateId(templateId)
+                        .processId(dataExtractionDataItem.getProcessId())
+                        .templateName(entity.getTemplateName())
+                        .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
+                        .modelName(entity.getModelName() != null ? entity.getModelName() : modelName)
+                        .modelVersion(modelVersion)
+                        .batchId(entity.getBatchId())
+                        .request(encryptRequestResponse(request))
+                        .response(encryptRequestResponse(response))
+                        .endpoint(String.valueOf(endpoint))
+                        .containerName(containerName)
+                        .build());
+            }
 
         }
     }
