@@ -130,7 +130,7 @@ public class StoreContent {
             HashMap<String, String> headers = new HashMap<>();
             headers.put("apikey", storeContentApiKey);
             headers.put("Content-Type", "application/json");
-            String bearerToken = BearerTokenProvider.fetchBearerToken(action);
+            String bearerToken = BearerTokenProvider.fetchBearerToken(action, log, MARKER);
             if (bearerToken != null && !bearerToken.isBlank()) {
                 headers.put("Authorization", "Bearer " + bearerToken);
             }
