@@ -50,7 +50,11 @@ public class BearerTokenProvider {
                             errorMessage += ". Response body: " + errorBodyStr;
                         }
                     } catch (Exception e) {
-                        log.warn(MARKER, "Could not read error response body", e);
+                        String catchMessage = "Could not read error response body";
+                        log.warn(MARKER, catchMessage, e);
+
+                        HandymanException handymanException = new HandymanException(catchMessage, e);
+                        HandymanException.insertException(catchMessage, handymanException, action);
                     }
 
                     HandymanException handymanException = new HandymanException(errorMessage);
