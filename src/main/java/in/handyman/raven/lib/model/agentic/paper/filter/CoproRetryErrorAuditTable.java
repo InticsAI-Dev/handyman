@@ -1,36 +1,33 @@
 package in.handyman.raven.lib.model.agentic.paper.filter;
 
+import in.handyman.raven.lambda.doa.Auditable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
-
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
-public class CoproRetryErrorAuditTable {
-    private String originId;
+public class CoproRetryErrorAuditTable extends Auditable {
+    private Long rootPipelineId;
+    private String batchId;
     private Integer groupId;
-    private Long tenantId;
-    private String templateId;
+    private String originId;
     private Long processId;
-    private String filePath;
-    private String containerName;
-    private String containerValue;
-    private String fileName;
+    private String templateId;
     private Integer paperNo;
+    private String fileName;
+    private int attemptInitiated;
+    private String filePath;
+    private String sorContainerId;
+    private String sorItemId;
     private String status;
     private String stage;
     private String message;
-    private Timestamp createdOn;
-    private Long rootPipelineId;
-    private String batchId;
-    private Timestamp lastUpdatedOn;
     private String request;
     private String response;
     private String endpoint;
-    private int attempt;
+    private Long tenantId;
 }
