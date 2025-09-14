@@ -165,11 +165,10 @@ public class OcrTextComparatorAction implements IActionExecution {
                     isOcrFieldComparable = result.isMatch();
 
                     if (isOcrFieldComparable) {
-                        log.info(aMarker, "MATCH FOUND - Using adapter value '{}' (score: {} > threshold: {}) for originId={}, sorItemName={}",
-                                bestMatch, bestScore, fuzzyMatchThreshold, originId, sorItemName);
+                        log.info(aMarker, "MATCH FOUND - Using adapter value  (score: {} > threshold: {}) for originId={}, sorItemName={}",
+                                 bestScore, fuzzyMatchThreshold, originId, sorItemName);
                     } else {
-                        log.info(aMarker, "NO MATCH - Using original value '{}' (score: {} <= threshold: {}) for originId={}, sorItemName={}",
-                                bestMatch, bestScore, fuzzyMatchThreshold, originId, sorItemName);
+                        log.info(aMarker, "NO MATCH - Using original value (score: {} <= threshold: {}) for originId={}, sorItemName={}", bestScore, fuzzyMatchThreshold, originId, sorItemName);
                     }
 
                     if (pipelineEndToEndEncryptionActivator) {
