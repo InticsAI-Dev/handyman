@@ -82,4 +82,8 @@ public class PropertyHandler {
         return PROPS.get(key);
     }
 
+    public static String getOrDefault(final String key,final String defaultValue) {
+        return PROPS.getOrDefault(key,defaultValue);
+    }
+
 }
