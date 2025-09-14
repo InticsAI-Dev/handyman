@@ -1,6 +1,11 @@
 package in.handyman.raven.lib.adapters.ocr;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,11 +15,15 @@ import java.util.stream.Collectors;
 
 public class NameComparisonAdaptor implements OcrComparisonAdapter {
 
+    private static final Logger logger = LoggerFactory.getLogger(NameComparisonAdaptor.class);
     private static final JaroWinklerSimilarity SIMILARITY = new JaroWinklerSimilarity();
 
     @Override
     public OcrComparisonResult compareValues(String expectedValue, String extractedText, double threshold) {
+        logger.debug("Starting name comparison with threshold: {}", threshold);
+
         if (expectedValue == null || expectedValue.trim().isEmpty()) {
+            logger.warn("Expected value is null or empty");
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -25,6 +34,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         }
 
         if (extractedText == null || extractedText.trim().isEmpty()) {
+            logger.warn("Extracted text is null or empty");
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -35,11 +45,14 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         }
 
         List<String> expectedWords = extractAllWords(expectedValue);
+        logger.debug("Expected words count: {}", expectedWords.size());
 
         List<String> ocrWords = extractAllWords(extractedText);
         String candidatesList = String.join(",", ocrWords);
+        logger.debug("OCR words count: {}", ocrWords.size());
 
         if (ocrWords.isEmpty()) {
+            logger.info("No candidates found in OCR text");
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -54,10 +67,11 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         for (String expectedWord : expectedWords) {
             String cleanedExpected = expectedWord.toLowerCase().trim();
             MatchResult bestMatch = findBestMatchForWord(cleanedExpected, ocrWords, extractedText);
-            bestMatch.originalExpected = expectedWord;
+            bestMatch.setOriginalExpected(expectedWord);
             allMatches.add(bestMatch);
         }
 
+        logger.debug("Completed word matching for {} expected words", expectedWords.size());
         return buildFinalResult(allMatches, expectedValue, candidatesList, threshold);
     }
 
@@ -102,16 +116,16 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             }
 
             if (score == 1.0) {
+                logger.debug("Perfect match found for word with score: 1.0");
                 break;
             }
         }
 
-        MatchResult result = new MatchResult();
-        result.score = bestScore;
-        result.candidate = bestCandidate;
-        result.restoredMatch = bestOriginalCandidate;
-
-        return result;
+        return MatchResult.builder()
+                .score(bestScore)
+                .candidate(bestCandidate)
+                .restoredMatch(bestOriginalCandidate)
+                .build();
     }
 
     /**
@@ -135,19 +149,20 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
     private OcrComparisonResult buildFinalResult(List<MatchResult> matches, String originalExpected,
                                                  String candidatesList, double threshold) {
         boolean allWordsMatch = matches.stream()
-                .allMatch(match -> match.score >= threshold);
+                .allMatch(match -> match.getScore() >= threshold);
 
         boolean anyWordMatches = matches.stream()
-                .anyMatch(match -> match.score >= threshold);
+                .anyMatch(match -> match.getScore() >= threshold);
 
         List<MatchResult> matchedWords = matches.stream()
-                .filter(match -> match.score >= threshold)
+                .filter(match -> match.getScore() >= threshold)
                 .collect(Collectors.toList());
 
         String method = determineMatchingMethod(matches, threshold);
+        logger.debug("Matching method determined: {}", method);
 
         String matchSummary = matches.stream()
-                .map(match -> String.format("%s:%.2f->%s", match.originalExpected, match.score, match.candidate))
+                .map(match -> String.format("%s:%.2f->%s", match.getOriginalExpected(), match.getScore(), match.getCandidate()))
                 .collect(Collectors.joining("|"));
 
         String finalBestMatch;
@@ -157,17 +172,21 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             finalBestMatch = reconstructBestMatch(matches, threshold);
 
             double avgScore = matchedWords.stream()
-                    .mapToDouble(match -> match.score)
+                    .mapToDouble(MatchResult::getScore)
                     .average()
                     .orElse(0.0);
             finalScore = (int) (avgScore * 100);
+            logger.info("Match found with average score: {}", finalScore);
         } else {
             finalBestMatch = originalExpected;
             finalScore = matches.stream()
-                    .mapToInt(match -> (int) (match.score * 100))
+                    .mapToInt(match -> (int) (match.getScore() * 100))
                     .max()
                     .orElse(0);
+            logger.info("No match found, best score: {}", finalScore);
         }
+
+        logger.debug("Final result - isMatch: {}, score: {}, method: {}", allWordsMatch, finalScore, method);
 
         return OcrComparisonResult.builder()
                 .isMatch(allWordsMatch)
@@ -185,11 +204,11 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         StringBuilder result = new StringBuilder();
 
         for (MatchResult match : matches) {
-            if (match.score >= threshold) {
+            if (match.getScore() >= threshold) {
                 if (result.length() > 0) {
                     result.append(" ");
                 }
-                result.append(match.restoredMatch);
+                result.append(match.getRestoredMatch());
             }
         }
 
@@ -198,9 +217,11 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
 
     private String determineMatchingMethod(List<MatchResult> matches, double threshold) {
         long matchCount = matches.stream()
-                .filter(match -> match.score >= threshold)
+                .filter(match -> match.getScore() >= threshold)
                 .count();
         long totalCount = matches.size();
+
+        logger.debug("Match statistics - matched: {}, total: {}", matchCount, totalCount);
 
         if (matchCount == 0) {
             return "NO_MATCH";
@@ -211,16 +232,19 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         }
     }
 
+    @Getter
+    @Setter
+    @Builder
+    static class MatchResult {
+        private double score = 0.0;
+        private String candidate = "";
+        private String restoredMatch = "";
+        private String originalExpected = "";
+
+        // Builder pattern
+    }
     @Override
     public String getName() {
         return "alpha";
-    }
-
-    // Helper class to store match results
-    private static class MatchResult {
-        double score = 0.0;
-        String candidate = "";
-        String restoredMatch = "";
-        String originalExpected = "";
     }
 }

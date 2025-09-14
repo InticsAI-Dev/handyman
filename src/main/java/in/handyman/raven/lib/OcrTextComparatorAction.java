@@ -151,7 +151,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                     String cleanedAnswer = answer.trim();
                     String cleanedExtractedText = extractedText.trim();
 
-                    log.debug(aMarker, "Cleaned answer: '{}', Cleaned extracted text length: {}", cleanedAnswer, cleanedExtractedText.length());
+                    log.debug(aMarker, "Cleaned extracted text length: {}", cleanedExtractedText.length());
 
                     OcrComparisonAdapter adapter = OcrComparisonAdapterFactory.getAdapter(input.getAllowedAdapter());
                     log.debug(aMarker, "Using adapter: {} for sorItemName={}", adapter.getName(), sorItemName);
@@ -195,7 +195,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                     HandymanException.insertException("Processing failed for originId: " + originId + ", sorItemName: " + sorItemName, handymanException, action);
                     bestMatch = answer;
                     extractedText = input.getExtractedText() != null ? input.getExtractedText() : "";
-                    isOcrFieldComparable = false;
                     bestScore = -1;
                     regexPattern = "PROCESSING_FAILED";
                     candidatesList = "";
@@ -204,7 +203,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                 log.debug(aMarker, "Skipping OCR comparison for originId={}, sorItemName={} as is_ocr_field_comparable is {} (not 't' or true)",
                         originId, sorItemName, isOcrFieldComparableValue == null ? "null" : isOcrFieldComparableValue);
                 bestMatch = answer;
-                isOcrFieldComparable = false;
                 bestScore = -1;
                 regexPattern = "SKIPPED";
                 candidatesList = "";
@@ -225,9 +223,9 @@ public class OcrTextComparatorAction implements IActionExecution {
                         extractedText, (int) (fuzzyMatchThreshold * 100), bestScore, regexPattern, candidatesList
                 );
 
-                log.info(aMarker, "Inserted result for originId={}, sorItemName={}, paperNo={}, isOcrFieldComparable={}, threshold={}, bestScore={}, regexPattern={}, candidates={}",
+                log.info(aMarker, "Inserted result for originId={}, sorItemName={}, paperNo={}, isOcrFieldComparable={}, threshold={}, bestScore={}, regexPattern={}}",
                         originId, sorItemName, selectedPageNo, isOcrFieldComparable,
-                        fuzzyMatchThreshold, bestScore, regexPattern, candidatesList);
+                        fuzzyMatchThreshold, bestScore, regexPattern);
             } catch (Exception e) {
                 log.error(aMarker, "Insert failed for originId={}, sorItemName={}: {}", originId, sorItemName, e.getMessage());
                 HandymanException handymanException = new HandymanException(e);
