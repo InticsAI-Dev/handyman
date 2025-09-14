@@ -1,8 +1,5 @@
 package in.handyman.raven.lib.adapters.ocr;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,11 +59,11 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        List<MatchResult> allMatches = new ArrayList<>();
+        List<OcrComparisonMatchResult> allMatches = new ArrayList<>();
 
         for (String expectedWord : expectedWords) {
             String cleanedExpected = expectedWord.toLowerCase().trim();
-            MatchResult bestMatch = findBestMatchForWord(cleanedExpected, ocrWords, extractedText);
+            OcrComparisonMatchResult bestMatch = findBestMatchForWord(cleanedExpected, ocrWords, extractedText);
             bestMatch.setOriginalExpected(expectedWord);
             allMatches.add(bestMatch);
         }
@@ -101,7 +98,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
     /**
      * Finds the best match for a single expected word against all OCR words
      */
-    private MatchResult findBestMatchForWord(String expectedWord, List<String> ocrWords, String originalExtracted) {
+    private OcrComparisonMatchResult findBestMatchForWord(String expectedWord, List<String> ocrWords, String originalExtracted) {
         double bestScore = 0.0;
         String bestCandidate = expectedWord;
         String bestOriginalCandidate = expectedWord;
@@ -121,7 +118,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             }
         }
 
-        return MatchResult.builder()
+        return OcrComparisonMatchResult.builder()
                 .score(bestScore)
                 .candidate(bestCandidate)
                 .restoredMatch(bestOriginalCandidate)
@@ -146,7 +143,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         return wordToFind;
     }
 
-    private OcrComparisonResult buildFinalResult(List<MatchResult> matches, String originalExpected,
+    private OcrComparisonResult buildFinalResult(List<OcrComparisonMatchResult> matches, String originalExpected,
                                                  String candidatesList, double threshold) {
         boolean allWordsMatch = matches.stream()
                 .allMatch(match -> match.getScore() >= threshold);
@@ -154,7 +151,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         boolean anyWordMatches = matches.stream()
                 .anyMatch(match -> match.getScore() >= threshold);
 
-        List<MatchResult> matchedWords = matches.stream()
+        List<OcrComparisonMatchResult> matchedWords = matches.stream()
                 .filter(match -> match.getScore() >= threshold)
                 .collect(Collectors.toList());
 
@@ -172,7 +169,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             finalBestMatch = reconstructBestMatch(matches, threshold);
 
             double avgScore = matchedWords.stream()
-                    .mapToDouble(MatchResult::getScore)
+                    .mapToDouble(OcrComparisonMatchResult::getScore)
                     .average()
                     .orElse(0.0);
             finalScore = (int) (avgScore * 100);
@@ -200,10 +197,10 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
     /**
      * Reconstructs the best match by combining matched words
      */
-    private String reconstructBestMatch(List<MatchResult> matches, double threshold) {
+    private String reconstructBestMatch(List<OcrComparisonMatchResult> matches, double threshold) {
         StringBuilder result = new StringBuilder();
 
-        for (MatchResult match : matches) {
+        for (OcrComparisonMatchResult match : matches) {
             if (match.getScore() >= threshold) {
                 if (result.length() > 0) {
                     result.append(" ");
@@ -215,7 +212,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         return result.toString();
     }
 
-    private String determineMatchingMethod(List<MatchResult> matches, double threshold) {
+    private String determineMatchingMethod(List<OcrComparisonMatchResult> matches, double threshold) {
         long matchCount = matches.stream()
                 .filter(match -> match.getScore() >= threshold)
                 .count();
@@ -232,17 +229,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         }
     }
 
-    @Getter
-    @Setter
-    @Builder
-    static class MatchResult {
-        private double score = 0.0;
-        private String candidate = "";
-        private String restoredMatch = "";
-        private String originalExpected = "";
 
-        // Builder pattern
-    }
     @Override
     public String getName() {
         return "alpha";
