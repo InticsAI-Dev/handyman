@@ -1,57 +1,55 @@
 package in.handyman.raven.core.azure.adapters;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Optional;
 import java.util.Properties;
 
 @Slf4j
 public class AzureJdbiConnection {
 
-    private final String tenantId;
-    private final String clientId;
-    private final String clientSecret;
     private final String databaseUrl;
-    private final String tokenScope;
     private final String azureUserName;
+    final int maxConnection ;
 
 
-
-    public AzureJdbiConnection(String tenantId, String clientId, String clientSecret, String databaseUrl,String tokenScope, String azureUserName) {
-        this.tenantId = tenantId;
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
+    public AzureJdbiConnection(String databaseUrl, String azureUserName, int maxConnection) {
         this.databaseUrl = databaseUrl;
-        this.tokenScope=tokenScope;
-        this.azureUserName=azureUserName;
+        this.azureUserName = azureUserName;
+        this.maxConnection = maxConnection;
     }
 
     public Jdbi getAzureJdbiConnection() {
 
-        String token= AzureAuthTokenSession.getInstance().getToken().get();
-        // Construct connection properties
-        Properties connectionProps = new Properties();
-        connectionProps.put("user", azureUserName);  // Can also use a specific user if applicable
-        connectionProps.put("password",token );
 
-        try {
-            // Establish JDBC connection using the token
-            Connection connection = DriverManager.getConnection(databaseUrl, connectionProps);
+        Optional<String> token = AzureAuthTokenSession.getInstance().getToken();
+        if (token.isPresent()) {
+            log.info("Token acquired successfully.");
+        } else {
+            log.error("Failed to acquire token.");
+            throw new AzureConnectionException("Failed to acquire Azure AD token for database connection.");
 
-            if (connection != null) {
-                log.info("Successfully connected to the database using Azure Authentication.");
-            } else {
-                log.error("Failed to connect to the database connection was null.");
-            }
-
-            // Returning JDBI instance configured with the connection
-            return Jdbi.create(connection);
-        } catch (SQLException e) {
-            log.error("Failed to connect to the database error in the config.");
-            throw new RuntimeException("Failed to connect to the database", e);
         }
+        log.info("Acquired Azure AD token for database connection.");
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(databaseUrl);
+        config.setUsername(azureUserName);
+        config.setPassword(token.get());
+        config.setMinimumIdle(0);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(35000);
+        config.setMaxLifetime(45000);
+        config.setMaximumPoolSize(maxConnection);
+        HikariDataSource hikariDataSource = new HikariDataSource(config);
+
+         return Jdbi.create(hikariDataSource);
     }
 }

@@ -1,5 +1,6 @@
 package in.handyman.raven.lambda;
 
+import in.handyman.raven.core.azure.adapters.AzureConnectionException;
 import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
@@ -11,16 +12,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 public class AzureJdbiConnectionIntegrationTest {
 
     @Test
-    void testAzureJdbiConnection_withAccessToken_shouldExecuteQuery() {
+    void testAzureJdbiConnection_withAccessToken_shouldExecuteQuery() throws AzureConnectionException {
         String tenantId = "";
         String clientId = "";
         String clientSecret = "";
         String databaseUrl = ""; // e.g., jdbc:sqlserver://... or jdbc:postgresql://...
         String tokenScope = "";   // e.g., https://database.windows.net/.default
         String azureUserName = "";    // e.g., intics-psql
-
+        int maxConnection = 0;
         AzureJdbiConnection connection = new AzureJdbiConnection(
-                tenantId, clientId, clientSecret, databaseUrl, tokenScope, azureUserName
+                databaseUrl, azureUserName, maxConnection
         );
 
         Jdbi jdbi = connection.getAzureJdbiConnection();

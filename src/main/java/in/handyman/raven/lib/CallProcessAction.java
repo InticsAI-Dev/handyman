@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.actor.HandymanActorSystemAccess;
+import in.handyman.raven.core.azure.adapters.AzureConnectionException;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
@@ -166,7 +167,7 @@ public class CallProcessAction implements IActionExecution {
         HandymanActorSystemAccess.insert(statementAudit);
     }
 
-    public Jdbi checkJDBIConnection(Jdbi jdbi) {
+    public Jdbi checkJDBIConnection(Jdbi jdbi) throws AzureConnectionException {
         try (var ignored = jdbi.open()) {
             log.info("Jdbi connection is open, initiating the transaction");
             return jdbi;

@@ -2,9 +2,10 @@ package in.handyman.raven.lambda.access;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import in.handyman.raven.core.azure.adapters.AzureConnectionException;
+import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
-import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -54,31 +55,28 @@ public class ResourceAccess {
         return new HikariDataSource(config);
     }
 
-    public static Jdbi rdbmsJDBIConn(final String resourceName) {
+    public static Jdbi rdbmsJDBIConn(final String resourceName) throws AzureConnectionException {
 
         final SpwResourceConfig resource = ConfigAccess.getResourceConfig(resourceName);
 
         String legacyResourceConnection = PropertyHandler.get("legacy.resource.connection.type");
+        final int maxConnection = Integer.parseInt(PropertyHandler.get("raven.max.connection"));
 
 
-        if(legacyResourceConnection.equals("AZURE")){
-            String azureTenantId = PropertyHandler.get("azure.identity.tenantId");
-            String azureClientId = PropertyHandler.get("azure.identity.clientId");
-            String azureClientSecret = PropertyHandler.get("azure.identity.clientSecret");
+        if (legacyResourceConnection.equals("AZURE")) {
             String azureDatabaseUrl = PropertyHandler.get("azure.database.url");
-            String azureTokenScope = PropertyHandler.get("azure.token.scope");
             String azureUserName = PropertyHandler.get("raven.db.user");
 
-            AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
+            AzureJdbiConnection connection = new AzureJdbiConnection(azureDatabaseUrl, azureUserName, maxConnection);
             return connection.getAzureJdbiConnection();
-        }else if(legacyResourceConnection.equals("LEGACY")){
+        } else if (legacyResourceConnection.equals("LEGACY")) {
             if (Objects.isNull(resource)) {
-                log.warn("{} not found in Resource connections", resourceName);
-                throw new HandymanException("Resource connection is null");
+                log.warn("Resource connection not found in Resource connections {}", resourceName);
+                throw new HandymanException("Resource connection name is null");
             }
-            log.warn("{} found in Resource connections", resource.getConfigName());
+            log.info("Resource connection found in Resource connections {}", resourceName);
             return resource.get();
-        }else{
+        } else {
             throw new HandymanException("Resource connection is null check the legacy.resource.connection.type ");
         }
     }

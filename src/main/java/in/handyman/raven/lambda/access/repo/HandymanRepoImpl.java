@@ -56,22 +56,20 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
         if (legacyResourceConnection.equals(AZURE)) {
 
-            String azureTenantId = PropertyHandler.get(AZURE_TENANT_ID);
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
-            String azureClientSecret = PropertyHandler.get(AZURE_CLIENT_SECRET);
             String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
-            String azureTokenScope = PropertyHandler.get(AZURE_TOKEN_SCOPE);
             String azureUserName = PropertyHandler.get(CONFIG_USER);
+            final int maxConnection = Integer.parseInt(PropertyHandler.get(MAX_CONNECTION));
 
-            AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
+            AzureJdbiConnection connection = new AzureJdbiConnection(azureDatabaseUrl, azureUserName, maxConnection);
             JDBI = connection.getAzureJdbiConnection();
             JDBI.installPlugin(new SqlObjectPlugin());
             try (var ignored = JDBI.open()) {
                 log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);
                 return JDBI;
             } catch (Exception e) {
-                log.error("Error in Connecting database with credentials {} {} with exception {}", azureDatabaseUrl, azureClientId, e.getMessage());
-                throw new HandymanException("Error in Connecting database" + e.getMessage());
+                log.error("Error in Connecting database with credentials URL : {} CLIENT ID : {} with exception {}", azureDatabaseUrl, azureClientId, e.getMessage());
+                throw new HandymanException("Error in Connecting database " + e.getMessage());
             }
         } else {
 
@@ -303,7 +301,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         audit.setLastModifiedDate(LocalDateTime.now());
         JDBI.useHandle(handle ->
                 handle.createUpdate("INSERT INTO " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.SEA_TABLE_NAME + " ( created_by, created_date, last_modified_by, last_modified_date, action_id, rows_processed, rows_read, rows_written, statement_content, time_taken,root_pipeline_id) VALUES( :createdBy, :createdDate, :lastModifiedBy, :lastModifiedDate, :actionId, :rowsProcessed, :rowsRead, :rowsWritten, :statementContent, :timeTaken,:rootPipelineId);")
-                .bindBean(audit).execute());
+                        .bindBean(audit).execute());
     }
 
     @Override
