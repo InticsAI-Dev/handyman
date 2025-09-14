@@ -50,12 +50,12 @@ public class IdAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        List<MatchResult> allMatches = new ArrayList<>();
+        List<OcrComparisonMatchResult> allMatches = new ArrayList<>();
 
         for (String expected : expectedValues) {
             String cleanedExpected = expected.toLowerCase().trim();
-            MatchResult bestMatch = findBestMatch(cleanedExpected, ocrWords, extractedText);
-            bestMatch.originalExpected = expected;
+            OcrComparisonMatchResult bestMatch = findBestMatch(cleanedExpected, ocrWords, extractedText);
+            bestMatch.setOriginalExpected(expected);
             allMatches.add(bestMatch);
         }
 
@@ -143,7 +143,7 @@ public class IdAdaptor implements OcrComparisonAdapter {
     /**
      * Finds the best match for a single expected value against all OCR words/phrases
      */
-    private MatchResult findBestMatch(String expectedValue, List<String> candidates, String originalExtracted) {
+    private OcrComparisonMatchResult findBestMatch(String expectedValue, List<String> candidates, String originalExtracted) {
         double bestScore = 0.0;
         String bestCandidate = expectedValue;
         String bestOriginalCandidate = expectedValue;
@@ -162,12 +162,11 @@ public class IdAdaptor implements OcrComparisonAdapter {
             }
         }
 
-        MatchResult result = new MatchResult();
-        result.score = bestScore;
-        result.candidate = bestCandidate;
-        result.restoredMatch = bestOriginalCandidate;
-
-        return result;
+        return OcrComparisonMatchResult.builder()
+                .score(bestScore)
+                .candidate(bestCandidate)
+                .restoredMatch(bestOriginalCandidate)
+                .build();
     }
 
     /**
@@ -188,20 +187,20 @@ public class IdAdaptor implements OcrComparisonAdapter {
         return searchText;
     }
 
-    private OcrComparisonResult buildFinalResult(List<MatchResult> matches, String originalExpected,
+    private OcrComparisonResult buildFinalResult(List<OcrComparisonMatchResult> matches, String originalExpected,
                                                  String candidatesList, double threshold) {
-        boolean allMatch = matches.stream().allMatch(match -> match.score >= threshold);
+        boolean allMatch = matches.stream().allMatch(match -> match.getScore() >= threshold);
 
-        boolean anyMatch = matches.stream().anyMatch(match -> match.score >= threshold);
+        boolean anyMatch = matches.stream().anyMatch(match -> match.getScore() >= threshold);
 
-        List<MatchResult> matchedValues = matches.stream()
-                .filter(match -> match.score >= threshold)
+        List<OcrComparisonMatchResult> matchedValues = matches.stream()
+                .filter(match -> match.getScore() >= threshold)
                 .collect(Collectors.toList());
 
         String method = determineMatchingMethod(matches, threshold);
 
         String matchSummary = matches.stream()
-                .map(match -> String.format("%s:%.2f->%s", match.originalExpected, match.score, match.candidate))
+                .map(match -> String.format("%s:%.2f->%s", match.getOriginalExpected(), match.getScore(), match.getCandidate()))
                 .collect(Collectors.joining("|"));
 
         String finalBestMatch;
@@ -211,14 +210,14 @@ public class IdAdaptor implements OcrComparisonAdapter {
             finalBestMatch = reconstructCommaSeparatedMatch(matches, threshold);
 
             double avgScore = matchedValues.stream()
-                    .mapToDouble(match -> match.score)
+                    .mapToDouble(OcrComparisonMatchResult::getScore)
                     .average()
                     .orElse(0.0);
             finalScore = (int) (avgScore * 100);
         } else {
             finalBestMatch = originalExpected;
             finalScore = matches.stream()
-                    .mapToInt(match -> (int) (match.score * 100))
+                    .mapToInt(match -> (int) (match.getScore() * 100))
                     .max()
                     .orElse(0);
         }
@@ -235,23 +234,23 @@ public class IdAdaptor implements OcrComparisonAdapter {
     /**
      * Reconstructs comma-separated match preserving original order
      */
-    private String reconstructCommaSeparatedMatch(List<MatchResult> matches, double threshold) {
+    private String reconstructCommaSeparatedMatch(List<OcrComparisonMatchResult> matches, double threshold) {
         List<String> matchedParts = new ArrayList<>();
 
-        for (MatchResult match : matches) {
-            if (match.score >= threshold) {
-                matchedParts.add(match.restoredMatch);
+        for (OcrComparisonMatchResult match : matches) {
+            if (match.getScore() >= threshold) {
+                matchedParts.add(match.getRestoredMatch());
             } else {
-                matchedParts.add(match.originalExpected);
+                matchedParts.add(match.getOriginalExpected());
             }
         }
 
         return String.join(", ", matchedParts);
     }
 
-    private String determineMatchingMethod(List<MatchResult> matches, double threshold) {
+    private String determineMatchingMethod(List<OcrComparisonMatchResult> matches, double threshold) {
         long matchCount = matches.stream()
-                .filter(match -> match.score >= threshold)
+                .filter(match -> match.getScore() >= threshold)
                 .count();
         long totalCount = matches.size();
 
@@ -268,12 +267,5 @@ public class IdAdaptor implements OcrComparisonAdapter {
     public String getName() {
         return "alphanumeric";
     }
-
-    // Helper class to store match results
-    private static class MatchResult {
-        double score = 0.0;
-        String candidate = "";
-        String restoredMatch = "";
-        String originalExpected = "";
-    }
+    
 }
