@@ -32,7 +32,7 @@ class DocumentEyeCueTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
-                Map.entry("document.eye.cue.api.url", "http://192.168.10.239:7999/intics-copro/document-eye-cue"),
+                Map.entry("document.eye.cue.api.url", "http://localhost:7999/intics-copro/document-eye-cue"),
                 Map.entry("document.eye.cue.read.batch.size", "5"),
                 Map.entry("document.eye.cue.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
@@ -52,7 +52,7 @@ class DocumentEyeCueTest {
 
 
     @Test
-    void documentEyeCuStoredContentTest() throws Exception {
+    void documentEyeCueStoreContentTest() throws Exception {
         DocumentEyeCue documentEyeCue = DocumentEyeCue.builder()
                 .name("Document eye cue")
                 .resourceConn("intics_zio_db_conn")
@@ -87,7 +87,7 @@ class DocumentEyeCueTest {
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
-                Map.entry("document.eye.cue.api.url", "http://192.168.10.239:7999/intics-copro/document-eye-cue"),
+                Map.entry("document.eye.cue.api.url", "http://localhost:7999/intics-copro/document-eye-cue"),
                 Map.entry("document.eye.cue.read.batch.size", "5"),
                 Map.entry("document.eye.cue.consumer.API.count", "1"),
                 Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
@@ -98,13 +98,22 @@ class DocumentEyeCueTest {
                 Map.entry("document.eye.cue.skip.text.pages", "true"),
                 Map.entry("document.eye.cue.max.paper.count", "5"),
                 Map.entry("doc.eyecue.encryption", "true"),
-                Map.entry("storecontent.api.key", "dummy_api_key"),
+
+                // Apigee token configs
                 Map.entry("apigee.client.id", "CLIENT_ID_HERE"),
                 Map.entry("apigee.client.secret", "CLIENT_SECRET_HERE"),
-                Map.entry("storecontent.base.url", "https://uat.api.anthem.com"),
                 Map.entry("apigee.token.url", "http://localhost:5000/oauth/accesstoken"),
-                Map.entry("storecontent.streaming.url", "http://localhost:8080/storecontent/upload"),
+
+                // StoreContent configs
+                Map.entry("storecontent.base.url", "http://localhost:8081"),
+                Map.entry("storecontent.streaming.url", "http://localhost:8080/storecontent/upload/streaming"),
                 Map.entry("storecontent.nonstreaming.url", "http://localhost:8080/storecontent/upload"),
+                Map.entry("storecontent.api.key", "dummy_api_key"),
+                Map.entry("doc.eyecue.storecontent.repository", "FilenetCE"),
+                Map.entry("doc.eyecue.storecontent.application.id", "CUE"),
+                Map.entry("doc.eyecue.storecontent.upload", "true"),
+
+                // Metadata (storecontent meta headers)
                 Map.entry("storecontent.meta.SYSID", "SYSTEM_TEST_CUE"),
                 Map.entry("storecontent.meta.MEMBERCERTNUM", "MEMNUM_CUE"),
                 Map.entry("storecontent.meta.ORIGRCPTDATE", "10/28/2019"),
@@ -112,10 +121,10 @@ class DocumentEyeCueTest {
                 Map.entry("storecontent.meta.STATUSDATE", "10/29/2019"),
                 Map.entry("storecontent.meta.DOCUMENTTYPE", "DOCTYPE_CUE"),
                 Map.entry("storecontent.meta.SRCID", "SOURCEID"),
-                Map.entry("doc.eyecue.storecontent.repository","FilenetCE"),
-                Map.entry("doc.eyecue.storecontent.application.id","CUE"),
-                Map.entry("doc.eyecue.storecontent.upload","true"),
-                Map.entry("authorization_header", "MTY4ZTVjNjQxMWZlNDZlZThhYjRhMDVmZjVhOGEzMmM6N2I5ZmVmMDcwZmMyNTJlZjdhODczYjc2YzIwY2UyMmI4MTRjODUxZTUzNjQxNTVhMTAwZjFhOTU2YWYxZDQwYg==")
+
+                // For backward compatibility (if required by your API)
+                Map.entry("storecontent.authorization.header",
+                        "")
         ));
         actionExecutionAudit.setActionId(1L);
 
