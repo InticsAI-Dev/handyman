@@ -16,30 +16,37 @@ void execute() throws Exception {
             .condition(true)
             .outputTable("macro.ocr_text_comparison_result")
             .resourceConn("intics_zio_db_conn")
-            .querySet("SELECT \n" +
-                    "    1 AS tenant_id,\n" +
-                    "    'ORIGIN-12345' AS origin_id,\n" +
-                    "    999 AS group_id,\n" +
-                    "    123 AS paper_no,\n" +
-                    "    'Dummy Question' AS sor_question,\n" +
-                    "    '735 Smith Nail Loop Crossett AR 71635' AS answer,\n" +
-                    "    0.95 AS vqa_score,\n" +
-                    "    85 AS score,\n" +
-                    "    1.0 AS weight,\n" +
-                    "    111 AS sor_item_attribution_id,\n" +
-                    "    'member_last_name' AS sor_item_name,\n" +
-                    "    'DOC-12345' AS document_id,\n" +
-                    "    '{\"x\":10,\"y\":20,\"w\":100,\"h\":50}'::json AS b_box,\n" +
-                    "    '123456' AS root_pipeline_id,\n" +
-                    "    222 AS question_id,\n" +
-                    "    333 AS synonym_id,\n" +
-                    "    'MODEL-ABC' AS model_registry,\n" +
-                    "    'Dummy Category' AS category,\n" +
-                    "    'BATCH-DUMMY' AS batch_id,\n" +
-                    "    TRUE AS is_ocr_field_comparable,\n" +
-                    "     'ADDR_ALPHANUMERIC' AS adaptor_code,\n" +
-
-                    "    'XXXXXXXXXXX 735 Smith Nail Loop Crossett AR 71635' AS extracted_text\n")
+            .querySet("SELECT\n" +
+                    "    now(),1, now(), 1, 1,\n" +
+                    "    vt.origin_id, vt.group_id, vt.paper_no, vt.sor_question, vt.answer,\n" +
+                    "    vt.vqa_score, vt.score, vt.weight, vt.sor_item_attribution_id, vt.sor_item_name,\n" +
+                    "    vt.document_id, vt.b_box, vt.root_pipeline_id, vt.question_id, vt.synonym_id,\n" +
+                    "    vt.model_registry, vt.category, vt.batch_id,\n" +
+                    "    si.is_ocr_field_comparable,\n" +
+                    "    dsoa.extracted_text,      \n" +
+                    "    si.allowed_adapter\n" +
+                    "FROM sor_validation.sor_validation_payload_queue_archive sqv\n" +
+                    "JOIN sor_transaction.vqa_transaction vt\n" +
+                    "    ON vt.origin_id = sqv.origin_id\n" +
+                    "   AND vt.batch_id = sqv.batch_id\n" +
+                    "LEFT JOIN deep_sift.deep_sift_output_audit dsoa\n" +
+                    "    ON dsoa.origin_id = vt.origin_id\n" +
+                    "   AND dsoa.paper_no = vt.paper_no\n" +
+                    "   AND vt.batch_id = dsoa.batch_id\n" +
+                    "JOIN sor_meta.sor_container sc\n" +
+                    "    ON vt.tenant_id = sc.tenant_id\n" +
+                    "JOIN sor_meta.sor_item si\n" +
+                    "    ON si.sor_container_id = sc.sor_container_id\n" +
+                    "   AND si.tenant_id = sc.tenant_id\n" +
+                    "   AND si.sor_item_name = vt.sor_item_name\n" +
+                    "WHERE vt.group_id =203\n" +
+                    "  AND vt.tenant_id = 1\n" +
+                    "  AND sqv.batch_id = 'BATCH-203_0'\n" +
+                    "  AND sqv.status = 'COMPLETED'\n" +
+                    "  AND sc.document_type = 'MEDICAL_GBD'\n" +
+                    "  AND sc.status = 'ACTIVE'\n" +
+                    "  and vt.origin_id ='ORIGIN-2274'\n" +
+                    "  AND si.status = 'ACTIVE';\n")
             .build();
 
     final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
@@ -48,7 +55,7 @@ void execute() throws Exception {
     action.getContext().put("batch_id", "BATCH-71_0");
     action.getContext().put("created_user_id", "1");
     action.getContext().put("pipeline.end.to.end.encryption", "false");
-    action.getContext().put("fuzzy.match.threshold", "70");
+    action.getContext().put("ocr.comparison.fuzzy.match.threshold", "70");
     action.setRootPipelineId(929L);
 
     OcrTextComparatorAction ocrTextComparatorAction = new OcrTextComparatorAction(action, log, ocrTextComparator);

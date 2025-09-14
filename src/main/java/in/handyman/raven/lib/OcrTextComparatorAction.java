@@ -10,12 +10,9 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.ocr.OcrComparisonAdapter;
 import in.handyman.raven.lib.adapters.ocr.OcrComparisonAdapterFactory;
 import in.handyman.raven.lib.adapters.ocr.OcrComparisonResult;
+import in.handyman.raven.lib.adapters.ocr.OcrTextComparatorInput;
 import in.handyman.raven.lib.model.OcrTextComparator;
 import in.handyman.raven.util.CommonQueryUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -40,6 +37,7 @@ public class OcrTextComparatorAction implements IActionExecution {
     private static final String AES_256 = "AES256";
     private final ActionExecutionAudit action;
     private final Logger log;
+    private LocalDateTime executionStartTime;
     private final OcrTextComparator ocrTextComparator;
     private final Marker aMarker;
     private final List<OcrTextComparatorInput> ocrTextComparatorInputs = new ArrayList<>();
@@ -55,6 +53,10 @@ public class OcrTextComparatorAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
+            this.executionStartTime = LocalDateTime.now();
+
+            log.info(aMarker, "Starting OCR text comparator execution at: {}", executionStartTime);
+
             if (ocrTextComparator == null) {
                 throw new HandymanException("OcrTextComparator configuration is null");
             }
@@ -66,7 +68,7 @@ public class OcrTextComparatorAction implements IActionExecution {
 
             String batchId = ocrTextComparator.getBatchId() != null ? ocrTextComparator.getBatchId() : "";
             String outputTableName = ocrTextComparator.getOutputTable() != null ? ocrTextComparator.getOutputTable() : "";
-            int fuzzyMatchThresholdInt = Integer.parseInt(action.getContext().get("fuzzy.match.threshold"));
+            int fuzzyMatchThresholdInt = Integer.parseInt(action.getContext().get("ocr.comparison.fuzzy.match.threshold"));
             double fuzzyMatchThreshold = fuzzyMatchThresholdInt / 100.0;
 
             jdbi.useTransaction(handle -> {
@@ -269,7 +271,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                                 ":questionId, :synonymId, :modelRegistry, :category, :batchId, :isOcrFieldComparable, " +
                                 ":extractedText, :threshold, :bestScore, :regexPattern, :candidates" +
                                 ");")
-                .bind("createdOn", LocalDateTime.now())
+                .bind("createdOn", executionStartTime)
                 .bind("createdUserId", finalTenantId)
                 .bind("lastUpdatedOn", LocalDateTime.now())
                 .bind("lastUpdatedUserId", finalTenantId)
@@ -305,36 +307,5 @@ public class OcrTextComparatorAction implements IActionExecution {
     @Override
     public boolean executeIf() throws Exception {
         return ocrTextComparator != null && ocrTextComparator.getCondition();
-    }
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    @Builder
-    public static class OcrTextComparatorInput {
-        private String originId;
-        private String sorItemName;
-        private String sorQuestion;
-        private String answer;
-        private Long tenantId;
-        private String batchId;
-        private Integer groupId;
-        private Integer paperNo;
-        private Double vqaScore;
-        private Double score;
-        private Integer weight;
-        private Integer sorItemAttributionId;
-        private String documentId;
-        private String bBox;
-        private Long rootPipelineId;
-        private Long questionId;
-        private Long synonymId;
-        private String modelRegistry;
-        private String category;
-        private Boolean isOcrFieldComparable;
-        private String extractedText;
-        private String encryptionPolicy;
-        private String allowedAdapter;
-
     }
 }

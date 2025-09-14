@@ -130,7 +130,7 @@ public class FuzzyOcrMatch {
         }
 
         if (bestScore > 0.85) {
-            System.out.println("Closest match: " + bestMatch + " (similarity: " + bestScore + ")");
+            System.out.println("Closest match");
         } else {
             System.out.println("No reliable match found.");
         }
