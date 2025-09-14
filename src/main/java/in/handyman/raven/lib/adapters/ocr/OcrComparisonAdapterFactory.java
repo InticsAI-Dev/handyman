@@ -8,7 +8,6 @@ public class OcrComparisonAdapterFactory {
 
     static {
             register(new NameComparisonAdaptor());
-            register(new AddressAdaptor());
             register(new IdAdaptor());
     }
 
@@ -19,6 +18,6 @@ public class OcrComparisonAdapterFactory {
 
 
     public static OcrComparisonAdapter getAdapter(String type) {
-        return registry.getOrDefault(type.toLowerCase(), registry.get("NAME_ALPHA"));
+        return registry.getOrDefault(type.toLowerCase(), registry.get("alpha"));
     }
 }

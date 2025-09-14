@@ -22,7 +22,7 @@ void execute() throws Exception {
                     "    999 AS group_id,\n" +
                     "    123 AS paper_no,\n" +
                     "    'Dummy Question' AS sor_question,\n" +
-                    "    '89121 De3 Mar Crossing' AS answer,\n" +
+                    "    '735 Smith Nail Loop Crossett AR 71635' AS answer,\n" +
                     "    0.95 AS vqa_score,\n" +
                     "    85 AS score,\n" +
                     "    1.0 AS weight,\n" +
@@ -39,7 +39,7 @@ void execute() throws Exception {
                     "    TRUE AS is_ocr_field_comparable,\n" +
                     "     'ADDR_ALPHANUMERIC' AS adaptor_code,\n" +
 
-                    "    'wertyu rtyuio 89t121 Del Mar Crossing' AS extracted_text\n")
+                    "    'XXXXXXXXXXX 735 Smith Nail Loop Crossett AR 71635' AS extracted_text\n")
             .build();
 
     final ActionExecutionAudit action = ActionExecutionAudit.builder().build();

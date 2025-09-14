@@ -35,10 +35,8 @@ public class IdAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Split expected values by comma and clean them
         List<String> expectedValues = splitByCommaAndClean(expectedValue);
 
-        // Extract all individual words from OCR text (including comma-separated values)
         List<String> ocrWords = extractAllWordsAndPhrases(extractedText);
         String candidatesList = String.join(",", ocrWords);
 
@@ -52,17 +50,15 @@ public class IdAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Find best matches for each expected value against all OCR words/phrases
         List<MatchResult> allMatches = new ArrayList<>();
 
         for (String expected : expectedValues) {
             String cleanedExpected = expected.toLowerCase().trim();
             MatchResult bestMatch = findBestMatch(cleanedExpected, ocrWords, extractedText);
-            bestMatch.originalExpected = expected; // Store original expected value
+            bestMatch.originalExpected = expected;
             allMatches.add(bestMatch);
         }
 
-        // Determine overall result
         return buildFinalResult(allMatches, expectedValue, candidatesList, threshold);
     }
 
@@ -86,20 +82,17 @@ public class IdAdaptor implements OcrComparisonAdapter {
             return wordsAndPhrases;
         }
 
-        // First, split by comma to get phrases
         List<String> commaSeparated = splitByCommaAndClean(text);
         wordsAndPhrases.addAll(commaSeparated);
 
-        // Then extract all individual words
         List<String> individualWords = extractAllWords(text);
         wordsAndPhrases.addAll(individualWords);
 
-        // Also extract common multi-word patterns
         extractCommonPatterns(text, wordsAndPhrases);
 
         return wordsAndPhrases.stream()
                 .distinct()
-                .filter(s -> s.length() >= 2) // Filter out very short strings
+                .filter(s -> s.length() >= 2)
                 .collect(Collectors.toList());
     }
 
@@ -113,7 +106,6 @@ public class IdAdaptor implements OcrComparisonAdapter {
             return words;
         }
 
-        // Use regex to extract words (alphanumeric sequences)
         Pattern wordPattern = Pattern.compile("[\\p{L}\\p{N}'-]+");
         Matcher matcher = wordPattern.matcher(text.toLowerCase());
 
@@ -165,7 +157,6 @@ public class IdAdaptor implements OcrComparisonAdapter {
                 bestOriginalCandidate = findOriginalInText(candidate, originalExtracted);
             }
 
-            // Early exit if we find a perfect match
             if (score == 1.0) {
                 break;
             }
@@ -187,7 +178,6 @@ public class IdAdaptor implements OcrComparisonAdapter {
             return searchText;
         }
 
-        // Use regex to find the exact text with original casing
         Pattern pattern = Pattern.compile("\\b" + Pattern.quote(searchText) + "\\b", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(originalText);
 
@@ -200,21 +190,16 @@ public class IdAdaptor implements OcrComparisonAdapter {
 
     private OcrComparisonResult buildFinalResult(List<MatchResult> matches, String originalExpected,
                                                  String candidatesList, double threshold) {
-        // Check if all expected values have a match above threshold
         boolean allMatch = matches.stream().allMatch(match -> match.score >= threshold);
 
-        // Check if any expected value has a match above threshold
         boolean anyMatch = matches.stream().anyMatch(match -> match.score >= threshold);
 
-        // Get only matched values above threshold
         List<MatchResult> matchedValues = matches.stream()
                 .filter(match -> match.score >= threshold)
                 .collect(Collectors.toList());
 
-        // Build result based on matching strategy
         String method = determineMatchingMethod(matches, threshold);
 
-        // Create a summary of all matches for detailed analysis
         String matchSummary = matches.stream()
                 .map(match -> String.format("%s:%.2f->%s", match.originalExpected, match.score, match.candidate))
                 .collect(Collectors.joining("|"));
@@ -223,17 +208,14 @@ public class IdAdaptor implements OcrComparisonAdapter {
         int finalScore;
 
         if (anyMatch) {
-            // Reconstruct the best match using comma separation for multiple values
             finalBestMatch = reconstructCommaSeparatedMatch(matches, threshold);
 
-            // Calculate average score
             double avgScore = matchedValues.stream()
                     .mapToDouble(match -> match.score)
                     .average()
                     .orElse(0.0);
             finalScore = (int) (avgScore * 100);
         } else {
-            // No matches found, return original expected
             finalBestMatch = originalExpected;
             finalScore = matches.stream()
                     .mapToInt(match -> (int) (match.score * 100))
@@ -284,7 +266,7 @@ public class IdAdaptor implements OcrComparisonAdapter {
 
     @Override
     public String getName() {
-        return "ID_ALPHANUMERIC";
+        return "alphanumeric";
     }
 
     // Helper class to store match results

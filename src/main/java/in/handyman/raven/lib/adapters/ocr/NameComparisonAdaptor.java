@@ -34,10 +34,8 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Split expected values into individual words
         List<String> expectedWords = extractAllWords(expectedValue);
 
-        // Extract all individual words from OCR text
         List<String> ocrWords = extractAllWords(extractedText);
         String candidatesList = String.join(",", ocrWords);
 
@@ -51,17 +49,15 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        // Find best matches for each expected word against all OCR words
         List<MatchResult> allMatches = new ArrayList<>();
 
         for (String expectedWord : expectedWords) {
             String cleanedExpected = expectedWord.toLowerCase().trim();
             MatchResult bestMatch = findBestMatchForWord(cleanedExpected, ocrWords, extractedText);
-            bestMatch.originalExpected = expectedWord; // Store original expected word
+            bestMatch.originalExpected = expectedWord;
             allMatches.add(bestMatch);
         }
 
-        // Determine overall result
         return buildFinalResult(allMatches, expectedValue, candidatesList, threshold);
     }
 
@@ -75,7 +71,6 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             return words;
         }
 
-        // Use regex to extract words (alphanumeric sequences)
         Pattern wordPattern = Pattern.compile("[\\p{L}\\p{N}]+");
         Matcher matcher = wordPattern.matcher(text.toLowerCase());
 
@@ -106,7 +101,6 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                 bestOriginalCandidate = findOriginalWordInText(ocrWord, originalExtracted);
             }
 
-            // Early exit if we find a perfect match
             if (score == 1.0) {
                 break;
             }
@@ -115,7 +109,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         MatchResult result = new MatchResult();
         result.score = bestScore;
         result.candidate = bestCandidate;
-        result.restoredMatch = bestOriginalCandidate; // Return the original word from OCR text
+        result.restoredMatch = bestOriginalCandidate;
 
         return result;
     }
@@ -128,7 +122,6 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             return wordToFind;
         }
 
-        // Use regex to find the exact word with original casing
         Pattern pattern = Pattern.compile("\\b" + Pattern.quote(wordToFind) + "\\b", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(originalText);
 
@@ -136,28 +129,23 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             return originalText.substring(matcher.start(), matcher.end());
         }
 
-        return wordToFind; // Return as is if not found
+        return wordToFind;
     }
 
     private OcrComparisonResult buildFinalResult(List<MatchResult> matches, String originalExpected,
                                                  String candidatesList, double threshold) {
-        // Check if all expected words have a match above threshold
         boolean allWordsMatch = matches.stream()
                 .allMatch(match -> match.score >= threshold);
 
-        // Check if any expected word has a match above threshold
         boolean anyWordMatches = matches.stream()
                 .anyMatch(match -> match.score >= threshold);
 
-        // Get only matched words above threshold
         List<MatchResult> matchedWords = matches.stream()
                 .filter(match -> match.score >= threshold)
                 .collect(Collectors.toList());
 
-        // Build result based on matching strategy
         String method = determineMatchingMethod(matches, threshold);
 
-        // Create a summary of all matches for detailed analysis
         String matchSummary = matches.stream()
                 .map(match -> String.format("%s:%.2f->%s", match.originalExpected, match.score, match.candidate))
                 .collect(Collectors.joining("|"));
@@ -166,17 +154,14 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         int finalScore;
 
         if (anyWordMatches) {
-            // Reconstruct the best match using the matched words
             finalBestMatch = reconstructBestMatch(matches, threshold);
 
-            // Calculate average score of matched words
             double avgScore = matchedWords.stream()
                     .mapToDouble(match -> match.score)
                     .average()
                     .orElse(0.0);
             finalScore = (int) (avgScore * 100);
         } else {
-            // No matches found, return original expected
             finalBestMatch = originalExpected;
             finalScore = matches.stream()
                     .mapToInt(match -> (int) (match.score * 100))
@@ -204,7 +189,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                 if (result.length() > 0) {
                     result.append(" ");
                 }
-                result.append(match.restoredMatch); // Use the original OCR word
+                result.append(match.restoredMatch);
             }
         }
 
@@ -228,7 +213,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
 
     @Override
     public String getName() {
-        return "NAME_ALPHA";
+        return "alpha";
     }
 
     // Helper class to store match results

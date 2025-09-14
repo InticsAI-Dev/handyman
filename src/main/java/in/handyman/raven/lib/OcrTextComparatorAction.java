@@ -66,11 +66,9 @@ public class OcrTextComparatorAction implements IActionExecution {
 
             String batchId = ocrTextComparator.getBatchId() != null ? ocrTextComparator.getBatchId() : "";
             String outputTableName = ocrTextComparator.getOutputTable() != null ? ocrTextComparator.getOutputTable() : "";
-            // Normalize fuzzyMatchThreshold to 0.0-1.0 scale (e.g., 70 -> 0.7)
-            int fuzzyMatchThresholdInt = Integer.parseInt(action.getContext().getOrDefault("fuzzy.match.threshold", "85"));
+            int fuzzyMatchThresholdInt = Integer.parseInt(action.getContext().get("fuzzy.match.threshold"));
             double fuzzyMatchThreshold = fuzzyMatchThresholdInt / 100.0;
 
-            // Execute queries and collect input data
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(ocrTextComparator.getQuerySet());
                 for (int i = 0; i < formattedQuery.size(); i++) {
@@ -86,7 +84,6 @@ public class OcrTextComparatorAction implements IActionExecution {
 
             log.info(aMarker, "OCR text comparator action total rows returned from the query {}", ocrTextComparatorInputs.size());
 
-            // Process the inputs to compare answer with OCR text
             try {
                 doOcrTextComparison(ocrTextComparatorInputs, jdbi, outputTableName, pipelineEndToEndEncryptionActivator,
                         batchId, encryption, fuzzyMatchThreshold);
@@ -111,12 +108,9 @@ public class OcrTextComparatorAction implements IActionExecution {
                                      InticsIntegrity encryption, double fuzzyMatchThreshold) throws Exception {
         log.info(aMarker, "Starting OCR text comparison process for batchId: {}, totalInputs: {}", batchId, inputs.size());
 
-        // Track processed inputs
         List<String> processedKeys = new ArrayList<>();
 
-        // Process each input individually
         inputs.forEach(input -> {
-            // Initialize defaults with null checks
             String originId = input.getOriginId() != null ? input.getOriginId() : "";
             String sorItemName = input.getSorItemName() != null ? input.getSorItemName() : "";
             String key = originId + "|" + sorItemName;
@@ -135,7 +129,6 @@ public class OcrTextComparatorAction implements IActionExecution {
             String candidatesList = "";
             String bestMatch = answer;
 
-            // Check if comparison is needed (is_ocr_field_comparable = true or "t")
             Boolean isOcrFieldComparableValue = input.getIsOcrFieldComparable();
             if (Boolean.TRUE.equals(isOcrFieldComparableValue) || "t".equalsIgnoreCase(String.valueOf(isOcrFieldComparableValue))) {
                 log.debug(aMarker, "Performing OCR comparison for sorItemName={} (is_ocr_field_comparable={})",
@@ -144,7 +137,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                 try {
                     String encryptionPolicy = input.getEncryptionPolicy() != null ? input.getEncryptionPolicy() : "";
 
-                    // Decrypt if needed
                     if (pipelineEndToEndEncryptionActivator) {
                         log.info(aMarker, "Decrypting extracted_text with AES256 and answer with policy for originId={}, sorItemName={}",
                                 originId, sorItemName);
@@ -161,11 +153,9 @@ public class OcrTextComparatorAction implements IActionExecution {
 
                     log.debug(aMarker, "Cleaned answer: '{}', Cleaned extracted text length: {}", cleanedAnswer, cleanedExtractedText.length());
 
-                    // Get adapter type from input (default to "name" if not specified)
-                    OcrComparisonAdapter adapter = OcrComparisonAdapterFactory.getAdapter(input.getAdaptorCode());
+                    OcrComparisonAdapter adapter = OcrComparisonAdapterFactory.getAdapter(input.getAllowedAdapter());
                     log.debug(aMarker, "Using adapter: {} for sorItemName={}", adapter.getName(), sorItemName);
 
-                    // Use adapter for comparison
                     OcrComparisonResult result = adapter.compareValues(cleanedAnswer, cleanedExtractedText, fuzzyMatchThreshold);
 
                     bestScore = result.getBestScore();
@@ -182,7 +172,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                                 bestMatch, bestScore, fuzzyMatchThreshold, originId, sorItemName);
                     }
 
-                    // Re-encrypt if needed
                     if (pipelineEndToEndEncryptionActivator) {
                         try {
                             log.info(aMarker, "Encrypting final answer and extracted_text for originId={}, sorItemName={}", originId, sorItemName);
@@ -195,7 +184,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                             log.info(aMarker, "Encrypted answer and extracted_text for originId={}, sorItemName={}", originId, sorItemName);
                         } catch (Exception e) {
                             log.error(aMarker, "Encryption failed for originId={}, sorItemName={}: {}", originId, sorItemName, e.getMessage());
-                            // Continue with original values
                             bestMatch = answer;
                             extractedText = input.getExtractedText() != null ? input.getExtractedText() : "";
                             candidatesList = "";
@@ -205,7 +193,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                     log.error(aMarker, "Processing failed for originId={}, sorItemName={}: {}", originId, sorItemName, e.getMessage());
                     HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Processing failed for originId: " + originId + ", sorItemName: " + sorItemName, handymanException, action);
-                    // Continue with default values instead of returning
                     bestMatch = answer;
                     extractedText = input.getExtractedText() != null ? input.getExtractedText() : "";
                     isOcrFieldComparable = false;
@@ -223,7 +210,6 @@ public class OcrTextComparatorAction implements IActionExecution {
                 candidatesList = "";
             }
 
-            // Insert the result
             try {
                 insertExecutionInfo(
                         jdbi, outputTable,
@@ -249,7 +235,6 @@ public class OcrTextComparatorAction implements IActionExecution {
             }
         });
 
-        // Log unprocessed inputs
         ocrTextComparatorInputs.stream()
                 .filter(input -> !processedKeys.contains((input.getOriginId() != null ? input.getOriginId() : "") + "|" + (input.getSorItemName() != null ? input.getSorItemName() : "")))
                 .forEach(input -> {
@@ -352,7 +337,7 @@ public class OcrTextComparatorAction implements IActionExecution {
         private Boolean isOcrFieldComparable;
         private String extractedText;
         private String encryptionPolicy;
-        private String adaptorCode;
+        private String allowedAdapter;
 
     }
 }
