@@ -1,9 +1,9 @@
 package in.handyman.raven.lib.custom.adapters;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.adapters.CharacterCountAdapter;
-import in.handyman.raven.lib.adapters.DateAdapter;
-import in.handyman.raven.lib.adapters.WordCountAdapter;
+import in.handyman.raven.lib.adapters.scalar.CharacterCountAdapter;
+import in.handyman.raven.lib.adapters.scalar.DateAdapter;
+import in.handyman.raven.lib.adapters.scalar.WordCountAdapter;
 import in.handyman.raven.lib.interfaces.AdapterInterface;
 import in.handyman.raven.lib.interfaces.ScalarEvaluationInterface;
 import in.handyman.raven.lib.model.AgadiaAdapter;

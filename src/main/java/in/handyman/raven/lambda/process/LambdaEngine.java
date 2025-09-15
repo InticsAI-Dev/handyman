@@ -360,7 +360,7 @@ public class LambdaEngine {
         final IActionContext actionContext = (IActionContext) ProcessExecutor.ACTION_CONTEXT_MAP.get(macroName).getConstructor().newInstance();
         logger.debug("actionContext Execution class {} instance created", macroName);
         CommandProxy.setTarget(actionContext, child, actionExecutionAudit.getContext());
-        actionExecutionAudit.setActionName(actionContext.getName());
+        actionExecutionAudit.setActionName(actionExecutionAudit.getMacroName()+" -> "+actionContext.getName());
         if (logger.isDebugEnabled()) {
             logger.debug("actionContext Execution context {}", actionContext.getName());
 //            logger.debug("actionContext Execution context {}", actionContext);
