@@ -18,6 +18,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.Query;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -37,15 +38,15 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
  */
 @ActionExecution(actionName = "ControlDataComparison")
 public class ControlDataComparisonAction implements IActionExecution {
+
+    private static final Logger log = LoggerFactory.getLogger(ControlDataComparisonAction.class);
+    private final Marker aMarker;
     private final ActionExecutionAudit action;
     private final ControlDataComparison controlDataComparison;
-    private final Logger log;
-    private final Marker aMarker;
 
-    public ControlDataComparisonAction(final ActionExecutionAudit action, final Logger log, final Object controlDataComparison) {
+    public ControlDataComparisonAction(final ActionExecutionAudit action, final Logger customLog, final Object controlDataComparison) {
         this.controlDataComparison = (ControlDataComparison) controlDataComparison;
         this.action = action;
-        this.log = log;
         this.aMarker = MarkerFactory.getMarker("ControlDataComparison:" + this.controlDataComparison.getName());
     }
 
@@ -69,7 +70,6 @@ public class ControlDataComparisonAction implements IActionExecution {
             boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
             boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
 
-            // Pre-decryption logic (grouped by origin) — same as single-threaded logic
             if (itemWiseEncryption) {
                 Map<String, List<ControlDataComparisonQueryInputTable>> groupedByOrigin = controlDataComparisonQueryInputTables.stream()
                         .filter(r -> "t".equalsIgnoreCase(r.getIsEncrypted()))
@@ -79,7 +79,6 @@ public class ControlDataComparisonAction implements IActionExecution {
                     String originId = entry.getKey();
                     List<ControlDataComparisonQueryInputTable> encryptedItems = entry.getValue();
 
-                    // Decrypt actual values if configured
                     if (actualEncryption) {
                         List<EncryptionRequestClass> actualValueFields = encryptedItems.stream()
                                 .filter(r -> r.getActualValue() != null && !r.getActualValue().trim().isEmpty())
@@ -90,10 +89,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                             try {
                                 log.info(aMarker, "Decrypting ACTUAL values for originId: {}", originId);
                                 List<EncryptionRequestClass> decryptedActuals = encryption.decrypt(actualValueFields);
-                                decryptedActuals.forEach(decrypted -> {
-                                    String key = originId + "|" + decrypted.getKey();
-                                    decryptedActualMap.put(key, decrypted.getValue());
-                                });
+                                decryptedActuals.forEach(decrypted -> decryptedActualMap.put(originId + "|" + decrypted.getKey(), decrypted.getValue()));
                                 log.info(aMarker, "Actual value decryption successful for originId: {}", originId);
                             } catch (Exception e) {
                                 log.error(aMarker, "Actual value decryption failed for originId: {}", originId, e);
@@ -101,7 +97,6 @@ public class ControlDataComparisonAction implements IActionExecution {
                         }
                     }
 
-                    // Decrypt extracted values
                     List<EncryptionRequestClass> extractedValueFields = encryptedItems.stream()
                             .filter(r -> r.getExtractedValue() != null && !r.getExtractedValue().trim().isEmpty())
                             .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
@@ -111,10 +106,7 @@ public class ControlDataComparisonAction implements IActionExecution {
                         try {
                             log.info(aMarker, "Decrypting EXTRACTED values for originId: {}", originId);
                             List<EncryptionRequestClass> decryptedExtracted = encryption.decrypt(extractedValueFields);
-                            decryptedExtracted.forEach(decrypted -> {
-                                String key = originId + "|" + decrypted.getKey();
-                                decryptedExtractedMap.put(key, decrypted.getValue());
-                            });
+                            decryptedExtracted.forEach(decrypted -> decryptedExtractedMap.put(originId + "|" + decrypted.getKey(), decrypted.getValue()));
                             log.info(aMarker, "Extracted value decryption successful for originId: {}", originId);
                         } catch (Exception e) {
                             log.error(aMarker, "Extracted value decryption failed for originId: {}", originId, e);
@@ -125,53 +117,30 @@ public class ControlDataComparisonAction implements IActionExecution {
                 log.info(aMarker, "Skipping decryption as itemWiseEncryption is false");
             }
 
-            // Start async producer/consumer via CoproProcessor (consumers will handle per-batch re-encryption)
             BlockingQueue<ControlDataComparisonQueryInputTable> queue = new LinkedBlockingQueue<>();
             ControlDataComparisonQueryInputTable stoppingSeed = new ControlDataComparisonQueryInputTable();
             List<URL> nodes = new ArrayList<>();
 
             CoproProcessor<ControlDataComparisonQueryInputTable, ControlDataComparisonResult> coproProcessor =
-                    new CoproProcessor<>(
-                            queue,
-                            ControlDataComparisonResult.class,
-                            ControlDataComparisonQueryInputTable.class,
-                            controlDataComparison.getResourceConn(),
-                            log,
-                            stoppingSeed,
-                            nodes,
-                            action
-                    );
+                    new CoproProcessor<>(queue, ControlDataComparisonResult.class, ControlDataComparisonQueryInputTable.class,
+                            controlDataComparison.getResourceConn(), log, stoppingSeed, nodes, action);
 
-            // Feed queue by starting the producer using the same querySet
             coproProcessor.startProducer(controlDataComparison.getQuerySet(), Integer.parseInt(action.getContext().getOrDefault("read.batch.size", "100")));
 
-            // Create consumer process instance
             ControlDataComparisonConsumerProcess consumerProcessor = new ControlDataComparisonConsumerProcess(action, log, aMarker);
 
-            // Start consumers; each consumer will call the consumerProcessor.process per entity
-            coproProcessor.startConsumer(
-                    controlDataComparison.getOutputTable(),
+            coproProcessor.startConsumer(controlDataComparison.getOutputTable(),
                     Integer.parseInt(action.getContext().getOrDefault("consumer.API.count", "4")),
                     Integer.parseInt(action.getContext().getOrDefault("write.batch.size", "50")),
                     (endpoint, record) -> {
-                        // consumer lambda invoked per record by CoproProcessor/InBoundBatchDataConsumer
-                        // we return an empty list because actual row building to insert is handled inside consumerProcessor
                         try {
-                            consumerProcessor.process(
-                                    Collections.singletonList(record),
-                                    decryptedActualMap,
-                                    decryptedExtractedMap,
-                                    jdbi,
-                                    controlDataComparison.getOutputTable(),
-                                    kafkaComparison,
-                                    encryption
-                            );
+                            consumerProcessor.process(Collections.singletonList(record), decryptedActualMap, decryptedExtractedMap, jdbi,
+                                    controlDataComparison.getOutputTable(), kafkaComparison, encryption);
                         } catch (JsonProcessingException e) {
                             log.error(aMarker, "Error while processing record inside consumer lambda", e);
                         }
                         return Collections.emptyList();
-                    }
-            );
+                    });
 
             log.info(aMarker, "Control Data Comparison Action has been completed: {}", controlDataComparison.getName());
             action.getContext().put(controlDataComparison.getName() + ".isSuccessful", "true");
@@ -185,9 +154,6 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
     }
 
-    /**
-     * Helper: query DB and map to input DTO list.
-     */
     @NotNull
     public List<ControlDataComparisonQueryInputTable> getControlDataComparisonQueryInputTables(Jdbi jdbi, String querySet) {
         final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = new ArrayList<>();
@@ -198,9 +164,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             formattedQuery.forEach(sqlToExecute -> {
                 log.info(aMarker, "Executing query {} from index {}", sqlToExecute, i.getAndIncrement());
                 Query query = handle.createQuery(sqlToExecute);
-                List<ControlDataComparisonQueryInputTable> results = query
-                        .mapToBean(ControlDataComparisonQueryInputTable.class)
-                        .list();
+                List<ControlDataComparisonQueryInputTable> results = query.mapToBean(ControlDataComparisonQueryInputTable.class).list();
                 controlDataComparisonQueryInputTables.addAll(results);
                 log.info(aMarker, "Executed query from index {}", i.get());
             });
@@ -208,10 +172,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         return controlDataComparisonQueryInputTables;
     }
 
-    /**
-     * Used by consumers to insert the validation result into DB.
-     */
-    public static void insertExecutionInfoStatic(org.jdbi.v3.core.Jdbi jdbi, String outputTable, String matchStatus,
+    public static void insertExecutionInfoStatic(Jdbi jdbi, String outputTable, String matchStatus,
                                                  Long mismatchCount, ControlDataComparisonQueryInputTable record) {
         jdbi.useHandle(handle -> {
             handle.createUpdate("INSERT INTO " + outputTable + " (" +
@@ -240,12 +201,10 @@ public class ControlDataComparisonAction implements IActionExecution {
                     .bind("sorItemName", record.getSorItemName())
                     .bind("sorItemId", record.getSorItemId())
                     .execute();
+            log.info("Inserted execution info into table {}", outputTable);
         });
     }
 
-    /**
-     * Determine classification for insert (TP, TN, FP, FN, UNKNOWN).
-     */
     static String determineClassification(String actualValue, String extractedValue, String matchStatus) {
         String normalizedActual = actualValue == null ? "" : actualValue.trim();
         String normalizedExtracted = extractedValue == null ? "" : extractedValue.trim();
@@ -253,40 +212,19 @@ public class ControlDataComparisonAction implements IActionExecution {
         boolean actualEmpty = normalizedActual.isEmpty();
         boolean extractedEmpty = normalizedExtracted.isEmpty();
 
-        if ("NO TOUCH".equals(matchStatus) && actualEmpty && extractedEmpty) {
-            return "TN";
-        }
-
-        if ("NO TOUCH".equals(matchStatus) && !actualEmpty && !extractedEmpty) {
-            return "TP";
-        }
-
-        if (actualEmpty && !extractedEmpty) {
-            return "FN";
-        }
-
-        if (!actualEmpty && (extractedEmpty || !"NO TOUCH".equals(matchStatus))) {
-            return "FP";
-        }
-
+        if ("NO TOUCH".equals(matchStatus) && actualEmpty && extractedEmpty) return "TN";
+        if ("NO TOUCH".equals(matchStatus) && !actualEmpty && !extractedEmpty) return "TP";
+        if (actualEmpty && !extractedEmpty) return "FN";
+        if (!actualEmpty && (extractedEmpty || !"NO TOUCH".equals(matchStatus))) return "FP";
         return "UNKNOWN";
     }
 
     public static String calculateValidationScores(Long mismatchCount, String oneTouch, String lowTouch) {
-        String matchStatus;
-
-        if (mismatchCount == 0) {
-            matchStatus = "NO TOUCH";
-        } else if (mismatchCount <= Long.parseLong(oneTouch)) {
-            matchStatus = "ONE TOUCH";
-        } else if (mismatchCount <= Long.parseLong(lowTouch)) {
-            matchStatus = "LOW TOUCH";
-        } else {
-            matchStatus = "HIGH TOUCH";
-        }
-        return matchStatus;
+        if (mismatchCount == 0) return "NO TOUCH";
+        if (mismatchCount <= Long.parseLong(oneTouch)) return "ONE TOUCH";
+        if (mismatchCount <= Long.parseLong(lowTouch)) return "LOW TOUCH";
+        return "HIGH TOUCH";
     }
-
 
     @Override
     public boolean executeIf() throws Exception {

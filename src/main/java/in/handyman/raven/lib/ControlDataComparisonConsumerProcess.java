@@ -29,17 +29,6 @@ public class ControlDataComparisonConsumerProcess {
         this.aMarker = aMarker;
     }
 
-    /**
-     * Processes a batch (list) of records. Collects re-encryption requests and sends them in batch.
-     *
-     * @param inputRecords          list of input DTOs (usually size = 1 when CoproProcessor passes single entity)
-     * @param decryptedActualMap    pre-decrypted actual values map (originId|sorItem -> value)
-     * @param decryptedExtractedMap pre-decrypted extracted values map
-     * @param jdbi                  Jdbi instance to insert/update DB
-     * @param outputTable           output table name
-     * @param kafkaComparison       kafka flag/context
-     * @param encryption            InticsIntegrity encryption interface
-     */
     public void process(List<ControlDataComparisonQueryInputTable> inputRecords,
                         Map<String, String> decryptedActualMap,
                         Map<String, String> decryptedExtractedMap,
@@ -47,6 +36,8 @@ public class ControlDataComparisonConsumerProcess {
                         String outputTable,
                         String kafkaComparison,
                         InticsIntegrity encryption) throws JsonProcessingException {
+
+        log.info(aMarker, "Starting processing {} records", inputRecords.size());
 
         List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
         Map<String, ControlDataComparisonQueryInputTable> recordMap = new HashMap<>();
@@ -63,9 +54,11 @@ public class ControlDataComparisonConsumerProcess {
 
                 if (decryptedActualMap != null && decryptedActualMap.containsKey(mapKey)) {
                     record.setActualValue(decryptedActualMap.get(mapKey));
+                    log.debug(aMarker, "Applied decrypted actual for originId={} sorItemName={}", originId, sorItemName);
                 }
                 if (decryptedExtractedMap != null && decryptedExtractedMap.containsKey(mapKey)) {
                     record.setExtractedValue(decryptedExtractedMap.get(mapKey));
+                    log.debug(aMarker, "Applied decrypted extracted for originId={} sorItemName={}", originId, sorItemName);
                 }
 
                 // Adapter validation
@@ -82,6 +75,8 @@ public class ControlDataComparisonConsumerProcess {
 
                 // Insert result into output table
                 ControlDataComparisonAction.insertExecutionInfoStatic(jdbi, outputTable, matchStatus, mismatchCount, record);
+                log.info(aMarker, "Processed record: originId={} sorItemName={} matchStatus={} mismatchCount={}",
+                        originId, sorItemName, matchStatus, mismatchCount);
 
                 // Prepare re-encryption requests if item-wise encryption enabled AND record.isEncrypted = 't'
                 if (itemWiseEncryption && "t".equalsIgnoreCase(record.getIsEncrypted())) {
@@ -93,6 +88,7 @@ public class ControlDataComparisonConsumerProcess {
                             EncryptionRequestClass er = new EncryptionRequestClass(record.getEncryptionPolicy(), actualValue, sorItemName + "|actual");
                             encryptionRequests.add(er);
                             recordMap.put(er.getKey(), record);
+                            log.debug(aMarker, "Added actual value for batch encryption: originId={} sorItemName={}", originId, sorItemName);
                         }
                     }
 
@@ -100,12 +96,12 @@ public class ControlDataComparisonConsumerProcess {
                         EncryptionRequestClass er = new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted");
                         encryptionRequests.add(er);
                         recordMap.put(er.getKey(), record);
+                        log.debug(aMarker, "Added extracted value for batch encryption: originId={} sorItemName={}", originId, sorItemName);
                     }
                 }
 
             } catch (Exception e) {
-                log.error(aMarker, "Error processing record for originId {} and sorItemName {}",
-                        record.getOriginId(), record.getSorItemName(), e);
+                log.error(aMarker, "Error processing record for originId={} sorItemName={}", record.getOriginId(), record.getSorItemName(), e);
             }
         }
 
@@ -123,8 +119,7 @@ public class ControlDataComparisonConsumerProcess {
                         if (rec != null) {
                             String originId = rec.getOriginId();
                             String paperNo = String.valueOf(rec.getPaperNo());
-                            log.info(aMarker, "Re-encryption completed for sorItemName: {}, type: {}, originId: {}",
-                                    sorItemName, valueType, originId);
+                            log.info(aMarker, "Re-encryption completed for sorItemName={} type={} originId={}", sorItemName, valueType, originId);
                             // Update DB with re-encrypted value
                             String column = "actual".equals(valueType) ? "actual_value" : "extracted_value";
                             jdbi.useHandle(handle -> handle.createUpdate("UPDATE " + outputTable + " SET " + column + " = :value " +
@@ -144,5 +139,7 @@ public class ControlDataComparisonConsumerProcess {
                 log.error(aMarker, "Batch encryption/re-encryption failed", e);
             }
         }
+
+        log.info(aMarker, "Finished processing {} records", inputRecords.size());
     }
 }
