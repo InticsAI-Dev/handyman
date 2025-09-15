@@ -57,7 +57,7 @@ public class DocumentEyeCueAction implements IActionExecution {
     public static final String DOCUMENT_EYE_CUE_CONSUMER_API_COUNT = "document.eye.cue.consumer.API.count";
 
     public static final String INSERT_COLUMNS = "origin_id, group_id, tenant_id, template_id, processed_file_path, status, " +
-            "stage, message, created_on, process_id, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, encoded_file_path";
+            "stage, message, created_on, process_id, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, encoded_file_path, doc_eyecue_duration";
 
     public static final String DOCUMENT_EYE_CUE_API_URL = "document.eye.cue.api.url";
 
@@ -90,7 +90,7 @@ public class DocumentEyeCueAction implements IActionExecution {
             //5. build insert prepare statement with output table columns
             final String insertQuery = "INSERT INTO " + documentEyeCue.getResultTable() +
                     "(" + INSERT_COLUMNS + ") " +
-                    " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?)";
+                    " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?, ?, ?, ?, ?, ?, ?)";
             log.info(aMarker, "Document EyeCue Insert query {}", insertQuery);
 
             //3. initiate Copro processor and Copro urls
