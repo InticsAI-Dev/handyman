@@ -204,6 +204,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .response(encryptRequestResponse(responseBody))
                     .endpoint(endpoint.toString())
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
+                    .docEyeCueDurationMs(documentEyeCueResponse.getDocEyeCueDurationMs())
                     .build();
 
             resultList.add(outputRecord);
