@@ -9,7 +9,6 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.FileProcessingUtils;
-import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -32,7 +31,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     private static final String COPRO_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
-    private static final String COPRO_REQUEST_TYPE = "COPRO_REQUEST";
     private static final MediaType MEDIA_TYPE = MediaType.parse("application/json; charset=utf-8");
     private static final Set<String> VALID_MODELS = Set.of("XENON", "ARGON", "KRYPTON", "OPTIMUS");
 
@@ -64,17 +62,26 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         long startTime = System.currentTimeMillis();
 
         if (!VALID_MODELS.contains(entity.getModelName())) {
-            log.error(aMarker, "Invalid model name: {} for originId: {}", entity.getModelName(), entity.getOriginId());
+            String errorMessage = "Invalid model name: " + entity.getModelName() + " for originId: " + entity.getOriginId();
+            log.error(aMarker, errorMessage);
+            HandymanException handymanException = new HandymanException(errorMessage);
+            HandymanException.insertException(errorMessage, handymanException, action);
         }
 
         String inputFilePath = entity.getInputFilePath();
         if (inputFilePath == null || inputFilePath.trim().isEmpty()) {
-            log.error(aMarker, "Input file path is null or empty for originId: {}", entity.getOriginId());
+            String errorMessage = "Input file path is null or empty for originId: " + entity.getOriginId();
+            log.error(aMarker, errorMessage);
+            HandymanException handymanException = new HandymanException(errorMessage);
+            HandymanException.insertException(errorMessage, handymanException, action);
         }
 
         File inputFile = new File(inputFilePath);
         if (!inputFile.exists() || !inputFile.canRead()) {
-            log.error(aMarker, "Input file does not exist or is not readable: {}", inputFilePath);
+            String errorMessage = "Input file does not exist or is not readable";
+            log.error(aMarker, errorMessage);
+            HandymanException handymanException = new HandymanException(errorMessage);
+            HandymanException.insertException(errorMessage, handymanException, action);
         }
 
         log.info(aMarker, "Executing {} handler for endpoint: {}", entity.getModelName(), endpoint);
@@ -88,8 +95,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             requestPayload.setBase64Img(base64ForPath);
             log.info(aMarker, "Base64 image generated for file: {}", inputFilePath);
         } catch (IOException e) {
-            log.error(aMarker, "Failed to convert file to Base64: {}", inputFilePath, e);
-            throw new HandymanException("Error converting file to Base64 for model " + entity.getModelName(), e, action);
+            String errorMessage = "Failed to convert file to Base64";
+            log.error(aMarker, errorMessage, e);
+            HandymanException handymanException = new HandymanException(errorMessage, e);
+            HandymanException.insertException(errorMessage, handymanException, action);
         }
 
         String jsonRequest = getXenonRequest(requestPayload);
@@ -155,8 +164,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     .build();
             return objectMapper.writeValueAsString(sanitizedRequest);
         } catch (JsonProcessingException e) {
-            log.error(aMarker, "Failed to sanitize request for DB", e);
-            return "{}";
+            String errorMessage = "Failed to sanitize DeepSiftRequest for DB";
+            HandymanException handymanException = new HandymanException(errorMessage, e);
+            HandymanException.insertException(errorMessage, handymanException, action);
+            throw handymanException;
         }
     }
 
@@ -222,7 +233,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 }
             }
         } catch (Exception e) {
-            long elapsedTimeMs = System.currentTimeMillis() - startTime;
             log.error(aMarker, "Exception occurred while processing request for originId: {} and model: {}",
                     entity.getOriginId(), entity.getModelName(), e);
             HandymanException handymanException = new HandymanException("Deep sift consumer failed for model " + entity.getModelName(), e);
@@ -238,8 +248,11 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
             log.info(aMarker, "Base64 created for file: {}", imagePath);
             return base64Image;
         } catch (Exception e) {
-            log.error(aMarker, "Error creating base64: {}", ExceptionUtil.toString(e));
-            throw new HandymanException("Error creating base64", e);
+            String errorMessage = "Unexpected error while creating base64 for file: " + imagePath;
+            log.error(aMarker, errorMessage, e);
+            HandymanException handymanException = new HandymanException(errorMessage, e);
+            HandymanException.insertException(errorMessage, handymanException, action);
+            throw handymanException;
         }
     }
 
@@ -252,25 +265,4 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         return request;
     }
 
-    private DeepSiftOutputTable buildOutputTable(DeepSiftInputTable entity, String status, String message,
-                                                 String request, String response, String endpoint, long timeTakenMS) {
-        return DeepSiftOutputTable.builder()
-                .inputFilePath(entity.getInputFilePath())
-                .originId(entity.getOriginId())
-                .groupId(entity.getGroupId())
-                .paperNo(entity.getPaperNo())
-                .createdBy(entity.getTenantId().toString())
-                .rootPipelineId(entity.getRootPipelineId())
-                .tenantId(entity.getTenantId())
-                .batchId(entity.getBatchId())
-                .sourceDocumentType(entity.getSourceDocumentType())
-                .modelId(entity.getModelId())
-                .modelName(entity.getModelName())
-                .timeTakenMS(timeTakenMS)
-                .status(status)
-                .request(encryptRequestResponse(request))
-                .response(encryptRequestResponse(response))
-                .endpoint(String.valueOf(endpoint))
-                .build();
-    }
 }
