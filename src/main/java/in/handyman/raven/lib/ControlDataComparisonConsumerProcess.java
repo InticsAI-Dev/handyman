@@ -139,7 +139,6 @@ public class ControlDataComparisonConsumerProcess {
                 log.error(aMarker, "Batch encryption/re-encryption failed", e);
             }
         }
-
         log.info(aMarker, "Finished processing {} records", inputRecords.size());
     }
 }
