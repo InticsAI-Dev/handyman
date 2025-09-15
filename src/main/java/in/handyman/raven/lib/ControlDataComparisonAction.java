@@ -2,6 +2,7 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.xml.bind.v2.runtime.output.SAXOutput;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
@@ -72,7 +73,6 @@ public class ControlDataComparisonAction implements IActionExecution {
     private final String controlDataComparisonUrl;
     private final String insertQuery;
 
-
     public ControlDataComparisonAction(final ActionExecutionAudit action, final Logger log, final Object controlDataComparison) {
         this.controlDataComparison = (ControlDataComparison) controlDataComparison;
         this.action = action;
@@ -115,7 +115,91 @@ public class ControlDataComparisonAction implements IActionExecution {
                     throw new HandymanException("Error in processing the URL", e, action);
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(controlDataComparison.getResourceConn());
+            log.info(aMarker, "Control Data Comparison Action for {} has been started", controlDataComparison.getName());
 
+            String outputTable = controlDataComparison.getOutputTable();
+            String querySet = controlDataComparison.getQuerySet();
+            final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = getControlDataComparisonQueryInputTables(jdbi,querySet);
+
+            log.info(aMarker, "Total rows returned from the query: {}", controlDataComparisonQueryInputTables.size());
+
+            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+
+            Map<String, String> decryptedActualMap = new HashMap<>();
+            Map<String, String> decryptedExtractedMap = new HashMap<>();
+            boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
+            boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
+
+            // Decryption logic
+            if (itemWiseEncryption) {
+                Map<String, List<ControlDataComparisonQueryInputTable>> groupedByOrigin = controlDataComparisonQueryInputTables.stream()
+                        .filter(r -> "t".equalsIgnoreCase(r.getIsEncrypted()))
+                        .collect(Collectors.groupingBy(ControlDataComparisonQueryInputTable::getOriginId));
+
+                for (Map.Entry<String, List<ControlDataComparisonQueryInputTable>> entry : groupedByOrigin.entrySet()) {
+                    String originId = entry.getKey();
+                    List<ControlDataComparisonQueryInputTable> encryptedItems = entry.getValue();
+
+                    // Decrypt actual values if actualEncryption is true
+                    if (actualEncryption) {
+                        List<EncryptionRequestClass> actualValueFields = encryptedItems.stream()
+                                .filter(r -> {
+                                    if (r.getActualValue() == null || r.getActualValue().trim().isEmpty()) {
+                                        log.info(aMarker, "Skipping decryption for actualValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
+                                                originId, r.getSorItemName());
+                                        return false;
+                                    }
+                                    return true;
+                                })
+                                .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getActualValue(), r.getSorItemName()))
+                                .collect(Collectors.toList());
+
+                        if (!actualValueFields.isEmpty()) {
+                            try {
+                                log.info(aMarker, "Decrypting ACTUAL values for originId: {}", originId);
+                                List<EncryptionRequestClass> decryptedActuals = encryption.decrypt(actualValueFields);
+                                decryptedActuals.forEach(decrypted -> {
+                                    String key = originId + "|" + decrypted.getKey();
+                                    decryptedActualMap.put(key, decrypted.getValue());
+                                });
+                                log.info(aMarker, "Actual value decryption successful for originId: {}", originId);
+                            } catch (Exception e) {
+                                log.error(aMarker, "Actual value decryption failed for originId: {}", originId, e);
+                            }
+                        }
+                    }
+
+                    // Decrypt extracted values
+                    List<EncryptionRequestClass> extractedValueFields = encryptedItems.stream()
+                            .filter(r -> {
+                                if (r.getExtractedValue() == null || r.getExtractedValue().trim().isEmpty()) {
+                                    log.info(aMarker, "Skipping decryption for extractedValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
+                                            originId, r.getSorItemName());
+                                    return false;
+                                }
+                                return true;
+                            })
+                            .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
+                            .collect(Collectors.toList());
+
+                    if (!extractedValueFields.isEmpty()) {
+                        try {
+                            log.info(aMarker, "Decrypting EXTRACTED values for originId: {}", originId);
+                            List<EncryptionRequestClass> decryptedExtracted = encryption.decrypt(extractedValueFields);
+                            decryptedExtracted.forEach(decrypted -> {
+                                String key = originId + "|" + decrypted.getKey();
+                                decryptedExtractedMap.put(key, decrypted.getValue());
+                            });
+                            log.info(aMarker, "Extracted value decryption successful for originId: {}", originId);
+                        } catch (Exception e) {
+                            log.error(aMarker, "Extracted value decryption failed for originId: {}", originId, e);
+                        }
+                    }
+                }
+            } else {
+                log.info(aMarker, "Skipping decryption as itemWiseEncryption is false");
+            }
             int consumerApiCount = 0;
             CustomBatchWithScaling customBatchWithScaling = new CustomBatchWithScaling(action, log);
             boolean isPodScalingCheckEnabled = customBatchWithScaling.isPodScalingCheckEnabled();
@@ -124,11 +208,6 @@ public class ControlDataComparisonAction implements IActionExecution {
                 consumerApiCount = customBatchWithScaling.computeSorTransactionApiCount();
             }
 
-            if (consumerApiCount <= 0) {
-                log.info(aMarker, "No kvp consumer API count found using kube client, using existing context value");
-                String key = "Radon.kvp.consumer.API.count";
-                consumerApiCount = parseContextValue(action, key, "1");
-            }
             log.info(aMarker, "Consumer API count for kvp action is {}", consumerApiCount);
 
             readBatchSize = parseContextValue(action, "read.batch.size", "10");
@@ -142,7 +221,7 @@ public class ControlDataComparisonAction implements IActionExecution {
             final CoproProcessor<ControlDataComparisonQueryInputTable, ControlDataComparisonResult> coproProcessor = getTableCoproProcessor(urls);
             Thread.sleep(threadSleepTime);
 
-            final ControlDataComparisonConsumerProcess controlDataComparisonConsumerProcess = new ControlDataComparisonConsumerProcess(log, aMarker, action,controlDataComparison.getResourceConn());
+            final ControlDataComparisonConsumerProcess controlDataComparisonConsumerProcess = new ControlDataComparisonConsumerProcess(log, aMarker, action,controlDataComparison.getResourceConn(), controlDataComparisonQueryInputTables, decryptedActualMap, decryptedExtractedMap, outputTable);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, controlDataComparisonConsumerProcess);
             log.info(aMarker, " LLM kvp Action has been completed {}  ", controlDataComparison.getName());
 
