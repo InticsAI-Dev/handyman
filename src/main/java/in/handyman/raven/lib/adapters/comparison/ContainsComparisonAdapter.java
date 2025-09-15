@@ -79,29 +79,34 @@ public class ContainsComparisonAdapter implements ComparisonAdapter{
         }
 
         if (!"multi_value".equals(controlDataInputLineItem.getLineItemType())) {
-            Set<String> actualTokens = Arrays.stream(actualData.split(","))
+            Set<String> extractedWords = Arrays.stream(normalizedExtracted.replaceAll("[^a-zA-Z0-9,]", " ")
+                            .toLowerCase()
+                            .split("\\s+"))
                     .map(String::trim)
-                    .map(String::toLowerCase)
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toSet());
 
-            Set<String> extractedTokens = Arrays.stream(normalizedExtracted.split(","))
+            Set<String> actualWords = Arrays.stream(actualData.replaceAll("[^a-zA-Z0-9,]", " ")
+                            .toLowerCase()
+                            .split("\\s+"))
                     .map(String::trim)
-                    .map(String::toLowerCase)
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toSet());
 
-            if (actualTokens.equals(extractedTokens)) {
+            if (actualWords.equals(extractedWords)) {
                 return 0L;  // swap-tolerant match for single_value
             }
         }
 
-        Set<String> extractedWords = Arrays.stream(normalizeExtractedData.replaceAll("[^a-zA-Z0-9,]", "").toLowerCase().split("[\\s,]+"))
+        Set<String> extractedWords = Arrays.stream(actualData.split(","))
                 .map(String::trim)
+                .map(String::toLowerCase)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
-        Set<String> actualWords = Arrays.stream(actualData.replaceAll("[^a-zA-Z0-9,]", "").toLowerCase().split("[\\s,]+"))
+
+        Set<String> actualWords = Arrays.stream(normalizedExtracted.split(","))
                 .map(String::trim)
+                .map(String::toLowerCase)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
         if (extractedWords.equals(actualWords)) {
