@@ -26,7 +26,7 @@ public class ControlDataComparison implements IActionContext {
 
   private String resourceConn;
 
-  private String inputTable;
+  private String endPoint;
 
   private String outputTable;
 
