@@ -16,7 +16,6 @@ import org.slf4j.MarkerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Properties;
@@ -24,6 +23,8 @@ import java.util.Properties;
 public class StoreContent {
     public DocumentEyeCue documentEyeCue;
     private static Logger log;
+
+    private static final long STREAMING_THRESHOLD = 7_864_320; // 7.5 * 1024 * 1024
 
     public StoreContent(Logger log) {
         this.log = log;
@@ -50,8 +51,8 @@ public class StoreContent {
             "INSERT INTO doc_eyecue.storecontent_upload_audit " +
                     "(origin_id, document_id, group_id, tenant_id, processed_file_path, " +
                     "storecontent_status, storecontent_message, storecontent_content_id, " +
-                    "created_on, process_id, root_pipeline_id, batch_id, last_updated_on, endpoint) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, ?, now(), ?)";
+                    "created_on, process_id, root_pipeline_id, batch_id, last_updated_on, endpoint, upload_type) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, ?, now(), ?, ?)";
 
     public StoreContentResponseDto execute(String filePath,
                                            String processedPdfBase64,
@@ -74,6 +75,12 @@ public class StoreContent {
         log.info("{} - File found: {}", MARKER, filePath);
 
         try {
+            long fileSize = getFileSize(file, processedPdfBase64);
+            boolean isStreaming = fileSize > STREAMING_THRESHOLD;
+            String uploadType = isStreaming ? "STREAMING" : "NON_STREAMING";
+
+            log.info("{} - File size: {} bytes, Upload type: {}", MARKER, fileSize, uploadType);
+
             String envUrlStream = action.getContext().get(KEY_STREAMING_URL);
             String envUrlNonStream = action.getContext().get(KEY_NONSTREAMING_URL);
             String storeContentApiKey = action.getContext().get(KEY_STORECONTENT_API_KEY);
@@ -83,25 +90,84 @@ public class StoreContent {
             clientProps.setProperty(BASE_URL_NONSTREAM, envUrlNonStream);
             clientProps.setProperty(PROP_IS_APIGEE_INVOKED, "True");
 
+            StoreContentRequestDto requestDto;
+            if (isStreaming) {
+                requestDto = createStreamingRequest(file, repository, applicationId,
+                        entity, action, storeContentApiKey);
+            } else {
+                requestDto = createNonStreamingRequest(file, processedPdfBase64, repository, applicationId,
+                        entity, action, storeContentApiKey);
+            }
+
+            if (requestDto == null) {
+                log.error(MARKER, "Failed to create request DTO for upload type: {}", uploadType);
+                return null;
+            }
+
+            Acmastorecontentclient client = AcmastorecontentclientFactory.createInstance(clientProps);
+            responseDto = client.storeContent(requestDto);
+            log.info("Invoking Acmastorecontentclient.storeContent() with repo and applicationId - Upload type: {}", uploadType);
+
+            if (responseDto != null) {
+                log.info(MARKER, "Upload Complete - Status: {}, Upload type: {}", responseDto.getStatus(), uploadType);
+                log.info(MARKER, "Content ID: {}", responseDto.getContentID());
+                log.info(MARKER, "Message: {}", responseDto.getMessage());
+
+                saveStoreContentAudit(entity, filePath, responseDto, documentEyeCue, action, uploadType);
+                log.info(MARKER, "StoreContent upload SUCCESS | document_id: {} | contentId: {} | file: {} | type: {}",
+                        entity != null ? entity.getDocumentId() : "N/A",
+                        responseDto.getContentID(),
+                        filePath,
+                        uploadType);
+            } else {
+                String warnMsg = "Null response from StoreContent client for upload type: " + uploadType;
+                HandymanException.insertException(warnMsg, new HandymanException(warnMsg), action);
+                log.warn(MARKER, warnMsg);
+            }
+
+        } catch (Exception e) {
+            String errorMessage = "Error while uploading to StoreContent";
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException(errorMessage, handymanException, action);
+            log.error(MARKER, errorMessage, e);
+        }
+
+        return responseDto;
+    }
+
+    private long getFileSize(File file, String processedPdfBase64) {
+        try {
+            if (processedPdfBase64 != null && !processedPdfBase64.isBlank()) {
+                byte[] decodedBytes = Base64.getDecoder().decode(processedPdfBase64);
+                return decodedBytes.length;
+            } else if (file.exists() && file.isFile()) {
+                return file.length();
+            }
+        } catch (Exception e) {
+            log.warn(MARKER, "Error calculating file size, defaulting to 0: {}", e.getMessage());
+        }
+        return 0L;
+    }
+
+    private StoreContentRequestDto createNonStreamingRequest(File file,
+                                                             String processedPdfBase64,
+                                                             String repository,
+                                                             String applicationId,
+                                                             DocumentEyeCueInputTable entity,
+                                                             ActionExecutionAudit action,
+                                                             String storeContentApiKey) {
+        try {
             StoreContentRequestDto requestDto = new StoreContentRequestDto();
             requestDto.setRepository(Repository.valueOf(repository));
             requestDto.setApplicationID(applicationId);
 
             HashMap<String, String> contentMetadata = new HashMap<>();
-            String baseFileName;
-
-            if (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank()) {
-                baseFileName = entity.getFileName();
-            } else {
-                baseFileName = file.getName();
-            }
-
-            String updatedFileName;
-            if (baseFileName.toLowerCase().endsWith(".pdf")) {
-                updatedFileName = baseFileName.substring(0, baseFileName.length() - 4) + "_updated.pdf";
-            } else {
-                updatedFileName = baseFileName + "_updated.pdf";
-            }
+            String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
+                    ? entity.getFileName()
+                    : file.getName();
+            String updatedFileName = baseFileName.toLowerCase().endsWith(".pdf")
+                    ? baseFileName.substring(0, baseFileName.length() - 4) + "_updated.pdf"
+                    : baseFileName + "_updated.pdf";
             contentMetadata.put("FileName", updatedFileName);
             contentMetadata.put("MimeType",
                     Files.probeContentType(file.toPath()) != null
@@ -140,55 +206,99 @@ public class StoreContent {
                 byte[] decodedBytes = Base64.getDecoder().decode(processedPdfBase64);
                 requestDto.setContentData(new ByteArrayInputStream(decodedBytes));
                 requestDto.setSize(decodedBytes.length);
-
-                log.info(MARKER, "Using processedPdfBase64 for StoreContent upload.");
+                log.info(MARKER, "Using processedPdfBase64 for NON-STREAMING upload.");
             } else if (file.exists() && file.isFile()) {
                 byte[] fileBytes = Files.readAllBytes(file.toPath());
                 requestDto.setContentData(new ByteArrayInputStream(fileBytes));
                 requestDto.setSize(fileBytes.length);
-
-                log.info(MARKER, "Using file content for StoreContent upload.");
+                log.info(MARKER, "Using file content for NON-STREAMING upload.");
             } else {
-                String errorMessage = "Neither processedPdfBase64 nor valid file available for StoreContent upload.";
+                String errorMessage = "Neither processedPdfBase64 nor valid file available for NON-STREAMING upload.";
                 HandymanException.insertException(errorMessage, new HandymanException(errorMessage), action);
                 log.error(MARKER, errorMessage);
             }
 
-            Acmastorecontentclient client = AcmastorecontentclientFactory.createInstance(clientProps);
-            responseDto = client.storeContent(requestDto);
-            log.info("Invoking Acmastorecontentclient.storeContent() with repo and applicationId");
-
-            if (responseDto != null) {
-                log.info(MARKER, "Upload Complete - Status: {}", responseDto.getStatus());
-                log.info(MARKER, "Content ID: {}", responseDto.getContentID());
-                log.info(MARKER, "Message: {}", responseDto.getMessage());
-
-                saveStoreContentAudit(entity, filePath, responseDto, documentEyeCue, action);
-                log.info(MARKER, "StoreContent upload SUCCESS | document_id: {} | contentId: {} | file: {}",
-                        entity != null ? entity.getDocumentId() : "N/A",
-                        responseDto.getContentID(),
-                        filePath);
-            } else {
-                String warnMsg = "Null response from StoreContent client.";
-                HandymanException.insertException(warnMsg, new HandymanException(warnMsg), action);
-                log.warn(MARKER, warnMsg);
-            }
+            return requestDto;
 
         } catch (Exception e) {
-            String errorMessage = "Error while uploading to StoreContent";
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException(errorMessage, handymanException, action);
+            String errorMessage = "Error creating non-streaming request";
+            HandymanException.insertException(errorMessage, new HandymanException(errorMessage), action);
             log.error(MARKER, errorMessage, e);
+            return null;
         }
+    }
 
-        return responseDto;
+    private StoreContentRequestDto createStreamingRequest(File file,
+                                                          String repository,
+                                                          String applicationId,
+                                                          DocumentEyeCueInputTable entity,
+                                                          ActionExecutionAudit action,
+                                                          String storeContentApiKey) {
+        try {
+            StoreContentRequestDto requestDto = new StoreContentRequestDto();
+            requestDto.setRepository(Repository.valueOf(repository));
+            requestDto.setApplicationID(applicationId);
+
+            HashMap<String, String> contentMetadata = new HashMap<>();
+            String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
+                    ? entity.getFileName()
+                    : file.getName();
+            String updatedFileName = baseFileName.toLowerCase().endsWith(".pdf")
+                    ? baseFileName.substring(0, baseFileName.length() - 4) + "_Updated.pdf"
+                    : baseFileName + "_Updated.pdf";
+            contentMetadata.put("FileName", updatedFileName);
+            contentMetadata.put("MimeType", DEFAULT_MIME_TYPE);
+            requestDto.setContentMetaData(contentMetadata);
+
+            HashMap<String, String> additionalParams = new HashMap<>();
+            additionalParams.put("versioning", VERSIONING_FLAG);
+            if (entity != null && entity.getDocumentId() != null) {
+                additionalParams.put("contentkey", entity.getDocumentId());
+            } else {
+                String warnMsg = "documentId not provided; contentkey will be empty";
+                HandymanException.insertException(warnMsg, new HandymanException(warnMsg), action);
+                log.warn(MARKER, warnMsg);
+                additionalParams.put("contentkey", "");
+            }
+            additionalParams.put("contentkeytype", CONTENT_KEY_TYPE);
+            additionalParams.put("plan", PLAN_VALUE);
+            requestDto.setAddtionalParams(additionalParams);
+
+            HashMap<String, String> headers = new HashMap<>();
+            headers.put("apikey", storeContentApiKey);
+            String bearerToken = BearerTokenProvider.fetchBearerToken(action, log, MARKER);
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                headers.put("Authorization", "Bearer " + bearerToken);
+            }
+            requestDto.setHeaderMap(headers);
+
+            if (file.exists() && file.isFile()) {
+                FileInputStream fis = new FileInputStream(file);
+                requestDto.setContentData(fis);
+                requestDto.setSize(file.length());
+                log.info(MARKER, "Using file for STREAMING multipart upload: {}", file.getAbsolutePath());
+            } else {
+                String errorMessage = "Valid file not available for STREAMING upload.";
+                HandymanException.insertException(errorMessage, new HandymanException(errorMessage), action);
+                log.error(MARKER, errorMessage);
+            }
+
+            return requestDto;
+
+        } catch (Exception e) {
+            String errorMessage = "Error creating streaming multipart request";
+            HandymanException.insertException(errorMessage, new HandymanException(errorMessage), action);
+            log.error(MARKER, errorMessage, e);
+            return null;
+        }
     }
 
     private void saveStoreContentAudit(DocumentEyeCueInputTable entity,
                                        String filePath,
                                        StoreContentResponseDto responseDto,
                                        DocumentEyeCue documentEyeCue,
-                                       ActionExecutionAudit action) {
+                                       ActionExecutionAudit action,
+                                       String uploadType) {
         try {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(documentEyeCue.getResourceConn());
             String endpointUrl = documentEyeCue.getEndpoint();
@@ -202,15 +312,15 @@ public class StoreContent {
                     responseDto.getStatus(),
                     responseDto.getMessage(),
                     responseDto.getContentID(),
-                    LocalDateTime.now(),
                     entity.getProcessId(),
                     entity.getRootPipelineId(),
                     entity.getBatchId(),
-                    LocalDateTime.now(),
-                    endpointUrl
+                    endpointUrl,
+                    uploadType
             ));
 
-            log.info(MARKER, "StoreContent upload audit inserted for origin_id {}", entity.getOriginId());
+            log.info(MARKER, "StoreContent upload audit inserted for origin_id {} with upload type {}",
+                    entity.getOriginId(), uploadType);
         } catch (Exception e) {
             String errorMessage = "Failed to insert StoreContent upload audit for origin_id " + entity.getOriginId();
             HandymanException handymanException = new HandymanException(e);
