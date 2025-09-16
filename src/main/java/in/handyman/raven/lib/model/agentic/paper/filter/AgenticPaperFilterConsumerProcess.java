@@ -144,8 +144,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
             try {
                 CompletableFuture<CoproRetryServiceAsync.CoproResponse> future = tritonRequestKryptonExecutorV2(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
-                // wait up to X seconds for completion. Choose appropriate timeout.
-                //future.get(10, TimeUnit.SECONDS);
             } catch (Exception te) {
                 String errorMessage = "Copro call timed out : " + te.getMessage();
                 log.error(aMarker, errorMessage, te);
@@ -555,23 +553,20 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .build());
     }
 
+    private static String getTritonRequestPayload(String dataExtractionPayloadString) throws JsonProcessingException {
+        TritonRequest tritonRequestPayload = new TritonRequest();
+        tritonRequestPayload.setName(AgenticPaperFilterConsumerProcess.KRYPTON_START);
+        tritonRequestPayload.setShape(List.of(1, 1));
+        tritonRequestPayload.setDatatype(TritonDataTypes.BYTES.name());
+        tritonRequestPayload.setData(Collections.singletonList(dataExtractionPayloadString));
 
-private static String getTritonRequestPayload(String dataExtractionPayloadString) throws JsonProcessingException {
-    TritonRequest tritonRequestPayload = new TritonRequest();
-    tritonRequestPayload.setName(AgenticPaperFilterConsumerProcess.KRYPTON_START);
-    tritonRequestPayload.setShape(List.of(1, 1));
-    tritonRequestPayload.setDatatype(TritonDataTypes.BYTES.name());
-    tritonRequestPayload.setData(Collections.singletonList(dataExtractionPayloadString));
+        TritonInputRequest tritonInputRequest = new TritonInputRequest();
+        tritonInputRequest.setInputs(Collections.singletonList(tritonRequestPayload));
 
-    TritonInputRequest tritonInputRequest = new TritonInputRequest();
-    tritonInputRequest.setInputs(Collections.singletonList(tritonRequestPayload));
+        return AgenticPaperFilterConsumerProcess.mapper.writeValueAsString(tritonInputRequest);
+    }
 
-    return AgenticPaperFilterConsumerProcess.mapper.writeValueAsString(tritonInputRequest);
-}
-
-
-
-public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
+    public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
             if (jsonResponse.contains("```json")) {
                 log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
@@ -626,6 +621,7 @@ public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, Object
             return "";
         }
     }
+
     public String encryptRequestResponse(String request) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
