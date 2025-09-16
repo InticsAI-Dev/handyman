@@ -137,14 +137,17 @@ public class OcrTextComparatorAction implements IActionExecution {
                         sorItemName, isOcrFieldComparableValue);
 
                 try {
-                    String encryptionPolicy = input.getEncryptionPolicy() != null ? input.getEncryptionPolicy() : "";
 
+                    if("true".equals(action.getContext().get("pipeline.deep.sift.encryption"))){
+                        extractedText = encryption.decrypt(extractedText, AES_256, sorItemName);
+                        extractedText = extractedText != null ? extractedText : "";
+
+                    }
                     if (pipelineEndToEndEncryptionActivator) {
                         log.info(aMarker, "Decrypting extracted_text with AES256 and answer with policy for originId={}, sorItemName={}",
                                 originId, sorItemName);
-                        extractedText = encryption.decrypt(extractedText, AES_256, sorItemName);
-                        extractedText = extractedText != null ? extractedText : "";
-                        answer = encryption.decrypt(answer, encryptionPolicy, sorItemName);
+
+                        answer = encryption.decrypt(answer, AES_256, sorItemName);
                         answer = answer != null ? answer : "";
                         log.debug(aMarker, "Decrypted answer and extracted_text for originId={}, sorItemName={}", originId, sorItemName);
                     }
@@ -173,12 +176,15 @@ public class OcrTextComparatorAction implements IActionExecution {
                         log.info(aMarker, "NO MATCH - Using original value (score: {} <= threshold: {}) for originId={}, sorItemName={}", bestScore, fuzzyMatchThreshold, originId, sorItemName);
                     }
 
+                    if("true".equals(action.getContext().get("pipeline.deep.sift.encryption"))){
+                        extractedText = encryption.encrypt(extractedText, AES_256, sorItemName);
+                        extractedText = extractedText != null ? extractedText : "";
+                    }
                     if (pipelineEndToEndEncryptionActivator) {
                         try {
                             log.info(aMarker, "Encrypting final answer and extracted_text for originId={}, sorItemName={}", originId, sorItemName);
-                            extractedText = encryption.encrypt(extractedText, AES_256, sorItemName);
-                            extractedText = extractedText != null ? extractedText : "";
-                            bestMatch = encryption.encrypt(bestMatch, encryptionPolicy, sorItemName);
+
+                            bestMatch = encryption.encrypt(bestMatch, AES_256, sorItemName);
                             bestMatch = bestMatch != null ? bestMatch : "";
                             candidatesList = candidatesList.isEmpty() ? candidatesList : encryption.encrypt(candidatesList, AES_256, sorItemName);
                             candidatesList = candidatesList != null ? candidatesList : "";
