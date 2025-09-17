@@ -136,15 +136,17 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                               final ConsumerProcess<I, O> callable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
-        final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
+
+        int finalConsumerCount = Math.min(consumerCount, queue.size());
+        final CountDownLatch countDownLatch = new CountDownLatch(finalConsumerCount);
         if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
-            executorService = Executors.newFixedThreadPool(consumerCount);
-            logger.info("Copro processor created with fixed thread pool of size {}", consumerCount);
+            executorService = Executors.newFixedThreadPool(finalConsumerCount);
+            logger.info("Copro processor created with fixed thread pool of size {}", finalConsumerCount);
         } else {
             executorService = Executors.newWorkStealingPool();
             logger.info("Copro processor created with work stealing pool");
         }
-        for (int consumer = 0; consumer < consumerCount; consumer++) {
+        for (int consumer = 0; consumer < finalConsumerCount; consumer++) {
             executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
                     startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbiResourceName, logger));
 

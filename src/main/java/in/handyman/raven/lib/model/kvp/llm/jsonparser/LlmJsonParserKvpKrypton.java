@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.kvp.llm.jsonparser;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -14,7 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LlmJsonParserKvpKrypton {
 
     private String key;
