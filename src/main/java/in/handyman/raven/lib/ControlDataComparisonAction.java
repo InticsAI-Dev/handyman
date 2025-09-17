@@ -49,8 +49,6 @@ public class ControlDataComparisonAction implements IActionExecution{
     private final Logger log;
     private ControlDataComparison controlDataComparison = new ControlDataComparison();
     private final Marker aMarker;
-    private final ObjectMapper objectMapper;
-    private final InticsIntegrity securityEngine;
 
     private final int threadSleepTime;
     private final int writeBatchSize;
@@ -62,12 +60,10 @@ public class ControlDataComparisonAction implements IActionExecution{
     private final String insertQuery;
     public static final String ACTUAL_ENCRYPTION_VARIABLE = "actual.encryption.variable";
 
-    public ControlDataComparisonAction(final ActionExecutionAudit action, final Logger log, final Object radonKvp) {
+    public ControlDataComparisonAction(ActionExecutionAudit action, Logger log, Object controlDataComparison) {
         this.action = action;
         this.log = log;
         this.controlDataComparison = (ControlDataComparison) controlDataComparison;
-        this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action, log);
-        this.objectMapper = new ObjectMapper();
         this.aMarker = MarkerFactory.getMarker("ControlDataComparison:" + this.controlDataComparison.getName());
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
         this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
@@ -81,27 +77,15 @@ public class ControlDataComparisonAction implements IActionExecution{
     @Override
     public void execute() throws Exception {
         try {
-            final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(controlDataComparison.getResourceConn());
-            log.info(aMarker, "Control Data Comparison Action for {} has been started", controlDataComparison.getName());
-
-            String outputTable = controlDataComparison.getOutputTable();
-            String querySet = controlDataComparison.getQuerySet();
-            final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = getControlDataComparisonQueryInputTables(jdbi, querySet);
-            log.info(aMarker, "Total rows returned from the query: {}", controlDataComparisonQueryInputTables.size());
-
-            // Decryption initial handler (used for global decryption phase)
-            InticsIntegrity encryptionHandler = SecurityEngine.getInticsIntegrityMethod(action, log);
-            log.info(aMarker, "Encryption Handler initialized: {}", encryptionHandler.getEncryptionMethod());
-
-            // Decrypt values if required
-            performDecryption(controlDataComparisonQueryInputTables, encryptionHandler);
-            log.info(aMarker, "Decryption process completed");
+            Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(this.controlDataComparison.getResourceConn());
+            this.log.info(this.aMarker, "Control Data Comparison Action for {} has been started", this.controlDataComparison.getName());
+            this.log.info(this.aMarker, "Decryption process completed");
             final List<URL> urls = Optional.ofNullable(controlDataComparisonUrl).map(s -> Arrays.stream(s.split(",")).map(urlItem -> {
                 try {
                     return new URL(urlItem);
                 } catch (MalformedURLException e) {
                     log.error("Error in processing the URL {}", urlItem, e);
-                    throw new HandymanException("Error in processing the URL", e, action);
+                    return null;
                 }
             }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
