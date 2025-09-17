@@ -1,4 +1,3 @@
-
 package in.handyman.raven.lib.model.agentic.paper.filter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -231,7 +230,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Long processId = entity.getProcessId();
         Long rootPipelineId = entity.getRootPipelineId();
         String templateName = entity.getTemplateName();
-
+        Timestamp createdOn = CreateTimeStamp.currentTimestamp();
+        entity.setCreatedOn(createdOn);
         CoproRetryErrorAuditTable auditInput = setErrorAudictInputDetails(entity, endpoint);
 
         // Call async retry service — continue on a bounded callbackExecutor (prevents hogging the common pool)

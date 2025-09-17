@@ -238,6 +238,7 @@ public class ProviderDataTransformer {
                 (String) data.get("key"),
                 (String) data.get("value"),
                 (String) data.get("label"),
+                (String) data.get("sectionAlias"),
                 (Double) data.get("confidence"),
                 objectMapper.convertValue(data.get("boundingBox"), JsonNode.class)
         );

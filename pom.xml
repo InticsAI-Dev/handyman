@@ -14,7 +14,7 @@
         <micrometer.version>1.9.0</micrometer.version>
         <google.people.version>v1-rev20210903-1.32.1</google.people.version>
         <google.cal.version>v3-rev20220422-1.32.1</google.cal.version>
-        <junit.version>5.9.0</junit.version>
+        <junit.version>5.10.2</junit.version>
         <jackson.version>2.14.0</jackson.version>
         <jdbi.version>3.36.0</jdbi.version>
         <maven.compiler.source>11</maven.compiler.source>
@@ -75,11 +75,11 @@
                 <version>${jackson.version}</version>
             </dependency>
 
-        <!--        <dependency>-->
-        <!--            <groupId>org.slf4j</groupId>-->
-        <!--            <artifactId>slf4j-simple</artifactId>-->
-        <!--            <version>2.0.3</version>-->
-        <!--        </dependency>-->
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                    <version>2.0.3</version>
+                </dependency>
         <!-- https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client -->
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
@@ -113,18 +113,6 @@
             <artifactId>azure-identity</artifactId>
             <version>1.15.0</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>5.7.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.7.0</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -168,6 +156,17 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>
+        </dependency>
+        <!-- Tess4J -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.11.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ahocorasick</groupId>
+            <artifactId>ahocorasick</artifactId>
+            <version>0.4.0</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.antlr/antlr4-runtime -->
@@ -364,13 +363,6 @@
             <artifactId>client-java</artifactId>
             <version>23.0.0</version>
         </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
     <build>
