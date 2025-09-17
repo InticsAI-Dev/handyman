@@ -82,18 +82,18 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                         break;
                     }
                 } catch (InterruptedException e) {
-                    logger.error("Error at Consumer thread", e);
+
                     HandymanException handymanException=new HandymanException(e);
                     HandymanException.insertException("Error at Consumer thread", handymanException, actionExecutionAudit);
                 } catch (Exception e) {
-                    logger.error("Error at Consumer Process", e);
+
                     HandymanException handymanException=new HandymanException(e);
                     HandymanException.insertException("Error at Consumer Process", handymanException, actionExecutionAudit);
                 }
             }
             checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime, jdbi);
         } catch (Exception e) {
-            logger.error("Final persistence failed", e);
+
             HandymanException handymanException=new HandymanException(e);
             HandymanException.insertException("Final persistence failed ", handymanException, actionExecutionAudit);
 
@@ -123,7 +123,6 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
 
             }
         } catch (Exception e) {
-            logger.error("Error in callable process in consumer", e);
             HandymanException handymanException=new HandymanException(e);
             HandymanException.insertException("Error in callable process in consumer ", handymanException, actionExecutionAudit);
 
@@ -159,7 +158,7 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                 if (hasSuccess(retryOutput)) return retryOutput;
                 insertFailedCoproProcess(take, retryOutput, attempt, jdbi);
             } catch (Exception e) {
-                logger.error("Retry attempt {} failed for item. Error: {}", attempt, e.getMessage(), e);
+
                 HandymanException handymanException=new HandymanException(e);
                 HandymanException.insertException("Error in callable process in consumer ", handymanException, actionExecutionAudit);
             }
@@ -244,10 +243,8 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                 processedEntity.clear();
 
             } catch (Exception e) {
-                logger.error("Error during batch insert or audit logging. Batch size: {}, Entities: {}, StartTime: {}",
-                        writeBatchSize, processedEntity.size(), startTime, e);
                 HandymanException exception=new HandymanException(e);
-                HandymanException.insertException("Failed to write batch to DB", exception, actionExecutionAudit);
+                HandymanException.insertException("Error during batch insert or audit logging. Batch size: "+writeBatchSize+", Entities: "+processedEntity.size()+", StartTime: "+startTime, exception, actionExecutionAudit);
             }
         }
     }
@@ -284,7 +281,6 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
                     rowCount = (int) Arrays.stream(array).count();
                     insertRowsProcessedIntoStatementAudit(startTime, processedEntity);
                 } catch (Exception e) {
-                    logger.error("Error in executing prepared statement {}", e.getMessage());
                     HandymanException handymanException=new HandymanException(e);
                     HandymanException.insertException("Error in executing prepared statement ", handymanException, actionExecutionAudit);
                 }
