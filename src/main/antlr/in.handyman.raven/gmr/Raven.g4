@@ -1425,6 +1425,23 @@ postProcessingExecutor:
     '}'
     ('on-condition' condition=expression)*  ;
 
+     sorItemMappingExecutor:
+           'sorItemMappingExecutor' 'as' name=STRING
+            'on-resource-conn' resourceConn=STRING
+            'input-table' inputTable=STRING
+            'output-table' outputTable=STRING
+           'using' '{' querySet=STRING '}'
+            ('on-condition' condition=expression)*  ;
+
+            ocrTextComparator:
+                'ocrTextComparator' 'as' name=STRING
+                'on-resource-conn' resourceConn=STRING
+                'output-table' outputTable=STRING
+                'batch-id' batchId=STRING
+                'using' '{'
+                    querySet=STRING
+                '}' ('on-condition' condition=expression)* ;
+
 agenticPaperFilter:
   	'agenticPaperFilter' 'as' name=STRING
   	'resource-conn' resourceConn=STRING
