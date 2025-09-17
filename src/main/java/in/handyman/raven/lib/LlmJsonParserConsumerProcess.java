@@ -156,9 +156,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 }
             }else {
                 log.warn("Extracted content is null for {}. Skipping processing.", loggerInput);
-                List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(input.getSorMetaDetail(), new TypeReference<>() {
-                });
-                llmJsonQueryInputTableSorMetas.forEach(llmJsonQueryInputTableSorMeta -> {
                     LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
                             .createdOn(String.valueOf(input.getCreatedOn()))
                             .createdUserId(input.getTenantId())
@@ -171,7 +168,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                             .groupId(input.getGroupId())
                             .rootPipelineId(input.getRootPipelineId())
                             .answer("")
-                            .sorItemName(llmJsonQueryInputTableSorMeta.getSorItemName())
                             .batchId(input.getBatchId())
                             .modelRegistry(input.getModelRegistry())
                             .extractedImageUnit(input.getExtractedImageUnit())
@@ -182,7 +178,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                             .build();
 
                     llmJsonQueryOutputTables.add(insertData);
-                });
 
             }
 
