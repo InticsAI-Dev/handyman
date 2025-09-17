@@ -1,5 +1,8 @@
 package in.handyman.raven.lib;
 
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
@@ -8,6 +11,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.SorItemMappingExecutor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.*;
+
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -17,6 +21,7 @@ import org.slf4j.Marker;
 import java.net.URL;
 import java.util.*;
 
+import java.util.*;
 
 public class SorItemConsumerProcess implements CoproProcessor.ConsumerProcess<SorItemMappingInputTable, SorItemMappingOutputTable>{
 
@@ -136,7 +141,8 @@ public class SorItemConsumerProcess implements CoproProcessor.ConsumerProcess<So
 
 
 
-    public List<SorItemMappingOutputTable> transform(SorItemMappingInputTable entity) throws com.fasterxml.jackson.core.JsonProcessingException {
+
+    public List<SorItemMappingOutputTable> transform(SorItemMappingInputTable entity) throws JsonProcessingException {
         String inferResponse = entity.getTotalResponseJson();
         ObjectMapper mapper = new ObjectMapper();
         JsonNode jsonArray = mapper.readTree(inferResponse);
@@ -196,7 +202,10 @@ public class SorItemConsumerProcess implements CoproProcessor.ConsumerProcess<So
         }
 
         return parentObj;
+
     }
+
+
 
 
 
