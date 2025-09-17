@@ -20,7 +20,6 @@ public class ApiKeyProvider {
                 String errorMessage = "ActionExecutionAudit or its context is null – cannot fetch API key";
                 HandymanException.insertException(errorMessage, new HandymanException(errorMessage), action);
                 log.warn(MARKER, errorMessage);
-                return "";
             }
 
             String encryptedApiKey = action.getContext().get(KEY_STORECONTENT_API_KEY);
@@ -28,7 +27,6 @@ public class ApiKeyProvider {
                 String warnMessage = "No StoreContent API key found in ActionExecutionAudit context";
                 HandymanException.insertException(warnMessage, new HandymanException(warnMessage), action);
                 log.warn(MARKER, warnMessage);
-                return "";
             }
 
             return ConfigEncryptionUtils.fromEnv().decryptProperty(encryptedApiKey);
