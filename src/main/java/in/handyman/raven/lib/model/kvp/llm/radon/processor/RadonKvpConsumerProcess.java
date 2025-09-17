@@ -195,12 +195,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
         Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-        if(action.getContext().getOrDefault(AWS_EXTRACTION_ACTIVATOR,"true").equals("true")){
-            tritonAwsRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
-        }else{
+//        if(action.getContext().getOrDefault(AWS_EXTRACTION_ACTIVATOR,"true").equals("true")){
+//            tritonAwsRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
+//        }else{
             tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
 
-        }
+        //}
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
         return parentObj;
@@ -426,61 +426,62 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 parentObj.addAll(providerParentObj);
             }
 
-        } else if(action.getContext().getOrDefault(AWS_EXTRACTION_ACTIVATOR,"true").equals("true")){
-            String inferResponse = modelResponse.getInferResponse();
-
-            // Step 1: Decide if you want encryption on individual values or the whole blob
-            boolean encryptEnabled = Objects.equals(encryptOutputJsonContent, "true");
-
-            // Step 2: Parse inferResponse string into key=value pairs
-            String cleaned = inferResponse.replaceAll("[{}]", "");
-            String[] parts = cleaned.split(",");
-
-            for (String part : parts) {
-                String[] kv = part.split("=", 2); // split only on first '='
-                if (kv.length == 2) {
-                    String key = kv[0].trim();
-                    String value = kv[1].trim();
-
-                    if (!key.isEmpty() && !value.isEmpty()) {
-                        String finalValue = value;
-                        if (encryptEnabled) {
-                            finalValue = encryption.encrypt(value, "AES256", "RADON_KVP_JSON");
-                        }
-
-                        RadonQueryOutputTable row = RadonQueryOutputTable.builder()
-                                .createdOn(entity.getCreatedOn())
-                                .createdUserId(tenantId)
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .lastUpdatedUserId(tenantId)
-                                .originId(originId)
-                                .paperNo(paperNo)
-                                .groupId(groupId)
-                                .inputFilePath(processedFilePaths)
-                                .actionId(this.action.getActionId())
-                                .tenantId(tenantId)
-                                .processId(processId)
-                                .rootPipelineId(rootPipelineId)
-                                .process(entity.getProcess())
-                                .batchId(modelResponse.getBatchId())
-                                .modelRegistry(entity.getModelRegistry())
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .stage(entity.getApiName())
-                                .category(entity.getCategory())
-                                .message("Radon kvp action macro completed")
-                                .request(this.encryptRequestResponse(request))
-                                .sorItemName(key)      // key from inferResponse
-                                .answer(finalValue)  // value from inferResponse
-                                .endpoint(String.valueOf(endpoint))
-                                .build();
-
-                        parentObj.add(row);
-                    }
-                }
-            }
-
         }
-
+//        else if(action.getContext().getOrDefault(AWS_EXTRACTION_ACTIVATOR,"true").equals("true")){
+//            String inferResponse = modelResponse.getInferResponse();
+//
+//            // Step 1: Decide if you want encryption on individual values or the whole blob
+//            boolean encryptEnabled = Objects.equals(encryptOutputJsonContent, "true");
+//
+//            // Step 2: Parse inferResponse string into key=value pairs
+//            String cleaned = inferResponse.replaceAll("[{}]", "");
+//            String[] parts = cleaned.split(",");
+//
+//            for (String part : parts) {
+//                String[] kv = part.split("=", 2); // split only on first '='
+//                if (kv.length == 2) {
+//                    String key = kv[0].trim();
+//                    String value = kv[1].trim();
+//
+//                    if (!key.isEmpty() && !value.isEmpty()) {
+//                        String finalValue = value;
+//                        if (encryptEnabled) {
+//                            finalValue = encryption.encrypt(value, "AES256", "RADON_KVP_JSON");
+//                        }
+//
+//                        RadonQueryOutputTable row = RadonQueryOutputTable.builder()
+//                                .createdOn(entity.getCreatedOn())
+//                                .createdUserId(tenantId)
+//                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+//                                .lastUpdatedUserId(tenantId)
+//                                .originId(originId)
+//                                .paperNo(paperNo)
+//                                .groupId(groupId)
+//                                .inputFilePath(processedFilePaths)
+//                                .actionId(this.action.getActionId())
+//                                .tenantId(tenantId)
+//                                .processId(processId)
+//                                .rootPipelineId(rootPipelineId)
+//                                .process(entity.getProcess())
+//                                .batchId(modelResponse.getBatchId())
+//                                .modelRegistry(entity.getModelRegistry())
+//                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+//                                .stage(entity.getApiName())
+//                                .category(entity.getCategory())
+//                                .message("Radon kvp action macro completed")
+//                                .request(this.encryptRequestResponse(request))
+//                                .sorItemName(key)      // key from inferResponse
+//                                .answer(finalValue)  // value from inferResponse
+//                                .endpoint(String.valueOf(endpoint))
+//                                .build();
+//
+//                        parentObj.add(row);
+//                    }
+//                }
+//            }
+//
+//        }
+//
 
 
         else {

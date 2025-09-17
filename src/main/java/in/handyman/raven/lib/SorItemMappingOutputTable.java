@@ -42,6 +42,10 @@ public class SorItemMappingOutputTable implements CoproProcessor.Entity {
     private String answer;
     private String endpoint;
     private String sorItemName;
+    private String bbox;
+    private double confidence;
+
+
 
     @Override
     public List<Object> getRowData() {
@@ -70,7 +74,9 @@ public class SorItemMappingOutputTable implements CoproProcessor.Entity {
                 this.request,
                 this.answer,
                 this.endpoint,
-                this.sorItemName
+                this.sorItemName,
+                this.bbox,
+                this.confidence
         ).collect(Collectors.toList());
     }
 

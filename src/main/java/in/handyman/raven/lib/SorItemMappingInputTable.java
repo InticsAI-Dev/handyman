@@ -38,4 +38,6 @@ public class SorItemMappingInputTable {
     private String answer;
     private String endpoint;
     private String sorItemName;
+    private String bbox;
+    private double confidence;
 }
