@@ -2,6 +2,7 @@ package in.handyman.raven.lambda.access.repo;
 
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
+import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
 
 import java.util.List;
 import java.util.Map;
@@ -116,4 +117,6 @@ public interface HandymanRepo {
     long insertProtegrityAuditRecord(String key, String encryptionType, String endpoint, Long rootPipelineId, Long actionId, String threadName,String uuid);
 
     void updateProtegrityAuditRecord(long id, String status, String message);
+
+    long insertAuditToDb(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action);
 }
