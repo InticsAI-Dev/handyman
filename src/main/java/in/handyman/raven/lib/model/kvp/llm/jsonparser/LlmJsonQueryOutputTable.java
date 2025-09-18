@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -20,6 +19,7 @@ import java.util.stream.Stream;
 public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
     private String createdOn;
     private Long tenantId;
+    private Long createdUserId;
     private Timestamp lastUpdatedOn;
     private Long lastUpdatedUserId;
     private double confidenceScore;
@@ -42,11 +42,11 @@ public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.createdOn, this.tenantId, this.lastUpdatedOn, this.lastUpdatedUserId,
+        return Stream.of(this.createdOn, this.tenantId, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId,
                 this.confidenceScore, this.sorItemName, this.answer, this.boundingBox, this.paperNo,
                 this.originId, this.groupId, this.rootPipelineId, this.batchId, this.modelRegistry,
                 this.extractedImageUnit, this.imageDpi, this.imageHeight, this.imageWidth,
-                this.sorContainerId, this.sorItemLabel,this.sectionAlias).collect(Collectors.toList());
+                this.sorContainerId, this.sorItemLabel, this.sectionAlias).collect(Collectors.toList());
     }
 
     @Override
