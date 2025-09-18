@@ -5,9 +5,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.agentic.paper.filter.retry.GenericRetryService;
 import in.handyman.raven.lib.model.agentic.paper.filter.retry.ServiceContext;
 import in.handyman.raven.util.ExceptionUtil;
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,74 +14,6 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-//
-//public class CoproService {
-//
-//    private static final Logger log = LoggerFactory.getLogger(CoproService.class);
-//
-//    private final GenericRetryService retryService;
-//    private final CoproProperties coproProperties;
-//    private final int maxAuditLength = 6000;
-//
-//    public CoproService(GenericRetryService retryService, CoproProperties coproProperties) {
-//        this.retryService = retryService;
-//        this.coproProperties = coproProperties;
-//    }
-//
-//    public CompletableFuture<CoproResponse> callCoproApi(Request request, String requestBody) {
-//        ServiceContext context = new ServiceContext(Map.of("encrypt.audit", coproProperties.getEncryptAudit()));
-//        ErrorAudit audit = new ErrorAudit();
-//        audit.setCreatedOn(new Timestamp(System.currentTimeMillis()));
-//        audit.setRequest(requestBody);
-//
-//        return retryService.sendWithRetry(request, context)
-//                .thenApply(response -> {
-//                    audit.setResponse(response.message());
-//                    audit.setLastUpdatedOn(new Timestamp(System.currentTimeMillis()));
-//                    audit.setStatus("Completed with status " + response.code());
-//                    auditRepository.save(audit);
-//                    return new CoproResponse(response.code(), response.message());
-//                })
-//                .exceptionally(ex -> {
-//                    audit.setStatus("Failed: " + ex.getMessage());
-//                    audit.setLastUpdatedOn(new Timestamp(System.currentTimeMillis()));
-//                    auditRepository.save(audit);
-//                    log.error("Copro API failed", ex);
-//                    throw new RuntimeException(ex);
-//                });
-//    }
-//
-//
-//
-//    private void populateAudit(CoproRetryErrorAuditTable retryAudit, int attempt, String requestBody, Response response, Exception e, ActionExecutionAudit action) {
-//        retryAudit.setAttempt(attempt);
-//        retryAudit.setRequest(encryptRequestResponse(requestBody, action));
-//        if (response != null) {
-//            retryAudit.setMessage(response.message());
-//            retryAudit.setResponse(encryptRequestResponse(response.toString(), action));
-//        } else if (e != null) {
-//            String msg = e.getMessage() != null ? e.getMessage() : ExceptionUtil.toString(e);
-//            retryAudit.setMessage(msg);
-//            retryAudit.setResponse(encryptRequestResponse(ExceptionUtil.toString(e), action));
-//        }
-//    }
-//
-//    private void persistAuditAsync(CoproRetryErrorAuditTable auditCopy, ActionExecutionAudit action) {
-//        CompletableFuture.runAsync(() -> {
-//            try {
-//                if (auditCopy.getCreatedOn() == null) {
-//                    auditCopy.setCreatedOn(Timestamp.valueOf(LocalDateTime.now()));
-//                }
-//                truncateAuditFields(auditCopy);
-//                handymanRepo.insertAuditToDb(auditCopy, action);
-//            } catch (Exception ex) {
-//                log.error("Failed to persist audit: {}", ExceptionUtil.toString(ex));
-//                HandymanException.insertException("Error inserting retry audit", new HandymanException(ex), action);
-//            }
-//        }, dbExecutor);
-//    }
-//}
-
 
 public class CoproService {
 
