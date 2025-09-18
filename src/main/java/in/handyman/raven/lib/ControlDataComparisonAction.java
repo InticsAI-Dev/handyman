@@ -98,11 +98,11 @@ public class ControlDataComparisonAction implements IActionExecution{
             }
 
             if (consumerApiCount <= 0) {
-                log.info(aMarker, "No kvp consumer API count found using kube client, using existing context value");
+                log.info(aMarker, "No controldata consumer API count found using kube client, using existing context value");
                 String key = "Radon.kvp.consumer.API.count";
                 consumerApiCount = parseContextValue(action, key, "1");
             }
-            log.info(aMarker, "Consumer API count for kvp action is {}", consumerApiCount);
+            log.info(aMarker, "Consumer API count for controldata action is {}", consumerApiCount);
 
             readBatchSize = parseContextValue(action, "read.batch.size", "10");
             if (consumerApiCount >= readBatchSize) {
@@ -117,11 +117,11 @@ public class ControlDataComparisonAction implements IActionExecution{
 
             final ControlDataComparisonConsumerProcess controlDataComparisonConsumerProcess = new ControlDataComparisonConsumerProcess(log, aMarker, action, controlDataComparison.getResourceConn(),controlDataComparison);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, controlDataComparisonConsumerProcess);
-            log.info(aMarker, " LLM kvp Action has been completed {}  ", controlDataComparison.getName());
+            log.info(aMarker, " LLM controldata Action has been completed {}  ", controlDataComparison.getName());
         } catch (Exception e) {
             action.getContext().put(controlDataComparison.getName() + ".isSuccessful", "false");
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Error in execute method for LLM kvp action", handymanException, action);
+            HandymanException.insertException("Error in execute method for LLM control data action", handymanException, action);
 
         }
     }
