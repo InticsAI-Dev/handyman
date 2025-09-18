@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.agentic.paper.filter.copro.CoproAuditUtil;
 import in.handyman.raven.lib.model.agentic.paper.filter.copro.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.filemergerpdf.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -133,10 +134,14 @@ public class GenericRetryService implements RetryableService {
                 String respStr = context.getResponseBody(); // we set earlier
                 audit.setMessage(response.message());
                 audit.setResponse(EncryptionUtil.encryptRequestResponse(respStr, context.getActionAudit()));
+                audit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
+
             } else if (e != null) {
                 String msg = e.getMessage() != null ? e.getMessage() : ExceptionUtil.toString(e);
                 audit.setMessage(msg);
                 audit.setResponse(EncryptionUtil.encryptRequestResponse(ExceptionUtil.toString(e), context.getActionAudit()));
+                audit.setStatus(ConsumerProcessApiStatus.FAILED.getStatusDescription());
+
             }
             auditUtil.truncateAuditFields(audit);
             // put back the clone into context so persistAuditAsync gets the incremented attempt clone
