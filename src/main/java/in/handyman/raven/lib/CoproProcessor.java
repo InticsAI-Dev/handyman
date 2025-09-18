@@ -135,6 +135,52 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
                               final ConsumerProcess<I, O> callable) {
+        String legacyPath = actionExecutionAudit.getContext().getOrDefault("copro.consumer.route.type", "LEGACY");
+        if ("LEGACY".equalsIgnoreCase(legacyPath)) {
+            startConsumerLegacy(insertSql, consumerCount, writeBatchSize, callable);
+        } else {
+            startConsumerModern(insertSql, consumerCount, writeBatchSize, callable);
+        }
+    }
+
+    private void startConsumerLegacy(String insertSql, Integer consumerCount, Integer writeBatchSize, ConsumerProcess<I, O> callable) {
+        final LocalDateTime startTime = LocalDateTime.now();
+        final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
+
+        int finalConsumerCount = Math.min(consumerCount, queue.size());
+        final CountDownLatch countDownLatch = new CountDownLatch(finalConsumerCount);
+        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
+            executorService = Executors.newFixedThreadPool(finalConsumerCount);
+            logger.info("Copro processor created with fixed thread pool of size {}", finalConsumerCount);
+        } else {
+            executorService = Executors.newWorkStealingPool();
+            logger.info("Copro processor created with work stealing pool");
+        }
+        for (int consumer = 0; consumer < finalConsumerCount; consumer++) {
+            executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
+                    startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbiResourceName, logger));
+
+            logger.info("Consumer {} submitted the process", consumer);
+        }
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
+        } finally {
+            logger.info("Shutting down executor service");
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private void startConsumerModern(String insertSql, Integer consumerCount, Integer writeBatchSize, ConsumerProcess<I, O> callable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
 
