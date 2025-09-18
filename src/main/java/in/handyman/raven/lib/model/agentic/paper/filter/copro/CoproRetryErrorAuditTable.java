@@ -37,14 +37,6 @@ public class CoproRetryErrorAuditTable {
     @Builder.Default
     private int attempt = 0;
 
-
-    // -----------------------------
-    // Helper methods for retry logic
-    // -----------------------------
-
-    /**
-     * Creates a full deep clone of this audit object for retry attempts.
-     */
     public CoproRetryErrorAuditTable cloneForRetry() {
         Timestamp createdOnCopy = createdOn != null ? new Timestamp(createdOn.getTime()) : null;
         Timestamp lastUpdatedOnCopy = lastUpdatedOn != null ? new Timestamp(lastUpdatedOn.getTime()) : null;
@@ -70,13 +62,10 @@ public class CoproRetryErrorAuditTable {
                 .request(truncate(request))
                 .response(truncate(response))
                 .endpoint(endpoint)
-                .attempt(attempt + 1) // increment attempt
+                .attempt(attempt + 1)
                 .build();
     }
 
-    /**
-     * Truncates request/response bodies to a safe maximum length.
-     */
     private String truncate(String input) {
         if (input == null) return null;
         return input.length() > MAX_BODY_LENGTH ? input.substring(0, MAX_BODY_LENGTH) + "...[TRUNCATED]" : input;

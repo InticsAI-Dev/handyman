@@ -14,6 +14,7 @@ import in.handyman.raven.lib.AgenticPaperFilterAction;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.agentic.paper.filter.copro.CoproRetryErrorAuditTable;
 import in.handyman.raven.lib.model.agentic.paper.filter.retry.GenericRetryService;
+import in.handyman.raven.lib.model.agentic.paper.filter.retry.HttpResult;
 import in.handyman.raven.lib.model.agentic.paper.filter.retry.ServiceContext;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
@@ -35,6 +36,7 @@ import java.util.regex.Pattern;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput> {
     private final ActionExecutionAudit action;
@@ -89,7 +91,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
         this.jdbiResourceName = jdbiResourceName;
 
-        this.retryService = new GenericRetryService(httpclient, 3, 2000); // maxRetries = 3, initialDelay 2s
+        this.retryService = new GenericRetryService(httpclient, 3, 2000, handymanRepo); // maxRetries = 3, initialDelay 2s
     }
 
     @Override
@@ -141,7 +143,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
             Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
             try {
-                CompletableFuture<Response> future = tritonRequestKryptonExecutorV2(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
+                CompletableFuture<HttpResult> future = tritonRequestKryptonExecutorV2(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
             } catch (Exception te) {
                 String errorMessage = "Copro call timed out : " + te.getMessage();
                 log.error(aMarker, errorMessage, te);
@@ -172,171 +174,14 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setModelName(action.getContext().get("agentic.paper.filter.activator").equalsIgnoreCase("true") ? "KRYPTON" : entity.getModelName());
         return radonKvpExtractionRequest;
     }
-//
-//    private void tritonRequestKryptonExecutor(AgenticPaperFilterInput entity, Request
-//            request, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint) {
-//        Long tenantId = entity.getTenantId();
-//        String templateId = entity.getTemplateId();
-//        Long processId = entity.getProcessId();
-//        Long rootPipelineId = entity.getRootPipelineId();
-//        String templateName = entity.getTemplateName();
-//        try (Response response = httpclient.newCall(request).execute()) {
-//            String responseBody = Objects.requireNonNull(response.body()).string();
-//            if (response.isSuccessful()) {
-//                RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
-//                if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-//                    modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
-//                        try {
-//                            extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
-//                        } catch (JsonProcessingException e) {
-//                            String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + " code " + response.code() + " message : " + response.message();
-//                            handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
-//                            HandymanException handymanException = new HandymanException(errorMessage);
-//                            HandymanException.insertException(errorMessage, handymanException, this.action);
-//                            log.error(aMarker, errorMessage);
-//                        }
-//                    }));
-//                } else {
-//                    String errorMessage = "Successful response in consumer but output node not found for batch/group " + entity.getGroupId() + " originId: " + entity.getOriginId() + " paperNo: " + entity.getPaperNo() + " code: " + response.code() + "\n message: " + response.message();
-//                    handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, response, rootPipelineId, templateName, responseBody);
-//                    HandymanException handymanException = new HandymanException(errorMessage);
-//                    HandymanException.insertException(errorMessage, handymanException, this.action);
-//                    log.error(aMarker, errorMessage);
-//                }
-//            } else {
-//                String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + responseBody;
-//                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, coproResponse.getHttpCode(), rootPipelineId, templateName, responseBody);
-//                HandymanException handymanException = new HandymanException(errorMessage);
-//                HandymanException.insertException(errorMessage, handymanException, this.action);
-//                log.error(aMarker, errorMessage);
-//            }
-//        } catch (Exception e) {
-//            String errorMessage = "Error in api call consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + "\n message : " + e.getMessage();
-//            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
-//            log.error(aMarker, errorMessage);
-//            HandymanException handymanException = new HandymanException(e);
-//            HandymanException.insertException(errorMessage, handymanException, this.action);
-//        }
-//    }
-//
-//    public CompletableFuture<CoproRetryServiceAsync.CoproResponse> tritonRequestKryptonExecutorV2(AgenticPaperFilterInput entity,
-//                                                                                                  Request request,
-//                                                                                                  List<AgenticPaperFilterOutput> parentObj,
-//                                                                                                  String jsonRequest,
-//                                                                                                  URL endpoint) {
-//        Long tenantId = entity.getTenantId();
-//        String templateId = entity.getTemplateId();
-//        Long processId = entity.getProcessId();
-//        Long rootPipelineId = entity.getRootPipelineId();
-//        String templateName = entity.getTemplateName();
-//        Timestamp createdOn = CreateTimeStamp.currentTimestamp();
-//        entity.setCreatedOn(createdOn);
-//        CoproRetryErrorAuditTable auditInput = setErrorAudictInputDetails(entity, endpoint);
-//
-//        // Call async retry service — continue on a bounded callbackExecutor (prevents hogging the common pool)
-//        return coproRetryService.callCoproApiWithRetryAsync(request, jsonRequest, auditInput, this.action)
-//                .whenCompleteAsync((coproResponse, throwable) -> {
-//                    if (throwable != null) {
-//                        // All retries failed or unexpected exception
-//                        String errorMessage = "Error in api call consumer failed for batch/group "
-//                                + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo()
-//                                + " - " + throwable.getMessage();
-//
-//                        parentObj.add(AgenticPaperFilterOutput.builder()
-//                                .batchId(entity.getBatchId())
-//                                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-//                                .groupId(entity.getGroupId())
-//                                .paperNo(entity.getPaperNo())
-//                                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-//                                .stage(PROCESS_NAME)
-//                                .tenantId(tenantId)
-//                                .templateId(templateId)
-//                                .processId(processId)
-//                                .createdOn(entity.getCreatedOn())
-//                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-//                                .message(errorMessage)
-//                                .rootPipelineId(rootPipelineId)
-//                                .templateName(templateName)
-//                                .request(encryptRequestResponse(jsonRequest))
-//                                .response("Error In Response")
-//                                .endpoint(String.valueOf(endpoint))
-//                                .build());
-//
-//                        log.error(aMarker, errorMessage);
-//                        HandymanException handymanException = new HandymanException(throwable);
-//                        HandymanException.insertException(errorMessage, handymanException, this.action);
-//                        return;
-//                    }
-//
-//                    // Success path: coproResponse contains the body bytes and status
-//                    try {
-//                        String responseBody = coproResponse.getBodyAsString();
-//
-//                        if (coproResponse.getHttpCode() >= 200 && coproResponse.getHttpCode() < 300 && responseBody != null) {
-//                            RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
-//                            if (modelResponse!=null && modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-//                                modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
-//                                    try {
-//                                        extractedKryptonOutputDataRequest(entity, s, parentObj,
-//                                                modelResponse.getModelName(), modelResponse.getModelVersion(),
-//                                                jsonRequest, responseBody, endpoint.toString());
-//                                    } catch (JsonProcessingException e) {
-//                                        String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() +
-//                                                " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() +
-//                                                " code : " + coproResponse.getHttpCode() + " message : " + coproResponse.getMessage();
-//                                        HandymanException handymanException = new HandymanException(errorMessage);
-//                                        HandymanException.insertException(errorMessage, handymanException, this.action);
-//                                        log.error(aMarker, errorMessage);
-//                                    }
-//                                }));
-//                            } else {
-//                                String errorMessage = "Successful response in consumer but output node not found for batch/group " + entity.getGroupId() +
-//                                        " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + coproResponse.getHttpCode();
-//
-//                                // Use adapter overload that accepts http code + body (safe for async)
-//                                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint,
-//                                        tenantId, templateId, processId,
-//                                        coproResponse.getHttpCode(), rootPipelineId, templateName, responseBody);
-//
-//                                HandymanException handymanException = new HandymanException(errorMessage);
-//                                HandymanException.insertException(errorMessage, handymanException, this.action);
-//                                log.error(aMarker, errorMessage);
-//                            }
-//                        } else {
-//                            // Unsuccessful HTTP code
-//                            String errorBody = responseBody;
-//                            String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() +
-//                                    " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() +
-//                                    " code : " + coproResponse.getHttpCode() + "\n message : " + errorBody;
-//
-//                            // Use adapter overload that accepts http code + body (safe for async)
-//                            handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint,
-//                                    tenantId, templateId, processId,
-//                                    coproResponse.getHttpCode(), rootPipelineId, templateName, responseBody);
-//
-//                            HandymanException handymanException = new HandymanException(errorMessage);
-//                            HandymanException.insertException(errorMessage, handymanException, this.action);
-//                            log.error(aMarker, errorMessage);
-//                        }
-//                    } catch (Exception ex) {
-//                        String errorMessage = "Error processing response for batch/group " + entity.getGroupId() +
-//                                " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() +
-//                                " - " + ex.getMessage();
-//                        log.error(aMarker, errorMessage, ex);
-//                        HandymanException handymanException = new HandymanException(ex);
-//                        HandymanException.insertException(errorMessage, handymanException, this.action);
-//                    }
-//                }, callbackExecutor);
-//    }
 
-    public CompletableFuture<Response> tritonRequestKryptonExecutorV2(
+    public CompletableFuture<HttpResult> tritonRequestKryptonExecutorV2(
             AgenticPaperFilterInput entity,
             Request request,
             List<AgenticPaperFilterOutput> parentObj,
             String jsonRequest,
             URL endpoint) {
 
-        // Prepare common metadata
         Long tenantId = entity.getTenantId();
         String templateId = entity.getTemplateId();
         Long processId = entity.getProcessId();
@@ -345,17 +190,16 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Timestamp createdOn = CreateTimeStamp.currentTimestamp();
         entity.setCreatedOn(createdOn);
 
-        // Prepare service context with audit info
         CoproRetryErrorAuditTable auditInput = setErrorAudictInputDetails(entity, endpoint);
-        ServiceContext context = new ServiceContext(action.getContext());
-        context.withAudit(auditInput);
-        context.withActionAudit(action);
 
-        // Call the GenericRetryService
+        ServiceContext context = new ServiceContext(action.getContext())
+                .withAudit(auditInput)
+                .withActionAudit(action)
+                .withRequestBody(jsonRequest);
+
         return retryService.sendWithRetry(request, context)
-                .whenCompleteAsync((response, throwable) -> {
+                .whenCompleteAsync((httpResult, throwable) -> {
                     if (throwable != null) {
-                        // Handle total failure
                         String errorMessage = String.format(
                                 "Error in API call for batch/group %s originId %s paperNo %s - %s",
                                 entity.getGroupId(), entity.getOriginId(), entity.getPaperNo(), throwable.getMessage()
@@ -387,10 +231,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                         return;
                     }
 
-                    // Success path: parse the response and populate parentObj
                     try {
-                        String responseBody = response.message();
-                        int httpCode = response.code();
+                        String responseBody = httpResult.getBodyAsString();
+                        int httpCode = httpResult.getHttpCode();
 
                         if (httpCode >= 200 && httpCode < 300 && responseBody != null) {
                             RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
@@ -399,9 +242,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                                 modelResponse.getOutputs().forEach(o ->
                                         o.getData().forEach(s -> {
                                             try {
-                                        extractedKryptonOutputDataRequest(entity, s, parentObj,
-                                                modelResponse.getModelName(), modelResponse.getModelVersion(),
-                                                jsonRequest, responseBody, endpoint.toString());
+                                                extractedKryptonOutputDataRequest(entity, s, parentObj,
+                                                        modelResponse.getModelName(), modelResponse.getModelVersion(),
+                                                        jsonRequest, responseBody, endpoint.toString());
                                             } catch (JsonProcessingException e) {
                                                 String errMsg = String.format(
                                                         "Error parsing response for batch/group %s originId %s paperNo %s code: %d message: %s",
@@ -431,6 +274,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     }
                 }, callbackExecutor);
     }
+
 
     private CoproRetryErrorAuditTable setErrorAudictInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
         CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()

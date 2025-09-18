@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.agentic.paper.filter.copro;
+package in.handyman.raven.lib.model.agentic.paper.filter.retry;
 
 import lombok.Getter;
 
@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
  * Immutable wrapper for HTTP responses from Copro API calls.
  */
 @Getter
-public class CoproResponse {
+public class HttpResult {
 
     private final int httpCode;
     private final String message;
@@ -21,7 +21,7 @@ public class CoproResponse {
      * @param message  Optional message or description
      * @param body     Response body as bytes
      */
-    public CoproResponse(int httpCode, String message, byte[] body) {
+    public HttpResult(int httpCode, String message, byte[] body) {
         this.httpCode = httpCode;
         this.message = message;
         this.body = body != null ? body.clone() : null; // Defensive copy
