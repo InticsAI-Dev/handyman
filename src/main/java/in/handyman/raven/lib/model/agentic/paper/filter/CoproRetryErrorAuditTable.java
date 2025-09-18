@@ -32,6 +32,5 @@ public class CoproRetryErrorAuditTable {
     private String request;
     private String response;
     private String endpoint;
-    @Builder.Default
-    private int attempt = 0;
+    private int attempt;
 }

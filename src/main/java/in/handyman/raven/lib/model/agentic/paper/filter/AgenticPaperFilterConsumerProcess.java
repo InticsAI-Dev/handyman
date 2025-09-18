@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
-import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput> {
     private final ActionExecutionAudit action;
@@ -61,7 +60,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
-    private CoproRetryService coproRetryService;
+
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
         this.log = log;
@@ -73,8 +72,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         int timeOut = aAction.getTimeOut();
         this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
         this.jdbiResourceName = jdbiResourceName;
-
-        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
     }
 
     @Override
@@ -161,9 +158,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String templateName = entity.getTemplateName();
         Timestamp createdOn = CreateTimeStamp.currentTimestamp();
         entity.setCreatedOn(createdOn);
-
-        CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
-        try (Response response = coproRetryService.callCoproApiWithRetry(request, jsonRequest, auditInput, this.action)) {
+        try (Response response = httpclient.newCall(request).execute()) {
             String responseBody = Objects.requireNonNull(response.body()).string();
             if (response.isSuccessful()) {
                 RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
@@ -200,24 +195,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(errorMessage, handymanException, this.action);
         }
-    }
-    private CoproRetryErrorAuditTable setErrorAuditInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
-        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
-                .originId(entity.getOriginId())
-                .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
-                .tenantId(entity.getTenantId())
-                .processId(entity.getProcessId())
-                .filePath(entity.getFilePath())
-                .paperNo(entity.getPaperNo())
-                .createdOn(entity.getCreatedOn())
-                .rootPipelineId(entity.getRootPipelineId())
-                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                .stage("RETRY API CALL TO COPRO")
-                .batchId(entity.getBatchId())
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                .endpoint(String.valueOf(endPoint))
-                .build();
-        return retryAudit;
     }
 
     private void handleKryptonErrorResponse(AgenticPaperFilterInput
