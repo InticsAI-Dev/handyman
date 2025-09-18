@@ -183,7 +183,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                         : outputFilePath;
             }
 
-            uploadToStoreContent(outputFilePath, entity);
+
 
             DocumentEyeCueOutputTable outputRecord = DocumentEyeCueOutputTable.builder()
                     .originId(entity.getOriginId())
@@ -204,23 +204,32 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .response(encryptRequestResponse(responseBody))
                     .endpoint(endpoint.toString())
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
+                    .docEyeCueDurationMs(documentEyeCueResponse.getDocEyeCueDurationMs())
                     .build();
 
             resultList.add(outputRecord);
+            if(action.getContext().getOrDefault("doc.eyecue.storecontent.upload","false").equals("true")){
+                log.info(MARKER, "StoreContent upload initiated for document_id: {} | origin_id: {}",
+                        entity.getDocumentId(), entity.getOriginId());
+                uploadToStoreContent(outputFilePath, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+            }
 
         } catch (JsonProcessingException e) {
             handleJsonProcessingException(entity, e, resultList, jsonInputRequest, responseBody, endpoint);
         }
     }
 
-    private void uploadToStoreContent(String filePath, DocumentEyeCueInputTable entity) {
+    private void uploadToStoreContent(String filePath, String processedPdfBase64, DocumentEyeCueInputTable entity) {
         try {
+            log.info(MARKER, "StoreContent upload started for document_id: {} | filePath: {}",
+                    entity.getDocumentId(), filePath);
             String repository = action.getContext().get(KEY_REPOSITORY);
             String applicationId = action.getContext().get(KEY_APPLICATION_ID);
 
-            StoreContent storeContent = new StoreContent();
+            StoreContent storeContent = new StoreContent(log);
             StoreContentResponseDto response = storeContent.execute(
                     filePath,
+                    processedPdfBase64,
                     repository,
                     applicationId,
                     entity,

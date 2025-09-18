@@ -13,6 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class ControlDataComparisonQueryInputTable {
+    private Long id;
     private String originId;
 
     private Long groupId;
@@ -33,4 +34,6 @@ public class ControlDataComparisonQueryInputTable {
     private Long sorItemId;
     private Long sorContainerId;
     private String lineItemType;
+    private Long mismatchCount;
+    private String matchStatus;
 }

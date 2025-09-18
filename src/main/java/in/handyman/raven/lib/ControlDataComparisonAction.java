@@ -14,8 +14,8 @@ import in.handyman.raven.lib.adapters.comparison.ComparisonAdapterFactory;
 import in.handyman.raven.lib.model.ControlDataComparison;
 import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
 import in.handyman.raven.util.CommonQueryUtil;
-import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.Query;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -23,12 +23,11 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -38,10 +37,12 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
  */
 @ActionExecution(actionName = "ControlDataComparison")
 public class ControlDataComparisonAction implements IActionExecution {
+    public static final String ACTUAL_ENCRYPTION_VARIABLE = "actual.encryption.variable";
     private final ActionExecutionAudit action;
     private final ControlDataComparison controlDataComparison;
     private final Logger log;
     private final Marker aMarker;
+    ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
     public ControlDataComparisonAction(final ActionExecutionAudit action, final Logger log, final Object controlDataComparison) {
         this.controlDataComparison = (ControlDataComparison) controlDataComparison;
@@ -53,95 +54,23 @@ public class ControlDataComparisonAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
+
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(controlDataComparison.getResourceConn());
             log.info(aMarker, "Control Data Comparison Action for {} has been started", controlDataComparison.getName());
 
             String outputTable = controlDataComparison.getOutputTable();
             String querySet = controlDataComparison.getQuerySet();
-            final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = getControlDataComparisonQueryInputTables(jdbi,querySet);
+            final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = getControlDataComparisonQueryInputTables(jdbi, querySet);
 
             log.info(aMarker, "Total rows returned from the query: {}", controlDataComparisonQueryInputTables.size());
 
-            String kafkaComparison = action.getContext().getOrDefault("kafka.production.activator", "false");
-            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
+            InticsIntegrity encryptionHandler = SecurityEngine.getInticsIntegrityMethod(action, log);
+            log.info(aMarker, "Encryption Handler initialized: {}", encryptionHandler.getEncryptionMethod());
 
-            Map<String, String> decryptedActualMap = new HashMap<>();
-            Map<String, String> decryptedExtractedMap = new HashMap<>();
-            boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
-            boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
+            performDecryption(controlDataComparisonQueryInputTables, encryptionHandler);
+            log.info(aMarker, "Decryption process completed");
 
-            // Decryption logic
-            if (itemWiseEncryption) {
-                Map<String, List<ControlDataComparisonQueryInputTable>> groupedByOrigin = controlDataComparisonQueryInputTables.stream()
-                        .filter(r -> "t".equalsIgnoreCase(r.getIsEncrypted()))
-                        .collect(Collectors.groupingBy(ControlDataComparisonQueryInputTable::getOriginId));
-
-                for (Map.Entry<String, List<ControlDataComparisonQueryInputTable>> entry : groupedByOrigin.entrySet()) {
-                    String originId = entry.getKey();
-                    List<ControlDataComparisonQueryInputTable> encryptedItems = entry.getValue();
-
-                    // Decrypt actual values if actualEncryption is true
-                    if (actualEncryption) {
-                        List<EncryptionRequestClass> actualValueFields = encryptedItems.stream()
-                                .filter(r -> {
-                                    if (r.getActualValue() == null || r.getActualValue().trim().isEmpty()) {
-                                        log.info(aMarker, "Skipping decryption for actualValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
-                                                originId, r.getSorItemName());
-                                        return false;
-                                    }
-                                    return true;
-                                })
-                                .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getActualValue(), r.getSorItemName()))
-                                .collect(Collectors.toList());
-
-                        if (!actualValueFields.isEmpty()) {
-                            try {
-                                log.info(aMarker, "Decrypting ACTUAL values for originId: {}", originId);
-                                List<EncryptionRequestClass> decryptedActuals = encryption.decrypt(actualValueFields);
-                                decryptedActuals.forEach(decrypted -> {
-                                    String key = originId + "|" + decrypted.getKey();
-                                    decryptedActualMap.put(key, decrypted.getValue());
-                                });
-                                log.info(aMarker, "Actual value decryption successful for originId: {}", originId);
-                            } catch (Exception e) {
-                                log.error(aMarker, "Actual value decryption failed for originId: {}", originId, e);
-                            }
-                        }
-                    }
-
-                    // Decrypt extracted values
-                    List<EncryptionRequestClass> extractedValueFields = encryptedItems.stream()
-                            .filter(r -> {
-                                if (r.getExtractedValue() == null || r.getExtractedValue().trim().isEmpty()) {
-                                    log.info(aMarker, "Skipping decryption for extractedValue (null or empty) for originId: {}, sorItemName: {} when isEncrypted is true",
-                                            originId, r.getSorItemName());
-                                    return false;
-                                }
-                                return true;
-                            })
-                            .map(r -> new EncryptionRequestClass(r.getEncryptionPolicy(), r.getExtractedValue(), r.getSorItemName()))
-                            .collect(Collectors.toList());
-
-                    if (!extractedValueFields.isEmpty()) {
-                        try {
-                            log.info(aMarker, "Decrypting EXTRACTED values for originId: {}", originId);
-                            List<EncryptionRequestClass> decryptedExtracted = encryption.decrypt(extractedValueFields);
-                            decryptedExtracted.forEach(decrypted -> {
-                                String key = originId + "|" + decrypted.getKey();
-                                decryptedExtractedMap.put(key, decrypted.getValue());
-                            });
-                            log.info(aMarker, "Extracted value decryption successful for originId: {}", originId);
-                        } catch (Exception e) {
-                            log.error(aMarker, "Extracted value decryption failed for originId: {}", originId, e);
-                        }
-                    }
-                }
-            } else {
-                log.info(aMarker, "Skipping decryption as itemWiseEncryption is false");
-            }
-
-            invokeValidationPerRecord(controlDataComparisonQueryInputTables, decryptedActualMap,
-                    decryptedExtractedMap, jdbi, outputTable, kafkaComparison, encryption);
+            invokeValidationPerRecord(controlDataComparisonQueryInputTables, jdbi, outputTable, encryptionHandler);
 
             log.info(aMarker, "Control Data Comparison Action has been completed: {}", controlDataComparison.getName());
             action.getContext().put(controlDataComparison.getName() + ".isSuccessful", "true");
@@ -155,8 +84,254 @@ public class ControlDataComparisonAction implements IActionExecution {
         }
     }
 
+    //DEBUG ON YOUR OWN RISK
+    private void performDecryption(List<ControlDataComparisonQueryInputTable> records,
+                                   InticsIntegrity encryptionHandler) {
+        log.info(aMarker, "Total records to process for decryption: {}", records.size());
+        boolean itemWiseEncryption = Boolean.parseBoolean(
+                action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
+        boolean actualEncryption = Boolean.parseBoolean(
+                action.getContext().getOrDefault(ACTUAL_ENCRYPTION_VARIABLE, "false"));
+
+        if (itemWiseEncryption) {
+            log.info(aMarker, "Starting Decryption process for item-wise encryption");
+            decryptAndUpdate(records, encryptionHandler, true);
+        } else {
+            log.info(aMarker, "Skipping Decryption as itemWiseEncryption is false");
+        }
+
+        if (actualEncryption) {
+            log.info(aMarker, "Starting Decryption process for actual value encryption");
+            decryptAndUpdate(records, encryptionHandler, false);
+        } else {
+            log.info(aMarker, "Skipping Decryption as actualEncryption is false");
+        }
+
+    }
+
+    //DEBUG ON YOUR OWN RISK
+    private void performEncryption(
+            List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables,
+            InticsIntegrity encryptionHandler
+    ) {
+        log.info(aMarker, "Total records to process for encryption: {}", controlDataComparisonQueryInputTables.size());
+        boolean itemWiseEncryption = Boolean.parseBoolean(
+                action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false")
+        );
+        boolean actualEncryption = Boolean.parseBoolean(
+                action.getContext().getOrDefault(ACTUAL_ENCRYPTION_VARIABLE, "false")
+        );
+
+        if (itemWiseEncryption) {
+            log.info(aMarker, "Starting Encryption process for item-wise encryption");
+            encryptAndApply(controlDataComparisonQueryInputTables, encryptionHandler, true);
+        } else {
+            log.info(aMarker, "Skipping Encryption as itemWiseEncryption is false");
+        }
+
+        if (actualEncryption) {
+            log.info(aMarker, "Starting Encryption process for actual encryption");
+            encryptAndApply(controlDataComparisonQueryInputTables, encryptionHandler, false);
+        } else {
+            log.info(aMarker, "Skipping Encryption as actualEncryption is false");
+        }
+    }
+
+    private void decryptAndUpdate(
+            List<ControlDataComparisonQueryInputTable> records,
+            InticsIntegrity encryptionHandler,
+            boolean isExtracted
+    ) {
+        log.info(aMarker, "Total records to process for decryption (isExtracted={}): {}", isExtracted, records.size());
+        List<EncryptionRequestClass> requests = buildDecryptionRequests(records, isExtracted);
+
+        if (requests.isEmpty()) {
+            return;
+        }
+
+        List<EncryptionRequestClass> responses = encryptionHandler.decrypt(requests);
+        Map<String, List<EncryptionRequestClass>> groupedResponses = groupResponsesByRecordId(responses);
+
+        applyDecryptedValues(records, groupedResponses, isExtracted);
+    }
+
+    /**
+     * Builds decryption requests from records.
+     */
+    private List<EncryptionRequestClass> buildDecryptionRequests(
+            List<ControlDataComparisonQueryInputTable> records,
+            boolean isExtracted
+    ) {
+        List<EncryptionRequestClass> requests = new ArrayList<>();
+
+        for (ControlDataComparisonQueryInputTable r : records) {
+            if (!"t".equalsIgnoreCase(r.getIsEncrypted())) continue;
+
+            String rawVal = isExtracted ? r.getExtractedValue() : r.getActualValue();
+            if (rawVal == null || rawVal.isEmpty()) continue;
+
+            if ("multi_value".equalsIgnoreCase(r.getLineItemType()) && rawVal.contains(",")) {
+                addMultiValueRequests(requests, r, rawVal);
+            } else {
+                requests.add(newRequest(String.valueOf(r.getId()), rawVal, r.getEncryptionPolicy()));
+            }
+        }
+
+        return requests;
+    }
+
+    /**
+     * Adds split requests for multi-value fields.
+     */
+    private void addMultiValueRequests(List<EncryptionRequestClass> requests,
+                                       ControlDataComparisonQueryInputTable record,
+                                       String rawVal) {
+        log.info("Adding multi-value requests for record ID: {}", record.getId());
+        String[] parts = rawVal.split(",");
+        for (int i = 0; i < parts.length; i++) {
+            String trimmed = parts[i].trim();
+            if (!trimmed.isEmpty()) {
+                requests.add(newRequest(record.getId() + "_" + i, trimmed, record.getEncryptionPolicy()));
+            }
+        }
+    }
+
+    /**
+     * Builds a single request object.
+     */
+    private EncryptionRequestClass newRequest(String key, String value, String policy) {
+        log.info("Creating request - Key: {}, Policy: {}", key, policy);
+        return EncryptionRequestClass.builder()
+                .key(key)
+                .value(value)
+                .policy(policy)
+                .build();
+    }
+
+    /**
+     * Groups responses by record id (ignores multi-value suffix).
+     */
+    private Map<String, List<EncryptionRequestClass>> groupResponsesByRecordId(
+            List<EncryptionRequestClass> responses
+    ) {
+        log.info("Grouping responses by record ID, total responses: {}", responses.size());
+        return responses.stream()
+                .collect(Collectors.groupingBy(resp -> {
+                    String key = resp.getKey();
+                    return key.contains("_") ? key.substring(0, key.indexOf("_")) : key;
+                }));
+    }
+
+    /**
+     * Applies decrypted values back to records.
+     */
+    private void applyDecryptedValues(List<ControlDataComparisonQueryInputTable> records,
+                                      Map<String, List<EncryptionRequestClass>> groupedResponses,
+                                      boolean isExtracted) {
+        log.info(aMarker, "Applying decrypted values to records (isExtracted={}): {}", isExtracted, records.size());
+        for (ControlDataComparisonQueryInputTable r : records) {
+            List<EncryptionRequestClass> respList = groupedResponses.get(String.valueOf(r.getId()));
+            if (respList == null) continue;
+
+            // preserve order for multi-value
+            respList.sort(Comparator.comparingInt(resp -> {
+                if (!resp.getKey().contains("_")) return 0;
+                return Integer.parseInt(resp.getKey().substring(resp.getKey().indexOf("_") + 1));
+            }));
+
+            String finalValue = respList.stream()
+                    .map(EncryptionRequestClass::getValue)
+                    .collect(Collectors.joining(","));
+
+            if (isExtracted) {
+                r.setExtractedValue(finalValue);
+            } else {
+                r.setActualValue(finalValue);
+            }
+        }
+    }
+
+
+    private void encryptAndApply(
+            List<ControlDataComparisonQueryInputTable> records,
+            InticsIntegrity encryptionHandler,
+            boolean isExtracted
+    ) {
+        log.info(aMarker, "Total records to process for encryption (isExtracted={}): {}", isExtracted, records.size());
+        List<EncryptionRequestClass> requests = buildEncryptionRequests(records, isExtracted);
+
+        if (requests.isEmpty()) {
+            log.info(aMarker, "No records found for encryption [{}]",
+                    isExtracted ? "ExtractedValue" : "ActualValue");
+            return;
+        }
+
+        List<EncryptionRequestClass> responses = encryptionHandler.encrypt(requests);
+        Map<String, List<EncryptionRequestClass>> groupedResponses = groupResponsesByRecordId(responses);
+
+        applyEncryptedValues(records, groupedResponses, isExtracted);
+    }
+
+    /**
+     * Builds encryption requests (single + multi expanded).
+     */
+    private List<EncryptionRequestClass> buildEncryptionRequests(
+            List<ControlDataComparisonQueryInputTable> records,
+            boolean isExtracted
+    ) {
+        log.info("Building encryption requests (isExtracted={}): {}", isExtracted, records.size());
+        List<EncryptionRequestClass> requests = new ArrayList<>();
+
+        for (ControlDataComparisonQueryInputTable r : records) {
+            if (!"t".equalsIgnoreCase(r.getIsEncrypted())) continue;
+
+            String rawVal = isExtracted ? r.getExtractedValue() : r.getActualValue();
+            if (rawVal == null || rawVal.isEmpty()) continue;
+
+            if ("multi_value".equalsIgnoreCase(r.getLineItemType()) && rawVal.contains(",")) {
+                addMultiValueRequests(requests, r, rawVal);
+            } else {
+                requests.add(newRequest(String.valueOf(r.getId()), rawVal, r.getEncryptionPolicy()));
+            }
+        }
+        return requests;
+    }
+
+
+    /**
+     * Applies encrypted values back to the original records.
+     */
+    private void applyEncryptedValues(List<ControlDataComparisonQueryInputTable> records,
+                                      Map<String, List<EncryptionRequestClass>> groupedResponses,
+                                      boolean isExtracted) {
+        log.info(aMarker, "Applying encrypted values to records (isExtracted={}): {}", isExtracted, records.size());
+        for (ControlDataComparisonQueryInputTable r : records) {
+            List<EncryptionRequestClass> respList = groupedResponses.get(String.valueOf(r.getId()));
+            if (respList == null) continue;
+
+            // Preserve order for multi-value
+            respList.sort(Comparator.comparingInt(resp -> {
+                if (!resp.getKey().contains("_")) return 0;
+                return Integer.parseInt(resp.getKey().substring(resp.getKey().indexOf("_") + 1));
+            }));
+
+            String finalValue = respList.stream()
+                    .map(EncryptionRequestClass::getValue)
+                    .collect(Collectors.joining(","));
+
+            if (isExtracted) {
+                r.setExtractedValue(finalValue);
+            } else {
+                r.setActualValue(finalValue);
+            }
+        }
+    }
+
+
+
     @NotNull
-    public List<ControlDataComparisonQueryInputTable> getControlDataComparisonQueryInputTables(Jdbi jdbi,String querySet) {
+    public List<ControlDataComparisonQueryInputTable> getControlDataComparisonQueryInputTables(Jdbi jdbi, String querySet) {
+        log.info(aMarker,"{}: Executing query set to fetch input data",querySet);
         final List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables = new ArrayList<>();
 
         jdbi.useTransaction(handle -> {
@@ -165,116 +340,50 @@ public class ControlDataComparisonAction implements IActionExecution {
             formattedQuery.forEach(sqlToExecute -> {
                 log.info(aMarker, "Executing query {} from index {}", sqlToExecute, i.getAndIncrement());
                 Query query = handle.createQuery(sqlToExecute);
-                List<ControlDataComparisonQueryInputTable> results = query
-                        .mapToBean(ControlDataComparisonQueryInputTable.class)
-                        .list();
+                List<ControlDataComparisonQueryInputTable> results = query.mapToBean(ControlDataComparisonQueryInputTable.class).list();
                 controlDataComparisonQueryInputTables.addAll(results);
                 log.info(aMarker, "Executed query from index {}", i.get());
             });
         });
+        log.info(aMarker, "Total records fetched: {}", controlDataComparisonQueryInputTables.size());
         return controlDataComparisonQueryInputTables;
     }
 
-    public void invokeValidationPerRecord(List<ControlDataComparisonQueryInputTable> originalRecords,
-                                          Map<String, String> decryptedActualMap,
-                                          Map<String, String> decryptedExtractedMap,
-                                          Jdbi jdbi,
-                                          String outputTable,
-                                          String kafkaComparison,
-                                          InticsIntegrity encryption) throws JsonProcessingException {
-        List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
-        Map<String, ControlDataComparisonQueryInputTable> recordMap = new HashMap<>();
-        boolean itemWiseEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "false"));
-        boolean actualEncryption = "true".equalsIgnoreCase(action.getContext().getOrDefault("actual.encryption.variable", "false"));
+    public void invokeValidationPerRecord(
+            List<ControlDataComparisonQueryInputTable> originalRecords,
+            Jdbi jdbi,
+            String outputTable,
+            InticsIntegrity encryptionHandler
+    ) {
+        log.info(aMarker, "Starting validation for {} records", originalRecords.size());
 
-        for (ControlDataComparisonQueryInputTable record : originalRecords) {
-            String originId = record.getOriginId();
-            String sorItemName = record.getSorItemName();
-            String key = originId + "|" + sorItemName;
-
-            // Apply decrypted values if available
-            if (decryptedActualMap.containsKey(key)) {
-                record.setActualValue(decryptedActualMap.get(key));
-            }
-            if (decryptedExtractedMap.containsKey(key)) {
-                record.setExtractedValue(decryptedExtractedMap.get(key));
-            }
-
-            String extractedValue = record.getExtractedValue();
-            String actualValue = record.getActualValue();
-            String isEncrypted = record.getIsEncrypted();
-
-            // Perform validation with decrypted values
-            doControlDataValidationByAdapters(record, jdbi, outputTable);
-
-            // Prepare for re-encryption based on conditions
-            if (itemWiseEncryption && "t".equalsIgnoreCase(isEncrypted)) {
-                if (actualEncryption) {
-                    // Re-encrypt both actual and extracted values
-                    if (actualValue != null && !actualValue.trim().isEmpty()) {
-                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), actualValue, sorItemName + "|actual"));
-                        recordMap.put(sorItemName + "|actual", record);
-                        log.info(aMarker, "Preparing re-encryption for actualValue for sorItemName: {}, originId: {}", sorItemName, originId);
-                    } else {
-                        log.info(aMarker, "Skipping re-encryption for actualValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
-                    }
-                    if (extractedValue != null && !extractedValue.trim().isEmpty()) {
-                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
-                        recordMap.put(sorItemName + "|extracted", record);
-                        log.info(aMarker, "Preparing re-encryption for extractedValue for sorItemName: {}, originId: {}", sorItemName, originId);
-                    } else {
-                        log.info(aMarker, "Skipping re-encryption for extractedValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
-                    }
-                } else {
-                    // Re-encrypt only extracted values
-                    if (extractedValue != null && !extractedValue.trim().isEmpty()) {
-                        encryptionRequests.add(new EncryptionRequestClass(record.getEncryptionPolicy(), extractedValue, sorItemName + "|extracted"));
-                        recordMap.put(sorItemName + "|extracted", record);
-                        log.info(aMarker, "Preparing re-encryption for extractedValue for sorItemName: {}, originId: {}", sorItemName, originId);
-                    } else {
-                        log.info(aMarker, "Skipping re-encryption for extractedValue (null or empty) for sorItemName: {}, originId: {} when isEncrypted is true", sorItemName, originId);
-                    }
-                }
-            }
+        if (originalRecords == null || originalRecords.isEmpty()) {
+            return;
         }
 
-        // Perform batch encryption/re-encryption
-        if (!encryptionRequests.isEmpty()) {
-            try {
-                log.info(aMarker, "Starting batch encryption/re-encryption for {} items", encryptionRequests.size());
-                List<EncryptionRequestClass> encryptedResults = encryption.encrypt(encryptionRequests);
-                encryptedResults.forEach(result -> {
-                    String[] keyParts = result.getKey().split("\\|");
-                    String sorItemName = keyParts[0];
-                    String valueType = keyParts[1]; // "extracted" or "actual"
-                    ControlDataComparisonQueryInputTable record = recordMap.get(result.getKey());
-                    if (record != null) {
-                        String originId = record.getOriginId();
-                        String paperNo = String.valueOf(record.getPaperNo());
-                        log.info(aMarker, "Re-encryption completed for sorItemName: {}, type: {}, originId: {}",
-                                sorItemName, valueType, originId);
-                        // Update the database with re-encrypted values
-                        String column = "actual".equals(valueType) ? "actual_value" : "extracted_value";
-                        jdbi.useHandle(handle -> handle.createUpdate("UPDATE " + outputTable + " SET " + column + " = :value " +
-                                        "WHERE origin_id = :originId AND sor_item_name = :sorItemName AND paper_no = :paperNo")
-                                .bind("value", result.getValue())
-                                .bind("originId", originId)
-                                .bind("sorItemName", sorItemName)
-                                .bind("paperNo", paperNo)
-                                .execute());
-                    }
-                });
-                log.info(aMarker, "Batch encryption/re-encryption successful for {} items", encryptedResults.size());
-            } catch (Exception e) {
-                log.error(aMarker, "Batch encryption/re-encryption failed", e);
-            }
-        }
+        // Validate + insert + encrypt in one pipeline
+        List<ControlDataComparisonQueryInputTable> processedRecords =
+                originalRecords.stream()
+                        .map(this::doControlDataValidationByAdapters)
+                        .collect(Collectors.toList());
+        log.info(aMarker, "Completed validation and returned {} records", processedRecords.size());
+
+        log.info(aMarker, "Started Encryption for {} records", processedRecords.size());
+        // if performEncryption must be on validated records
+        performEncryption(processedRecords, encryptionHandler);
+
+        insertExecutionInfo(jdbi, outputTable, processedRecords);
+
     }
 
-    private String doControlDataValidationByAdapters(
-            ControlDataComparisonQueryInputTable comparisonInputLineItem,
-            Jdbi jdbi,
-            String outputTable) {
+
+
+    private ControlDataComparisonQueryInputTable doControlDataValidationByAdapters(ControlDataComparisonQueryInputTable comparisonInputLineItem) {
+        log.info(aMarker, "Validating record ID: {}, Origin ID: {}, Paper No: {}, Sor Item Name: {}",
+                comparisonInputLineItem.getId(),
+                comparisonInputLineItem.getOriginId(),
+                comparisonInputLineItem.getPaperNo(),
+                comparisonInputLineItem.getSorItemName());
         String lowTouch = action.getContext().get("control.data.low.touch.threshold");
         String oneTouch = action.getContext().get("control.data.one.touch.threshold");
 
@@ -283,77 +392,36 @@ public class ControlDataComparisonAction implements IActionExecution {
 
         Long mismatchCount = adapter.validate(comparisonInputLineItem, action, log);
 
-        String matchStatus = calculateValidationScores(mismatchCount,oneTouch,lowTouch);
+        String matchStatus = calculateValidationScores(mismatchCount, oneTouch, lowTouch);
 
-        log.info("Inserting {} type data validation at {}:", adapterKey, outputTable);
-        insertExecutionInfo(
-                jdbi,
-                outputTable,
-                matchStatus,
-                mismatchCount,
-                comparisonInputLineItem
-        );
-        return comparisonInputLineItem.getExtractedValue();
+        comparisonInputLineItem.setMatchStatus(matchStatus);
+        comparisonInputLineItem.setMismatchCount(mismatchCount);
+        log.info("Record ID: {}, Validation result - Match Status: {}, Mismatch Count: {}",
+                comparisonInputLineItem.getId(), matchStatus, mismatchCount);
+        return comparisonInputLineItem;
     }
 
-//    private String doControlDataValidation(ControlDataComparisonQueryInputTable controlDataComparisonQueryInputTable, Jdbi jdbi, String outputTable, String kafkaComparison, InticsIntegrity encryption, List<EncryptionRequestClass> encryptionRequests, Map<String, ControlDataComparisonQueryInputTable> recordMap) throws JsonProcessingException {
-//        log.info("Processing the Control Data Comparison input data ControlDataComparisonQueryInputTable for origin id: {} and paper no: {} and sor item name: {}", controlDataComparisonQueryInputTable.getOriginId(), controlDataComparisonQueryInputTable.getPaperNo(), controlDataComparisonQueryInputTable.getSorItemName());
-//
-//        Long tenantId = controlDataComparisonQueryInputTable.getTenantId();
-//        String originId = controlDataComparisonQueryInputTable.getOriginId();
-//        Long paperNo = controlDataComparisonQueryInputTable.getPaperNo();
-//        String extractedValue = controlDataComparisonQueryInputTable.getExtractedValue();
-//        String actualValue = controlDataComparisonQueryInputTable.getActualValue();
-//        String allowedAdapters = controlDataComparisonQueryInputTable.getAllowedAdapter();
-//        String sorItemName = controlDataComparisonQueryInputTable.getSorItemName();
-//        String lineItemType = controlDataComparisonQueryInputTable.getLineItemType();
-//
-//        Long mismatchCount;
-//        if (allowedAdapters.equals("date") || allowedAdapters.equals("date_reg")) {
-//            try {
-//                String finalDateFormat = action.getContext().get("control.data.date.comparison.format");
-//                mismatchCount = dateValidation(extractedValue, actualValue, finalDateFormat, originId, paperNo, sorItemName, tenantId);
-//                String matchStatus = calculateValidationScores(mismatchCount);
-//                log.info("Inserting date type data validation at {}:", outputTable);
-//                insertExecutionInfo(jdbi, outputTable, matchStatus, mismatchCount, controlDataComparisonQueryInputTable);
-//                return extractedValue;
-//            } catch (HandymanException e) {
-//                HandymanException handymanException = new HandymanException(e);
-//                HandymanException.insertException("Error while inserting date type data validation origin Id" + originId + " paper No " + paperNo, handymanException, action);
-//                return null;
-//            }
-//        } else if (allowedAdapters.equals("gender")) {
-//            try {
-//                mismatchCount = genderValidation(extractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
-//                String matchStatus = calculateValidationScores(mismatchCount);
-//                log.info("Inserting gender type data validation at {}:", outputTable);
-//                insertExecutionInfo(jdbi, outputTable, matchStatus, mismatchCount, controlDataComparisonQueryInputTable);
-//                return extractedValue;
-//            } catch (HandymanException e) {
-//                HandymanException handymanException = new HandymanException(e);
-//                HandymanException.insertException("Error while inserting gender type data validation origin Id " + originId + " paper No " + paperNo, handymanException, action);
-//                return null;
-//            }
-//        } else {
-//            try {
-//                String finalExtractedValue = getNormalizedExtractedValue(actualValue, extractedValue, lineItemType);
-//                mismatchCount = dataValidation(finalExtractedValue, actualValue, originId, paperNo, sorItemName, tenantId);
-//                String matchStatus = calculateValidationScores(mismatchCount);
-//                log.info("Inserting string type data validation at {}:", outputTable);
-//                insertExecutionInfo(jdbi, outputTable, matchStatus, mismatchCount, controlDataComparisonQueryInputTable);
-//                return extractedValue;
-//            } catch (HandymanException e) {
-//                HandymanException handymanException = new HandymanException(e);
-//                HandymanException.insertException("Error while inserting generic type data validation origin Id : " + originId + " paper No " + paperNo, handymanException, action);
-//                return null;
-//            }
-//        }
-//    }
+    private void insertExecutionInfo(Jdbi jdbi, String outputTable, List<ControlDataComparisonQueryInputTable> controlDataInputLineItems) {
+        if (controlDataInputLineItems == null || controlDataInputLineItems.isEmpty()) {
+            return;
+        }
+        log.info(aMarker, "Inserting {} records into output table: {}", controlDataInputLineItems.size(), outputTable);
+        jdbi.useHandle(handle -> {
+            String sql = "INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ")";
 
-    private void insertExecutionInfo(Jdbi jdbi, String outputTable, String matchStatus,
-                                     Long mismatchCount,ControlDataComparisonQueryInputTable controlDataInputLineItem) {
-        String classification = determineClassification(controlDataInputLineItem.getActualValue(), controlDataInputLineItem.getExtractedValue(), matchStatus);
-        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + " (" + "root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id, " + "paper_no, actual_value, extracted_value, match_status, mismatch_count, " + "tenant_id, classification, sor_container_id, sor_item_name, sor_item_id" + ") VALUES (" + ":rootPipelineId, :createdOn, :groupId, :fileName, :originId, :batchId, :paperNo, " + ":actualValue, :extractedValue, :matchStatus, :mismatchCount, :tenantId, " + ":classification, :sorContainerId, :sorItemName, :sorItemId" + ");").bind("rootPipelineId", controlDataInputLineItem.getRootPipelineId()).bind("createdOn", LocalDate.now()).bind("groupId", controlDataInputLineItem.getGroupId()).bind("fileName", controlDataInputLineItem.getFileName()).bind("originId", controlDataInputLineItem.getOriginId()).bind("batchId", controlDataInputLineItem.getBatchId()).bind("paperNo", controlDataInputLineItem.getPaperNo()).bind("actualValue", controlDataInputLineItem.getActualValue()).bind("extractedValue", controlDataInputLineItem.getExtractedValue()).bind("matchStatus", matchStatus).bind("mismatchCount", mismatchCount).bind("tenantId", controlDataInputLineItem.getTenantId()).bind("classification", classification).bind("sorContainerId", controlDataInputLineItem.getSorContainerId()).bind("sorItemName", controlDataInputLineItem.getSorItemName()).bind("sorItemId", controlDataInputLineItem.getSorItemId()).execute());
+            PreparedBatch batch = handle.prepareBatch(sql);
+
+            for (ControlDataComparisonQueryInputTable item : controlDataInputLineItems) {
+                log.info("Queueing data validation result for origin id: {} and paper no: {} and sor item name: {} " + "with match status: {} and mismatch count: {}", item.getOriginId(), item.getPaperNo(), item.getSorItemName(), item.getMatchStatus(), item.getMismatchCount());
+
+                String classification = determineClassification(item.getActualValue(), item.getExtractedValue(), item.getMatchStatus());
+
+                batch.bind("rootPipelineId", item.getRootPipelineId()).bind("createdOn", LocalDate.now()).bind("groupId", item.getGroupId()).bind("fileName", item.getFileName()).bind("originId", item.getOriginId()).bind("batchId", item.getBatchId()).bind("paperNo", item.getPaperNo()).bind("actualValue", item.getActualValue()).bind("extractedValue", item.getExtractedValue()).bind("matchStatus", item.getMatchStatus()).bind("mismatchCount", item.getMismatchCount()).bind("tenantId", item.getTenantId()).bind("classification", classification).bind("sorContainerId", item.getSorContainerId()).bind("sorItemName", item.getSorItemName()).bind("sorItemId", item.getSorItemId()).add();
+            }
+
+            int[] counts = batch.execute();
+            log.info("Batch insert completed. Inserted {} rows into {}", counts.length, outputTable);
+        });
     }
 
 
@@ -383,7 +451,7 @@ public class ControlDataComparisonAction implements IActionExecution {
         return "UNKNOWN";
     }
 
-    public static String calculateValidationScores(Long mismatchCount,String oneTouch,String lowTouch) {
+    public static String calculateValidationScores(Long mismatchCount, String oneTouch, String lowTouch) {
         String matchStatus;
 
         if (mismatchCount == 0) {
