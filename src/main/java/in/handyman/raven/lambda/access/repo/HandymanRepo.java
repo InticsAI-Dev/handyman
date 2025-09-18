@@ -2,7 +2,7 @@ package in.handyman.raven.lambda.access.repo;
 
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
-import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.agentic.paper.filter.copro.CoproRetryErrorAuditTable;
 
 import java.util.List;
 import java.util.Map;

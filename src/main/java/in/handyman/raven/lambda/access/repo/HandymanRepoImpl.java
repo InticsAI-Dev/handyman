@@ -10,7 +10,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
-import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.agentic.paper.filter.copro.CoproRetryErrorAuditTable;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
