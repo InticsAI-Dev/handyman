@@ -76,7 +76,7 @@ public class ResourceAccess {
                 log.warn("{} not found in Resource connections", resourceName);
                 throw new HandymanException("Resource connection is null");
             }
-            log.warn("{} found in Resource connections", resource.getConfigName());
+            log.debug("{} found in Resource connections", resource.getConfigName());
             return resource.get();
         }else{
             throw new HandymanException("Resource connection is null check the legacy.resource.connection.type ");

@@ -132,35 +132,50 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         addAudit(audit, startTime);
     }
 
+
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
                               final ConsumerProcess<I, O> callable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
 
-        int finalConsumerCount = Math.min(consumerCount, queue.size());
-        final CountDownLatch countDownLatch = new CountDownLatch(finalConsumerCount);
-        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
-            executorService = Executors.newFixedThreadPool(finalConsumerCount);
-            logger.info("Copro processor created with fixed thread pool of size {}", finalConsumerCount);
-        } else {
-            executorService = Executors.newWorkStealingPool();
-            logger.info("Copro processor created with work stealing pool");
-        }
-        for (int consumer = 0; consumer < finalConsumerCount; consumer++) {
-            executorService.submit(new InboundBatchDataConsumer<>(insertSql, writeBatchSize, callable, tPredicate,
-                    startTime, countDownLatch, queue, nodeCount, nodeSize, actionExecutionAudit, nodes, jdbiResourceName, logger));
+        final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
 
-            logger.info("Consumer {} submitted the process", consumer);
+        // Always fixed size consumers
+        ThreadFactory namedThreadFactory = r -> {
+            Thread t = new Thread(r);
+            t.setName("copro-consumer-" + t.getId());
+            t.setDaemon(false);
+            return t;
+        };
+
+        executorService = new ThreadPoolExecutor(
+                consumerCount,               // core
+                consumerCount,               // max
+                120L, TimeUnit.SECONDS,       // keepAlive
+                new LinkedBlockingQueue<>(), // no task backlog
+                namedThreadFactory,
+                new ThreadPoolExecutor.CallerRunsPolicy() // if pool full, run in caller
+        );
+
+        logger.info("Copro processor created with fixed consumer thread pool of size {}", consumerCount);
+
+        for (int i = 0; i < consumerCount; i++) {
+            executorService.submit(new InboundBatchDataConsumer<>(
+                    insertSql, writeBatchSize, callable, tPredicate,
+                    startTime, countDownLatch, queue, nodeCount, nodeSize,
+                    actionExecutionAudit, nodes, jdbiResourceName, logger));
         }
+
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
-            logger.error("Consumer completed the process and persisted {} rows", nodeCount.get(), e);
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted while waiting for consumers to finish", e);
         } finally {
-            logger.info("Shutting down executor service");
+            logger.info("Shutting down consumer executor service");
             executorService.shutdown();
             try {
-                if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
+                if (!executorService.awaitTermination(2, TimeUnit.MINUTES)) {
                     executorService.shutdownNow();
                 }
             } catch (InterruptedException e) {
@@ -169,6 +184,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             }
         }
     }
+
 
     public interface ConsumerProcess<I, O extends Entity> {
         List<O> process(final URL endpoint, final I entity) throws Exception;

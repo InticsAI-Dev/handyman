@@ -19,10 +19,10 @@ public class ProtegrityAESEncryptionImpl implements InticsDataEncryptionApi {
 
     public ProtegrityAESEncryptionImpl() throws HandymanException {
         try {
-            LOGGER.info("Initializing AES Encryption Implementation...");
+            LOGGER.debug("Initializing AES Encryption Implementation...");
             // Get the secret key from the properties file
             secretKey = getSecretKeyFromConfig();
-            LOGGER.info("AES Encryption initialized successfully.");
+            LOGGER.debug("AES Encryption initialized successfully.");
         } catch (Exception e) {
             LOGGER.error("Error initializing AES algorithm: {}", e.getMessage(), e);
             throw new HandymanException("Error initializing AES algorithm.", e);
@@ -31,7 +31,7 @@ public class ProtegrityAESEncryptionImpl implements InticsDataEncryptionApi {
 
     private SecretKey getSecretKeyFromConfig() throws HandymanException {
         try {
-            LOGGER.info("Fetching AES secret key from properties...");
+            LOGGER.debug("Fetching AES secret key from properties...");
             String secretKeyString = PropertyHandler.get("aes.secretKey");
 
             if (secretKeyString == null || secretKeyString.isEmpty()) {
@@ -40,7 +40,7 @@ public class ProtegrityAESEncryptionImpl implements InticsDataEncryptionApi {
             }
 
             byte[] decodedKey = Base64.getDecoder().decode(secretKeyString);
-            LOGGER.info("AES secret key successfully retrieved and decoded.");
+            LOGGER.debug("AES secret key successfully retrieved and decoded.");
 
             if (decodedKey == null || decodedKey.length == 0) {
                 LOGGER.warn("Decoded AES key is empty after Base64 decoding. Returning an empty key.");
@@ -69,13 +69,13 @@ public class ProtegrityAESEncryptionImpl implements InticsDataEncryptionApi {
                 return inputToken;
             }
 
-            LOGGER.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
+            LOGGER.debug("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
 
             byte[] encrypted = cipher.doFinal(inputToken.getBytes());
             String encryptedString = Base64.getEncoder().encodeToString(encrypted);
-            LOGGER.info("Encryption successful for sorItem: {}", sorItem);
+            LOGGER.debug("Encryption successful for sorItem: {}", sorItem);
             return encryptedString;
 
         } catch (Exception e) {
@@ -92,13 +92,13 @@ public class ProtegrityAESEncryptionImpl implements InticsDataEncryptionApi {
                 return encryptedToken;
             }
 
-            LOGGER.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
+            LOGGER.debug("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, secretKey);
 
             byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(encryptedToken));
             String decryptedString = new String(decrypted);
-            LOGGER.info("Decryption successful for sorItem: {}", sorItem);
+            LOGGER.debug("Decryption successful for sorItem: {}", sorItem);
             String decryptedResString;
             if (decryptedString.endsWith(encryptionPolicy)) {
                 decryptedResString = decryptedString.substring(0, decryptedString.length() - encryptionPolicy.length());

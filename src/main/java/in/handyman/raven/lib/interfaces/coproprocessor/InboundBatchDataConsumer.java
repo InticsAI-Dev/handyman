@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.util.LoggingInitializer;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -21,11 +22,17 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implements Callable<Void> {
+
+    // Static initialization to ensure logging is set up before any operations
+    static {
+        LoggingInitializer.initialize();
+    }
 
     public static final String COPRO_PROCESSOR_RETRY_FAILED_FILES = "copro.processor.retry.failed.files";
     public static final String COPRO_PROCESSOR_RETRY_FAILED_FILES_MAX_ATTEMPTS = "copro.processor.retry.failed.files.max.attempts";
@@ -64,46 +71,45 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
 
     @Override
-    public Void call() throws Exception {
+    public Void call() {
         Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
-        logger.info("Consumer {} started processing with node count {}", countDownLatch.getCount(), nodeCount.get());
+        logger.info("Consumer {} started", Thread.currentThread().getName());
         final List<O> processedEntity = new ArrayList<>();
         try {
             while (true) {
+                I take = queue.poll(30, TimeUnit.SECONDS); // timeout
+                if (take == null) {
+                    logger.info("Consumer {} timed out waiting for data. Exiting.", Thread.currentThread().getName());
+                    break;
+                }
+
+                if (!tPredicate.test(take)) {
+                    logger.info("Stopping seed encountered. Consumer {} exiting.", Thread.currentThread().getName());
+                    queue.add(take); // put it back for others
+                    break;
+                }
+
                 try {
-                    final I take = queue.take();
-                    if (tPredicate.test(take)) {
-                        final int index = nodeCount.incrementAndGet() % nodeSize;//Round robin
-                        takeAndAddRowsBeforeDbFlush(callable, index, take, processedEntity, jdbi);
-                        writeBatchToDBOnCondition(insertSql, writeBatchSize, processedEntity, startTime, jdbi);
-                    } else {
-                        logger.info("Breaking the consumer");
-                        queue.add(take);
-                        break;
-                    }
-                } catch (InterruptedException e) {
-
-                    HandymanException handymanException=new HandymanException(e);
-                    HandymanException.insertException("Error at Consumer thread", handymanException, actionExecutionAudit);
+                    final int index = nodeCount.incrementAndGet() % nodeSize; // round robin
+                    takeAndAddRowsBeforeDbFlush(callable, index, take, processedEntity, jdbi);
+                    writeBatchToDBOnCondition(insertSql, writeBatchSize, processedEntity, startTime, jdbi);
                 } catch (Exception e) {
-
-                    HandymanException handymanException=new HandymanException(e);
-                    HandymanException.insertException("Error at Consumer Process", handymanException, actionExecutionAudit);
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Error at Consumer process", handymanException, actionExecutionAudit);
                 }
             }
+
             checkProcessedEntitySizeForPendingQueue(insertSql, processedEntity, startTime, jdbi);
-        } catch (Exception e) {
-
-            HandymanException handymanException=new HandymanException(e);
-            HandymanException.insertException("Final persistence failed ", handymanException, actionExecutionAudit);
-
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Consumer interrupted", handymanException, actionExecutionAudit);
         } finally {
-            logger.info("Consumer {} completed the process and persisted {} rows", countDownLatch.getCount(), nodeCount.get());
+            logger.info("Consumer {} completed and persisted {} rows", Thread.currentThread().getName(), nodeCount.get());
             countDownLatch.countDown();
         }
         return null;
     }
-
     private void takeAndAddRowsBeforeDbFlush(CoproProcessor.ConsumerProcess<I, O> callable, int index, I take, List<O> processedEntity, Jdbi jdbi) {
         final List<O> results = new ArrayList<>();
         try {
