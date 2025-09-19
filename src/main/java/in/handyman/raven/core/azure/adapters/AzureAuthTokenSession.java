@@ -17,8 +17,9 @@ public class AzureAuthTokenSession {
 
     private static final AzureAuthTokenSession INSTANCE;
 
-    private static final Duration TOKEN_EXPIRY_THRESHOLD = Duration.ofMinutes(50);
-    private static final Duration TOKEN_EXPIRY_LIMIT = Duration.ofMinutes(60);
+    public static final String AZURE_IDENTITY_REFRESH_MINUTES = "azure.identity.refresh.minutes";
+    private static final int TOKEN_EXPIRY_LIMIT_MINUTES = Integer.parseInt(PropertyHandler.getOrDefault(AZURE_IDENTITY_REFRESH_MINUTES,"55"));
+    private static final Duration TOKEN_EXPIRY_LIMIT = Duration.ofMinutes(TOKEN_EXPIRY_LIMIT_MINUTES);
 
     private final String tenantId;
     private final String clientId;
@@ -34,18 +35,34 @@ public class AzureAuthTokenSession {
     private Instant tokenCreatedDate;
     private String tokenCreatedBy;
 
+    public static final String AZURE_IDENTITY_TENANT_ID = "azure.identity.tenantId";
+
+    public static final String AZURE_IDENTITY_CLIENT_ID = "azure.identity.clientId";
+
+    public static final String AZURE_IDENTITY_CLIENT_SECRET = "azure.identity.clientSecret";
+
+    public static final String AZURE_DATABASE_URL = "azure.database.url";
+
+    public static final String AZURE_TOKEN_SCOPE = "azure.token.scope";
+
+    public static final String RAVEN_DB_USER = "raven.db.user";
+
+    public static final String RAVEN_DB_URL = "raven.db.url";
+
+    public static final String DB_PASSWORD = "DB_PASSWORD";
+
     // **Singleton Initialization Using Static Block**
     static {
         INSTANCE = new AzureAuthTokenSession(
-                PropertyHandler.get("azure.identity.tenantId"),
-                PropertyHandler.get("azure.identity.clientId"),
-                PropertyHandler.get("azure.identity.clientSecret"),
-                PropertyHandler.get("azure.database.url"),
-                PropertyHandler.get("azure.token.scope"),
-                PropertyHandler.get("raven.db.user"),
-                PropertyHandler.get("raven.db.url"),
-                PropertyHandler.get("raven.db.user"),
-                PropertyHandler.get("DB_PASSWORD")
+                PropertyHandler.get(AZURE_IDENTITY_TENANT_ID),
+                PropertyHandler.get(AZURE_IDENTITY_CLIENT_ID),
+                PropertyHandler.get(AZURE_IDENTITY_CLIENT_SECRET),
+                PropertyHandler.get(AZURE_DATABASE_URL),
+                PropertyHandler.get(AZURE_TOKEN_SCOPE),
+                PropertyHandler.get(RAVEN_DB_USER),
+                PropertyHandler.get(RAVEN_DB_URL),
+                PropertyHandler.get(RAVEN_DB_USER),
+                PropertyHandler.get(DB_PASSWORD)
         );
     }
 

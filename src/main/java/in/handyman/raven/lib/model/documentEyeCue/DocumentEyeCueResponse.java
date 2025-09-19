@@ -22,6 +22,6 @@ public class DocumentEyeCueResponse {
     private String processedPdfPath;
     private String processedPdfBase64;
     private String processedPdfChecksum;
-    private int docEyeCueDurationMs;
+    private Long docEyeCueDurationMs;
     private String errorMessage;
 }

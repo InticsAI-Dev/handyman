@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.util.LoggingInitializer;
 import okhttp3.*;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -35,6 +36,9 @@ public class BlankPageRemoverConsumerProcess implements CoproProcessor.ConsumerP
             .build();
 
     public BlankPageRemoverConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, String outputDir) {
+        // Initialize logging early to prevent SubstituteLogger buffer overflow
+        LoggingInitializer.initialize();
+        
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;

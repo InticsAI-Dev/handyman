@@ -10,6 +10,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
+import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,16 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     public static final String AZURE_DATABASE_URL = "azure.database.url";
 
     public static final String AZURE_TOKEN_SCOPE = "azure.token.scope";
+
+    private static final String COPRO_RETRY_ERROR_AUDIT = "copro_retry_error_audit";
+
+    private static final String SQL_INSERT_COPRO_AUDIT = "INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT + " (" +
+            "origin_id, group_id, attempt, tenant_id, process_id, file_path, paper_no, message, status, stage, " +
+            "created_on, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint" +
+            ") VALUES (" +
+            ":originId, :groupId, :attempt, :tenantId, :processId, :filePath, :paperNo, :message, :status, :stage, " +
+            ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint" +
+            ")";
 
     static {
         getDatabaseConnectionByConnectionType();
@@ -627,5 +638,25 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         );
     }
 
-
+    public long insertAuditToDb(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action) {
+        checkJDBIConnection();
+        try {
+            // Ensure createdOn is not null
+            if (retryAudit.getCreatedOn() == null) {
+                retryAudit.setCreatedOn(Timestamp.valueOf(LocalDateTime.now()));
+            }
+            return JDBI.withHandle(handle ->
+                    handle.createUpdate(SQL_INSERT_COPRO_AUDIT)
+                            .bindBean(retryAudit) // Automatically maps bean properties to SQL parameters
+                            .executeAndReturnGeneratedKeys("id")
+                            .mapTo(Long.class)
+                            .one()
+            );
+        } catch (Exception ex) {
+            log.error("Failed to insert copro retry audit", ex);
+            HandymanException handymanException = new HandymanException(ex);
+            HandymanException.insertException("Error executing prepared insert query", handymanException, action);
+            throw handymanException;
+        }
+    }
 }

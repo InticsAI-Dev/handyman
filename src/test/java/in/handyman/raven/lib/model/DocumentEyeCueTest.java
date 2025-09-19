@@ -123,7 +123,7 @@ class DocumentEyeCueTest {
                 Map.entry("storecontent.meta.SRCID", "SOURCEID"),
 
                 // For backward compatibility (if required by your API)
-                Map.entry("authorization_header",
+                Map.entry("storecontent.authorization.header",
                         "")
         ));
         actionExecutionAudit.setActionId(1L);

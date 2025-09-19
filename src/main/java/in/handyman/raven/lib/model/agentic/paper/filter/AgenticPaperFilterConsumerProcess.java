@@ -5,22 +5,58 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AgenticPaperFilterAction;
 import in.handyman.raven.lib.CoproProcessor;
-import okhttp3.OkHttpClient;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.model.triton.TritonDataTypes;
+import in.handyman.raven.lib.model.triton.TritonInputRequest;
+import in.handyman.raven.lib.model.triton.TritonRequest;
+import okhttp3.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Timestamp;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
+import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class AgenticPaperFilterConsumerProcess implements CoproProcessor.ConsumerProcess<AgenticPaperFilterInput, AgenticPaperFilterOutput> {
     private final ActionExecutionAudit action;
+
     private final Logger log;
+
     private final Marker aMarker;
 
+    public static final String TRITON_REQUEST_ACTIVATOR = "triton.request.activator";
+    public static final String KRYPTON_START = "KRYPTON START";
     public static final String AGENTIC_PAPER_FILTER_MODEL_NAME = "preprocess.agentic.paper.filter.model.name";
+    private static final MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
+    private static final String MODEL_TYPE = "OPTIMUS";
+    private static final String PROCESS_NAME = "AGENTIC PAPER FILTER";
+    public static final String PAGE_CONTENT_NO = "no";
+    public static final String PAGE_CONTENT_YES = "yes";
+    private final int pageContentMinLength;
+    final OkHttpClient httpclient;
+    final String jdbiResourceName;
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final String MODEL = "model";
+    private static final String ENCRYPTION_ALGO = "AES256";
+    private static final String INFER_OUTPUT_KEY = "AGENTIC_INFER_OUTPUT";
+    private static final String TRUE = "true";
+
+    private final String processBase64;
+    private final FileProcessingUtils fileProcessingUtils;
+    private CoproRetryService coproRetryService;
+
+    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
     private final AgenticPaperFilterCoproKryptonClient kryptonApiHandler;
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,
@@ -29,7 +65,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
-
+        this.processBase64 = processBase64;
+        this.fileProcessingUtils = fileProcessingUtils;
+        this.pageContentMinLength = pageContentMinLength;
         int timeOut = aAction.getTimeOut();
         OkHttpClient httpclient = new OkHttpClient.Builder()
                 .connectTimeout(timeOut, TimeUnit.MINUTES)
@@ -39,6 +77,10 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         this.kryptonApiHandler = new AgenticPaperFilterCoproKryptonClient(action, log, aMarker, pageContentMinLength,
                 httpclient, processBase64, fileProcessingUtils);
+        this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
+        this.jdbiResourceName = jdbiResourceName;
+
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
     }
 
     @Override
@@ -52,7 +94,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, entity.getFilePath());
             }
 
-            kryptonApiHandler.getCoproHandlerMethod(endpoint, entity, parentObj, textExtractionModelName);
+            kryptonApiHandler.getCoproHandlerMethod(endpoint, entity, parentObj, textExtractionModelName, filePath);
         } catch (Exception e) {
             String errorMessage = "Error in process method for batch/group" + entity.getGroupId() +
                     " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + "\n message: " + e.getMessage();

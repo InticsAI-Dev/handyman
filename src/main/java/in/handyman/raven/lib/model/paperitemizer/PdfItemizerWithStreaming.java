@@ -59,11 +59,11 @@ public class PdfItemizerWithStreaming {
         final String fileExtension = getExtension(filePath);
         final String originId = entity.getOriginId();
         if (PdfExtensions.EXTENSION_PDF.getEType().equalsIgnoreCase(fileExtension)) {
-            log.info("Processing PDF file: {} for originId {}", filePath, originId);
+            log.debug("Processing PDF file: {} for originId {}", filePath, originId);
             itemisePdfIntoPapersWithStreaming(parentObj, entity, targetDir.getPath(), filePath, startTime);
 
         } else if (PdfExtensions.EXTENSION_JPEG.getEType().equalsIgnoreCase(fileExtension) || PdfExtensions.EXTENSION_JPG.getEType().equalsIgnoreCase(fileExtension) || PdfExtensions.EXTENSION_PNG.getEType().equalsIgnoreCase(fileExtension)) {
-            log.info("Processing image file: {} for originId {}", filePath, originId);
+            log.debug("Processing image file: {} for originId {}", filePath, originId);
             PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeCompletedOutput(entity, new File(entity.getFilePath()), 0, 1, startTime);
             parentObj.add(paperItemizerOutputTable);
         } else {
@@ -78,7 +78,7 @@ public class PdfItemizerWithStreaming {
     }
 
     private void checkOutputDir(String outputDir, String s, PaperItemizerInputTable entity, String outputDirError) {
-        log.info("Checking output directory: {} for originId {}", outputDir, entity.getOriginId());
+        log.debug("Checking output directory: {} for originId {}", outputDir, entity.getOriginId());
         if (outputDir == null || outputDir.isEmpty()) {
             log.error(s, entity.getOriginId());
             HandymanException handymanException = new HandymanException(new IllegalArgumentException(outputDirError));
@@ -88,7 +88,7 @@ public class PdfItemizerWithStreaming {
     }
 
     public String getExtension(String filePath) {
-        log.info("Extracting file extension from path: {}", filePath);
+        log.debug("Extracting file extension from path: {}", filePath);
         if (filePath != null && filePath.lastIndexOf('.') != -1) {
             return filePath.substring(filePath.lastIndexOf('.') + 1);
         }
@@ -100,7 +100,7 @@ public class PdfItemizerWithStreaming {
     }
 
     private PaperItemizerOutputTable getPaperItemizeCompletedOutput(PaperItemizerInputTable entity, File outputFile, long currentPage, int pageCount, Timestamp startTime) {
-        log.info("Creating completed output for paper itemization with file: {} for originId: {}", outputFile.getAbsolutePath(), entity.getOriginId());
+        log.debug("Creating completed output for paper itemization with file: {} for originId: {}", outputFile.getAbsolutePath(), entity.getOriginId());
         return PaperItemizerOutputTable.builder()
                 .processedFilePath(outputFile.toString())
                 .originId(entity.getOriginId())
@@ -125,7 +125,7 @@ public class PdfItemizerWithStreaming {
     }
 
     private void itemisePdfIntoPapersWithStreaming(List<PaperItemizerOutputTable> parentObj, PaperItemizerInputTable entity, String basePath, String pdfPath, Timestamp startTime) throws IOException {
-        log.info("Itemizing PDF into papers for file: {} with base path: {}", pdfPath, basePath);
+        log.debug("Itemizing PDF into papers for file: {} with base path: {}", pdfPath, basePath);
         final String IMAGE_TYPE = getContextVariableWithDefault(PAPER_ITEMIZER_IMAGE_TYPE_RGB, "GRAY");
         final String imageResizeEnable = getContextVariableWithDefault(PAPER_ITEMIZATION_RESIZE_ACTIVATOR, "GRAY");
         final boolean imageResizeEnableSetting = Boolean.parseBoolean(imageResizeEnable);
@@ -150,12 +150,12 @@ public class PdfItemizerWithStreaming {
                 ImageType imageType = ImageType.RGB.toString().equalsIgnoreCase(IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
                 BufferedImage image = renderer.renderImageWithDPI(i, imageDpiSetting, imageType);
                 if (imageResizeEnableSetting) {
-                    log.info("Resizing image for page {} of file: {}", i + 1, originalName);
+                    log.debug("Resizing image for page {} of file: {}", i + 1, originalName);
                     BufferedImage bufferedImage = resizeImage(image, imageWidthSetting, imageHeightSetting);
                     writeOutputItemizedImages(parentObj, entity, basePath, originalName, i, bufferedImage, normalizedFormat, pageCount, startTime);
 
                 } else {
-                    log.info("Resize operation was turned off and Writing image for page {} of file: {} without", i + 1, originalName);
+                    log.debug("Resize operation was turned off and Writing image for page {} of file: {} without", i + 1, originalName);
                     writeOutputItemizedImages(parentObj, entity, basePath, originalName, i, image, normalizedFormat, pageCount, startTime);
                 }
                 image.flush();
@@ -167,7 +167,7 @@ public class PdfItemizerWithStreaming {
     }
 
     private void writeOutputItemizedImages(List<PaperItemizerOutputTable> parentObj, PaperItemizerInputTable entity, String basePath, String originalName, int i, BufferedImage image, String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {
-        log.info("Writing output itemized image for page {} of file: {}", i + 1, originalName);
+        log.debug("Writing output itemized image for page {} of file: {}", i + 1, originalName);
         String fileNameWithoutExtension = removeExtension(originalName);
         final String fileName = fileNameWithoutExtension + "_" + (i + 1) + "." + normalizedFormat;
         final String folderName = fileNameWithoutExtension;
@@ -181,18 +181,18 @@ public class PdfItemizerWithStreaming {
             HandymanException handymanException = new HandymanException(new IOException(imageWriteError));
             HandymanException.insertException(imageWriteError, handymanException, action);
         } else {
-            log.info("Successfully wrote image to file: {}", out.toFile().getAbsolutePath());
+            log.debug("Successfully wrote image to file: {}", out.toFile().getAbsolutePath());
             PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeCompletedOutput(entity, out.toFile(), i, pageCount, startTime);
             parentObj.add(paperItemizerOutputTable);
         }
 
         image.flush();
         image = null;
-        log.info("Successfully wrote output itemized image for page {} of file: {}", i + 1, originalName);
+        log.debug("Successfully wrote output itemized image for page {} of file: {}", i + 1, originalName);
     }
 
     private Path createOutputFile(String basePath, String fileName, String originalFileName) throws IOException {
-        log.info("Creating output file with name: {} in base path: {}", fileName, basePath);
+        log.debug("Creating output file with name: {} in base path: {}", fileName, basePath);
         Path outputDir = Paths.get(basePath, "processed", originalFileName);
         if (!Files.exists(outputDir)) {
             Files.createDirectories(outputDir);
@@ -202,7 +202,7 @@ public class PdfItemizerWithStreaming {
 
 
     public String getFileNameFromPath(String filePath) {
-        log.info("Extracting file name from path: {}", filePath);
+        log.debug("Extracting file name from path: {}", filePath);
         // Convert the file path string to a Path object
         Path path = Paths.get(filePath);
 
@@ -251,7 +251,7 @@ public class PdfItemizerWithStreaming {
     }
 
     private String removeExtension(final String fileName) {
-        log.info("Removing extension from file name: {}", fileName);
+        log.debug("Removing extension from file name: {}", fileName);
         if (fileName.indexOf(".") > 0) {
             return fileName.substring(0, fileName.lastIndexOf("."));
         } else {
@@ -269,7 +269,7 @@ public class PdfItemizerWithStreaming {
     }
 
     private BufferedImage resizeImage(BufferedImage originalImage, int width, int height) {
-        log.info("Resizing image from original size {}x{} to new size {}x{}", originalImage.getWidth(), originalImage.getHeight(), width, height);
+        log.debug("Resizing image from original size {}x{} to new size {}x{}", originalImage.getWidth(), originalImage.getHeight(), width, height);
         BufferedImage resizedImage = new BufferedImage(width, height, originalImage.getType());
         Graphics2D graphics = resizedImage.createGraphics();
         graphics.drawImage(originalImage, 0, 0, width, height, null);
@@ -278,14 +278,14 @@ public class PdfItemizerWithStreaming {
     }
 
     private File createOutputDirectory(String outputDir) {
-        log.info("Creating output directory at: {}", outputDir);
+        log.debug("Creating output directory at: {}", outputDir);
         try {
             Path combinedPath = Paths.get(outputDir, "pdf_to_image");
             File targetDir = combinedPath.toFile();
 
             boolean createDir = targetDir.mkdirs();
             if (createDir || targetDir.exists()) {
-                log.info("Directory is ready: {}", targetDir.getAbsolutePath());
+                log.debug("Directory is ready: {}", targetDir.getAbsolutePath());
             } else {
                 log.error("Failed to create directory: {}", targetDir.getAbsolutePath());
             }

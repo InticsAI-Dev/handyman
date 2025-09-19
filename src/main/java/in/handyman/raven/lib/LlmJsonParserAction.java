@@ -41,14 +41,16 @@ public class LlmJsonParserAction implements IActionExecution {
     public static final String WRITE_BATCH_SIZE = "write.batch.size";
     private final Marker aMarker;
 
-    public static final String DUMMY_URL = "http://localhost:10181/copro/preprocess/autorotation";
+    public static final String DUMMY_URL = "http://localhost:10181/copro/postprocess/llmParser";
 
     public static final String LLM_JSON_PARSER_CONSUMER_API_COUNT = "llm.json.parser.consumer.API.count";
 
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(    ?::timestamp,?,?,?,?,?," +
+            "    ?,?,?::jsonb,?,?,?,?,?,?," +
+            "    ?,?,?,?,?,?,?)";
 
-    public static final String INSERT_COLUMNS_UPDATED = "created_on, tenant_id, last_updated_on, last_updated_user_id, confidence_score, sor_item_name, answer, bounding_box, paper_no, origin_id, group_id, root_pipeline_id, batch_id, model_registry, extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label";
+    public static final String INSERT_COLUMNS_UPDATED = "created_on, tenant_id, created_user_id, last_updated_on, last_updated_user_id,confidence, sor_item_name, answer, bbox, paper_no,origin_id, group_id, root_pipeline_id, batch_id, model_registry, extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label,section_alias";
 
 
     public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,
@@ -81,7 +83,11 @@ public class LlmJsonParserAction implements IActionExecution {
 
             Integer consumerApiCount = Integer.valueOf(action.getContext().get(LLM_JSON_PARSER_CONSUMER_API_COUNT));
 
-            final CoproProcessor<LlmJsonQueryInputTable, LlmJsonQueryOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), LlmJsonQueryOutputTable.class, LlmJsonQueryInputTable.class, llmJsonParser.getResourceConn(), log, new LlmJsonQueryInputTable(), urls, action);
+            final CoproProcessor<LlmJsonQueryInputTable, LlmJsonQueryOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(),
+                    LlmJsonQueryOutputTable.class,
+                    LlmJsonQueryInputTable.class,
+                    llmJsonParser.getResourceConn(), log,
+                    new LlmJsonQueryInputTable(), urls, action);
 
             log.info(aMarker, "Consumer API count for LLM JSON parser is {}", consumerApiCount);
             String insertQuery = INSERT_INTO + llmJsonParser.getOutputTable() + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
