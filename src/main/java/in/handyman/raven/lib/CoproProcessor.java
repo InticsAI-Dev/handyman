@@ -135,7 +135,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
                               final ConsumerProcess<I, O> callable) {
-        String legacyPath = actionExecutionAudit.getContext().getOrDefault("copro.consumer.route.type", "LEGACY");
+        String legacyPath = actionExecutionAudit.getContext().getOrDefault("copro.processor.consumer.route.type", "LEGACY");
         if ("LEGACY".equalsIgnoreCase(legacyPath)) {
             startConsumerLegacy(insertSql, consumerCount, writeBatchSize, callable);
         } else {
