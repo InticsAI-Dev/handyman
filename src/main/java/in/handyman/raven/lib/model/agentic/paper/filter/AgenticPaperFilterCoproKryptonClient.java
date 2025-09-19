@@ -51,10 +51,11 @@ public class AgenticPaperFilterCoproKryptonClient {
     public static final String KRYPTON_START = "KRYPTON START";
     public static final String PAGE_CONTENT_NO = "no";
     public static final String PAGE_CONTENT_YES = "yes";
+    private final CoproRetryService coproRetryService;
 
     public AgenticPaperFilterCoproKryptonClient(ActionExecutionAudit action, Logger log, Marker aMarker,
                                                 int pageContentMinLength, OkHttpClient httpclient,
-                                                String processBase64, FileProcessingUtils fileProcessingUtils) {
+                                                String processBase64, FileProcessingUtils fileProcessingUtils, CoproRetryService coproRetryService) {
         this.action = action;
         this.log = log;
         this.aMarker = aMarker;
@@ -62,6 +63,7 @@ public class AgenticPaperFilterCoproKryptonClient {
         this.httpclient = httpclient;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
+        this.coproRetryService = coproRetryService;
     }
 
     public void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput entity,
@@ -134,7 +136,8 @@ public class AgenticPaperFilterCoproKryptonClient {
         Timestamp createdOn = CreateTimeStamp.currentTimestamp();
         entity.setCreatedOn(createdOn);
 
-        try (Response response = httpclient.newCall(request).execute()) {
+        CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
+        try (Response response = coproRetryService.callCoproApiWithRetry(request, jsonRequest, auditInput, this.action)) {
             log.info("{} Received response for entity with originId: {}, processId: {}, tenantId: {}, rootPipelineId: {}, paperNo: {}. Response code: {}",
                     PROCESS_NAME, entity.getOriginId(), entity.getProcessId(), entity.getTenantId(), entity.getRootPipelineId(), entity.getPaperNo(), response.code());
             String responseBody = Objects.requireNonNull(response.body()).string();
@@ -175,6 +178,27 @@ public class AgenticPaperFilterCoproKryptonClient {
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(errorMessage, handymanException, this.action);
         }
+    }
+
+    private CoproRetryErrorAuditTable setErrorAuditInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
+        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
+                .originId(entity.getOriginId())
+                .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
+                .tenantId(entity.getTenantId())
+                .processId(entity.getProcessId())
+                .filePath(entity.getFilePath())
+                .paperNo(entity.getPaperNo())
+                .createdOn(entity.getCreatedOn())
+                .rootPipelineId(entity.getRootPipelineId())
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                .stage("RETRY API CALL TO COPRO")
+                .batchId(entity.getBatchId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .endpoint(String.valueOf(endPoint))
+                .build();
+        log.info("{} Prepared CoproRetryErrorAuditTable for entity with originId: {}, processId: {}, tenantId: {}, rootPipelineId: {}, paperNo: {}",
+                PROCESS_NAME, entity.getOriginId(), entity.getProcessId(), entity.getTenantId(), entity.getRootPipelineId(), entity.getPaperNo());
+        return retryAudit;
     }
 
     private void handleKryptonErrorResponse(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj,
