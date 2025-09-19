@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class HandymanException extends RuntimeException {
-    public static final HandymanRepoImpl handymanRepo = new HandymanRepoImpl();
+    private static final HandymanRepoImpl handymanRepo = new HandymanRepoImpl();
 
 
     public HandymanException(Throwable t)
