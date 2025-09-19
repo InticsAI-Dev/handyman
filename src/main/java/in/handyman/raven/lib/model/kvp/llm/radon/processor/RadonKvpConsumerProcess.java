@@ -16,6 +16,7 @@ import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTr
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.util.LoggingInitializer;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -49,6 +50,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final ProviderDataTransformer providerDataTransformer;
 
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
+        // Initialize logging early to prevent SubstituteLogger buffer overflow
+        LoggingInitializer.initialize();
+        
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -78,60 +82,48 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
                 && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")) {
 
-            log.info("RADON_KVP_ACTION process started. BBox activator is enabled.");
 
             String inputResponseJsonstr = entity.getInputResponseJson();
             String inputResponseJson;
             String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
 
-            log.info("Checking if end-to-end encryption is enabled: {}", encryptOutputJsonContent);
 
             InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
             if (Objects.equals(encryptOutputJsonContent, "true")) {
-                log.info("Encrypting input response JSON...");
                 inputResponseJson = encryption.decrypt(inputResponseJsonstr, "AES256", "RADON_KVP_JSON");
-                log.info("Encryption completed successfully.");
             } else {
                 log.info("Encryption is disabled. Using raw input response JSON.");
                 inputResponseJson = inputResponseJsonstr;
             }
 
             String base64Activator = action.getContext().get("sor.transaction.prompt.base64.activator");
-            log.info("Checking if Base64 activator is enabled: {}", base64Activator);
 
             if (Objects.equals(base64Activator, "true")) {
-                log.info("Base64 activator is turned ON for process: {}", entity.getProcess());
 
                 Base64toActualVaue base64Caller = new Base64toActualVaue();
                 String base64Value = base64Caller.base64toActual(entity.getUserPrompt());
 
-                log.info("Decoded Base64 value successfully.");
 
                 byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
                 String decodedPrompt = new String(decodedBytes);
 
-                log.info("Decoded prompt before replacing placeholder: {}", decodedPrompt);
 
                 String updatedPrompt = decodedPrompt.replace(
                         action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
 
                 userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
 
-                log.info("Updated prompt encoded back to Base64 successfully.");
             } else {
                 log.info("Base64 activator is OFF. Using plain text prompt.");
 
                 String actualUserPrompt = entity.getUserPrompt();
-                log.info("Original user prompt before replacing placeholder: {}", actualUserPrompt);
 
                 userPrompt = actualUserPrompt.replace(
                         action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
 
-                log.info("Updated user prompt in plain text.");
             }
         } else {
-            log.info("BBox activator is disabled or process is not RADON_KVP_ACTION. Using original user prompt.");
             userPrompt = entity.getUserPrompt();
         }
 
@@ -181,15 +173,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String jsonInsertRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
         String jsonInsertRequestEncrypted = encryptRequestResponse(jsonInsertRequest);
 
-        log.info(aMarker, " Input variables id : {}", action.getActionId());
-
 
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} with container Id {}", endpoint, filePath, entity.getSorContainerId());
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-        log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
         Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
         tritonRequestBuilder(entity, request, parentObj, jsonInsertRequestEncrypted, endpoint);
 
@@ -317,9 +306,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-        log.info(aMarker, "checking provider data found for the given input {}", Boolean.TRUE.equals(entity.getPostProcess()));
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
-            log.info(aMarker, "Provider data found for the given input started the post process with value {}", entity.getPostProcess());
             String providerClassName = action.getContext().get(entity.getPostProcessClassName());
             Optional<String> sourceCode = fetchBshResultByClassName(jdbiResourceName, providerClassName, tenantId);
             if (sourceCode.isPresent()) {

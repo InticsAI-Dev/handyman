@@ -101,7 +101,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     private void getCoproHandlerMethod(URL endpoint, AgenticPaperFilterInput
             entity, List<AgenticPaperFilterOutput> parentObj, String textExtractionModelName, String filePath) {
-        log.info(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
+        log.debug(aMarker, "Executing TRITON handler for endpoint: {} and model: {}", endpoint, textExtractionModelName);
         getTritonHandlerMethod(endpoint, entity, parentObj, filePath);
     }
 
@@ -378,7 +378,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String requestStr;
         if ("true".equals(encryptReqRes)) {
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action, log).encrypt(request, ENCRYPTION_ALGO, "AP_COPRO_REQUEST");
-            log.info(aMarker, "Request has been encrypted");
+            log.debug(aMarker, "Request has been encrypted");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;

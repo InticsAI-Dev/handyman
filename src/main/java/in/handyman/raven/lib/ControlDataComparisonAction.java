@@ -38,11 +38,11 @@ import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM
 @ActionExecution(actionName = "ControlDataComparison")
 public class ControlDataComparisonAction implements IActionExecution {
     public static final String ACTUAL_ENCRYPTION_VARIABLE = "actual.encryption.variable";
+    public static final String CONTROL_DATA_COMPARISON_STORE_AS_DECRYPTED = "control.data.comparison.store.as.decrypted";
     private final ActionExecutionAudit action;
     private final ControlDataComparison controlDataComparison;
     private final Logger log;
     private final Marker aMarker;
-    ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
     public ControlDataComparisonAction(final ActionExecutionAudit action, final Logger log, final Object controlDataComparison) {
         this.controlDataComparison = (ControlDataComparison) controlDataComparison;
@@ -369,8 +369,11 @@ public class ControlDataComparisonAction implements IActionExecution {
         log.info(aMarker, "Completed validation and returned {} records", processedRecords.size());
 
         log.info(aMarker, "Started Encryption for {} records", processedRecords.size());
-        // if performEncryption must be on validated records
-        performEncryption(processedRecords, encryptionHandler);
+
+        boolean storeExtractedPlainText = Boolean.parseBoolean(action.getContext().getOrDefault(CONTROL_DATA_COMPARISON_STORE_AS_DECRYPTED, "false"));
+        if(!storeExtractedPlainText){
+            performEncryption(processedRecords, encryptionHandler);
+        }
 
         insertExecutionInfo(jdbi, outputTable, processedRecords);
 

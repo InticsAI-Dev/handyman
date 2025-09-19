@@ -132,8 +132,18 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         addAudit(audit, startTime);
     }
 
+
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
                               final ConsumerProcess<I, O> callable) {
+        String legacyPath = actionExecutionAudit.getContext().getOrDefault("copro.processor.consumer.route.type", "LEGACY");
+        if ("LEGACY".equalsIgnoreCase(legacyPath)) {
+            startConsumerLegacy(insertSql, consumerCount, writeBatchSize, callable);
+        } else {
+            startConsumerModern(insertSql, consumerCount, writeBatchSize, callable);
+        }
+    }
+
+    private void startConsumerLegacy(String insertSql, Integer consumerCount, Integer writeBatchSize, ConsumerProcess<I, O> callable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
 
@@ -169,6 +179,58 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             }
         }
     }
+
+    private void startConsumerModern(String insertSql, Integer consumerCount, Integer writeBatchSize, ConsumerProcess<I, O> callable) {
+        final LocalDateTime startTime = LocalDateTime.now();
+        final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
+
+        final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
+
+        // Always fixed size consumers
+        ThreadFactory namedThreadFactory = r -> {
+            Thread t = new Thread(r);
+            t.setName("copro-consumer-" + t.getId());
+            t.setDaemon(false);
+            return t;
+        };
+
+        executorService = new ThreadPoolExecutor(
+                consumerCount,               // core
+                consumerCount,               // max
+                120L, TimeUnit.SECONDS,       // keepAlive
+                new LinkedBlockingQueue<>(), // no task backlog
+                namedThreadFactory,
+                new ThreadPoolExecutor.CallerRunsPolicy() // if pool full, run in caller
+        );
+
+        logger.info("Copro processor created with fixed consumer thread pool of size {}", consumerCount);
+
+        for (int i = 0; i < consumerCount; i++) {
+            executorService.submit(new InboundBatchDataConsumer<>(
+                    insertSql, writeBatchSize, callable, tPredicate,
+                    startTime, countDownLatch, queue, nodeCount, nodeSize,
+                    actionExecutionAudit, nodes, jdbiResourceName, logger));
+        }
+
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted while waiting for consumers to finish", e);
+        } finally {
+            logger.info("Shutting down consumer executor service");
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(2, TimeUnit.MINUTES)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
 
     public interface ConsumerProcess<I, O extends Entity> {
         List<O> process(final URL endpoint, final I entity) throws Exception;

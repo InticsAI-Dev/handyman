@@ -18,6 +18,7 @@ import in.handyman.raven.lib.replicate.ReplicateResponse;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.util.ExceptionUtil;
+import in.handyman.raven.util.LoggingInitializer;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -63,6 +64,9 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     public DataExtractionConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64) {
+        // Initialize logging early to prevent SubstituteLogger buffer overflow
+        LoggingInitializer.initialize();
+        
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
