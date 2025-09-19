@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jdbi.v3.core.mapper.reflect.ColumnName;
 
 import java.sql.Timestamp;
 
@@ -32,6 +33,7 @@ public class RadonMultiSectionQueryInputTable {
     private String modelName;
     private String containerName;
     private String entity;
+    @ColumnName("input_response_json")
     private String inputResponseJson;
     private String radonProcessName;
     private Integer priorityOrder;

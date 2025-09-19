@@ -30,11 +30,13 @@ import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -43,6 +45,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -120,6 +123,10 @@ public class EntityLineItemProcessorAction implements IActionExecution {
         FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, actionExecutionAudit);
 
         buildApiInputTablesFromQueries();
+        if (radonMultiSectionApiInputTables.isEmpty()) {
+            safeLogInfo("No API input tables to process, skipping inference and DB insert.");
+            return;
+        }
 
         int consumerApiCount = determineConsumerApiCount();
         readBatchSize = parseIntFromContext(actionExecutionAudit, "read.batch.size", 10);
@@ -130,8 +137,11 @@ public class EntityLineItemProcessorAction implements IActionExecution {
             safeLogInfo("Using configured readBatchSize {}", readBatchSize);
         }
 
-        final ExecutorService executorService = createExecutorService(consumerApiCount);
-        final CountDownLatch countDownLatch = new CountDownLatch(Math.max(1, consumerApiCount));
+        int taskCount = radonMultiSectionApiInputTables.size();
+        safeLogInfo("Consumer API count = {}, tasks to submit = {}", consumerApiCount, taskCount);
+
+        final ExecutorService executorService = createExecutorService(Math.max(1, Math.min(consumerApiCount, Math.max(1, taskCount))));
+        final CountDownLatch countDownLatch = new CountDownLatch(Math.max(1, taskCount));
 
         doPromptInferencing(executorService, fileProcessingUtils, countDownLatch);
 
@@ -143,43 +153,67 @@ public class EntityLineItemProcessorAction implements IActionExecution {
     }
 
     private void doPromptInferencing(ExecutorService executorService, FileProcessingUtils fileProcessingUtils, CountDownLatch countDownLatch) {
-        try {
-            for (RadonMultiSectionQueryInputTable input : radonMultiSectionApiInputTables) {
-                executorService.submit(() -> {
-                    try {
-                        URL endpoint = new URL(radonKvpUrl);
-                        parentObj.addAll(process(endpoint, input, fileProcessingUtils, countDownLatch));
-                    } catch (Exception e) {
-                        throw new HandymanException(e);
-                    }
-                });
-            }
-        } finally {
-            try {
-                countDownLatch.await();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn(aMarker, "Interrupted while waiting for worker threads", e);
-            } finally {
-                safeLogInfo("Shutting down executor service");
-                executorService.shutdown();
+        if (radonMultiSectionApiInputTables.isEmpty()) {
+            safeLogInfo("No input tables for inference, skipping prompt inferencing.");
+            return;
+        }
+        final List<URL> urls = getUrls();
+
+        AtomicInteger urlIndex = new AtomicInteger(0);
+        for (RadonMultiSectionQueryInputTable input : radonMultiSectionApiInputTables) {
+            URL endpoint = urls.get(urlIndex.getAndUpdate(i -> (i + 1) % urls.size()));
+            executorService.submit(() -> {
                 try {
-                    if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
-                        executorService.shutdownNow();
-                    }
-                } catch (InterruptedException e) {
-                    executorService.shutdownNow();
-                    Thread.currentThread().interrupt();
+                    List<RadonMultiSectionResponseTable> result = process(endpoint, input, fileProcessingUtils);
+                    parentObj.addAll(result);
+                } catch (Exception e) {
+                    log.error(aMarker, "Error during API processing for originId={} paperNo={}: {}", input.getOriginId(), input.getPaperNo(), e.getMessage(), e);
+                    HandymanException.insertException("API processing error", new HandymanException(e), this.actionExecutionAudit);
+                } finally {
+                    countDownLatch.countDown();
                 }
+            });
+        }
+
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn(aMarker, "Interrupted while waiting for worker threads", e);
+        } finally {
+            safeLogInfo("Shutting down executor service");
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
             }
         }
     }
 
-    private ExecutorService createExecutorService(int consumerApiCount) {
+    @NotNull
+    private List<URL> getUrls() {
+        final List<URL> urls = Optional.of(radonKvpUrl).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+            try {
+                return new URL(s1);
+            } catch (MalformedURLException e) {
+                log.error("Error in processing the URL ", e);
+                throw new HandymanException("Error in processing the URL", e, actionExecutionAudit);
+            }
+        }).collect(Collectors.toList())).orElse(Collections.emptyList());
+        log.debug(aMarker, "Prepared {} URLs for API calls", urls);
+        return urls;
+    }
+
+
+    private ExecutorService createExecutorService(int poolSize) {
         String poolType = actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING");
         if ("FIXED_THREAD".equalsIgnoreCase(poolType)) {
-            safeLogInfo("Creating fixed thread pool with size {}", consumerApiCount);
-            return Executors.newFixedThreadPool(Math.max(1, consumerApiCount));
+            safeLogInfo("Creating fixed thread pool with size {}", poolSize);
+            return Executors.newFixedThreadPool(Math.max(1, poolSize));
         } else {
             safeLogInfo("Creating work-stealing pool");
             return Executors.newWorkStealingPool();
@@ -297,21 +331,34 @@ public class EntityLineItemProcessorAction implements IActionExecution {
 
 
     public void startProducer(final String sqlQuery, Jdbi jdbi) {
-        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
-        for (String sql : formattedQuery) {
-            jdbi.useTransaction(handle -> {
-                List<RadonMultiSectionQueryInputTable> results = handle.createQuery(sql)
-                        .mapToBean(RadonMultiSectionQueryInputTable.class)
-                        .collect(Collectors.toList());
-                radonMultiSectionQueryInputTables.addAll(results);
-                safeLogInfo("Loaded {} records from query", results.size());
-            });
+        try {
+            final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
+            for (String sql : formattedQuery) {
+                try {
+                    jdbi.useTransaction(handle -> {
+                        List<RadonMultiSectionQueryInputTable> results = handle.createQuery(sql)
+                                .mapToBean(RadonMultiSectionQueryInputTable.class)
+                                .collect(Collectors.toList());
+                        radonMultiSectionQueryInputTables.addAll(results);
+                        safeLogInfo("Loaded {} records from input query", results.size());
+                    });
+                } catch (Exception e) {
+                    log.error(aMarker, "Error executing SQL: {}\nCause: {}", sql, e.getMessage(), e);
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Error executing SQL: + " + sql + "\nCause" + e.getMessage(), handymanException, this.actionExecutionAudit);
+                }
+            }
+            safeLogInfo("Loaded {} total records for input table for inferencing", radonMultiSectionQueryInputTables.size());
+
+        } catch (Exception e) {
+            log.error(aMarker, "Fatal error in startProducer: {}", e.getMessage(), e);
+            throw new HandymanException("startProducer encountered an error", e);
         }
     }
 
 
     public List<RadonMultiSectionResponseTable> process(URL endpoint, RadonMultiSectionQueryInputTable entity,
-                                                        FileProcessingUtils fileProcessingUtils, CountDownLatch countDownLatch) {
+                                                        FileProcessingUtils fileProcessingUtils) {
         try {
             List<RadonMultiSectionResponseTable> entityObj = new ArrayList<>();
 
@@ -337,7 +384,7 @@ public class EntityLineItemProcessorAction implements IActionExecution {
             radonKvpExtractionRequest.setBase64Img("");
             String jsonInsertRequest = MAPPER.writeValueAsString(radonKvpExtractionRequest);
 
-            safeLogDebug("Built Triton request for rootPipelineId={}, paperNo={}, originId={}", entity.getRootPipelineId(), paperNo, maskForLog(originId));
+            safeLogDebug("Built Triton request for rootPipelineId={}, paperNo={}, originId={}", entity.getRootPipelineId(), paperNo, originId);
 
             Request request = new Request.Builder()
                     .url(endpoint)
@@ -346,14 +393,11 @@ public class EntityLineItemProcessorAction implements IActionExecution {
 
             tritonRequestBuilder(entity, request, entityObj, jsonInsertRequest, endpoint);
 
-            safeLogInfo("Processed entity rootPipelineId={}, paperNo={}, originId={}, outputCount={}",
-                    entity.getRootPipelineId(), paperNo, maskForLog(originId), entityObj.size());
-
+            safeLogInfo("Processed entity rootPipelineId={}, paperNo={}, originId={}, outputCount={}", entity.getRootPipelineId(), paperNo, originId, entityObj.size());
             return entityObj;
+
         } catch (Exception e) {
             throw new HandymanException(e);
-        } finally {
-            countDownLatch.countDown();
         }
     }
 
@@ -390,7 +434,8 @@ public class EntityLineItemProcessorAction implements IActionExecution {
                 && "RADON_KVP_ACTION".equals(entity.getProcess());
 
         if (isBboxEnabled) {
-            safeLogInfo("BBox activator enabled for rootPipelineId={}, originId={}", entity.getRootPipelineId(), maskForLog(entity.getOriginId()));
+            String originId = entity.getOriginId();
+            safeLogInfo("BBox activator enabled for rootPipelineId={}, originId={}", entity.getRootPipelineId(), originId);
             String inputResponseJsonString = entity.getInputResponseJson();
             String inputResponseJson;
             String encryptOutputJsonContent = actionExecutionAudit.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
@@ -455,7 +500,7 @@ public class EntityLineItemProcessorAction implements IActionExecution {
             } else {
                 String msg = response.message();
                 int code = response.code();
-                safeLogWarn("Unsuccessful Triton response for rootPipelineId={}, paperNo={}, status={}, message={}", entity.getRootPipelineId(), entity.getPaperNo(), code, maskForLog(msg));
+                safeLogWarn("Unsuccessful Triton response for rootPipelineId={}, paperNo={}, status={}, message={}", entity.getRootPipelineId(), entity.getPaperNo(), code, msg);
                 String errorBody = "Unavailable";
                 entityObj.add(RadonMultiSectionResponseTable.builder()
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
@@ -482,7 +527,7 @@ public class EntityLineItemProcessorAction implements IActionExecution {
                         .priorityOrder(entity.getPriorityOrder())
                         .postprocessingScript(entity.getPostprocessingScript())
                         .build());
-                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + code + " message : " + maskForLog(msg));
+                HandymanException handymanException = new HandymanException("Unsuccessful response code : " + code + " message : " + msg);
                 HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.actionExecutionAudit);
             }
         } catch (IOException e) {
@@ -531,10 +576,14 @@ public class EntityLineItemProcessorAction implements IActionExecution {
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(actionExecutionAudit, log);
 
         String extractedContent;
+        String inferResponse = modelResponse.getInferResponse();
+        if(inferResponse == null || inferResponse.isEmpty()){
+            log.info("Empty inferResponse--> for rootPipelineId={}, origin={}, paperNo={}", rootPipelineId, originId, paperNo);
+        }
         if ("true".equals(encryptOutputJsonContent)) {
-            extractedContent = encryption.encrypt(modelResponse.getInferResponse(), ENCRYPTION_POLICY, "RADON_KVP_JSON");
+            extractedContent = encryption.encrypt(inferResponse, ENCRYPTION_POLICY, "RADON_KVP_JSON");
         } else {
-            extractedContent = modelResponse.getInferResponse();
+            extractedContent = inferResponse;
         }
 
         entityObj.add(RadonMultiSectionResponseTable.builder()
@@ -573,7 +622,6 @@ public class EntityLineItemProcessorAction implements IActionExecution {
         return entityLineItemProcessor.getCondition();
     }
 
-
     private void safeLogInfo(String pattern, Object... args) {
         try {
             log.info(aMarker, pattern, args);
@@ -600,12 +648,5 @@ public class EntityLineItemProcessorAction implements IActionExecution {
                 log.debug(pattern, args);
             }
         }
-    }
-
-    private String maskForLog(String s) {
-        if (s == null) return "null";
-        int len = s.length();
-        String prefix = s.length() <= 6 ? s : s.substring(0, 6);
-        return String.format("%s... (len=%d)", prefix, len);
     }
 }

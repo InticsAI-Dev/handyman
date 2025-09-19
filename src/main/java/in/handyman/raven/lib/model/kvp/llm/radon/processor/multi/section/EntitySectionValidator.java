@@ -111,7 +111,7 @@ public class EntitySectionValidator {
                         if ("COMPLETED".equalsIgnoreCase(status)) {
                             doCompletedFilesResponseBuilder(radonMultiSectionOutputTables, entity, tenantId, originId, paperNo, groupId, processedFilePaths, processId, rootPipelineId, sectionAlias, allowedKeywords, blackListedKeywords);
                         } else {
-                            log.debug(aMarker, "Skipping entity with unexpected status {} for origin {} paper {}", status, maskForLog(originId), paperNo);
+                            log.debug(aMarker, "Skipping entity with unexpected status {} for origin {} paper {}", status, originId, paperNo);
                         }
                     });
                 }
@@ -290,9 +290,16 @@ public class EntitySectionValidator {
             Map<String, List<String>> allowedKeywords,
             Map<String, List<String>> blackListedKeywords) {
         String totalResponseJson = entity.getTotalResponseJson();
-        String formattedJsonString = formattedJsonString(totalResponseJson);
-        String postProcessingScript = entity.getPostprocessingScript();
+        String unescapedJson = unescapeJsonString(totalResponseJson);
+        if (unescapedJson == null || unescapedJson.isEmpty()) {
+            log.info(aMarker, "UnescapedJson is empty/null for rootPipelineId={}, origin={}, paperNo={}", rootPipelineId, originId, paperNo);
+        }
+        String formattedJsonString = formattedJsonString(unescapedJson);
+        if (formattedJsonString == null || formattedJsonString.isEmpty()) {
+            log.info(aMarker, "formattedJsonString is empty/null for rootPipelineId={}, origin={}, paperNo={}", rootPipelineId, originId, paperNo);
+        }
 
+        String postProcessingScript = entity.getPostprocessingScript();
         Long sorContainerId = entity.getSorContainerId();
 
         if (isNullOrEmpty(postProcessingScript)) {
@@ -302,8 +309,8 @@ public class EntitySectionValidator {
 
         String postProcessedJson = getParserPostProcessingResponse(postProcessingScript, formattedJsonString, entity.getPaperNo(), allowedKeywords, blackListedKeywords);
 
-        if (postProcessedJson == null) {
-            log.info(aMarker, "Post-processing produced null result for rootPipelineId={}, origin={}", entity.getRootPipelineId(), maskForLog(originId));
+        if (postProcessedJson.trim().isEmpty()) {
+            log.info(aMarker, "Post-processing produced null result for rootPipelineId={}, origin={}", rootPipelineId, originId);
             addCompletedOutput(radonMultiSectionOutputTables, entity, tenantId, originId, paperNo, groupId, processedFilePaths, processId, rootPipelineId, totalResponseJson);
             return;
         }
@@ -311,7 +318,7 @@ public class EntitySectionValidator {
         try {
             totalResponseJson = parseAndPossiblyConsolidateResponse(postProcessedJson, sorContainerId, sectionAlias, allowedKeywords, blackListedKeywords);
         } catch (JsonProcessingException e) {
-            log.error(aMarker, "Error parsing post-processed JSON for rootPipelineId={}", entity.getRootPipelineId(), e);
+            log.error(aMarker, "Error parsing post-processed JSON for rootPipelineId={}", rootPipelineId, e);
             HandymanException.insertException("Error parsing post-processed JSON", new HandymanException(e), actionExecutionAudit);
         }
 
@@ -419,6 +426,12 @@ public class EntitySectionValidator {
 
     private String getParserPostProcessingResponse(String sourceCode, String sourceJson, Integer paperNo, Map<String, List<String>> allowedKeywords, Map<String, List<String>> blackListedKeywords) {
         try {
+
+            if (sourceJson == null || sourceJson.trim().isEmpty()) {
+                this.log.warn(this.aMarker, "Input sourceJson for parser post-processing is null or empty. Returning empty JSON array.");
+                return "{}";
+            }
+
             Interpreter interpreter = new Interpreter();
             interpreter.eval(sourceCode);
             log.info("Source code loaded successfully for parsing");
@@ -553,15 +566,13 @@ public class EntitySectionValidator {
     }
 
     private Map<String, List<String>> getBlackListedKeywords(Long sorContainerId, String instanceName) {
-
+        log.info(aMarker, "Fetching blacklisted keywords for container {}", sorContainerId);
         Map<String, List<String>> blackListedKeywordsMap = jdbi.withHandle(handle ->
                 handle.createQuery(
                                 "SELECT sor_item_name, black_list_keyword " +
                                         "FROM sor_meta.sor_item_label_config " +
-                                        "WHERE instance = :instanceName " +
-                                        "AND sor_container_id = :sorContainerId"
+                                        "WHERE sor_container_id = :sorContainerId"
                         )
-                        .bind("instanceName", instanceName)
                         .bind(SOR_CONTAINER_ID_COL, sorContainerId)
                         .map((rs, ctx) -> Map.entry(
                                 rs.getString("sor_item_name"),
@@ -598,12 +609,46 @@ public class EntitySectionValidator {
         return allowedKeywordsMap;
     }
 
+    public String unescapeJsonString(String escapedJson) {
+        if (escapedJson == null) return null;
+        String current = escapedJson.trim();
+        try {
+            JsonNode node = MAPPER.readTree(current);
+            return node.toString();
+        } catch (Exception e) {
+            log.debug(aMarker, "Failed to parse JSON, error: {}", e.getMessage());
+        }
+        try {
+            if (current.length() >= 2 && current.charAt(0) == '"' && current.charAt(current.length() - 1) == '"') {
+                String unquoted = MAPPER.readValue(current, String.class);
+                try {
+                    JsonNode node = MAPPER.readTree(unquoted);
+                    return node.toString();
+                } catch (Exception inner) {
+                    log.debug(aMarker, "Failed to parse JSON from unquoted string, error: {}", inner.getMessage());
+                    return unquoted;
+                }
+            }
+        } catch (Exception e) {
+            log.warn(aMarker, "Jackson failed to unquote JSON string literal, error: {}", e.getMessage());
+        }
+        String simpleUnescape = current.replace("\\\"", "\"").replace("\\\\", "\\");
+        try {
+            JsonNode node = MAPPER.readTree(simpleUnescape);
+            return node.toString();
+        } catch (Exception e) {
+            log.debug(aMarker, "Failed to parse JSON from simply unescaped string, error: {}", e.getMessage());
+        }
+        log.debug(aMarker, "Returning original string after all parsing attempts failed");
+        return current;
+    }
+
     public String formattedJsonString(String jsonResponse) {
         try {
             if (jsonResponse == null) {
                 return null;
             }
-
+            jsonResponse = jsonResponse.trim();
             if (jsonResponse.contains("```json")) {
                 log.debug(aMarker, "Input contains ```json``` markers; extracting JSON block");
                 Matcher matcher = JSON_MARKER_PATTERN.matcher(jsonResponse);
@@ -618,8 +663,16 @@ public class EntitySectionValidator {
                 log.debug(aMarker, "Input seems like JSON, returning as-is (no markers)");
                 return jsonResponse;
             } else {
-                log.debug(aMarker, "Input not JSON-like or missing markers");
-                return null;
+                try {
+                    String unescapedJson = jsonResponse.replace("\\", "");
+                    ObjectMapper mapper = new ObjectMapper();
+                    Object jsonObj = mapper.readValue(unescapedJson, Object.class);
+                    log.info(aMarker, "Input parsed successfully as JSON object");
+                    return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonObj);
+                } catch (JsonProcessingException e) {
+                    log.debug(aMarker, "Tried to parse, Input not JSON-like or missing markers");
+                    return null;
+                }
             }
         } catch (Exception e) {
             HandymanException exception = new HandymanException(e);
@@ -667,12 +720,5 @@ public class EntitySectionValidator {
     private String assignEmptyValues(String jsonString) {
         jsonString = jsonString.replaceAll("(?<=:)\\s*(?=,|\\s*}|\\s*\\])", "\"\"");
         return jsonString;
-    }
-
-    private String maskForLog(String s) {
-        if (s == null) return "null";
-        int len = s.length();
-        String prefix = s.length() <= 6 ? s : s.substring(0, 6);
-        return String.format("%s... (len=%d)", prefix, len);
     }
 }

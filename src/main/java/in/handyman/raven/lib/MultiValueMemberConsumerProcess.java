@@ -5,6 +5,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -24,9 +25,9 @@ public class MultiValueMemberConsumerProcess {
     private final Long tenantId;
     private final ExecutorService executor;
 
-    private final String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
-
-    private final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
+    private static final String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
+    private static final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
+    private static final String MULTIPLE_MEMBER_INDICATOR_ITEM_NAME = "multiple_member_indicator";
 
     public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables, Long tenantId, Integer threadCount) {
         this.log = log;
@@ -104,6 +105,10 @@ public class MultiValueMemberConsumerProcess {
         Set<String> presentSorItems = new HashSet<>();
 
         List<extractedSorItemList> multiValueMember = inputRows.getSorItemList();
+
+        String Y = doExistingMultipleMemberIndicatorPresence(log, marker, multiValueMember);
+        if (Y != null) return Y;
+
         for (extractedSorItemList row : multiValueMember) {
             String sorItemName = row.getSorItemName();
             String predictedValue = row.getPredictedValue();
@@ -153,13 +158,27 @@ public class MultiValueMemberConsumerProcess {
         return "N";
     }
 
+    @Nullable
+    private static String doExistingMultipleMemberIndicatorPresence(Logger log, Marker marker, List<extractedSorItemList> multiValueMember) {
+        for (extractedSorItemList row : multiValueMember) {
+            String sorItemName = row.getSorItemName();
+            String predictedValue = row.getPredictedValue();
+
+            if (MULTIPLE_MEMBER_INDICATOR_ITEM_NAME.equalsIgnoreCase(sorItemName) && "Y".equalsIgnoreCase(predictedValue)) {
+                log.info(marker, "'multiple_member_indicator' is present and set to 'Y'. Returning 'Y'.");
+                return "Y";
+            }
+        }
+        return null;
+    }
+
     private MultiValueMemberMapperOutputTable outputTableCreation(
             MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable,
             String extractedValue
     ) {
         Optional<extractedSorItemList> mmIndicatorRowOpt = multiValueMemberMapperTransformInputTable.getSorItemList()
                 .stream()
-                .filter(row -> "multiple_member_indicator".equalsIgnoreCase(row.getSorItemName()))
+                .filter(row -> MULTIPLE_MEMBER_INDICATOR_ITEM_NAME.equalsIgnoreCase(row.getSorItemName()))
                 .findFirst();
 
         if (mmIndicatorRowOpt.isEmpty()) {
@@ -193,7 +212,7 @@ public class MultiValueMemberConsumerProcess {
                 .paperNo(mmIndicatorRow.getPaperNo())
                 .questionId(mmIndicatorRow.getQuestionId())
                 .rootPipelineId(mmIndicatorRow.getRootPipelineId())
-                .sorItemName("multiple_member_indicator")
+                .sorItemName(MULTIPLE_MEMBER_INDICATOR_ITEM_NAME)
                 .synonymId(mmIndicatorRow.getSynonymId())
                 .tenantId(mmIndicatorRow.getTenantId())
                 .modelRegistry(mmIndicatorRow.getModelRegistry())
