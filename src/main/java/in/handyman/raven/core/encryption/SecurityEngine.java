@@ -5,12 +5,18 @@ import in.handyman.raven.core.encryption.impl.ProtegrityApiEncryptionImpl;
 import in.handyman.raven.core.encryption.impl.ProtegrityEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.util.LoggingInitializer;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.*;
 
 public class SecurityEngine {
+
+    // Static initialization to ensure logging is set up before any operations
+    static {
+        LoggingInitializer.initialize();
+    }
 
     private SecurityEngine() {
         throw new IllegalStateException("Utility class cannot be instantiated");

@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import in.handyman.raven.util.LoggingInitializer;
 
 @Slf4j
 public class LambdaEngine {
@@ -46,6 +47,8 @@ public class LambdaEngine {
     private static final String THROW_EXCEPTION = "throw_exception";
 
     static {
+        // Initialize logging early to prevent SubstituteLogger buffer overflow
+        LoggingInitializer.initialize();
         MAPPER.registerModule(new JavaTimeModule());
     }
 

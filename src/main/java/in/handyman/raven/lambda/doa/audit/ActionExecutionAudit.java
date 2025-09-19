@@ -8,7 +8,6 @@ import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.lambda.doa.AbstractAudit;
 import in.handyman.raven.lambda.doa.IAction;
 import in.handyman.raven.lambda.process.LambdaEngine;
-import in.handyman.raven.util.UniqueID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,9 +16,8 @@ import lombok.Setter;
 import lombok.ToString;
 import org.slf4j.event.SubstituteLoggingEvent;
 
-import java.util.ArrayDeque;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 @Getter
 @Setter
@@ -32,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ActionExecutionAudit extends AbstractAudit implements IAction {
 
     @JsonIgnore
-    private final ArrayDeque<SubstituteLoggingEvent> eventQueue = new ArrayDeque<>();
+    private final ConcurrentLinkedDeque<SubstituteLoggingEvent> eventQueue = new ConcurrentLinkedDeque<>();
     private Long actionId ;
     private String actionName;
 

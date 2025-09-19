@@ -13,6 +13,7 @@ import in.handyman.raven.lib.model.paperitemizer.copro.PaperItemizerDataItemCopr
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
+import in.handyman.raven.util.LoggingInitializer;
 import javassist.NotFoundException;
 import okhttp3.*;
 import org.apache.commons.io.FilenameUtils;
@@ -47,6 +48,9 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
     private final PaperItemizer paperItemizer;
 
     public PaperItemizerConsumerProcess(Logger log, Marker aMarker, String outputDir, FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action, String processBase64, PaperItemizer paperItemizer) {
+        // Initialize logging early to prevent SubstituteLogger buffer overflow
+        LoggingInitializer.initialize();
+        
         this.log = log;
         this.aMarker = aMarker;
         this.outputDir = outputDir;
@@ -59,12 +63,12 @@ public class PaperItemizerConsumerProcess implements CoproProcessor.ConsumerProc
 
     @Override
     public List<PaperItemizerOutputTable> process(URL endpoint, PaperItemizerInputTable entity) throws Exception {
-        log.info(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
+        log.debug(aMarker, "coproProcessor consumer process started with endpoint {} and File path {}", endpoint, entity.getFilePath());
         PdfItemizerWithStreaming pdfToPaperItemizer = new PdfItemizerWithStreaming(action, log);
         List<PaperItemizerOutputTable> parentObj;
         String selectedModelName = action.getContext().get(modelRegistry);
 
-        log.info(aMarker, "Paper itemizer consumer process started with model name {}", selectedModelName);
+        log.debug(aMarker, "Paper itemizer consumer process started with model name {}", selectedModelName);
         if (ModelRegistry.ARGON.name().equals(selectedModelName)) {
             parentObj = paperItemizationCoproApi(entity, action, endpoint, paperItemizer.getOutputDir());
         } else if (ModelRegistry.XENON.name().equals(selectedModelName)) {

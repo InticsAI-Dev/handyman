@@ -10,6 +10,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.LlmJsonParser;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.jsonparser.*;
+import in.handyman.raven.util.LoggingInitializer;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -28,6 +29,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
     private final LlmJsonParser llmJsonParser;
 
     public LlmJsonParserConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, LlmJsonParser llmJsonParser) {
+        // Ensure logging is initialized before any logging operations
+        LoggingInitializer.initialize();
         this.log = log;
         this.marker = marker;
         this.action = action;
@@ -40,12 +43,12 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         String loggerInput = " Root pipeline Id " + input.getRootPipelineId() + " batch Id " + input.getBatchId() + " Origin Id " + input.getOriginId() + " paper No " + input.getPaperNo() + " Container Id " + input.getSorContainerId();
 
-        log.info(marker, "Llm json parser action started for {} ", loggerInput);
+        log.debug(marker, "Llm json parser action started for {} ", loggerInput);
         try {
             ObjectMapper objectMapper = new ObjectMapper();
 
             final String selectQuery = llmJsonParser.getQuerySet();
-            log.info(marker, "Llm json parser action for {} with query {} has been started ", loggerInput, selectQuery);
+            log.debug(marker, "Llm json parser action for {} with query {} has been started ", loggerInput, selectQuery);
 
             String boundingBox = "";
             String extractedContent = input.getResponse();
@@ -115,11 +118,11 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
 
                         boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
-                        log.info("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
+                        log.debug("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
                         boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
 
                         boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
-                        log.info("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
+                        log.debug("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
                         double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
                         LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
@@ -150,12 +153,12 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .build();
 
                         llmJsonQueryOutputTables.add(insertData);
-                        log.info("Insert processing for {} and parsed krypton nodes size {}", loggerInput, innerParsedResponsesKrypton.size());
+                        log.debug("Insert processing for {} and parsed krypton nodes size {}", loggerInput, innerParsedResponsesKrypton.size());
                     }
 
                 }
             }else {
-                log.warn("Extracted content is null for {}. Skipping processing.", loggerInput);
+                log.debug("Extracted content is null for {}. Skipping processing.", loggerInput);
                     LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
                             .createdOn(String.valueOf(input.getCreatedOn()))
                             .createdUserId(input.getTenantId())
@@ -182,7 +185,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             }
 
 
-            log.info(marker, " Llm json parser action has been completed {}  ", llmJsonParser.getName());
+            log.debug(marker, " Llm json parser action has been completed {}  ", llmJsonParser.getName());
         } catch (Exception e) {
             action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
             HandymanException handymanException = new HandymanException(e);
@@ -300,7 +303,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
     public JsonNode convertFormattedJsonStringToJsonNode(String jsonResponse, ObjectMapper objectMapper) {
         try {
             if (jsonResponse.contains("```json")) {
-                log.info("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
+                log.debug("Input contains the required ```json``` markers. So processing it based on the ```json``` markers.");
                 // Define the regex pattern to match content between ```json and ```
                 Pattern pattern = Pattern.compile("(?s)```json\\s*(.*?)\\s*```");
                 Matcher matcher = pattern.matcher(jsonResponse);

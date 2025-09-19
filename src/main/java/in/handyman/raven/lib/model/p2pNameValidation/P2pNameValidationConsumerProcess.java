@@ -3,6 +3,7 @@ package in.handyman.raven.lib.model.p2pNameValidation;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.util.LoggingInitializer;
 import org.jetbrains.annotations.NotNull;
 import in.handyman.raven.lib.P2pNameValidationAction;
 import org.jetbrains.annotations.NotNull;
@@ -19,6 +20,9 @@ public class P2pNameValidationConsumerProcess implements CoproProcessor.Consumer
     private final ActionExecutionAudit action;
 
     public P2pNameValidationConsumerProcess(ActionExecutionAudit actionExecutionAudit, Logger log, Marker aMarker) {
+        // Initialize logging early to prevent SubstituteLogger buffer overflow
+        LoggingInitializer.initialize();
+        
         this.log = log;
         this.aMarker = aMarker;
         this.action = actionExecutionAudit;

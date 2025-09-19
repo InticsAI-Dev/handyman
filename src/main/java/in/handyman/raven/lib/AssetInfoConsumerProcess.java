@@ -84,7 +84,6 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
     private AssetInfoOutputTable insertQuery(File file, Long tenantId, String batchId) {
         AssetInfoOutputTable fileInfoBuilder = new AssetInfoOutputTable();
         try {
-            log.info(marker, "Insert query for file {}", file);
             String sha1Hex;
             try (InputStream is = Files.newInputStream(Path.of(file.getPath()))) {
                 sha1Hex = org.apache.commons.codec.digest.DigestUtils.sha1Hex(is);
@@ -107,7 +106,6 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                     pageHeight = firstPage.getMediaBox().getHeight();
                     float width_inches = pageWidth / 72.0f; // Assuming 75 DPI for PDF
                     dpi = (int) (pageWidth / width_inches);
-                    log.info("Page width: {}, height: {}, dpi {}", pageWidth, pageHeight, dpi);
                 } catch (IOException e) {
                     log.error("Error in calculating width, height, dpi for pdf file with exception {}", e.getMessage());
                 }
@@ -123,7 +121,6 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                 }
             }
             String fileId = FilenameUtils.removeExtension(file.getName()) + "_" + ((int) (900000 * random() + 100000));
-            log.info("File Name: {}, File Size: {}, File Extension: {}, File ID: {}", file.getName(), fileSize, fileExtension, fileId);
             log.info("File ID generated: {}", fileId);
 
             String base64EncodeValue = getBase64EncodeValue(fileAbsolutePath, fileExtension);
@@ -144,7 +141,6 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                     .dpi(dpi)
                     .batchId(batchId)
                     .build();
-            log.info(marker, "File Info Builder {}", fileInfoBuilder.getFileName());
         } catch (Exception ex) {
             log.error(marker, "Error occurred in builder {}", ExceptionUtil.toString(ex));
             HandymanException handymanException=new HandymanException(ex);
@@ -181,7 +177,6 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
             if (!Objects.equals(fileExtension, "pdf")) {
                 byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
                 base64Image = Base64.getEncoder().encodeToString(imageBytes);
-                log.info(marker, "Base64 created for file {}", imagePath);
             }
         } catch (Exception e) {
             log.error(marker, "Error occurred in creating base64 {}", ExceptionUtil.toString(e));
