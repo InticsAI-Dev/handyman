@@ -169,16 +169,15 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://192.168.10.245:8300/v2/models/text-extractor-service/versions/1/infer")
+                .endPoint("http://localhost:8000/predict")
                 .processId("138980184199100180")
                 .resultTable("info.data_extraction")
-                .querySet("SELECT 'batch-1' as batch_id, 1 as process_id, 1 as tenant_id, 1 as template_id, 1 as group_id, 'INT-1' as origin_id," +
-                        " 1 as paper_no, " +
-                        "'" + filePath + "' as file_path," +
-                        " 1 as root_pipeline_id, 'TEXT_EXTRACTOR' as template_name, 'Extract all the page content and return as text and dont add preambles' as prompt")
+                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt\n" +
+                        "              FROM paper_filter.agentic_paper_filter_input_data_audit a\n" +
+                        "              WHERE a.root_pipeline_id=8032 limit 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.245:8300/v2/models/text-extractor-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:8000/predict");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
@@ -190,6 +189,7 @@ class DataExtractionActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.text.extraction.model.name", "KRYPTON"),
                 Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
                 Map.entry("write.batch.size", "5")));
         DataExtractionAction dataExtractionAction = new DataExtractionAction(actionExecutionAudit, log, dataExtraction);
         dataExtractionAction.execute();
@@ -270,44 +270,15 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("https://agentic.intics.ai/krypton-x/v2/models/krypton-x-service/versions/1/infer")
+                .endPoint("http://localhost:8000/predict")
                 .processId("138980184199100180")
                 .resultTable("paper_filter.agentic_paper_filter_output")
-                .querySet("SELECT \n" +
-                        "    a.process_id, \n" +
-                        "    a.tenant_id, \n" +
-                        "    a.template_id, \n" +
-                        "    a.group_id, \n" +
-                        "    a.origin_id, \n" +
-                        "    a.paper_no, \n" +
-                        "    a.processed_file_path AS file_path,\n" +
-                        "    b.root_pipeline_id,\n" +
-                        "    c.template_name, \n" +
-                        "    b.batch_id, \n" +
-                        "    NOW() AS created_on, \n" +
-                        "    r.base_prompt AS user_prompt, \n" +
-                        "    r.system_prompt AS system_prompt\n" +
-                        "FROM info.auto_rotation a\n" +
-                        "LEFT JOIN info.template_detection_result c \n" +
-                        "    ON c.origin_id = a.origin_id AND a.tenant_id = c.tenant_id\n" +
-                        "LEFT JOIN sor_meta.radon_prompt_table r \n" +
-                        "    ON r.tenant_id = a.tenant_id\n" +
-                        "JOIN preprocess.preprocess_payload_queue_archive  b \n" +
-                        "    ON a.origin_id = b.origin_id AND c.tenant_id = b.tenant_id\n" +
-                        "WHERE \n" +
-                        "    a.status = 'COMPLETED' \n" +
-                        "    AND b.status = 'COMPLETED' \n" +
-                        "    and b.origin_id = 'ORIGIN-7903'\n" +
-                        "    and b.root_pipeline_id = 32385\n" +
-                        "    AND a.group_id = 579 \n" +
-                        "    AND a.tenant_id = 115 \n" +
-                        "    AND b.batch_id = 'BATCH-579_1'\n" +
-                        "    AND r.process = 'AGENTIC_PAPER_FILTER' \n" +
-                        "    AND r.use_case = 'PAPER_FILTER' \n" +
-                        "    AND r.document_type = 'HEALTH_CARE';\n")
+                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt " +
+                        "                                     FROM paper_filter.agentic_paper_filter_input_data_audit a " +
+                        "                                     WHERE a.root_pipeline_id=8032 limit 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://192.168.10.245:8300/v2/models/text-extractor-service/versions/1/infer");
+        actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:8000/predict");
         actionExecutionAudit.setProcessId(138980079308730208L);
         actionExecutionAudit.setActionId(1L);
         actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("read.batch.size", "5"),
@@ -319,6 +290,8 @@ class DataExtractionActionTest {
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.agentic.paper.filter.model.name", "KRYPTON"),
                 Map.entry("pipeline.copro.api.process.file.format", "FILE"),
+                Map.entry("encrypt.agentic.filter.output", "false"),
+                Map.entry("agentic.paper.filter.activator","true"),
                 Map.entry(ENCRYPT_AGENTIC_FILTER_OUTPUT, "false"),
                 Map.entry("page.content.min.length.threshold", "1"),
                 Map.entry("write.batch.size", "5")));

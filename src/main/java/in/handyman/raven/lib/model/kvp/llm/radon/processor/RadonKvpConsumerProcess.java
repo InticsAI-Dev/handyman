@@ -13,9 +13,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
-import in.handyman.raven.lib.model.RadonKvp;
 import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
-import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryService;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
@@ -25,6 +23,7 @@ import org.slf4j.Marker;
 
 import java.io.IOException;
 import java.net.URL;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -189,16 +188,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
         String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
-
-        if (Objects.equals("false", tritonRequestActivator)) {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in legacy mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
-            coproResponseBuilder(entity, request, parentObj, jsonInputRequest, endpoint);
-        } else {
-            log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-            tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
-        }
+        log.info("Triton request activator variable: {} value: {}, Copro API running in Triton mode ", TRITON_REQUEST_ACTIVATOR, tritonRequestActivator);
+        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
+        tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
         return parentObj;
@@ -211,7 +203,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Integer paperNo = entity.getPaperNo();
         Long rootPipelineId = entity.getRootPipelineId();
 
-        CoproRetryErrorAuditTable audictInput =  setErrorAuditInputDetails(entity,endpoint);
+        Timestamp createdOn = CreateTimeStamp.currentTimestamp();
+        entity.setCreatedOn(createdOn);
         try (Response response = httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
@@ -254,7 +247,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         .request(encryptRequestResponse(jsonRequest))
                         .response(encryptRequestResponse(errorBody))
                         .endpoint(String.valueOf(endpoint))
-                        .sorItemId(entity.getSorItemId()).sorItemName(entity.getSorItemName())
                         .build());
                 HandymanException handymanException = new HandymanException("Unsuccessful response code : "+ response.code() +" message : " + errorBody);
                 HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -362,7 +354,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             }
 
             parentObj.add(RadonQueryOutputTable.builder()
-                    .createdOn(CreateTimeStamp.currentTimestamp())
+                    .createdOn(entity.getCreatedOn())
                     .createdUserId(tenantId)
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .lastUpdatedUserId(tenantId)

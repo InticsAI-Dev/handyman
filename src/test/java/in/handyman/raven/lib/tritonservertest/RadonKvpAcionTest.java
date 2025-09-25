@@ -17,7 +17,7 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://intics.elevance.ngrok.dev/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("http://192.168.10.241:8001/predict")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT DISTINCT\n" +
                         "    a.input_file_path,\n" +
