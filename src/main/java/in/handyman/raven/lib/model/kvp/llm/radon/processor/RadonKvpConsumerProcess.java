@@ -12,6 +12,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.custom.kvp.post.processing.processor.MemberDataTransformer;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.*;
@@ -48,8 +49,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private String jdbiResourceName;
 
     private final ProviderDataTransformer providerDataTransformer;
+    private final MemberDataTransformer memberDataTransformer;
 
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, MemberDataTransformer memberDataTransformer, String jdbiResourceName) {
         // Initialize logging early to prevent SubstituteLogger buffer overflow
         LoggingInitializer.initialize();
         
@@ -58,6 +60,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         this.action = action;
         this.jdbiResourceName = jdbiResourceName;
         this.providerDataTransformer = providerDataTransformer;
+        this.memberDataTransformer = memberDataTransformer;
         int timeOut = aAction.getTimeOut();
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
@@ -307,11 +310,15 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
-            String providerClassName = action.getContext().get(entity.getPostProcessClassName());
-            Optional<String> sourceCode = fetchBshResultByClassName(jdbiResourceName, providerClassName, tenantId);
-            if (sourceCode.isPresent()) {
-                List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, modelResponse.getInferResponse(), entity, jsonInsertRequestEncrypted, response, endpoint);
+            String className = action.getContext().get(entity.getPostProcessClassName());
+            Optional<String> sourceCode = fetchBshResultByClassName(jdbiResourceName, className, tenantId);
+            if (sourceCode.isPresent() && className.equals("ProviderTransformerFinalBsh")) {
+                List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), className, modelResponse.getInferResponse(), entity, jsonInsertRequestEncrypted, response, endpoint);
                 parentObj.addAll(providerParentObj);
+            }
+            else if (sourceCode.isPresent() && className.equals("MemberNameFinalBsh")){
+                List<RadonQueryOutputTable> memberParentObj = memberDataTransformer.processMemberData(sourceCode.get(), className, modelResponse.getInferResponse(), entity, jsonInsertRequestEncrypted, response, endpoint);
+                parentObj.addAll(memberParentObj);
             }
 
         } else {
