@@ -8,6 +8,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.custom.kvp.post.processing.processor.MemberDataTransformer;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.model.RadonKvp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpConsumerProcess;
@@ -100,7 +101,7 @@ public class RadonKvpAction implements IActionExecution {
         try {
 
             ProviderDataTransformer providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
-
+            MemberDataTransformer dataTransformer = new MemberDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
 
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
@@ -140,7 +141,7 @@ public class RadonKvpAction implements IActionExecution {
             final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(urls);
             Thread.sleep(threadSleepTime);
 
-            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, providerDataTransformer, radonKvp.getResourceConn());
+            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, providerDataTransformer, dataTransformer, radonKvp.getResourceConn());
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " LLM kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {
