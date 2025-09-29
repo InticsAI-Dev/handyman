@@ -143,23 +143,18 @@ public class CoproRetryService {
     }
 
     private void sleepBackoff(ActionExecutionAudit actionAudit) {
+        String delayStr = actionAudit.getContext().getOrDefault("copro.retry.delay.inSeconds", "5");
+        long backoffMillis = TimeUnit.SECONDS.toMillis(5);
         try {
-            // Get the delay in seconds from the context, defaulting to 5 if not found
-            String delayStr = actionAudit.getContext().getOrDefault("copro.retry.delay", "5");
-            long backoffMillis = 5; // Default delay in milliseconds
-
-            // Attempt to parse the delay, defaulting to 5 seconds if parsing fails
-            try {
-                backoffMillis = TimeUnit.SECONDS.toMillis(Integer.parseInt(delayStr));
-            } catch (NumberFormatException e) {
-                // Log the invalid value for transparency, if needed
-                System.err.println("Invalid delay value, defaulting to 5 seconds. Error: " + e.getMessage());
-            }
+            backoffMillis = TimeUnit.SECONDS.toMillis(Long.parseLong(delayStr));
+        } catch (NumberFormatException e) {
+            log.error("Invalid delay value, defaulting to 5 seconds. Error: " + e.getMessage());
+        }
+        try {
             Thread.sleep(backoffMillis);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            log.error("Thread was interrupted during sleep: {}", ignored.getMessage());
-
+            log.error("Thread was interrupted during sleep: {}", ex.getMessage(), ex);
         }
     }
 

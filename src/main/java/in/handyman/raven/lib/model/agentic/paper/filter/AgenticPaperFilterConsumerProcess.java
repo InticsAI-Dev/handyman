@@ -121,7 +121,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     ? fileProcessingUtils.convertFileToBase64(filePath)
                     : "";
             kryptonRequestPayloadFromQuery.setBase64Img(base64Img);
-
             String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
             kryptonRequestPayloadFromQuery.setBase64Img("");
             String textExtractionInsertPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
@@ -219,6 +218,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
+        String message = "";
         return CoproRetryErrorAuditTable.builder()
                 .originId(entity.getOriginId())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
@@ -233,15 +233,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
+                .templateId(entity.getTemplateId())
+                .message("ContainerName")
                 .build();
-
-        //*
-        //    private String templateId;
-        //    private String containerName;
-        //    private String containerValue;
-        //    private String fileName;
-        //    private String message;
-        // */
     }
 
     private void handleKryptonErrorResponse(AgenticPaperFilterInput

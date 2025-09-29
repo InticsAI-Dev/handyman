@@ -179,7 +179,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                //resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(DeepSiftOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).tenantId(entity.getTenantId()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(dbJsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -261,8 +261,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .tenantId(entity.getTenantId())
                 .processId(entity.getProcessId())
                 .filePath(entity.getInputFilePath())
-           //.fileName(entity.getFileName())
-           //.templateId(entity.getTemplateId())
                 .createdOn(entity.getCreatedOn())
                 .rootPipelineId(entity.getRootPipelineId())
                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
@@ -271,17 +269,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
                 .build();
-        //outputDir;
-        //documentId;
 
-        /*
-    private String templateId;
-    private String containerName;
-    private String containerValue;
-    private String fileName;
-    private Integer paperNo;
-    private String message;
-        * */
     }
 
     public String encryptRequestResponse(String request) {

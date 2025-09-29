@@ -103,8 +103,6 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         // Execute API call
         executeApiCall(entity, request, objectMapper, resultList, jsonInputRequest, endpoint, action);
 
-
-
         return resultList;
     }
 
@@ -167,7 +165,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-    //resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
+                resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(jsonInputRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -204,15 +202,6 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
                 .build();
-        //outputDir;
-        //documentId;
-
-        /**
-         *     private String containerName;
-         *     private String containerValue;
-         *     private Integer paperNo;
-         *     private String message;
-         * */
     }
 
     private void handleSuccessfulResponse(DocumentEyeCueInputTable entity,

@@ -621,7 +621,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         checkJDBIConnection();
 
         return JDBI.withHandle(handle ->
-                    handle.createUpdate("INSERT INTO audit.protegrity_api_audit " +
+                handle.createUpdate("INSERT INTO audit.protegrity_api_audit " +
                                 "(key, encryption_type, endpoint, started_on, root_pipeline_id, action_id, thread_name, uuid) " +
                                 "VALUES (:key, :encryption_type, :endpoint, :started_on, :root_pipeline_id, :action_id, :thread_name, :uuid)")
                         .bind("key", key)

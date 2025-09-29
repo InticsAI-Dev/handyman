@@ -119,5 +119,4 @@ public interface HandymanRepo {
     void updateProtegrityAuditRecord(long id, String status, String message);
 
     long insertAuditToDb(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action);
-
 }
