@@ -23,6 +23,7 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
     public static final String BIRTHDATE_DATETIME_LP = "BIRTHDATE_DATETIME_LP";
     private final Logger logger;
 
+    private final static AESEncryptionImpl aesEncryption = new AESEncryptionImpl();
     // AES key for AES256 policy
     private static SecretKey aesKey;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -77,7 +78,7 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
         }
 
 
-        String result = tokenizeByPolicy(value, policy, encrypt);
+        String result = tokenizeByPolicy(value, policy, encrypt, key);
 
         return result;
 
@@ -91,7 +92,7 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
 
         List<EncryptionRequestClass> result = new ArrayList<>();
         for (EncryptionRequestClass req : requestList) {
-            String transformed = tokenizeByPolicy(req.getValue(), req.getPolicy(), encrypt);
+            String transformed = tokenizeByPolicy(req.getValue(), req.getPolicy(), encrypt,req.getKey());
             result.add(new EncryptionRequestClass(req.getPolicy(), transformed, req.getKey()));
         }
         String msg = String.format("SUCCESS | batchSize=%d", requestList.size());
@@ -103,18 +104,21 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
 
     // ================== POLICY LOGIC ==================
 
-    private String tokenizeByPolicy(String input, String policy, boolean encrypt) throws HandymanException {
-        int dynamicShift = calculateShift(input);
+    private String tokenizeByPolicy(String input, String policy, boolean encrypt, String key) throws HandymanException {
+
 
         switch (policy.toUpperCase()) {
             case MEMBERNAME_UPPERALPHANUM_LP:
+                int dynamicShift = calculateShift(input);
                 return shiftAlphaNumeric(input, encrypt ? dynamicShift : -dynamicShift);
             case MEMBERIDENTIFIERS_UPPERALPHANUM_LP:
-                return shiftMemberIdentifier(input, encrypt ? dynamicShift : -dynamicShift);
+                int dynamicShift1 = calculateShift(input);
+                return shiftMemberIdentifier(input, encrypt ? dynamicShift1 : -dynamicShift1);
             case AES_256:
-                return encrypt ? aesEncrypt(input) : aesDecrypt(input);
+                return encrypt ? aesEncryption.encrypt(input,policy,key) : aesEncryption.decrypt(input,policy,key);
             case BIRTHDATE_DATETIME_LP:
-                return shiftDate(input, encrypt, dynamicShift);
+                int dynamicShift2 = calculateShift(input);
+                return shiftDate(input, encrypt, dynamicShift2);
             default:
                 return null;
         }

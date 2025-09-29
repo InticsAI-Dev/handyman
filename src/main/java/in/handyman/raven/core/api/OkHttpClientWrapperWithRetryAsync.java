@@ -1,11 +1,10 @@
 package in.handyman.raven.core.api;
 
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
-import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
 import okhttp3.*;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.concurrent.*;
 
 public class OkHttpClientWrapperWithRetryAsync {

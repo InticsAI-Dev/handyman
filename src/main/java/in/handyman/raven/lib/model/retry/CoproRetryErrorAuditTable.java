@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.agentic.paper.filter;
+package in.handyman.raven.lib.model.retry;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,4 +34,5 @@ public class CoproRetryErrorAuditTable {
     private String endpoint;
     @Builder.Default
     private int attempt = 0;
+    private String coproServiceId;  // Default to 0 (as per SQL DEFAULT)
 }

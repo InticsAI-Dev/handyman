@@ -14,6 +14,7 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.retry.CoproRetryService;
 import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.LoggingInitializer;
@@ -48,6 +49,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private String jdbiResourceName;
 
     private final ProviderDataTransformer providerDataTransformer;
+
 
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
         // Initialize logging early to prevent SubstituteLogger buffer overflow
@@ -195,7 +197,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         Timestamp createdOn = CreateTimeStamp.currentTimestamp();
         entity.setCreatedOn(createdOn);
-        try (Response response = httpclient.newCall(request).execute()) {
+        boolean isRetryEnabled = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"));
+
+        try (Response response =  isRetryEnabled ? .callCoproApiWithRetry(request, jsonRequest, auditInput, this.action) : httpclient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 assert response.body() != null;
                 String responseBody = response.body().string();
