@@ -14,7 +14,6 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.RadonKvpAction;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
-import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueInputTable;
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
 import in.handyman.raven.lib.model.retry.CoproRetryService;
 import in.handyman.raven.lib.model.triton.*;
@@ -53,7 +52,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     private final ProviderDataTransformer providerDataTransformer;
 
-    private CoproRetryService coproRetryService;
+    private final CoproRetryService coproRetryService;
 
 
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
@@ -203,15 +202,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
         CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
-        boolean isRetryEnabled = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"));
         Response response;
         try {
-            if(isRetryEnabled) {
-                response = coproRetryService.callCoproApiWithRetry(request, jsonInsertRequestEncrypted, auditInput, this.action);
-            } else {
-                response = httpclient.newCall(request).execute();
-            }
-
+            response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
+                    ? coproRetryService.callCoproApiWithRetry(request, jsonInsertRequestEncrypted, auditInput, this.action)
+                    : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
 //parentObj.add(RadonQueryOutputTable.builder().processId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
@@ -282,7 +277,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(RadonQueryInputTable entity, URL endPoint) {
-        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
+        return CoproRetryErrorAuditTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
@@ -293,16 +288,22 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .createdOn(entity.getCreatedOn())
                 .rootPipelineId(entity.getRootPipelineId())
                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                .stage(PROCESS_NAME + " - RETRY API CALL TO COPRO")
+                .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
-                .coproServiceId(1L)// Need to update service Id
                 .build();
         //outputDir;
         //documentId;
 
-        return retryAudit;
+        /**
+         *     private String templateId;
+         *     private String containerName;
+         *     private String containerValue;
+         *     private String fileName;
+         *     private Integer paperNo;
+         *     private String message;
+         * */
     }
     private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e,String jsonInsertRequest) {
         parentObj.add(RadonQueryOutputTable.builder()

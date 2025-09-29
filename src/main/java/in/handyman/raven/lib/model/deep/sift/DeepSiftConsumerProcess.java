@@ -19,8 +19,6 @@ import org.slf4j.Marker;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +40,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     private final OkHttpClient httpClient;
     private final FileProcessingUtils fileProcessingUtils;
     private final ObjectMapper objectMapper;
-    private CoproRetryService coproRetryService;
+    private final CoproRetryService coproRetryService;
     private final String processBase64;
 
     public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64) {
@@ -91,21 +89,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
         log.info(aMarker, "Executing {} handler for endpoint: {}", entity.getModelName(), endpoint);
         DeepSiftRequest requestPayload = getRequestPayloadFromQuery(entity);
-//        String base64ForPath;
-//        try {
-//            base64ForPath = getBase64ForPath(inputFilePath);
-//            if (base64ForPath == null || base64ForPath.isEmpty()) {
-//                log.error(aMarker, "Base64 conversion returned null or empty for file: {}", inputFilePath);
-//            }
-//            requestPayload.setBase64Img(base64ForPath);
-//            log.info(aMarker, "Base64 image generated for file: {}", inputFilePath);
-//        } catch (IOException e) {
-//            String errorMessage = "Failed to convert file to Base64";
-//            log.error(aMarker, errorMessage, e);
-//            HandymanException handymanException = new HandymanException(errorMessage, e);
-//            HandymanException.insertException(errorMessage, handymanException, action);
-//        }
-
 
         // Set file path or base64 based on processing format
         String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
@@ -121,7 +104,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .url(endpoint)
                 .post(RequestBody.create(jsonRequest, MEDIA_TYPE))
                 .build();
-        requestExecutor(entity, request, parentObj, jsonRequest, dbJsonRequest, endpoint, startTime);
+        requestExecutor(entity, request, parentObj, dbJsonRequest, endpoint, startTime);
 
         return parentObj;
     }
@@ -186,18 +169,14 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
 
     private void requestExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
-                                 String jsonRequest,String dbJsonRequest, URL endpoint, long startTime) {
+                                 String dbJsonRequest, URL endpoint, long startTime) {
 
         CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
-        boolean isRetryEnabled = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"));
         Response response;
         try {
-            if(isRetryEnabled) {
-                response = coproRetryService.callCoproApiWithRetry(request, dbJsonRequest, auditInput, this.action);
-            } else {
-                response = httpClient.newCall(request).execute();
-            }
-
+            response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
+                    ? coproRetryService.callCoproApiWithRetry(request, dbJsonRequest, auditInput, this.action)
+                    : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
                 //resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
@@ -209,23 +188,23 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
             try (Response safeResponse = response) {
                 long elapsedTimeMs = System.currentTimeMillis() - startTime;
-                if (response.body() == null) {
+                if (safeResponse.body() == null) {
                     log.error(aMarker, "Response body is null for request to {} for model {}", endpoint, entity.getModelName());
                     HandymanException handymanException = new HandymanException("Deep sift consumer failed for model " + entity.getModelName());
                     HandymanException.insertException("Response body is null for request to " + endpoint + " for model " + entity.getModelName(), handymanException, action);
                 }
 
-                if (response.code() != 200) {
-                    String errorMessage = "Response code is " + response.code() + " for request to " + endpoint + " for model " + entity.getModelName();
+                if (safeResponse.code() != 200) {
+                    String errorMessage = "Response code is " + safeResponse.code() + " for request to " + endpoint + " for model " + entity.getModelName();
                     log.error(aMarker, errorMessage);
                     HandymanException handymanException = new HandymanException(errorMessage);
                     HandymanException.insertException(errorMessage, handymanException, action);
                 }
 
-                String responseBody = response.body().string();
-                log.info(aMarker, "{} response: code={}, message={}", entity.getModelName(), response.code(), response.message());
+                String responseBody = safeResponse.body().string();
+                log.info(aMarker, "{} response: code={}, message={}", entity.getModelName(), safeResponse.code(), safeResponse.message());
 
-                if (response.isSuccessful()) {
+                if (safeResponse.isSuccessful()) {
                     XenonResponse modelResponse = objectMapper.readValue(responseBody, XenonResponse.class);
 
                     if (modelResponse.isSuccess() && modelResponse.hasInferResponse()) {
@@ -276,7 +255,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     }
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(DeepSiftInputTable entity, URL endPoint) {
-        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
+        return  CoproRetryErrorAuditTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
@@ -287,31 +266,22 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .createdOn(entity.getCreatedOn())
                 .rootPipelineId(entity.getRootPipelineId())
                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                .stage(PROCESS_NAME + " - RETRY API CALL TO COPRO")
+                .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
-                .coproServiceId(1L)// Need to update service Id
                 .build();
         //outputDir;
         //documentId;
 
-        return retryAudit;
-    }
-
-    public String getBase64ForPath(String imagePath) throws IOException {
-        try {
-            byte[] imageBytes = Files.readAllBytes(Path.of(imagePath));
-            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-            log.info(aMarker, "Base64 created for file: {}", imagePath);
-            return base64Image;
-        } catch (Exception e) {
-            String errorMessage = "Unexpected error while creating base64 for file: " + imagePath;
-            log.error(aMarker, errorMessage, e);
-            HandymanException handymanException = new HandymanException(errorMessage, e);
-            HandymanException.insertException(errorMessage, handymanException, action);
-            throw handymanException;
-        }
+        /*
+    private String templateId;
+    private String containerName;
+    private String containerValue;
+    private String fileName;
+    private Integer paperNo;
+    private String message;
+        * */
     }
 
     public String encryptRequestResponse(String request) {

@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
@@ -37,7 +38,7 @@ public class CoproRetryService {
                                           ActionExecutionAudit actionAudit) throws IOException {
         int maxRetries =  Integer.parseInt(actionAudit.getContext().getOrDefault("copro.retry.attempt", "1"));
         IOException lastException = null;
-
+        retryAudit.setCoproServiceId(UUID.randomUUID().toString());
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             Response response;
             try {

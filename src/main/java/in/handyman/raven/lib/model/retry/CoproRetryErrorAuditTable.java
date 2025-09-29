@@ -34,5 +34,5 @@ public class CoproRetryErrorAuditTable {
     private String endpoint;
     @Builder.Default
     private int attempt = 0;
-    private Long coproServiceId = 0L;  // Default to 0 (as per SQL DEFAULT)
+    private String coproServiceId;
 }

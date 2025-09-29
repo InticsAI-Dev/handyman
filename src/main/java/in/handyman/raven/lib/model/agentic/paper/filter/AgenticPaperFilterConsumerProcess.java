@@ -63,7 +63,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
-    private CoproRetryService coproRetryService;
+    private final CoproRetryService coproRetryService;
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
         this.log = log;
@@ -165,14 +165,11 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         entity.setCreatedOn(createdOn);
 
         CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
-        boolean isRetryEnabled = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"));
         Response response;
         try {
-            if(isRetryEnabled) {
-                response = coproRetryService.callCoproApiWithRetry(request, jsonRequest, auditInput, this.action);
-            } else {
-                response = httpclient.newCall(request).execute();
-            }
+            response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
+                    ? coproRetryService.callCoproApiWithRetry(request, jsonRequest, auditInput, this.action)
+                    : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
@@ -222,7 +219,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
-        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
+        return CoproRetryErrorAuditTable.builder()
                 .originId(entity.getOriginId())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
@@ -232,13 +229,19 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .createdOn(entity.getCreatedOn())
                 .rootPipelineId(entity.getRootPipelineId())
                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                .stage(PROCESS_NAME + " - RETRY API CALL TO COPRO")
+                .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
-                .coproServiceId(1L)// Need to update service Id
                 .build();
-        return retryAudit;
+
+        //*
+        //    private String templateId;
+        //    private String containerName;
+        //    private String containerValue;
+        //    private String fileName;
+        //    private String message;
+        // */
     }
 
     private void handleKryptonErrorResponse(AgenticPaperFilterInput

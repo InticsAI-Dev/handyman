@@ -11,8 +11,6 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.DocumentEyeCue;
-import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterInput;
-import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterOutput;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
@@ -25,7 +23,6 @@ import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.net.URL;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -49,7 +46,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
     private final String processBase64;
 
-    private CoproRetryService coproRetryService;
+    private final CoproRetryService coproRetryService;
 
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
@@ -163,15 +160,11 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                                 List<DocumentEyeCueOutputTable> resultList, String jsonInputRequest, URL endpoint, ActionExecutionAudit action) {
 
         CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
-        boolean isRetryEnabled = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"));
         Response response;
         try {
-            if(isRetryEnabled) {
-                response = coproRetryService.callCoproApiWithRetry(request, jsonInputRequest, auditInput, this.action);
-            } else {
-                response = httpclient.newCall(request).execute();
-            }
-
+            response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
+                    ? coproRetryService.callCoproApiWithRetry(request, jsonInputRequest, auditInput, this.action)
+                    : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
     //resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
@@ -195,7 +188,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(DocumentEyeCueInputTable entity, URL endPoint) {
-        CoproRetryErrorAuditTable retryAudit = CoproRetryErrorAuditTable.builder()
+        return CoproRetryErrorAuditTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
@@ -206,16 +199,20 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                 .createdOn(entity.getCreatedOn())
                 .rootPipelineId(entity.getRootPipelineId())
                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
-                .stage(PROCESS_NAME + " - RETRY API CALL TO COPRO")
+                .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
-                .coproServiceId(1L)// Need to update service Id
                 .build();
         //outputDir;
         //documentId;
 
-        return retryAudit;
+        /**
+         *     private String containerName;
+         *     private String containerValue;
+         *     private Integer paperNo;
+         *     private String message;
+         * */
     }
 
     private void handleSuccessfulResponse(DocumentEyeCueInputTable entity,
