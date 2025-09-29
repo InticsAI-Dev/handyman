@@ -220,6 +220,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
         return CoproRetryErrorAuditTable.builder()
                 .originId(entity.getOriginId())
+                .paperNo(entity.getPaperNo())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
                 .processId(entity.getProcessId())

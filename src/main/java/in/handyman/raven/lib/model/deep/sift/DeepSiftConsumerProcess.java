@@ -257,6 +257,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(DeepSiftInputTable entity, URL endPoint) {
         return  CoproRetryErrorAuditTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .paperNo(entity.getPaperNo())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
                 .processId(entity.getProcessId())

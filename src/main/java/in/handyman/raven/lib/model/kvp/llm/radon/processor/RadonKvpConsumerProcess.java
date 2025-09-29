@@ -279,6 +279,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(RadonQueryInputTable entity, URL endPoint) {
         return CoproRetryErrorAuditTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .paperNo(entity.getPaperNo())
+                .message("Sor container Id : " + entity.getSorContainerId() + " for the process " + entity.getProcess())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
                 .processId(entity.getProcessId())
