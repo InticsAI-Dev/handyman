@@ -1,4 +1,4 @@
-package in.handyman.raven.lib.model.agentic.paper.filter;
+package in.handyman.raven.lib.model.retry;
 
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
@@ -34,11 +36,11 @@ public class CoproRetryService {
                                           String requestBody,
                                           CoproRetryErrorAuditTable retryAudit,
                                           ActionExecutionAudit actionAudit) throws IOException {
-        int maxRetries = resolveMaxRetries(actionAudit);
+        int maxRetries =  Integer.parseInt(actionAudit.getContext().getOrDefault("copro.retry.attempt", "1"));
         IOException lastException = null;
-
+        retryAudit.setCoproServiceId(UUID.randomUUID().toString());
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            Response response = null;
+            Response response;
             try {
                 response = httpClient.newCall(request).execute();
 
@@ -61,21 +63,12 @@ public class CoproRetryService {
                 lastException = e;
                 handleIOException(attempt, retryAudit, requestBody, e, actionAudit);
             }
-            sleepBackoff(attempt);
+            sleepBackoff(actionAudit);
         }
 
         throw lastException != null
                 ? lastException
                 : new IOException("Copro API call failed: no response and no exception.");
-    }
-
-    private int resolveMaxRetries(ActionExecutionAudit action) {
-        boolean isRetryActive = Boolean.parseBoolean(
-                action.getContext().getOrDefault("copro.isretry.enabled", "false")
-        );
-        return isRetryActive
-                ? Integer.parseInt(action.getContext().getOrDefault("copro.retry.attempt", "1"))
-                : 1;
     }
 
     private boolean isRetryRequired(Response response) {
@@ -149,12 +142,19 @@ public class CoproRetryService {
         return request;
     }
 
-    private void sleepBackoff(int attempt) {
+    private void sleepBackoff(ActionExecutionAudit actionAudit) {
+        String delayStr = actionAudit.getContext().getOrDefault("copro.retry.delay.inSeconds", "5");
+        long backoffMillis = TimeUnit.SECONDS.toMillis(5);
         try {
-            long backoffMillis = (long) Math.min(1000 * Math.pow(2, attempt - 1), 8000);
+            backoffMillis = TimeUnit.SECONDS.toMillis(Long.parseLong(delayStr));
+        } catch (NumberFormatException e) {
+            log.error("Invalid delay value, defaulting to 5 seconds. Error: " + e.getMessage());
+        }
+        try {
             Thread.sleep(backoffMillis);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
+            log.error("Thread was interrupted during sleep: {}", ex.getMessage(), ex);
         }
     }
 
