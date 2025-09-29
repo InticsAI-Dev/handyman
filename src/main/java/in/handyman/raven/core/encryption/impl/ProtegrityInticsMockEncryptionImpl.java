@@ -2,11 +2,13 @@ package in.handyman.raven.core.encryption.impl;
 
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.util.PropertyHandler;
 import org.slf4j.Logger;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -29,14 +31,43 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
 
     static {
         try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-            keyGen.init(256);
-            aesKey = keyGen.generateKey();
+            aesKey = getSecretKeyFromConfig();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize AES key", e);
         }
     }
 
+
+    private static SecretKey getSecretKeyFromConfig() throws HandymanException {
+        try {
+
+            String secretKeyString = PropertyHandler.get("aes.secretKey");
+
+            if (secretKeyString == null || secretKeyString.isEmpty()) {
+
+                throw new HandymanException("AES secret key is not configured in the properties file.");
+            }
+
+            byte[] decodedKey = Base64.getDecoder().decode(secretKeyString);
+
+
+            if (decodedKey == null || decodedKey.length == 0) {
+
+                return new SecretKeySpec(new byte[32], "AES"); // Return an empty 256-bit key
+            }
+
+            if (decodedKey.length != 32) {
+
+                throw new HandymanException("Invalid AES-256 key length. Expected 32 bytes (256 bits).");
+            }
+
+            return new SecretKeySpec(decodedKey, "AES");
+
+        } catch (Exception e) {
+
+            throw new HandymanException("Error decoding AES secret key from config.", e);
+        }
+    }
     public ProtegrityInticsMockEncryptionImpl(Logger logger) {
         this.logger = logger;
     }
