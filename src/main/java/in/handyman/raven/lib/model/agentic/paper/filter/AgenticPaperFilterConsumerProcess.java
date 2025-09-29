@@ -218,7 +218,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(AgenticPaperFilterInput entity, URL endPoint) {
-        String message = "";
         return CoproRetryErrorAuditTable.builder()
                 .originId(entity.getOriginId())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
@@ -234,7 +233,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
                 .templateId(entity.getTemplateId())
-                .message("ContainerName")
                 .build();
     }
 
