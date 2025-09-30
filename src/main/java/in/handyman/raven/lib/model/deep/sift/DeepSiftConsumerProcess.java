@@ -260,7 +260,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .paperNo(entity.getPaperNo())
                 .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                 .tenantId(entity.getTenantId())
-                .processId(entity.getProcessId())
+                .processId(entity.getRootPipelineId())
                 .filePath(entity.getInputFilePath())
                 .createdOn(entity.getCreatedOn())
                 .rootPipelineId(entity.getRootPipelineId())
