@@ -89,8 +89,9 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
         // Build request payload
         DocumentEyeCueRequest documentEyeCueRequest = buildRequest(entity, action, outputDir);
-        documentEyeCueRequest.setBase64Pdf("");//Confirm with Andrews
         String jsonInputRequest = objectMapper.writeValueAsString(documentEyeCueRequest);
+        documentEyeCueRequest.setBase64Pdf("");
+        String jsonInputInsertRequest = objectMapper.writeValueAsString(documentEyeCueRequest);
 
         // Create HTTP request
         Request request = new Request.Builder()
@@ -101,7 +102,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                 .build();
 
         // Execute API call
-        executeApiCall(entity, request, objectMapper, resultList, jsonInputRequest, endpoint, action);
+        executeApiCall(entity, request, objectMapper, resultList, jsonInputInsertRequest, endpoint, action);
 
         return resultList;
     }
