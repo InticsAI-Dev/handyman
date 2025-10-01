@@ -34,10 +34,5 @@ public class OcrTextComparatorInput {
     private String extractedText;
     private String encryptionPolicy;
     private String allowedAdapter;
-    private int threshold;
-    private String bestMatch;
-    private int bestScore;
-    private String regexPattern;
-    private String candidatesList;
 
 }
