@@ -310,6 +310,7 @@ public class ProviderDataTransformer {
                 .response(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
                 .sorContainerId(Long.valueOf(containerId))
+                .sorItemId(entity.getSorItemId())
                 .build();
     }
 }

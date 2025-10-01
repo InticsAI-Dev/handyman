@@ -106,25 +106,26 @@ public class PostProcessingExecutorAction implements IActionExecution {
     }
 
     private void processEncryption(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+        String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
         if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
-            handleMultiValue(input, crypt, encryptEnabled);
+            handleMultiValue(input, crypt, encryptEnabled, scalarAdapterActivator);
         } else if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
             input.setExtractedValue(
                     crypt.encrypt(
                             input.getExtractedValue(),
-                            input.getEncryptionPolicy(),
+                            "false".equalsIgnoreCase(scalarAdapterActivator) ? "AES256" : input.getEncryptionPolicy(),
                             input.getSorItemName()
                     )
             );
         }
     }
 
-    private void handleMultiValue(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+    private void handleMultiValue(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled, String scalarAdapterActivator) {
         String[] parts = input.getExtractedValue().split(",");
         List<String> reEncrypted = java.util.Arrays.stream(parts)
                 .map(String::trim)
                 .map(val -> encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())
-                        ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName())
+                        ? crypt.encrypt(val, "false".equalsIgnoreCase(scalarAdapterActivator) ? "AES256" : input.getEncryptionPolicy(), input.getSorItemName())
                         : val)
                 .collect(Collectors.toList());
         input.setExtractedValue(String.join(",", reEncrypted));
@@ -151,9 +152,9 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private String buildInsertSQL() {
         return "INSERT INTO " + postProcessingExecutor.getOutputTable() + " (" +
                 "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, " +
-                "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id) VALUES (" +
+                "rank, sor_item_attribution_id, sor_item_name, sor_item_id, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id) VALUES (" +
                 "now(), :createdUserId, now(), :createdUserId, :tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, :extractedValue, :vqaScore, " +
-                ":rank, :sorItemAttributionId, :sorItemName, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId)";
+                ":rank, :sorItemAttributionId, :sorItemName, :sorItemId, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId)";
     }
 
     @Override
@@ -177,6 +178,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private Integer rank;
         private Integer sorItemAttributionId;
         private String sorItemName;
+        private Long sorItemId;
         private String documentId;
         private Long accTransactionId;
         private String bbox;

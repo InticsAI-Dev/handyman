@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class OcrTextComparatorInput {
     private String originId;
     private String sorItemName;
+    private Long sorItemId;
     private String sorQuestion;
     private String answer;
     private Long tenantId;

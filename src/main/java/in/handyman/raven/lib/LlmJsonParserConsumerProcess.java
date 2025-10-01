@@ -88,6 +88,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .imageHeight(input.getImageHeight())
                                 .imageWidth(input.getImageWidth())
                                 .sorContainerId(input.getSorContainerId())
+                                .sorItemId(input.getSorItemId())
                                 .build();
 
                         llmJsonQueryOutputTables.add(insertData);
@@ -148,6 +149,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .imageHeight(input.getImageHeight())
                                 .imageWidth(input.getImageWidth())
                                 .sorContainerId(input.getSorContainerId())
+                                .sorItemId(input.getSorItemId())
                                 .sorItemLabel(parsedEncryptResponse.getLabel())
                                 .sectionAlias(parsedEncryptResponse.getSectionAlias())
                                 .build();
@@ -178,6 +180,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                             .imageHeight(input.getImageHeight())
                             .imageWidth(input.getImageWidth())
                             .sorContainerId(input.getSorContainerId())
+                            .sorItemId(input.getSorItemId())
                             .build();
 
                     llmJsonQueryOutputTables.add(insertData);

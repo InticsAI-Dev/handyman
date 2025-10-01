@@ -218,11 +218,13 @@ public class OcrTextComparatorAction implements IActionExecution {
             try {
                 insertExecutionInfo(
                         jdbi, outputTable,
-                        originId, sorItemName, input.getTenantId(), batchId,
+                        originId, sorItemName, input.getSorItemId(), input.getTenantId(),
+                        batchId,
                         input.getSorQuestion() != null ? input.getSorQuestion() : "",
                         bestMatch, isOcrFieldComparable, input.getGroupId() != null ? input.getGroupId() : 0,
                         selectedPageNo, input.getVqaScore(), input.getScore(), input.getWeight(),
-                        input.getSorItemAttributionId(), input.getDocumentId() != null ? input.getDocumentId() : "",
+                        input.getSorItemAttributionId(),
+                        input.getDocumentId() != null ? input.getDocumentId() : "",
                         input.getBBox() != null ? input.getBBox() : "",
                         input.getRootPipelineId(), input.getQuestionId(), input.getSynonymId(),
                         input.getModelRegistry() != null ? input.getModelRegistry() : "",
@@ -251,7 +253,8 @@ public class OcrTextComparatorAction implements IActionExecution {
         log.info(aMarker, "Completed OCR text comparison for batchId: {}", batchId);
     }
 
-    private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId,
+    private void insertExecutionInfo(Jdbi jdbi, String outputTable,
+                                     String originId, String sorItemName, Long sorItemId, Long tenantId,
                                      String batchId, String sorQuestion, String answer, boolean isOcrFieldComparable,
                                      Integer groupId, Integer paperNo, Double vqaScore, Double score, Integer weight,
                                      Integer sorItemAttributionId, String documentId, String bBox, Long rootPipelineId,
@@ -267,13 +270,13 @@ public class OcrTextComparatorAction implements IActionExecution {
                         "INSERT INTO " + outputTable + " (" +
                                 "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, " +
                                 "origin_id, group_id, paper_no, sor_question, answer, vqa_score, score, weight, " +
-                                "sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, " +
+                                "sor_item_attribution_id, sor_item_name, sor_item_id, document_id, b_box, root_pipeline_id, " +
                                 "question_id, synonym_id, model_registry, category, batch_id, is_ocr_field_comparable, " +
                                 "extracted_text, threshold, best_score, regex_pattern, candidates" +
                                 ") VALUES (" +
                                 ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :tenantId, " +
                                 ":originId, :groupId, :paperNo, :sorQuestion, :answer, :vqaScore, :score, :weight, " +
-                                ":sorItemAttributionId, :sorItemName, :documentId, :bBox, :rootPipelineId, " +
+                                ":sorItemAttributionId, :sorItemName, :sorItemId, :documentId, :bBox, :rootPipelineId, " +
                                 ":questionId, :synonymId, :modelRegistry, :category, :batchId, :isOcrFieldComparable, " +
                                 ":extractedText, :threshold, :bestScore, :regexPattern, :candidates" +
                                 ");")
@@ -292,6 +295,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                 .bind("weight", weight)
                 .bind("sorItemAttributionId", sorItemAttributionId)
                 .bind("sorItemName", sorItemName)
+                .bind("sorItemId", sorItemId)   // <-- added properly
                 .bind("documentId", documentId)
                 .bind("bBox", bBox)
                 .bind("rootPipelineId", rootPipelineId)
@@ -307,7 +311,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                 .bind("regexPattern", regexPattern)
                 .bind("candidates", candidatesList)
                 .execute());
-        log.info(aMarker, "Inserted comparison result for originId={}, sorItemName={}", originId, sorItemName);
+        log.info(aMarker, "Inserted comparison result for originId={}, sorItemName={}, sorItemId={}", originId, sorItemName, sorItemId);
     }
 
     @Override

@@ -13,4 +13,5 @@ public class LlmJsonQueryInputTableSorMeta {
     private String sorItemName;
     private String isEncrypted;
     private String encryptionPolicy;
+    private String sorItemId;
 }
