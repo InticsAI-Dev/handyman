@@ -3,6 +3,7 @@ package in.handyman.raven.lambda.access.repo;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.ConfigEncryptionUtils;
@@ -67,15 +68,11 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
         if (legacyResourceConnection.equals(AZURE)) {
 
-            String azureTenantId = PropertyHandler.get(AZURE_TENANT_ID);
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
-            String azureClientSecret = PropertyHandler.get(AZURE_CLIENT_SECRET);
             String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
-            String azureTokenScope = PropertyHandler.get(AZURE_TOKEN_SCOPE);
-            String azureUserName = PropertyHandler.get(CONFIG_USER);
+            log.debug("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
 
-            AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
-            JDBI = connection.getAzureJdbiConnection();
+            JDBI=HikariJdbiProvider.getJdbi();
             JDBI.installPlugin(new SqlObjectPlugin());
             try (var ignored = JDBI.open()) {
                 log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);

@@ -2,9 +2,9 @@ package in.handyman.raven.lambda.access;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
-import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -62,15 +62,7 @@ public class ResourceAccess {
 
 
         if(legacyResourceConnection.equals("AZURE")){
-            String azureTenantId = PropertyHandler.get("azure.identity.tenantId");
-            String azureClientId = PropertyHandler.get("azure.identity.clientId");
-            String azureClientSecret = PropertyHandler.get("azure.identity.clientSecret");
-            String azureDatabaseUrl = PropertyHandler.get("azure.database.url");
-            String azureTokenScope = PropertyHandler.get("azure.token.scope");
-            String azureUserName = PropertyHandler.get("raven.db.user");
-
-            AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
-            return connection.getAzureJdbiConnection();
+            return HikariJdbiProvider.getJdbi();
         }else if(legacyResourceConnection.equals("LEGACY")){
             if (Objects.isNull(resource)) {
                 log.warn("{} not found in Resource connections", resourceName);
