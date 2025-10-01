@@ -56,7 +56,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
-        // Initialize logging early to prevent SubstituteLogger buffer overflow
         LoggingInitializer.initialize();
         
         this.log = log;
@@ -67,7 +66,20 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         int timeOut = aAction.getTimeOut();
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
-        this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
+
+        String httpClientType = aAction.getHttpClientType();
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(timeOut, TimeUnit.MINUTES)
+                .writeTimeout(timeOut, TimeUnit.MINUTES)
+                .readTimeout(timeOut, TimeUnit.MINUTES);
+
+        if ("HTTP/1.1".equalsIgnoreCase(httpClientType)) {
+            log.info(aMarker, "HTTP client protocol explicitly set to HTTP/1.1");
+            builder.protocols(List.of(Protocol.HTTP_1_1));
+        }
+
+        this.httpclient = builder.build();
+
         coproRetryService = new CoproRetryService(handymanRepo, httpclient);
     }
 
@@ -218,6 +230,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
 
             try (Response safeResponse = response) {
+                Protocol protocol = response.protocol();
+                log.info(aMarker, " Protocol in use : {} ", protocol);
                 if (safeResponse.isSuccessful()) {
                     assert safeResponse.body() != null;
                     String responseBody = safeResponse.body().string();

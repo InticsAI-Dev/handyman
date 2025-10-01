@@ -73,9 +73,21 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.fileProcessingUtils = fileProcessingUtils;
         this.pageContentMinLength = pageContentMinLength;
         int timeOut = aAction.getTimeOut();
-        this.httpclient = new OkHttpClient.Builder().connectTimeout(timeOut, TimeUnit.MINUTES).writeTimeout(timeOut, TimeUnit.MINUTES).readTimeout(timeOut, TimeUnit.MINUTES).build();
-        this.jdbiResourceName = jdbiResourceName;
 
+        String httpClientType = aAction.getHttpClientType();
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(timeOut, TimeUnit.MINUTES)
+                .writeTimeout(timeOut, TimeUnit.MINUTES)
+                .readTimeout(timeOut, TimeUnit.MINUTES);
+
+        if ("HTTP/1.1".equalsIgnoreCase(httpClientType)) {
+            log.info(aMarker, "HTTP client protocol explicitly set to HTTP/1.1");
+            builder.protocols(List.of(Protocol.HTTP_1_1));
+        }
+
+        this.httpclient = builder.build();
+
+        this.jdbiResourceName = jdbiResourceName;
         coproRetryService = new CoproRetryService(handymanRepo, httpclient);
     }
 
@@ -169,6 +181,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
                     ? coproRetryService.callCoproApiWithRetry(request, jsonRequest, auditInput, this.action)
                     : httpclient.newCall(request).execute();
+
             if (response == null) {
                 String errorMessage = "No response received from API";
                 parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
@@ -178,6 +191,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 throw new IOException(errorMessage);
             }
             try (Response safeResponse = response) {
+                Protocol protocol = response.protocol();
+                log.info(aMarker, " Protocol in use : {} ", protocol);
                 String responseBody = Objects.requireNonNull(safeResponse.body()).string();
                 if (safeResponse.isSuccessful()) {
                     RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
