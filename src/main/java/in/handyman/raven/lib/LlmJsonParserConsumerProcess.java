@@ -53,6 +53,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             String boundingBox = "";
             String extractedContent = input.getResponse();
             String jsonResponse;
+            String inputSorItemName = input.getSorItemName();
+            boolean hasInputSorItemName = inputSorItemName != null && !inputSorItemName.isEmpty();
             if (extractedContent != null) {
                 jsonResponse = getDecryptedInputJson(encryption, extractedContent, encryptOutputSorItem);
 
@@ -64,6 +66,11 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
 
                     parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
+                    if (hasInputSorItemName) {
+                        for (LlmJsonParsedResponse resp : innerParsedResponses) {
+                            resp.setSorItemName(inputSorItemName);
+                        }
+                    }
                     log.info("Total parsed responses before encryption for {} is {} ", loggerInput, innerParsedResponses.size());
                     List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
                     log.info("Total parsed responses after encryption for {} is {} ", loggerInput, parsedResponses.size());
@@ -103,11 +110,45 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     try {
                         innerParsedResponsesKrypton = new ArrayList<>();
 
-                        innerParsedResponsesKrypton = objectMapper.readValue(
+                        List<JsonNode> nodes = objectMapper.readValue(
                                 stringObjectMap.traverse(),
-                                new TypeReference<List<LlmJsonParserKvpKrypton>>() {
+                                new TypeReference<List<JsonNode>>() {
                                 }
                         );
+
+                        for (JsonNode node : nodes) {
+                            LlmJsonParserKvpKrypton kvp = new LlmJsonParserKvpKrypton();
+                            if (node.has("key")) {
+                                kvp.setKey(node.get("key").asText(""));
+                            }
+                            if (node.has("value")) {
+                                JsonNode valNode = node.get("value");
+                                String val;
+                                if (valNode.isArray()) {
+                                    List<String> arrayVals = new ArrayList<>();
+                                    for (JsonNode arrElem : valNode) {
+                                        arrayVals.add(arrElem.asText());
+                                    }
+                                    val = String.join(", ", arrayVals);
+                                } else {
+                                    val = valNode.asText("");
+                                }
+                                kvp.setValue(val);
+                            }
+                            if (node.has("boundingBox")) {
+                                kvp.setBoundingBox(node.get("boundingBox"));
+                            }
+                            if (node.has("confidence")) {
+                                kvp.setConfidence(node.get("confidence").asDouble(0.0));
+                            }
+                            if (node.has("label")) {
+                                kvp.setLabel(node.get("label").asText(""));
+                            }
+                            if (node.has("sectionAlias")) {
+                                kvp.setSectionAlias(node.get("sectionAlias").asText(""));
+                            }
+                            innerParsedResponsesKrypton.add(kvp);
+                        }
                     } catch (Exception e) {
                         action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
                         HandymanException handymanException = new HandymanException(e);
@@ -117,6 +158,10 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
 
                     for (LlmJsonParserKvpKrypton parsedResponse : innerParsedResponsesKrypton) {
+
+                        if (hasInputSorItemName) {
+                            parsedResponse.setKey(inputSorItemName);
+                        }
 
                         boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
                         log.debug("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
@@ -161,29 +206,31 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 }
             }else {
                 log.debug("Extracted content is null for {}. Skipping processing.", loggerInput);
-                    LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                            .createdOn(String.valueOf(input.getCreatedOn()))
-                            .createdUserId(input.getTenantId())
-                            .tenantId(input.getTenantId())
-                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .lastUpdatedUserId(input.getTenantId())
-                            .boundingBox("{}")
-                            .paperNo(input.getPaperNo())
-                            .originId(input.getOriginId())
-                            .groupId(input.getGroupId())
-                            .rootPipelineId(input.getRootPipelineId())
-                            .answer("")
-                            .batchId(input.getBatchId())
-                            .modelRegistry(input.getModelRegistry())
-                            .extractedImageUnit(input.getExtractedImageUnit())
-                            .imageDpi(input.getImageDpi())
-                            .imageHeight(input.getImageHeight())
-                            .imageWidth(input.getImageWidth())
-                            .sorContainerId(input.getSorContainerId())
-                            .sorItemId(input.getSorItemId())
-                            .build();
+                String effectiveSorItemName = hasInputSorItemName ? inputSorItemName : "";
+                LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
+                        .createdOn(String.valueOf(input.getCreatedOn()))
+                        .createdUserId(input.getTenantId())
+                        .tenantId(input.getTenantId())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .lastUpdatedUserId(input.getTenantId())
+                        .boundingBox("{}")
+                        .paperNo(input.getPaperNo())
+                        .originId(input.getOriginId())
+                        .groupId(input.getGroupId())
+                        .rootPipelineId(input.getRootPipelineId())
+                        .answer("")
+                        .batchId(input.getBatchId())
+                        .modelRegistry(input.getModelRegistry())
+                        .extractedImageUnit(input.getExtractedImageUnit())
+                        .imageDpi(input.getImageDpi())
+                        .imageHeight(input.getImageHeight())
+                        .imageWidth(input.getImageWidth())
+                        .sorContainerId(input.getSorContainerId())
+                        .sorItemId(input.getSorItemId())
+                        .sorItemName(effectiveSorItemName)
+                        .build();
 
-                    llmJsonQueryOutputTables.add(insertData);
+                llmJsonQueryOutputTables.add(insertData);
 
             }
 
