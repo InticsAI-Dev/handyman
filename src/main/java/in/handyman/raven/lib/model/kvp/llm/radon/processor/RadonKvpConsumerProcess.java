@@ -20,6 +20,7 @@ import in.handyman.raven.lib.model.triton.*;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.LoggingInitializer;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -157,7 +158,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
         radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
-        radonKvpExtractionRequest.setBase64Img("");
         radonKvpExtractionRequest.setProcessId(processId);
         radonKvpExtractionRequest.setPaperNo(paperNo);
         radonKvpExtractionRequest.setTenantId(tenantId);
@@ -172,19 +172,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setBase64Img(base64Content);
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
-
-        TritonRequest requestBody = new TritonRequest();
-        requestBody.setName(entity.getApiName());
-        requestBody.setShape(List.of(1, 1));
-        requestBody.setDatatype(TritonDataTypes.BYTES.name());
-        requestBody.setData(Collections.singletonList(jsonInputRequest));
-
-
-        TritonInputRequest tritonInputRequest = new TritonInputRequest();
-        tritonInputRequest.setInputs(Collections.singletonList(requestBody));
-
-        String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
-
+        
         radonKvpExtractionRequest.setBase64Img("");
         String jsonInsertRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
         String jsonInsertRequestEncrypted = encryptRequestResponse(jsonInsertRequest);
@@ -193,16 +181,21 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         if (log.isInfoEnabled()) {
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} with container Id {}", endpoint, filePath, entity.getSorContainerId());
         }
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
-
-        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
-        tritonRequestBuilder(entity, request, parentObj, jsonInsertRequestEncrypted, endpoint);
+        // creating request body
+ 
+        kvpRequestBuilder(entity, parentObj, jsonInsertRequestEncrypted, jsonInputRequest, endpoint);
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
         return parentObj;
     }
 
-    private void tritonRequestBuilder(RadonQueryInputTable entity, Request request, List<RadonQueryOutputTable> parentObj, String jsonInsertRequestEncrypted, URL endpoint) {
+    @NotNull
+    private Request getRequest(URL endpoint, String jsonInputRequest) {
+        Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonInputRequest, MEDIA_TYPE_JSON)).build();
+        return request;
+    }
+
+    private void kvpRequestBuilder(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, String jsonInsertRequestEncrypted, String jsonInputRequest, URL endpoint) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -216,6 +209,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
         Response response;
         try {
+            // request curl creation
+            final Request request = getRequest(endpoint, jsonInputRequest);
+            // retry mechanism
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
                     ? coproRetryService.callCoproApiWithRetry(request, jsonInsertRequestEncrypted, auditInput, this.action)
                     : httpclient.newCall(request).execute();
@@ -228,24 +224,21 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 throw new IOException(errorMessage);
             }
 
-
             try (Response safeResponse = response) {
                 Protocol protocol = response.protocol();
                 log.info(aMarker, " Protocol in use : {} ", protocol);
                 if (safeResponse.isSuccessful()) {
                     assert safeResponse.body() != null;
                     String responseBody = safeResponse.body().string();
-                    RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
-                    if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                        modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
-                            try {
-                                extractTritonOutputDataResponse(entity, radonDataItem, parentObj, jsonInsertRequestEncrypted, responseBody, endpoint.toString());
-                            } catch (IOException | EvalError e) {
-                                HandymanException handymanException = new HandymanException(e);
-                                HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
-                                log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
-                            }
-                        }));
+                    RadonKvpDataOutput modelResponse = mapper.readValue(responseBody, RadonKvpDataOutput.class);
+                    if (modelResponse != null) {
+                        try {
+                            extractKVPOutputDataResponse(entity, modelResponse, parentObj, jsonInsertRequestEncrypted, responseBody, endpoint.toString());
+                        } catch (IOException | EvalError e) {
+                            HandymanException handymanException = new HandymanException(e);
+                            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                            log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
+                        }
 
                     }
                 } else {
@@ -334,22 +327,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     }
 
 
-    public JsonNode getJsonNodeFromInferResponse(ObjectMapper objectMapper, String jsonString) throws JsonProcessingException {
-        try {
-
-            jsonString = jsonString.replace("\n", "");
-
-            // Convert the cleaned JSON string to a JsonNode
-            JsonNode rootNode = objectMapper.readTree(jsonString);
-            return rootNode;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Input does not have a json structure .");
-        }
-
-
-    }
-
-    private void extractTritonOutputDataResponse(RadonQueryInputTable entity, String radonDataItem, List<RadonQueryOutputTable> parentObj, String jsonInsertRequestEncrypted, String response, String endpoint) throws IOException, EvalError {
+    private void extractKVPOutputDataResponse(RadonQueryInputTable entity, RadonKvpDataOutput modelResponse, List<RadonQueryOutputTable> parentObj, String jsonInsertRequestEncrypted, String response, String endpoint) throws IOException, EvalError {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
 
@@ -359,7 +337,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String processedFilePaths = entity.getInputFilePath();
         String originId = entity.getOriginId();
         String extractedContent;
-        RadonKvpLineItem modelResponse = mapper.readValue(radonDataItem, RadonKvpLineItem.class);
+        final String metrics = mapper.writeValueAsString(modelResponse.getComputationDetails());
 
         String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
@@ -404,6 +382,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .response(encryptRequestResponse(response))
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
+                    .statusCode(modelResponse.getStatusCode())
+                    .computationDetails(metrics)
+                    .log(modelResponse.getErrorMessage())
+                    .detail(modelResponse.getDetail())
                     .build()
             );
         }
