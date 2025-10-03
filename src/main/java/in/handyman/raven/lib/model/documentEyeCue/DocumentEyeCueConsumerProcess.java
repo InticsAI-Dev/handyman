@@ -13,6 +13,9 @@ import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.DocumentEyeCue;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 
+import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.retry.CoproRetryService;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -22,6 +25,9 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static in.handyman.raven.exception.HandymanException.handymanRepo;
+
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
 
     public static final String PROCESS_NAME = "DOC_EYE_CUE";
@@ -40,6 +46,8 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
     private final String processBase64;
 
+    private final CoproRetryService coproRetryService;
+
     final OkHttpClient httpclient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(10, TimeUnit.MINUTES)
@@ -55,6 +63,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
     }
 
     private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");
@@ -81,6 +90,8 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         // Build request payload
         DocumentEyeCueRequest documentEyeCueRequest = buildRequest(entity, action, outputDir);
         String jsonInputRequest = objectMapper.writeValueAsString(documentEyeCueRequest);
+        documentEyeCueRequest.setBase64Pdf("");
+        String jsonInputInsertRequest = objectMapper.writeValueAsString(documentEyeCueRequest);
 
         // Create HTTP request
         Request request = new Request.Builder()
@@ -91,7 +102,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                 .build();
 
         // Execute API call
-        executeApiCall(entity, request, objectMapper, resultList, jsonInputRequest, endpoint);
+        executeApiCall(entity, request, objectMapper, resultList, jsonInputInsertRequest, endpoint, action);
 
         return resultList;
     }
@@ -109,13 +120,11 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         documentEyeCueRequest.setOutputDir(outputDir);
 
         // Set file path or base64 based on processing format
-        if (processBase64.equals(ProcessFileFormatE.BASE64.name())) {
-            String base64Content = fileProcessingUtils.convertFileToBase64(entity.getFilePath());
-            documentEyeCueRequest.setBase64Pdf(base64Content);
-            documentEyeCueRequest.setInputFilePath(entity.getFilePath());
-        } else {
-            documentEyeCueRequest.setInputFilePath(entity.getFilePath());
-        }
+        String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
+                ? fileProcessingUtils.convertFileToBase64(entity.getFilePath())
+                : "";
+        documentEyeCueRequest.setBase64Pdf(base64Content);
+        documentEyeCueRequest.setInputFilePath(entity.getFilePath());
 
         // Set optional parameters from context if available
         setOptionalParameters(documentEyeCueRequest);
@@ -147,16 +156,53 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private void executeApiCall(DocumentEyeCueInputTable entity, Request request, ObjectMapper objectMapper,
-                                List<DocumentEyeCueOutputTable> resultList, String jsonInputRequest, URL endpoint) {
-        try (Response response = httpclient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                handleSuccessfulResponse(entity, response, objectMapper, resultList, jsonInputRequest, endpoint);
-            } else {
-                handleErrorResponse(entity, response, resultList, jsonInputRequest, endpoint);
+                                List<DocumentEyeCueOutputTable> resultList, String jsonInputRequest, URL endpoint, ActionExecutionAudit action) {
+
+        CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
+        Response response;
+        try {
+            response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
+                    ? coproRetryService.callCoproApiWithRetry(request, jsonInputRequest, auditInput, this.action)
+                    : httpclient.newCall(request).execute();
+            if (response == null) {
+                String errorMessage = "No response received from API";
+                resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(jsonInputRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
+                log.error(aMarker, errorMessage);
+                HandymanException handymanException = new HandymanException(errorMessage);
+                HandymanException.insertException(errorMessage, handymanException, this.action);
+                throw new IOException(errorMessage);
+            }
+
+            try (Response safeResponse = response) {
+                if (safeResponse.isSuccessful()) {
+                    handleSuccessfulResponse(entity, safeResponse, objectMapper, resultList, jsonInputRequest, endpoint);
+                } else {
+                    handleErrorResponse(entity, safeResponse, resultList, jsonInputRequest, endpoint);
+                }
             }
         } catch (Exception exception) {
             handleException(entity, exception, resultList, jsonInputRequest, endpoint);
         }
+    }
+
+
+    private CoproRetryErrorAuditTable setErrorAuditInputDetails(DocumentEyeCueInputTable entity, URL endPoint) {
+        return CoproRetryErrorAuditTable.builder()
+                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
+                .tenantId(entity.getTenantId())
+                .processId(entity.getProcessId())
+                .filePath(entity.getFilePath())
+                .fileName(entity.getFileName())
+                .templateId(entity.getTemplateId())
+                .createdOn(entity.getCreatedOn())
+                .rootPipelineId(entity.getRootPipelineId())
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                .stage(PROCESS_NAME)
+                .batchId(entity.getBatchId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .endpoint(String.valueOf(endPoint))
+                .build();
     }
 
     private void handleSuccessfulResponse(DocumentEyeCueInputTable entity,
@@ -192,7 +238,8 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .processId(entity.getProcessId())
                     .templateId(entity.getTemplateId())
                     .processedFilePath(outputFilePath)
-                    .status("COMPLETED")
+                    .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+
                     .stage(PROCESS_NAME)
                     .message(Optional.ofNullable(documentEyeCueResponse.getErrorMessage())
                             .orElse("Document EyeCue processing completed successfully"))
@@ -304,7 +351,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                 .tenantId(entity.getTenantId())
                 .processId(entity.getProcessId())
                 .templateId(entity.getTemplateId())
-                .status("FAILED")
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .message(errorMessage)
                 .createdOn(entity.getCreatedOn())

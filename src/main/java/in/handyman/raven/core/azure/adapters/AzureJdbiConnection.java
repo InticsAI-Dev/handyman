@@ -30,28 +30,6 @@ public class AzureJdbiConnection {
     }
 
     public Jdbi getAzureJdbiConnection() {
-
-        String token= AzureAuthTokenSession.getInstance().getToken().get();
-        // Construct connection properties
-        Properties connectionProps = new Properties();
-        connectionProps.put("user", azureUserName);  // Can also use a specific user if applicable
-        connectionProps.put("password",token );
-
-        try {
-            // Establish JDBC connection using the token
-            Connection connection = DriverManager.getConnection(databaseUrl, connectionProps);
-
-            if (connection != null) {
-                log.info("Successfully connected to the database using Azure Authentication.");
-            } else {
-                log.error("Failed to connect to the database connection was null.");
-            }
-
-            // Returning JDBI instance configured with the connection
-            return Jdbi.create(connection);
-        } catch (SQLException e) {
-            log.error("Failed to connect to the database error in the config.");
-            throw new RuntimeException("Failed to connect to the database", e);
-        }
+        return HikariJdbiProvider.getJdbi();
     }
 }
