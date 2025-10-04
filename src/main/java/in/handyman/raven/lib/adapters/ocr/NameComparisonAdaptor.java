@@ -41,6 +41,10 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
+        // Detect if expected value has comma format
+        boolean hasCommaFormat = expectedValue.contains(",");
+        logger.debug("Expected value comma format detected: {}", hasCommaFormat);
+
         List<String> expectedWords = extractAllWords(expectedValue);
         logger.debug("Expected words count: {}", expectedWords.size());
 
@@ -69,7 +73,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         }
 
         logger.debug("Completed word matching for {} expected words", expectedWords.size());
-        return buildFinalResult(allMatches, expectedValue, candidatesList, threshold);
+        return buildFinalResult(allMatches, expectedValue, candidatesList, threshold, hasCommaFormat);
     }
 
     /**
@@ -144,7 +148,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
     }
 
     private OcrComparisonResult buildFinalResult(List<OcrComparisonMatchResult> matches, String originalExpected,
-                                                 String candidatesList, double threshold) {
+                                                 String candidatesList, double threshold, boolean hasCommaFormat) {
         boolean allWordsMatch = matches.stream()
                 .allMatch(match -> match.getScore() >= threshold);
 
@@ -166,7 +170,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         int finalScore;
 
         if (anyWordMatches) {
-            finalBestMatch = reconstructBestMatch(matches, threshold);
+            finalBestMatch = reconstructBestMatch(matches, threshold, hasCommaFormat, originalExpected);
 
             double avgScore = matchedWords.stream()
                     .mapToDouble(OcrComparisonMatchResult::getScore)
@@ -194,22 +198,55 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                 .build();
     }
 
-    /**
-     * Reconstructs the best match by combining matched words
-     */
-    private String reconstructBestMatch(List<OcrComparisonMatchResult> matches, double threshold) {
-        StringBuilder result = new StringBuilder();
+    private String reconstructBestMatch(List<OcrComparisonMatchResult> matches, double threshold,
+                                        boolean hasCommaFormat, String originalExpected) {
+        List<String> matchedWords = new ArrayList<>();
 
         for (OcrComparisonMatchResult match : matches) {
             if (match.getScore() >= threshold) {
-                if (result.length() > 0) {
-                    result.append(" ");
-                }
-                result.append(match.getRestoredMatch());
+                matchedWords.add(match.getRestoredMatch());
             }
         }
 
-        return result.toString();
+        if (matchedWords.isEmpty()) {
+            return originalExpected;
+        }
+
+        if (hasCommaFormat) {
+            int commaIndex = getCommaPositionInWords(originalExpected, matches);
+
+            if (commaIndex > 0 && commaIndex < matchedWords.size()) {
+                StringBuilder result = new StringBuilder();
+                for (int i = 0; i < matchedWords.size(); i++) {
+                    if (i == commaIndex) {
+                        result.append(", ");
+                    } else if (i > 0) {
+                        result.append(" ");
+                    }
+                    result.append(matchedWords.get(i));
+                }
+                return result.toString();
+            }
+        }
+
+        // Default format without comma: "First Middle Last"
+        return String.join(" ", matchedWords);
+    }
+
+    /**
+     * Determines where the comma should be placed based on the original expected value
+     */
+    private int getCommaPositionInWords(String originalExpected, List<OcrComparisonMatchResult> matches) {
+        List<String> expectedWords = extractAllWords(originalExpected);
+        String[] parts = originalExpected.split(",");
+
+        if (parts.length >= 2) {
+            // Count words before the comma
+            List<String> beforeComma = extractAllWords(parts[0]);
+            return beforeComma.size();
+        }
+
+        return -1;
     }
 
     private String determineMatchingMethod(List<OcrComparisonMatchResult> matches, double threshold) {
@@ -228,7 +265,6 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
             return "PARTIAL_MATCH_" + matchCount + "_OF_" + totalCount;
         }
     }
-
 
     @Override
     public String getName() {
