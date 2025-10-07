@@ -226,12 +226,13 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             updatedNode.put("topLeftY", y1);
             updatedNode.put("bottomRightX", x2);
             updatedNode.put("bottomRightY", y2);
-
-            System.out.println(updatedNode);
+            log.debug("Extracted positions are calculated "+updatedNode);
             // Return as a JSON string
             return mapper.writeValueAsString(updatedNode);
         } catch (Exception e) {
-            e.printStackTrace();
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action ", handymanException, action);
+                e.printStackTrace();
             return "{}";
         }
     }
