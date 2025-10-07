@@ -126,8 +126,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         modifiedBoundingBox = (isBboxEnabled && isModifierEnable)
                                 ? Optional.ofNullable(contractedBoundingBox(boundingBox, input.getImageWidth(), input.getImageHeight()))
                                 .filter(b -> !b.isEmpty())
-                                .orElse(boundingBox)
-                                : "{}";
+                                .orElse("{}")
+                                : boundingBox;
                         boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
                         log.debug("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
