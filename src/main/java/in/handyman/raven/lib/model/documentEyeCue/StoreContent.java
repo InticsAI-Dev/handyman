@@ -19,6 +19,8 @@ import java.nio.file.Files;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StoreContent {
     public DocumentEyeCue documentEyeCue;
@@ -46,13 +48,14 @@ public class StoreContent {
     private static final String DOC_TYPE_VALUE = "LETTER";
     private static final String PLAN_VALUE = "SMARTINTAKE_WC_CLAIMS";
     private static final String KEY_STORECONTENT_API_KEY = "storecontent.api.key";
+    private static final Pattern UPDATED_SUFFIX_PATTERN = Pattern.compile("(?i)(?:_updated)(\\d+)?$");
 
     private static final String SQL_INSERT_AUDIT =
             "INSERT INTO doc_eyecue.storecontent_upload_audit " +
                     "(origin_id, document_id, group_id, tenant_id, processed_file_path, " +
                     "storecontent_status, storecontent_message, storecontent_content_id, " +
-                    "created_on, process_id, root_pipeline_id, batch_id, last_updated_on, endpoint, upload_type) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, ?, now(), ?, ?)";
+                    "created_on, process_id, root_pipeline_id, batch_id, last_updated_on, endpoint, upload_type, file_name, file_size) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, ?, now(), ?, ?, ?, ?)";
 
     public StoreContentResponseDto execute(String filePath,
                                            String processedPdfBase64,
@@ -149,6 +152,35 @@ public class StoreContent {
         return 0L;
     }
 
+    private String incrementUpdatedFileName(String baseFileName) {
+        if (baseFileName == null || baseFileName.isBlank()) return baseFileName;
+
+        int lastDot = baseFileName.lastIndexOf('.');
+        String namePart = (lastDot >= 0) ? baseFileName.substring(0, lastDot) : baseFileName;
+        String extPart = (lastDot >= 0) ? baseFileName.substring(lastDot) : "";
+
+        Matcher m = UPDATED_SUFFIX_PATTERN.matcher(namePart);
+        if (m.find()) {
+            String numberGroup = m.group(1);
+            if (numberGroup == null || numberGroup.isEmpty()) {
+                String newName = namePart.replaceAll("(?i)(_updated)$", "_updated2");
+                return newName + extPart;
+            } else {
+                int n;
+                try {
+                    n = Integer.parseInt(numberGroup);
+                } catch (NumberFormatException e) {
+                    n = 1;
+                }
+                int next = n + 1;
+                String newName = namePart.replaceAll("(?i)(_updated)\\d+$", "$1" + next);
+                return newName + extPart;
+            }
+        } else {
+            return namePart + "_updated" + extPart;
+        }
+    }
+
     private StoreContentRequestDto createNonStreamingRequest(File file,
                                                              String processedPdfBase64,
                                                              String repository,
@@ -165,9 +197,7 @@ public class StoreContent {
             String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
                     ? entity.getFileName()
                     : file.getName();
-            String updatedFileName = baseFileName.toLowerCase().endsWith(".pdf")
-                    ? baseFileName.substring(0, baseFileName.length() - 4) + "_updated.pdf"
-                    : baseFileName + "_updated.pdf";
+            String updatedFileName = incrementUpdatedFileName(baseFileName);
             contentMetadata.put("FileName", updatedFileName);
             contentMetadata.put("MimeType",
                     Files.probeContentType(file.toPath()) != null
@@ -243,9 +273,7 @@ public class StoreContent {
             String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
                     ? entity.getFileName()
                     : file.getName();
-            String updatedFileName = baseFileName.toLowerCase().endsWith(".pdf")
-                    ? baseFileName.substring(0, baseFileName.length() - 4) + "_Updated.pdf"
-                    : baseFileName + "_Updated.pdf";
+            String updatedFileName = incrementUpdatedFileName(baseFileName);
             contentMetadata.put("FileName", updatedFileName);
             contentMetadata.put("MimeType", DEFAULT_MIME_TYPE);
             requestDto.setContentMetaData(contentMetadata);
@@ -303,6 +331,10 @@ public class StoreContent {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(documentEyeCue.getResourceConn());
             String endpointUrl = documentEyeCue.getEndpoint();
 
+            File file = new File(filePath);
+            String fileName = file.getName();
+            long fileSize = file.exists() ? file.length() : 0L;
+
             jdbi.useHandle(handle -> handle.execute(SQL_INSERT_AUDIT,
                     entity.getOriginId(),
                     entity.getDocumentId(),
@@ -316,7 +348,9 @@ public class StoreContent {
                     entity.getRootPipelineId(),
                     entity.getBatchId(),
                     endpointUrl,
-                    uploadType
+                    uploadType,
+                    fileName,
+                    fileSize
             ));
 
             log.info(MARKER, "StoreContent upload audit inserted for origin_id {} with upload type {}",
