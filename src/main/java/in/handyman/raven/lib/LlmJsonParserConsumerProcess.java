@@ -122,7 +122,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
                         log.debug("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
                         boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
-                        modifiedBoundingBox = isBboxEnabled
+                        boolean isModifierEnable = Objects.equals(action.getContext().get("sor.transaction.bbox.modifier.activator"), "true");
+                        modifiedBoundingBox = (isBboxEnabled && isModifierEnable)
                                 ? Optional.ofNullable(contractedBoundingBox(boundingBox, input.getImageWidth(), input.getImageHeight()))
                                 .filter(b -> !b.isEmpty())
                                 .orElse("{}")
