@@ -232,7 +232,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         } catch (Exception e) {
                 HandymanException handymanException = new HandymanException(e);
                 HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action ", handymanException, action);
-                e.printStackTrace();
             return "{}";
         }
     }
