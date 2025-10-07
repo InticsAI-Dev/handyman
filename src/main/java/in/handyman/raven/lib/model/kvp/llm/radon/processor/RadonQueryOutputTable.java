@@ -40,14 +40,14 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
     private String response;
     private String endpoint;
     private Long sorContainerId;
-
+    private Long sorItemId;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.createdOn,this.createdUserId,  this.lastUpdatedOn,this.lastUpdatedUserId,
                 this.inputFilePath, this.totalResponseJson,  this.paperNo, this.originId,
                 this.processId,this.actionId, this.process, this.groupId, this.tenantId,  this.rootPipelineId, this.batchId,
-                this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId).collect(Collectors.toList());
+                this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId, this.sorItemId).collect(Collectors.toList());
 
     }
 }

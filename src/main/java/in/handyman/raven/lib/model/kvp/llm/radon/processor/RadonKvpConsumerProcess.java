@@ -273,6 +273,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             .request(jsonInsertRequestEncrypted)
                             .response(encryptRequestResponse(errorBody))
                             .endpoint(String.valueOf(endpoint))
+                            .sorItemId(entity.getSorItemId())
                             .build());
                     HandymanException handymanException = new HandymanException("Unsuccessful response code : " + safeResponse.code() + " message : " + errorBody);
                     HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -330,6 +331,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(entity.getTenantId())
                 .category(entity.getCategory())
+                .sorItemId(entity.getSorItemId())
                 .build());
     }
 
@@ -404,6 +406,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .response(encryptRequestResponse(response))
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
+                    .sorItemId(entity.getSorItemId())
                     .build()
             );
         }

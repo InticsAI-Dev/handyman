@@ -41,7 +41,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         List<LlmJsonQueryOutputTable> llmJsonQueryOutputTables = new ArrayList<>();
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
         String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-        String loggerInput = " Root pipeline Id " + input.getRootPipelineId() + " batch Id " + input.getBatchId() + " Origin Id " + input.getOriginId() + " paper No " + input.getPaperNo() + " Container Id " + input.getSorContainerId();
+        String loggerInput = " Root pipeline Id " + input.getRootPipelineId() + " batch Id " + input.getBatchId() + " Origin Id " + input.getOriginId() + " paper No " + input.getPaperNo() + " Container Id " + input.getSorContainerId() ;
 
         log.debug(marker, "Llm json parser action started for {} ", loggerInput);
         try {
@@ -65,7 +65,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
                     parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
                     log.info("Total parsed responses before encryption for {} is {} ", loggerInput, innerParsedResponses.size());
-                    List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
+                    List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem, input);
                     log.info("Total parsed responses after encryption for {} is {} ", loggerInput, parsedResponses.size());
                     for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
                         LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
@@ -74,7 +74,11 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .createdUserId(input.getTenantId())
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .lastUpdatedUserId(input.getTenantId())
-                                .sorItemName(parsedResponse.getSorItemName())
+                                .sorItemName(
+                                        (input.getSorItemName() != null && !input.getSorItemName().isEmpty())
+                                                ? input.getSorItemName()
+                                                : parsedResponse.getSorItemName()
+                                )
                                 .answer(parsedResponse.getAnswer())
                                 .boundingBox(boundingBox)
                                 .paperNo(input.getPaperNo())
@@ -88,6 +92,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .imageHeight(input.getImageHeight())
                                 .imageWidth(input.getImageWidth())
                                 .sorContainerId(input.getSorContainerId())
+                                .sorItemId(input.getSorItemId())
                                 .build();
 
                         llmJsonQueryOutputTables.add(insertData);
@@ -125,7 +130,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         log.debug("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
                         double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
-                        LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
+                        LlmJsonParserKvpKrypton parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem, input);
 
                         LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
                                 .createdOn(String.valueOf(input.getCreatedOn()))
@@ -134,7 +139,9 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                                 .lastUpdatedUserId(input.getTenantId())
                                 .confidenceScore(confidenceScore)
-                                .sorItemName(parsedEncryptResponse.getKey())
+                                .sorItemName((input.getSorItemName() != null && !input.getSorItemName().isEmpty())
+                                        ? input.getSorItemName()
+                                        : parsedEncryptResponse.getKey())
                                 .answer(parsedEncryptResponse.getValue())
                                 .boundingBox(boundingBox)
                                 .paperNo(input.getPaperNo())
@@ -148,6 +155,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .imageHeight(input.getImageHeight())
                                 .imageWidth(input.getImageWidth())
                                 .sorContainerId(input.getSorContainerId())
+                                .sorItemId(input.getSorItemId())
                                 .sorItemLabel(parsedEncryptResponse.getLabel())
                                 .sectionAlias(parsedEncryptResponse.getSectionAlias())
                                 .build();
@@ -159,28 +167,29 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 }
             }else {
                 log.debug("Extracted content is null for {}. Skipping processing.", loggerInput);
-                    LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                            .createdOn(String.valueOf(input.getCreatedOn()))
-                            .createdUserId(input.getTenantId())
-                            .tenantId(input.getTenantId())
-                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .lastUpdatedUserId(input.getTenantId())
-                            .boundingBox("{}")
-                            .paperNo(input.getPaperNo())
-                            .originId(input.getOriginId())
-                            .groupId(input.getGroupId())
-                            .rootPipelineId(input.getRootPipelineId())
-                            .answer("")
-                            .batchId(input.getBatchId())
-                            .modelRegistry(input.getModelRegistry())
-                            .extractedImageUnit(input.getExtractedImageUnit())
-                            .imageDpi(input.getImageDpi())
-                            .imageHeight(input.getImageHeight())
-                            .imageWidth(input.getImageWidth())
-                            .sorContainerId(input.getSorContainerId())
-                            .build();
+                LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
+                        .createdOn(String.valueOf(input.getCreatedOn()))
+                        .createdUserId(input.getTenantId())
+                        .tenantId(input.getTenantId())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                        .lastUpdatedUserId(input.getTenantId())
+                        .boundingBox("{}")
+                        .paperNo(input.getPaperNo())
+                        .originId(input.getOriginId())
+                        .groupId(input.getGroupId())
+                        .rootPipelineId(input.getRootPipelineId())
+                        .answer("")
+                        .batchId(input.getBatchId())
+                        .modelRegistry(input.getModelRegistry())
+                        .extractedImageUnit(input.getExtractedImageUnit())
+                        .imageDpi(input.getImageDpi())
+                        .imageHeight(input.getImageHeight())
+                        .imageWidth(input.getImageWidth())
+                        .sorContainerId(input.getSorContainerId())
+                        .sorItemId(input.getSorItemId())
+                        .build();
 
-                    llmJsonQueryOutputTables.add(insertData);
+                llmJsonQueryOutputTables.add(insertData);
 
             }
 
@@ -208,7 +217,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
     public List<LlmJsonParsedResponse> encryptJsonAnswers(ActionExecutionAudit action,
                                                           List<LlmJsonParsedResponse> responses,
-                                                          List<LlmJsonQueryInputTableSorMeta> metaList, InticsIntegrity inticsIntegrity, String encryptData
+                                                          List<LlmJsonQueryInputTableSorMeta> metaList, InticsIntegrity inticsIntegrity, String encryptData, LlmJsonQueryInputTable input
     ) throws Exception {
 
         // Create a map of sorItemName to encryption policy
@@ -221,16 +230,14 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         return responses.stream().map(response -> {
             try {
                 LlmJsonQueryInputTableSorMeta meta = metaMap.get(response.getSorItemName());
+                if (meta == null && input.getSorItemName() != null && !input.getSorItemName().isEmpty()) {
+                    meta = metaMap.get(input.getSorItemName());
+                }
                 if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
 
                     if (Objects.equals(encryptData, "true")) {
-                        if (Objects.equals(meta.getIsEncrypted().toString(), "true")) {
-                            response.setAnswer(trimTo255Characters(response.getAnswer(), action));
-                            response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), "AES256", meta.getSorItemName()));
-                        } else {
-                            response.setAnswer(trimTo255Characters(response.getAnswer(), action));
-                            response.setAnswer(response.getAnswer());
-                        }
+                        response.setAnswer(trimTo255Characters(response.getAnswer(), action));
+                        response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), "AES256", meta.getSorItemName()));
                     } else {
                         response.setAnswer(response.getAnswer());
                     }
@@ -249,7 +256,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             LlmJsonParserKvpKrypton response,
             List<LlmJsonQueryInputTableSorMeta> metaList,
             InticsIntegrity inticsIntegrity,
-            String encryptData
+            String encryptData,
+            LlmJsonQueryInputTable input
     ) throws Exception {
 
         // Create a map of sorItemName to encryption metadata
@@ -260,6 +268,9 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
         // Check if response key exists in the metadata map
         LlmJsonQueryInputTableSorMeta meta = metaMap.get(response.getKey());
+        if (meta == null && input.getSorItemName() != null && !input.getSorItemName().isEmpty()) {
+            meta = metaMap.get(input.getSorItemName());
+        }
 
         if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
             if (Objects.equals(encryptData, "true")) {

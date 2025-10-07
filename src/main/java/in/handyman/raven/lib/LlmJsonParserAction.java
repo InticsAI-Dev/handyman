@@ -46,11 +46,15 @@ public class LlmJsonParserAction implements IActionExecution {
     public static final String LLM_JSON_PARSER_CONSUMER_API_COUNT = "llm.json.parser.consumer.API.count";
 
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(    ?::timestamp,?,?,?,?,?," +
-            "    ?,?,?::jsonb,?,?,?,?,?,?," +
-            "    ?,?,?,?,?,?,?)";
 
-    public static final String INSERT_COLUMNS_UPDATED = "created_on, tenant_id, created_user_id, last_updated_on, last_updated_user_id,confidence, sor_item_name, answer, bbox, paper_no,origin_id, group_id, root_pipeline_id, batch_id, model_registry, extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label,section_alias";
+    public static final String INSERT_INTO_VALUES_UPDATED =
+            "VALUES(?::timestamp,?,?,?,?,?, ?,?,?::jsonb,?,?,?,?,?, ?,?,?,?,?,?,?,?,?)";
+
+    public static final String INSERT_COLUMNS_UPDATED =
+            "created_on, tenant_id, created_user_id, last_updated_on, last_updated_user_id, confidence, " +
+                    "sor_item_name, answer, bbox, paper_no, origin_id, group_id, root_pipeline_id, batch_id, " +
+                    "model_registry, extracted_image_unit, image_dpi, image_height, image_width, " +
+                    "sor_container_id, sor_item_label, section_alias, sor_item_id";
 
 
     public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,
