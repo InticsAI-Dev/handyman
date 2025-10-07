@@ -3,6 +3,7 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -51,6 +52,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             log.debug(marker, "Llm json parser action for {} with query {} has been started ", loggerInput, selectQuery);
 
             String boundingBox = "";
+            String modifiedBoundingBox;
             String extractedContent = input.getResponse();
             String jsonResponse;
             if (extractedContent != null) {
@@ -125,7 +127,12 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                         boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
                         log.debug("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
                         boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
-
+                        boolean isModifierEnable = Objects.equals(action.getContext().get("sor.transaction.bbox.modifier.activator"), "true");
+                        modifiedBoundingBox = (isBboxEnabled && isModifierEnable)
+                                ? Optional.ofNullable(contractedBoundingBox(boundingBox, input.getImageWidth(), input.getImageHeight()))
+                                .filter(b -> !b.isEmpty())
+                                .orElse("{}")
+                                : boundingBox;
                         boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
                         log.debug("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
 
@@ -143,7 +150,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                         ? input.getSorItemName()
                                         : parsedEncryptResponse.getKey())
                                 .answer(parsedEncryptResponse.getValue())
-                                .boundingBox(boundingBox)
+                                .boundingBox(modifiedBoundingBox)
                                 .paperNo(input.getPaperNo())
                                 .originId(input.getOriginId())
                                 .groupId(input.getGroupId())
@@ -158,6 +165,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                                 .sorItemId(input.getSorItemId())
                                 .sorItemLabel(parsedEncryptResponse.getLabel())
                                 .sectionAlias(parsedEncryptResponse.getSectionAlias())
+                                .bBoxAsIs(boundingBox)
                                 .build();
 
                         llmJsonQueryOutputTables.add(insertData);
@@ -202,6 +210,39 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
         }
         return llmJsonQueryOutputTables;
+    }
+
+    public String contractedBoundingBox(String boundingBox, Long width, Long height) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(boundingBox);
+
+            // Extract original coordinates
+            int x1 = node.path("topLeftX").asInt();
+            int y1 = node.path("topLeftY").asInt();
+            int x2 = node.path("bottomRightX").asInt();
+            int y2 = node.path("bottomRightY").asInt();
+
+            // Apply scaling transformation (assuming input bbox in 1000x1000 space)
+            x1 = Math.round((x1 / 1000.0f) * width);
+            y1 = Math.round((y1 / 1000.0f) * height);
+            x2 = Math.round((x2 / 1000.0f) * width);
+            y2 = Math.round((y2 / 1000.0f) * height);
+
+            // Build updated JSON
+            ObjectNode updatedNode = mapper.createObjectNode();
+            updatedNode.put("topLeftX", x1);
+            updatedNode.put("topLeftY", y1);
+            updatedNode.put("bottomRightX", x2);
+            updatedNode.put("bottomRightY", y2);
+            log.debug("Extracted positions are calculated "+updatedNode);
+            // Return as a JSON string
+            return mapper.writeValueAsString(updatedNode);
+        } catch (Exception e) {
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action ", handymanException, action);
+            return "{}";
+        }
     }
 
     public String getDecryptedInputJson(InticsIntegrity encryption, String extractedContent, String encryptOutputSorItem) {

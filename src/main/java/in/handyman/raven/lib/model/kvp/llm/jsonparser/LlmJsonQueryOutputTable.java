@@ -40,6 +40,7 @@ public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
     private Long sorContainerId;
     private String sorItemLabel;
     private String sectionAlias;
+    private String bBoxAsIs;
 
     @Override
     public List<Object> getRowData() {
@@ -50,7 +51,7 @@ public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
                 this.groupId, this.rootPipelineId, this.batchId,
                 this.modelRegistry, this.extractedImageUnit,
                 this.imageDpi, this.imageHeight, this.imageWidth,
-                this.sorContainerId, this.sorItemLabel, this.sectionAlias, this.sorItemId).collect(Collectors.toList());
+                this.sorContainerId, this.sorItemLabel, this.sectionAlias, this.sorItemId, this.bBoxAsIs).collect(Collectors.toList());
     }
 
     @Override
