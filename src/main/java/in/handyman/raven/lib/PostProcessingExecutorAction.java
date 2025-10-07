@@ -22,7 +22,9 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -67,7 +69,20 @@ public class PostProcessingExecutorAction implements IActionExecution {
         jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
 
         log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
+
+        Map<String, Map<String, String>> originalBboxByDocAndValue = new HashMap<>();
+        for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
+            String docId = input.getDocumentId();
+            if (docId != null) {
+                originalBboxByDocAndValue.computeIfAbsent(docId, k -> new HashMap<>())
+                        .put(input.getExtractedValue(), input.getBbox());
+            }
+        }
+
         postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
+
+        updateBboxAfterValidation(originalBboxByDocAndValue, postProcessingExecutorInputs);
+
         log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
 
         postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
@@ -76,6 +91,22 @@ public class PostProcessingExecutorAction implements IActionExecution {
         log.info(aMarker, "Started batch insert into {}", outputTable);
         jdbi.useHandle(handle -> executeBatchInsert(handle, postProcessingExecutorInputs));
         log.info(aMarker, "Batch insert completed into {}", outputTable);
+    }
+
+    private void updateBboxAfterValidation(Map<String, Map<String, String>> originalBboxByDocAndValue, List<PostProcessingExecutorInput> inputs) {
+        for (PostProcessingExecutorInput input : inputs) {
+            String docId = input.getDocumentId();
+            if (docId != null && originalBboxByDocAndValue.containsKey(docId)) {
+                String newValue = input.getExtractedValue();
+                Map<String, String> docBboxMap = originalBboxByDocAndValue.get(docId);
+                if (docBboxMap.containsKey(newValue)) {
+                    String originalBbox = docBboxMap.get(newValue);
+                    if (originalBbox != null && !originalBbox.trim().isEmpty()) {
+                        input.setBbox(originalBbox);
+                    }
+                }
+            }
+        }
     }
 
     private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
