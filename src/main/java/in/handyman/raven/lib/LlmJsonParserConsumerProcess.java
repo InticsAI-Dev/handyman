@@ -213,34 +213,37 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
     }
 
     public String contractedBoundingBox(String boundingBox, Long width, Long height) {
+        if (width == null || height == null) {
+            log.warn("Width or height is null for boundingBox: {}. Returning original bbox.", boundingBox);
+            return boundingBox != null ? boundingBox : "{}";
+        }
+
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode node = mapper.readTree(boundingBox);
 
-            // Extract original coordinates
             int x1 = node.path("topLeftX").asInt();
             int y1 = node.path("topLeftY").asInt();
             int x2 = node.path("bottomRightX").asInt();
             int y2 = node.path("bottomRightY").asInt();
 
-            // Apply scaling transformation (assuming input bbox in 1000x1000 space)
             x1 = Math.round((x1 / 1000.0f) * width);
             y1 = Math.round((y1 / 1000.0f) * height);
             x2 = Math.round((x2 / 1000.0f) * width);
             y2 = Math.round((y2 / 1000.0f) * height);
 
-            // Build updated JSON
             ObjectNode updatedNode = mapper.createObjectNode();
             updatedNode.put("topLeftX", x1);
             updatedNode.put("topLeftY", y1);
             updatedNode.put("bottomRightX", x2);
             updatedNode.put("bottomRightY", y2);
-            log.debug("Extracted positions are calculated "+updatedNode);
-            // Return as a JSON string
+
+            log.debug("Extracted positions are calculated {}", updatedNode);
+
             return mapper.writeValueAsString(updatedNode);
         } catch (Exception e) {
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action ", handymanException, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action", handymanException, action);
             return "{}";
         }
     }
