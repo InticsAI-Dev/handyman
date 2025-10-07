@@ -12,10 +12,7 @@ import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterConsum
 import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterInput;
 import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterOutput;
 import in.handyman.raven.lib.utils.CustomBatchWithScaling;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -57,6 +54,8 @@ public class AgenticPaperFilterAction implements IActionExecution {
     private final Marker aMarker;
     private final String processBase64;
     private final int timeout;
+    @Getter
+    private final String httpClientType;
 
 
     public AgenticPaperFilterAction(final ActionExecutionAudit action, final Logger log, final Object agenticPaperFilter) {
@@ -65,6 +64,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
         this.log = log;
         this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
+        this.httpClientType = parseContextValueStr(action, "copro.http.client.type", "default");
 
 
         this.aMarker = MarkerFactory.getMarker(" AgenticPaperFilter:" + this.agenticPaperFilter.getName());
@@ -143,6 +143,11 @@ public class AgenticPaperFilterAction implements IActionExecution {
     private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
         String value = action.getContext().getOrDefault(key, defaultValue).trim();
         return value.isEmpty() ? Integer.parseInt(defaultValue) : Integer.parseInt(value);
+    }
+
+    private String parseContextValueStr(ActionExecutionAudit action, String key, String defaultValue) {
+        String value = action.getContext().getOrDefault(key, defaultValue).trim();
+        return value.isEmpty() ? defaultValue : value;
     }
 
 

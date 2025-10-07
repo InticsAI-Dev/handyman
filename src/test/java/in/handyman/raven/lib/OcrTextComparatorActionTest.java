@@ -17,14 +17,33 @@ void execute() throws Exception {
             .outputTable("macro.ocr_text_comparison_result")
             .resourceConn("intics_zio_db_conn")
             .querySet("SELECT\n" +
-                    "    now(),1, now(), 1, 1,\n" +
-                    "    vt.origin_id, vt.group_id, vt.paper_no, vt.sor_question, vt.answer,\n" +
-                    "    vt.vqa_score, vt.score, vt.weight, vt.sor_item_attribution_id, vt.sor_item_name,\n" +
-                    "    vt.document_id, vt.b_box, vt.root_pipeline_id, vt.question_id, vt.synonym_id,\n" +
-                    "    vt.model_registry, vt.category, vt.batch_id,\n" +
+                    "    now(),\n" +
+                    "    1,\n" +
+                    "    now(),\n" +
+                    "    1,\n" +
+                    "    1,\n" +
+                    "    vt.origin_id,\n" +
+                    "    vt.group_id,\n" +
+                    "    vt.paper_no,\n" +
+                    "    vt.sor_question,\n" +
+                    "    vt.answer,\n" +
+                    "    vt.vqa_score,\n" +
+                    "    vt.score,\n" +
+                    "    vt.weight,\n" +
+                    "    vt.sor_item_attribution_id,\n" +
+                    "    vt.sor_item_name,\n" +
+                    "    vt.document_id,\n" +
+                    "    vt.b_box,\n" +
+                    "    vt.root_pipeline_id,\n" +
+                    "    vt.question_id,\n" +
+                    "    vt.synonym_id,\n" +
+                    "    vt.model_registry,\n" +
+                    "    vt.category,\n" +
+                    "    vt.batch_id,\n" +
                     "    si.is_ocr_field_comparable,\n" +
-                    "    dsoa.extracted_text,      \n" +
-                    "    si.allowed_adapter\n" +
+                    "    dsoa.extracted_text,\n" +
+                    "    si.allowed_adapter,\n" +
+                    "    ep.encryption_policy\n" +
                     "FROM sor_validation.sor_validation_payload_queue_archive sqv\n" +
                     "JOIN sor_transaction.vqa_transaction vt\n" +
                     "    ON vt.origin_id = sqv.origin_id\n" +
@@ -39,14 +58,15 @@ void execute() throws Exception {
                     "    ON si.sor_container_id = sc.sor_container_id\n" +
                     "   AND si.tenant_id = sc.tenant_id\n" +
                     "   AND si.sor_item_name = vt.sor_item_name\n" +
-                    "WHERE vt.group_id =203\n" +
+                    "JOIN sor_meta.encryption_policies ep\n" +
+                    "    ON si.encryption_policy_id = ep.encryption_policy_id\n" +
+                    "WHERE vt.group_id = '79'\n" +
                     "  AND vt.tenant_id = 1\n" +
-                    "  AND sqv.batch_id = 'BATCH-203_0'\n" +
+                    "  AND sqv.batch_id = 'BATCH-79_0'\n" +
                     "  AND sqv.status = 'COMPLETED'\n" +
                     "  AND sc.document_type = 'MEDICAL_GBD'\n" +
                     "  AND sc.status = 'ACTIVE'\n" +
-                    "  and vt.origin_id ='ORIGIN-2274'\n" +
-                    "  AND si.status = 'ACTIVE';\n")
+                    "  AND si.status = 'ACTIVE';")
             .build();
 
     final ActionExecutionAudit action = ActionExecutionAudit.builder().build();

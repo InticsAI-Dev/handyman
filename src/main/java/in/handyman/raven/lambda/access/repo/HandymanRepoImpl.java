@@ -3,6 +3,7 @@ package in.handyman.raven.lambda.access.repo;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
+import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.ConfigEncryptionUtils;
@@ -10,7 +11,7 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.DoaConstant;
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
-import in.handyman.raven.lib.model.agentic.paper.filter.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -53,10 +54,10 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
     private static final String SQL_INSERT_COPRO_AUDIT = "INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT + " (" +
             "origin_id, group_id, attempt, tenant_id, process_id, file_path, paper_no, message, status, stage, " +
-            "created_on, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint" +
+            "created_on, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, copro_service_id" +
             ") VALUES (" +
             ":originId, :groupId, :attempt, :tenantId, :processId, :filePath, :paperNo, :message, :status, :stage, " +
-            ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint" +
+            ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint, :coproServiceId" +
             ")";
 
     static {
@@ -67,15 +68,11 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
         if (legacyResourceConnection.equals(AZURE)) {
 
-            String azureTenantId = PropertyHandler.get(AZURE_TENANT_ID);
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
-            String azureClientSecret = PropertyHandler.get(AZURE_CLIENT_SECRET);
             String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
-            String azureTokenScope = PropertyHandler.get(AZURE_TOKEN_SCOPE);
-            String azureUserName = PropertyHandler.get(CONFIG_USER);
+            log.debug("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
 
-            AzureJdbiConnection connection = new AzureJdbiConnection(azureTenantId, azureClientId, azureClientSecret, azureDatabaseUrl, azureTokenScope, azureUserName);
-            JDBI = connection.getAzureJdbiConnection();
+            JDBI=HikariJdbiProvider.getJdbi();
             JDBI.installPlugin(new SqlObjectPlugin());
             try (var ignored = JDBI.open()) {
                 log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);

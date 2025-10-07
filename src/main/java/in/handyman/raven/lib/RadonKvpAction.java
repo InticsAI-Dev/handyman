@@ -14,6 +14,7 @@ import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpConsumerProce
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.utils.CustomBatchWithScaling;
+import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -63,6 +64,8 @@ public class RadonKvpAction implements IActionExecution {
     private final String radonKvpUrl;
     private final String insertQuery;
     private final String processBase64;
+    @Getter
+    private final String httpClientType;
 
     public RadonKvpAction(final ActionExecutionAudit action, final Logger log, final Object radonKvp) {
         this.action = action;
@@ -78,6 +81,7 @@ public class RadonKvpAction implements IActionExecution {
         this.radonKvpUrl = this.radonKvp.getEndpoint();
         this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
         this.insertQuery = INSERT_INTO + " " + targetTableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
+        this.httpClientType = parseContextValueStr(action, "copro.http.client.type", "default");
 
     }
 
@@ -93,6 +97,11 @@ public class RadonKvpAction implements IActionExecution {
             log.debug("Context key '{}' found with value: '{}'. Parsed as integer: {}", key, value, result);
         }
         return result;
+    }
+
+    private String parseContextValueStr(ActionExecutionAudit action, String key, String defaultValue) {
+        String value = action.getContext().getOrDefault(key, defaultValue).trim();
+        return value.isEmpty() ? defaultValue : value;
     }
 
     @Override
