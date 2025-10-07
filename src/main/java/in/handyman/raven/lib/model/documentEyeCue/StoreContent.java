@@ -159,6 +159,10 @@ public class StoreContent {
         String namePart = (lastDot >= 0) ? baseFileName.substring(0, lastDot) : baseFileName;
         String extPart = (lastDot >= 0) ? baseFileName.substring(lastDot) : "";
 
+        if (extPart.isBlank() || extPart.equals(".")) {
+            extPart = ".pdf";
+        }
+
         Matcher m = UPDATED_SUFFIX_PATTERN.matcher(namePart);
         if (m.find()) {
             String numberGroup = m.group(1);
