@@ -34,5 +34,6 @@ public class OcrTextComparatorInput {
     private String extractedText;
     private String encryptionPolicy;
     private String allowedAdapter;
+    private Boolean isEncrypted;
 
 }
