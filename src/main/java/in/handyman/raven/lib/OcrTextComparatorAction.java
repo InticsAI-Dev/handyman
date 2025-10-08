@@ -147,7 +147,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                         log.info(aMarker, "Decrypting extracted_text with AES256 and answer with policy for originId={}, sorItemName={}",
                                 originId, sorItemName);
 
-                        answer = encryption.decrypt(answer, AES_256, sorItemName);
+                        answer = input.getIsEncrypted() ? encryption.decrypt(answer, AES_256, sorItemName) : answer;
                         answer = answer != null ? answer : "";
                         log.debug(aMarker, "Decrypted answer and extracted_text for originId={}, sorItemName={}", originId, sorItemName);
                     }
