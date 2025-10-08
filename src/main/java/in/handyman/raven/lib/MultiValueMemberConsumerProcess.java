@@ -98,25 +98,42 @@ public class MultiValueMemberConsumerProcess {
         return finalOutput;
     }
 
-    public static String evaluateMultivaluePresenceAndUniqueness(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, Logger log, Marker marker
-    ) {
+    public static String evaluateMultivaluePresenceAndUniqueness(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, Logger log, Marker marker) {
         Map<String, Set<String>> valuesPerSorItem = new HashMap<>();
         Set<String> presentSorItems = new HashSet<>();
 
         List<extractedSorItemList> multiValueMember = inputRows.getSorItemList();
+
+        List<String> firstNames = new ArrayList<>();
+        List<String> lastNames = new ArrayList<>();
+
+        String documentType = "";
         for (extractedSorItemList row : multiValueMember) {
             String sorItemName = row.getSorItemName();
             String predictedValue = row.getPredictedValue();
+            documentType = row.getDocumentType();
 
             if (sorItemName != null && predictedValue != null && targetSorItems.contains(sorItemName)) {
                 presentSorItems.add(sorItemName);
-                Set<String> values = valuesPerSorItem.computeIfAbsent(sorItemName, k -> new HashSet<>());
 
-                Arrays.stream(predictedValue.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .map(String::toLowerCase)
-                        .forEach(values::add);
+                if ("member_first_name".equalsIgnoreCase(sorItemName)) {
+                    Arrays.stream(predictedValue.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .forEach(firstNames::add);
+                } else if ("member_last_name".equalsIgnoreCase(sorItemName)) {
+                    Arrays.stream(predictedValue.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .forEach(lastNames::add);
+                } else {
+                    Set<String> values = valuesPerSorItem.computeIfAbsent(sorItemName, k -> new HashSet<>());
+                    Arrays.stream(predictedValue.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .map(String::toLowerCase)
+                            .forEach(values::add);
+                }
             }
         }
 
@@ -125,32 +142,54 @@ public class MultiValueMemberConsumerProcess {
             return "N";
         }
 
-        // Commercial: requires all 3 (ID, Name, DOB) with more than 1 unique value each
-        if (targetSorItems.containsAll(Set.of("member_id", "member_last_name", "member_date_of_birth"))) {
-            boolean allHaveMultiple = true;
-            for (String key : List.of("member_id", "member_last_name", "member_date_of_birth")) {
-                int count = valuesPerSorItem.getOrDefault(key, Collections.emptySet()).size();
-                log.info(marker, "Case 1 - SOR item '{}' has {} unique values", key, count);
-                if (count <= 1) {
-                    allHaveMultiple = false;
-                    break;
-                }
+        Set<String> canonicalFullNames = new HashSet<>();
+        int maxNames = Math.max(firstNames.size(), lastNames.size());
+
+        for (int i = 0; i < maxNames; i++) {
+            String fn = (i < firstNames.size()) ? firstNames.get(i).toLowerCase().trim() : "";
+            String ln = (i < lastNames.size()) ? lastNames.get(i).toLowerCase().trim() : "";
+
+            List<String> nameParts = new ArrayList<>();
+            if (!fn.isEmpty()) nameParts.add(fn);
+            if (!ln.isEmpty()) nameParts.add(ln);
+
+            nameParts.sort(String::compareTo);
+
+            String canonicalName = String.join(" ", nameParts);
+            if (!canonicalName.isEmpty()) {
+                canonicalFullNames.add(canonicalName);
             }
+        }
+
+        int canonicalFullNameCount = canonicalFullNames.size();
+
+        int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
+
+        if (lastNameCount == 1) {
+            log.info(marker, "Only one unique last name found - setting multiple_member_indicator to 'N'");
+            return "N";
+        }
+
+        if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
+            int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
+            int dobCount = valuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptySet()).size();
+
+            log.info(marker, "COMMERCIAL - member_id count: {}, canonical full name count: {}, dob count: {}", memberIdCount, canonicalFullNameCount, dobCount);
+
+            boolean allHaveMultiple = memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1;
+
             return allHaveMultiple ? "Y" : "N";
+
+        } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
+            int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
+
+            log.info(marker, "GBD - member_id count: {}, canonical full name count: {}", memberIdCount, canonicalFullNameCount);
+
+            return (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
+        } else {
+            log.info(marker, "Unknown document type '{}'. SOR items: {}", documentType, targetSorItems);
+            return "N";
         }
-
-        // GBD: requires at least one of Member ID or Member Name to have >1 unique value (DOB is ignored)
-        if (targetSorItems.contains("member_id") || targetSorItems.contains("member_last_name")) {
-            int idCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
-            int nameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
-
-            log.info(marker, "Case 2 - Member ID count: {}, Member Name count: {}", idCount, nameCount);
-
-            return (idCount > 1 || nameCount > 1) ? "Y" : "N";
-        }
-
-        log.info(marker, "Unknown plan type. SOR items: {}", targetSorItems);
-        return "N";
     }
 
     private MultiValueMemberMapperOutputTable outputTableCreation(

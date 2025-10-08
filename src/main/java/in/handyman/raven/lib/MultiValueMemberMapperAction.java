@@ -167,6 +167,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                                 .modelRegistry(row.getModelRegistry())
                                 .rootPipelineId(row.getRootPipelineId())
                                 .batchId(row.getBatchId())
+                                .documentType(row.getDocumentType())
                                 .build();
 
                         return item;
