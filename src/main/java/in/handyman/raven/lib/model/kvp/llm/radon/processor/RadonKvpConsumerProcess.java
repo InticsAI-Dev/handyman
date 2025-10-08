@@ -221,7 +221,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(RadonQueryOutputTable.builder().processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).request(encryptRequestResponse(jsonInsertRequestEncrypted)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(RadonQueryOutputTable.builder().sorContainerId(entity.getSorContainerId()).processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).request(encryptRequestResponse(jsonInsertRequestEncrypted)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -273,6 +273,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             .request(jsonInsertRequestEncrypted)
                             .response(encryptRequestResponse(errorBody))
                             .endpoint(String.valueOf(endpoint))
+                            .sorContainerId(entity.getSorContainerId())
                             .build());
                     HandymanException handymanException = new HandymanException("Unsuccessful response code : " + safeResponse.code() + " message : " + errorBody);
                     HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -330,6 +331,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(entity.getTenantId())
                 .category(entity.getCategory())
+                .sorContainerId(entity.getSorContainerId())
                 .build());
     }
 

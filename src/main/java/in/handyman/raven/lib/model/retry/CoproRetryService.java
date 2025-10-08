@@ -4,6 +4,7 @@ import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
 import okhttp3.OkHttpClient;
@@ -59,16 +60,19 @@ public class CoproRetryService {
 
                 if (response.isSuccessful() && response.body() != null) {
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
+                    retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // ✅ return without auto-closing
                 }
 
                 if (!isRetryRequired(response)) {
+                    retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // non-retryable → exit early
                 }
 
                 logRetryAttempt(attempt, response);
+                retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                 insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                 safeClose(response); // free resources before retry
 
@@ -199,6 +203,7 @@ public class CoproRetryService {
                                    IOException e,
                                    ActionExecutionAudit action) {
         log.error("Attempt {}: IOException - {}", attempt, ExceptionUtil.toString(e));
+        retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
         insertAudit(attempt, retryAudit, requestBody, null, e, action);
         HandymanException.insertException("Error during copro API call",
                 new HandymanException(e), action);
