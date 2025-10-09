@@ -80,9 +80,22 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .writeTimeout(timeOut, TimeUnit.MINUTES)
                 .readTimeout(timeOut, TimeUnit.MINUTES);
 
+        Long httpKeepAliveDuration = aAction.getHttpKeepAliveDuration();
+        log.info(aMarker, "HTTP client type configured is {}", httpClientType);
         if ("HTTP/1.1".equalsIgnoreCase(httpClientType)) {
             log.info(aMarker, "HTTP client protocol explicitly set to HTTP/1.1");
             builder.protocols(List.of(Protocol.HTTP_1_1));
+            int http1maxIdleConnections = aAction.getHttp1maxIdleConnections();
+            log.info(aMarker, "HTTP/1.1 max idle connections set to {}", http1maxIdleConnections);
+            log.info(aMarker, "HTTP keep alive duration set to {} minutes", httpKeepAliveDuration);
+            builder.connectionPool(new ConnectionPool(http1maxIdleConnections, httpKeepAliveDuration, TimeUnit.MINUTES));
+        }
+        else {
+            int http2maxIdleConnections = aAction.getHttp2maxIdleConnections();
+            builder.connectionPool(new ConnectionPool(http2maxIdleConnections, httpKeepAliveDuration, TimeUnit.MINUTES));
+            log.info(aMarker, "HTTP client protocol set to default (HTTP/2 and HTTP/1.1)");
+            log.info(aMarker, "Max idle connections set to {} for default", http2maxIdleConnections);
+            log.info(aMarker, "HTTP keep alive duration set to {} minutes for default", httpKeepAliveDuration);
         }
 
         this.httpclient = builder.build();

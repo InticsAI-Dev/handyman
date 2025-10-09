@@ -57,6 +57,15 @@ public class AgenticPaperFilterAction implements IActionExecution {
     @Getter
     private final String httpClientType;
 
+    @Getter
+    private final int http1maxIdleConnections;
+
+    @Getter
+    private final int http2maxIdleConnections;
+
+    @Getter
+    private final Long httpKeepAliveDuration;
+
 
     public AgenticPaperFilterAction(final ActionExecutionAudit action, final Logger log, final Object agenticPaperFilter) {
         this.agenticPaperFilter = (AgenticPaperFilter) agenticPaperFilter;
@@ -65,6 +74,9 @@ public class AgenticPaperFilterAction implements IActionExecution {
         this.processBase64 = action.getContext().get(COPRO_FILE_PROCESS_FORMAT);
         this.timeout = parseContextValue(action, "copro.client.socket.timeout", DEFAULT_SOCKET_TIMEOUT);
         this.httpClientType = parseContextValueStr(action, "copro.http.client.type", "default");
+        this.http1maxIdleConnections = Integer.parseInt(action.getContext().getOrDefault("copro.http1.client.max.idle.connections", "100"));
+        this.http2maxIdleConnections = Integer.parseInt(action.getContext().getOrDefault("copro.http2.client.max.idle.connections", "10"));
+        this.httpKeepAliveDuration = Long.valueOf(action.getContext().getOrDefault( "copro.http.client.keep.alive", "5"));
 
 
         this.aMarker = MarkerFactory.getMarker(" AgenticPaperFilter:" + this.agenticPaperFilter.getName());

@@ -67,6 +67,15 @@ public class RadonKvpAction implements IActionExecution {
     @Getter
     private final String httpClientType;
 
+    @Getter
+    private final int http1maxIdleConnections;
+
+    @Getter
+    private final int http2maxIdleConnections;
+
+    @Getter
+    private final Long httpKeepAliveDuration;
+
     public RadonKvpAction(final ActionExecutionAudit action, final Logger log, final Object radonKvp) {
         this.action = action;
         this.log = log;
@@ -82,7 +91,9 @@ public class RadonKvpAction implements IActionExecution {
         this.processBase64 = action.getContext().get("pipeline.copro.api.process.file.format");
         this.insertQuery = INSERT_INTO + " " + targetTableName + "(" + COLUMN_LIST + ") " + " " + VAL_STRING_LIST;
         this.httpClientType = parseContextValueStr(action, "copro.http.client.type", "default");
-
+        this.http1maxIdleConnections = Integer.parseInt(action.getContext().getOrDefault("copro.http1.client.max.idle.connections", "100"));
+        this.http2maxIdleConnections = Integer.parseInt(action.getContext().getOrDefault("copro.http2.client.max.idle.connections", "10"));
+        this.httpKeepAliveDuration = Long.valueOf(action.getContext().getOrDefault( "copro.http.client.keep.alive", "5"));
     }
 
     private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
