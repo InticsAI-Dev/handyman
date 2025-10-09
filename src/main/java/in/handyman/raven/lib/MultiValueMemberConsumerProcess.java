@@ -82,7 +82,7 @@ public class MultiValueMemberConsumerProcess {
                         log.info(marker, "[Thread: {}] START processing for originId: {}", threadName, originId);
 
                         MultipleMemberSummary result = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log, marker);
-                        MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.output);
+                        MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.getOutput());
                         finalOutput.add(outputRow);
 
                         jdbi.useTransaction(handle -> {
