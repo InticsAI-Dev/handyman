@@ -81,12 +81,12 @@ public class MultiValueMemberConsumerProcess {
                     try {
                         log.info(marker, "[Thread: {}] START processing for originId: {}", threadName, originId);
 
-                        MultipleMemberSummary result = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log, marker);
+                        MultipleMemberSummary result = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log);
                         MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.getOutput());
                         finalOutput.add(outputRow);
 
                         jdbi.useTransaction(handle -> {
-                                    executeMMIAuditInsert(handle, result, originId, inputTable);
+                                    executeMMIAuditInsert(handle, result, originId);
                             log.info("Executed query from by establishing handle for originId: {}", originId);
                         });
 
@@ -127,8 +127,7 @@ public class MultiValueMemberConsumerProcess {
     public static MultipleMemberSummary evaluateMultivaluePresenceAndUniqueness(
             MultiValueMemberMapperTransformInputTable inputRows,
             Set<String> targetSorItems,
-            Logger log,
-            Marker marker) {
+            Logger log) {
 
         log.info("Starting evaluation for originId: {}", inputRows.getOriginId());
 
@@ -337,22 +336,22 @@ public class MultiValueMemberConsumerProcess {
                 .build();
     }
 
-    private void executeMMIAuditInsert(Handle handle, MultipleMemberSummary rows, String originId, MultiValueMemberMapperTransformInputTable inputTable) {
+    private void executeMMIAuditInsert(Handle handle, MultipleMemberSummary rows, String originId) {
 
         String insertQuery = INSERT_INTO + TABLE_NAME + " ( " + INSERT_COLUMNS + " ) " + INSERT_VALUES;
 
         try (PreparedBatch batch = handle.prepareBatch(insertQuery)) {
             for (ValueTrace vt : rows.getValueTraces()) {
-                batch.bind(0, inputTable.getSorItemList().get(0).getRootPipelineId())
+                batch.bind(0, action.getRootPipelineId())
                         .bind(1, LocalDateTime.now())
                         .bind(2, LocalDateTime.now())
-                        .bind(3, action.getContext().get("tenant_id"))
-                        .bind(4, action.getContext().get("tenant_id"))
+                        .bind(3, Long.parseLong(action.getContext().get("tenant_id")))
+                        .bind(4, Long.parseLong(action.getContext().get("tenant_id")))
                         .bind(5, action.getContext().get("batch_id"))
                         .bind(6, originId)
-                        .bind(7, action.getContext().get("group_id"))
+                        .bind(7, Long.parseLong(action.getContext().get("group_id")))
                         .bind(8, action.getContext().get("document_type"))
-                        .bind(9, action.getContext().get("tenant_id"))
+                        .bind(9, Long.parseLong(action.getContext().get("tenant_id")))
                         .bind(10, rows.getPageNo())
                         .bind(11, vt.getKey())
                         .bind(12, rows.getOutput())
