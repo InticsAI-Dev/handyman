@@ -125,7 +125,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTable = extractedValues(groupedByOriginId, pipelineEndToEndEncryptionActivator, encryption);
 
-      multiValueMemberMapperOutputTables = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId, consumerApiCount).doMultiMemberValidation();
+      multiValueMemberMapperOutputTables = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId, consumerApiCount, multiValueMemberMapper).doMultiMemberValidation();
 
       log.info(aMarker, "Started batch insert into {}", outputTable);
       jdbi.useHandle(handle -> executeBatchInsert(handle, multiValueMemberMapperOutputTables));
