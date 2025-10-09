@@ -32,4 +32,5 @@ public class MultiValueMemberMapperInputTable {
     private Long scoreId;
     private Long cummulativeScore;
     private Long weightScore;
+    private String documentType;
 }
