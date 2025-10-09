@@ -246,7 +246,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
                 .stage(PROCESS_NAME)
                 .batchId(entity.getBatchId())
-                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
                 .templateId(entity.getTemplateId())
                 .build();

@@ -58,7 +58,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
         LoggingInitializer.initialize();
-        
+
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -173,7 +173,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setBase64Img(base64Content);
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
-        
+
         radonKvpExtractionRequest.setBase64Img("");
         String jsonInsertRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
         String jsonInsertRequestEncrypted = encryptRequestResponse(jsonInsertRequest);
@@ -183,7 +183,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} with container Id {}", endpoint, filePath, entity.getSorContainerId());
         }
         // creating request body
- 
+
         kvpRequestBuilder(entity, parentObj, jsonInsertRequestEncrypted, jsonInputRequest, endpoint, radonKvpExtractionRequest.getRequestId());
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
