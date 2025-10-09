@@ -130,81 +130,150 @@ public class MultiValueMemberConsumerProcess {
             Logger log,
             Marker marker) {
 
+        log.info("Starting evaluation for originId: {}", inputRows.getOriginId());
+
+        List<extractedSorItemList> multiValueMember = inputRows.getSorItemList();
+
         Map<String, Set<String>> valuesPerSorItem = new HashMap<>();
         Set<String> presentSorItems = new HashSet<>();
         Set<String> pageNumbersSet = new HashSet<>();
-        List<extractedSorItemList> multiValueMember = inputRows.getSorItemList();
         List<String> firstNames = new ArrayList<>();
         List<String> lastNames = new ArrayList<>();
         String documentType = "";
 
-        // Collect values
+        // Collect values and metadata
+        documentType = collectValuesAndMetadata(multiValueMember, targetSorItems, valuesPerSorItem, presentSorItems, pageNumbersSet, firstNames, lastNames, log);
+
+        String pageNo = composePageNumbers(pageNumbersSet);
+        Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
+
+        List<ValueTrace> valueTraces = buildValueTraces(valuesPerSorItem, canonicalFullNames);
+
+        return determineOutputAndBuildSummary(inputRows, targetSorItems, valuesPerSorItem, presentSorItems, documentType, pageNo, canonicalFullNames, valueTraces, log);
+    }
+
+    private static String collectValuesAndMetadata(List<extractedSorItemList> multiValueMember,
+                                                   Set<String> targetSorItems,
+                                                   Map<String, Set<String>> valuesPerSorItem,
+                                                   Set<String> presentSorItems,
+                                                   Set<String> pageNumbersSet,
+                                                   List<String> firstNames,
+                                                   List<String> lastNames,
+                                                   Logger log) {
+        String documentType = "";
         for (extractedSorItemList row : multiValueMember) {
             String sorItemName = row.getSorItemName();
             String predictedValue = row.getPredictedValue();
-            if (documentType.isEmpty() && row.getDocumentType() != null) documentType = row.getDocumentType();
+
+            log.info("Processing sorItemName: {}", sorItemName);
+
+            if (documentType.isEmpty() && row.getDocumentType() != null) {
+                documentType = row.getDocumentType();
+            }
+
             if (sorItemName != null && predictedValue != null && targetSorItems.contains(sorItemName)) {
                 presentSorItems.add(sorItemName);
-                if (row.getPaperNo() != null) pageNumbersSet.add(row.getPaperNo().toString());
+                if (row.getPaperNo() != null) {
+                    pageNumbersSet.add(row.getPaperNo().toString());
+                }
+
                 Set<String> values = valuesPerSorItem.computeIfAbsent(sorItemName, k -> new HashSet<>());
-                Arrays.stream(predictedValue.split(",")).map(String::trim).filter(s -> !s.isEmpty()).forEach(value -> {
-                    values.add(value);
-                    if ("member_first_name".equalsIgnoreCase(sorItemName)) firstNames.add(value);
-                    if ("member_last_name".equalsIgnoreCase(sorItemName)) lastNames.add(value);
-                });
+                Arrays.stream(predictedValue.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .forEach(value -> {
+                            values.add(value);
+                            if ("member_first_name".equalsIgnoreCase(sorItemName)) {
+                                firstNames.add(value);
+                            }
+                            if ("member_last_name".equalsIgnoreCase(sorItemName)) {
+                                lastNames.add(value);
+                            }
+                        });
             }
         }
+        return documentType;
+    }
 
-        // Compose pageNo
-        String pageNo = pageNumbersSet.stream().map(Integer::valueOf).sorted().map(String::valueOf).collect(Collectors.joining(","));
+    private static String composePageNumbers(Set<String> pageNumbersSet) {
+        return pageNumbersSet.stream()
+                .map(Integer::valueOf)
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
 
-        // Canonical full name
+    private static Set<String> buildCanonicalFullNames(List<String> firstNames, List<String> lastNames) {
         Set<String> canonicalFullNames = new HashSet<>();
         int maxNames = Math.max(firstNames.size(), lastNames.size());
         for (int i = 0; i < maxNames; i++) {
             String fn = i < firstNames.size() ? firstNames.get(i).toLowerCase().trim() : "";
             String ln = i < lastNames.size() ? lastNames.get(i).toLowerCase().trim() : "";
+
             List<String> parts = new ArrayList<>();
             if (!fn.isEmpty()) parts.add(fn);
             if (!ln.isEmpty()) parts.add(ln);
             parts.sort(String::compareTo);
+
             String canonicalName = String.join(" ", parts);
-            if (!canonicalName.isEmpty()) canonicalFullNames.add(canonicalName);
+            if (!canonicalName.isEmpty()) {
+                canonicalFullNames.add(canonicalName);
+            }
         }
+        return canonicalFullNames;
+    }
 
-        // Build ValueTraces
+    private static List<ValueTrace> buildValueTraces(Map<String, Set<String>> valuesPerSorItem, Set<String> canonicalFullNames) {
         List<ValueTrace> valueTraces = new ArrayList<>();
-        if (valuesPerSorItem.containsKey("member_id"))
+        if (valuesPerSorItem.containsKey("member_id")) {
             valueTraces.add(ValueTrace.builder().key("member_id").values(String.join(",", valuesPerSorItem.get("member_id"))).build());
+        }
         valueTraces.add(ValueTrace.builder().key("member_full_name").values(String.join(",", canonicalFullNames)).build());
-        if (valuesPerSorItem.containsKey("member_date_of_birth"))
+        if (valuesPerSorItem.containsKey("member_date_of_birth")) {
             valueTraces.add(ValueTrace.builder().key("member_date_of_birth").values(String.join(",", valuesPerSorItem.get("member_date_of_birth"))).build());
+        }
+        return valueTraces;
+    }
 
-        // Logic for output and comments
+    private static MultipleMemberSummary determineOutputAndBuildSummary(MultiValueMemberMapperTransformInputTable inputRows,
+                                                                        Set<String> targetSorItems,
+                                                                        Map<String, Set<String>> valuesPerSorItem,
+                                                                        Set<String> presentSorItems,
+                                                                        String documentType,
+                                                                        String pageNo,
+                                                                        Set<String> canonicalFullNames,
+                                                                        List<ValueTrace> valueTraces,
+                                                                        Logger log) {
         int canonicalFullNameCount = canonicalFullNames.size();
         int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
         int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
         int dobCount = valuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptySet()).size();
+
         String comments;
         String output;
 
         if (!presentSorItems.containsAll(targetSorItems)) {
             String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
             comments = String.format("Missing target SOR items: [%s]. Cannot confirm multiple members.", missingItems);
+            log.info(comments);
             output = "N";
         } else if (lastNameCount == 1) {
             comments = "Only one unique last name found, indicating a single member.";
+            log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
             comments = String.format("COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d, dob unique count = %d.", memberIdCount, canonicalFullNameCount, dobCount);
+            log.info(comments);
             output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
             comments += output.equals("Y") ? " All these counts are >1, indicating multiple members." : " One or more counts are <=1, indicating a single member.";
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
             comments = String.format("GBD document: member_id unique count = %d, canonical full name unique count = %d.", memberIdCount, canonicalFullNameCount);
+            log.info(comments);
             output = (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
             comments += output.equals("Y") ? " Either member_id count or canonical full name count is >1, indicating multiple members." : " Both counts are <=1, indicating a single member.";
         } else {
             comments = String.format("Unknown document type '%s'. Insufficient data to determine member multiplicity.", documentType);
+            log.info(comments);
             output = "N";
         }
 
@@ -273,13 +342,13 @@ public class MultiValueMemberConsumerProcess {
                 batch.bind(0, inputTable.getSorItemList().get(0).getRootPipelineId())
                         .bind(1, LocalDateTime.now())
                         .bind(2, LocalDateTime.now())
-                        .bind(3, inputTable.getSorItemList().get(0).getTenantId())
-                        .bind(4, inputTable.getSorItemList().get(0).getTenantId())
-                        .bind(5, inputTable.getSorItemList().get(0).getBatchId())
+                        .bind(3, action.getContext().get("tenant_id"))
+                        .bind(4, action.getContext().get("tenant_id"))
+                        .bind(5, action.getContext().get("batch_id"))
                         .bind(6, originId)
-                        .bind(7, inputTable.getSorItemList().get(0).getGroupId())
-                        .bind(8, inputTable.getSorItemList().get(0).getDocumentType())
-                        .bind(9, inputTable.getSorItemList().get(0).getTenantId())
+                        .bind(7, action.getContext().get("group_id"))
+                        .bind(8, action.getContext().get("document_type"))
+                        .bind(9, action.getContext().get("tenant_id"))
                         .bind(10, rows.getPageNo())
                         .bind(11, vt.getKey())
                         .bind(12, rows.getOutput())
