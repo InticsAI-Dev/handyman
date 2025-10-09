@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -15,6 +17,7 @@ import java.util.stream.Stream;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RadonQueryOutputTable implements CoproProcessor.Entity {
     private Timestamp createdOn;
     private Long createdUserId;
@@ -44,6 +47,10 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
     private Integer statusCode;
     private String log;
     private String detail;
+    private String modelName;
+    private UUID requestId;
+
+
 
 
     @Override
@@ -51,7 +58,7 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
         return Stream.of(this.createdOn,this.createdUserId,  this.lastUpdatedOn,this.lastUpdatedUserId,
                 this.inputFilePath, this.totalResponseJson,  this.paperNo, this.originId,
                 this.processId,this.actionId, this.process, this.groupId, this.tenantId,  this.rootPipelineId, this.batchId,
-                this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId, this.computationDetails, this.statusCode, this.log, this.detail).collect(Collectors.toList());
+                this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId, this.computationDetails, this.statusCode, this.log, this.detail, this.modelName, this.requestId).collect(Collectors.toList());
 
     }
 }

@@ -270,12 +270,30 @@ class DataExtractionActionTest {
                 .name("data extraction after copro optimization")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://localhost:8000/predict")
+                .endPoint("http://0.0.0.0:7999/predict_metrics")
                 .processId("138980184199100180")
-                .resultTable("paper_filter.agentic_paper_filter_output")
-                .querySet("SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt " +
-                        "                                     FROM paper_filter.agentic_paper_filter_input_data_audit a " +
-                        "                                     WHERE a.root_pipeline_id=8032 limit 1;")
+                .resultTable("paper_filter.agentic_paper_filter_output_audit_new")
+                .querySet(" SELECT\n" +
+                        "a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,\n" +
+                        "'/home/christopher.paulraj@zucisystems.com/Downloads/SYNT_166529664_c1_page-0001.jpg' as file_path, b.root_pipeline_id, a.template_name,\n" +
+                        "b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt\n" +
+                        "FROM info.source_of_truth a\n" +
+                        "join info.asset a2 on a.asset_id =a2.asset_id  and a.tenant_id=a2.tenant_id\n" +
+                        "LEFT JOIN sor_meta.radon_prompt_table r\n" +
+                        "ON r.tenant_id = a.tenant_id\n" +
+                        "JOIN paper_filter.agentic_paper_filter_payload_queue_archive b\n" +
+                        "ON a.origin_id = b.origin_id AND a.tenant_id = b.tenant_id\n" +
+                        "WHERE a.group_id = 195\n" +
+                        "AND a.tenant_id = 1\n" +
+                        "AND b.batch_id = 'BATCH-195_0'\n" +
+                        "AND r.process = 'AGENTIC_PAPER_FILTER'\n" +
+                        "AND r.use_case = 'PAPER_FILTER'\n" +
+                        "AND r.status ='ACTIVE'\n" +
+                        "AND r.version = '1'\n" +
+                        "AND r.prompt_type = 'DOCUMENT'\n" +
+                        "AND r.document_type = 'MEDICAL_GBD'\n" +
+                        "AND a.paper_no BETWEEN 1 AND 20\n" +
+                        "limit 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:8000/predict");
@@ -289,7 +307,7 @@ class DataExtractionActionTest {
                 Map.entry("agentic.paper.filter.consumer.API.count", "1"),
                 Map.entry("triton.request.activator", "true"),
                 Map.entry("preprocess.agentic.paper.filter.model.name", "KRYPTON"),
-                Map.entry("pipeline.copro.api.process.file.format", "FILE"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
                 Map.entry("encrypt.agentic.filter.output", "false"),
                 Map.entry("agentic.paper.filter.activator","true"),
                 Map.entry(ENCRYPT_AGENTIC_FILTER_OUTPUT, "false"),

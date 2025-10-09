@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,4 +27,7 @@ public class RadonKvpExtractionRequest {
     private Long sorContainerId;
     private String base64Img;
     private String modelName;
+    private Integer modelVersion;
+    private UUID requestId;
+
 }

@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -34,6 +36,7 @@ public class AgenticPaperFilterInput  implements CoproProcessor.Entity {
     private String uniqueName;
     private Integer uniqueId;
     private String promptType;
+    private UUID requestId;
 
 
 

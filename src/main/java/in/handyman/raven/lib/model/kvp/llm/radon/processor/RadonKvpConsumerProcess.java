@@ -165,6 +165,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
         radonKvpExtractionRequest.setSorContainerId(entity.getSorContainerId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
+        radonKvpExtractionRequest.setRequestId(UUID.randomUUID());
 
         String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
                 ? fileProcessingUtils.convertFileToBase64(filePath)
@@ -183,7 +184,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
         // creating request body
  
-        kvpRequestBuilder(entity, parentObj, jsonInsertRequestEncrypted, jsonInputRequest, endpoint);
+        kvpRequestBuilder(entity, parentObj, jsonInsertRequestEncrypted, jsonInputRequest, endpoint, radonKvpExtractionRequest.getRequestId());
 
         log.info(aMarker, "Radon kvp consumer process output parent object entities size {}", parentObj.size());
         return parentObj;
@@ -195,7 +196,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         return request;
     }
 
-    private void kvpRequestBuilder(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, String jsonInsertRequestEncrypted, String jsonInputRequest, URL endpoint) {
+    private void kvpRequestBuilder(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, String jsonInsertRequestEncrypted, String jsonInputRequest, URL endpoint, UUID requestId) {
         Long groupId = entity.getGroupId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
@@ -266,6 +267,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             .request(jsonInsertRequestEncrypted)
                             .response(encryptRequestResponse(errorBody))
                             .endpoint(String.valueOf(endpoint))
+                            .requestId(requestId)
                             .build());
                     HandymanException handymanException = new HandymanException("Unsuccessful response code : " + safeResponse.code() + " message : " + errorBody);
                     HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -274,7 +276,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 }
             }
         } catch (IOException e) {
-            handleErrorParentObject(entity, parentObj, e, jsonInsertRequestEncrypted);
+            handleErrorParentObject(entity, parentObj, e, jsonInsertRequestEncrypted, requestId);
 
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -302,7 +304,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .build();
 
     }
-    private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e,String jsonInsertRequest) {
+    private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e,String jsonInsertRequest, UUID requestId) {
         parentObj.add(RadonQueryOutputTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .paperNo(entity.getPaperNo())
@@ -323,6 +325,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .lastUpdatedUserId(entity.getTenantId())
                 .category(entity.getCategory())
+                .requestId(requestId)
                 .build());
     }
 
@@ -386,6 +389,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .computationDetails(metrics)
                     .log(modelResponse.getErrorMessage())
                     .detail(modelResponse.getDetail())
+                    .requestId(modelResponse.getRequestId())
                     .build()
             );
         }

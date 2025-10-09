@@ -13,6 +13,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AgenticPaperFilterAction;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpDataOutput;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionRequest;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
@@ -136,10 +137,10 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             String textExtractionPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
             kryptonRequestPayloadFromQuery.setBase64Img("");
             String textExtractionInsertPayloadString = mapper.writeValueAsString(kryptonRequestPayloadFromQuery);
-            String jsonRequestTritonKrypton = getTritonRequestPayload(textExtractionPayloadString);
+//            String jsonRequestTritonKrypton = getTritonRequestPayload(textExtractionPayloadString);
 
-            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequestTritonKrypton, mediaType)).build();
-            tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionInsertPayloadString, endpoint);
+            Request request = new Request.Builder().url(endpoint).post(RequestBody.create(textExtractionPayloadString, mediaType)).build();
+            tritonRequestKryptonExecutor(entity, request, parentObj, textExtractionInsertPayloadString, endpoint, kryptonRequestPayloadFromQuery.getRequestId());
         } catch (Exception e) {
             String errorMessage = "Error in preparing or sending TRITON request for paper " + entity.getPaperNo() + ": " + e.getMessage();
             log.error(aMarker, errorMessage, e);
@@ -162,11 +163,12 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         radonKvpExtractionRequest.setModelName(action.getContext().get("agentic.paper.filter.activator").equalsIgnoreCase("true") ? "KRYPTON" : entity.getModelName());
+        radonKvpExtractionRequest.setRequestId(UUID.randomUUID());
         return radonKvpExtractionRequest;
     }
 
     private void tritonRequestKryptonExecutor(AgenticPaperFilterInput entity, Request
-            request, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint) {
+            request, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint, UUID requestId) {
         Long tenantId = entity.getTenantId();
         String templateId = entity.getTemplateId();
         Long processId = entity.getProcessId();
@@ -195,29 +197,27 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 log.info(aMarker, " Protocol in use : {} ", protocol);
                 String responseBody = Objects.requireNonNull(safeResponse.body()).string();
                 if (safeResponse.isSuccessful()) {
-                    RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
-                    if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                        modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
-                            try {
-                                extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), jsonRequest, responseBody, endpoint.toString());
-                            } catch (JsonProcessingException e) {
-                                String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + " code " + safeResponse.code() + " message : " + safeResponse.message();
-                                handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName, responseBody);
-                                HandymanException handymanException = new HandymanException(errorMessage);
-                                HandymanException.insertException(errorMessage, handymanException, this.action);
-                                log.error(aMarker, errorMessage);
-                            }
-                        }));
+                    RadonKvpDataOutput modelResponse = mapper.readValue(responseBody, RadonKvpDataOutput.class);
+                    if (modelResponse!= null) {
+                        try {
+                            extractedKryptonOutputDataRequest(entity, parentObj, modelResponse, jsonRequest, responseBody, endpoint.toString());
+                        } catch (JsonProcessingException e) {
+                            String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + " code " + safeResponse.code() + " message : " + safeResponse.message();
+                            handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName, responseBody, requestId);
+                            HandymanException handymanException = new HandymanException(errorMessage);
+                            HandymanException.insertException(errorMessage, handymanException, this.action);
+                            log.error(aMarker, errorMessage);
+                        }
                     } else {
                         String errorMessage = "Successful response in consumer but output node not found for batch/group " + entity.getGroupId() + " originId: " + entity.getOriginId() + " paperNo: " + entity.getPaperNo() + " code: " + safeResponse.code() + "\n message: " + safeResponse.message();
-                        handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName, responseBody);
+                        handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName, responseBody, requestId);
                         HandymanException handymanException = new HandymanException(errorMessage);
                         HandymanException.insertException(errorMessage, handymanException, this.action);
                         log.error(aMarker, errorMessage);
                     }
                 } else {
                     String errorMessage = "Unsuccessful response in consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + " code : " + response.code() + "\n message : " + responseBody;
-                    handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName, responseBody);
+                    handleKryptonErrorResponse(entity, parentObj, jsonRequest, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName, responseBody, requestId);
                     HandymanException handymanException = new HandymanException(errorMessage);
                     HandymanException.insertException(errorMessage, handymanException, this.action);
                     log.error(aMarker, errorMessage);
@@ -225,7 +225,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             }
         } catch (Exception e) {
             String errorMessage = "Error in api call consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + "\n message : " + e.getMessage();
-            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).build());
+            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).request(encryptRequestResponse(jsonRequest)).response("Error In Response").endpoint(String.valueOf(endpoint)).requestId(requestId).build());
             log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -254,8 +254,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     private void handleKryptonErrorResponse(AgenticPaperFilterInput
                                                     entity, List<AgenticPaperFilterOutput> parentObj, String jsonRequest, URL endpoint, Long tenantId, String
-                                                    templateId, Long processId, Response response, Long rootPipelineId, String templateName, String responseBody) {
+                                                    templateId, Long processId, Response response, Long rootPipelineId, String templateName, String responseBody, UUID requestId) {
         parentObj.add(AgenticPaperFilterOutput.builder()
+                .requestId(requestId)
                 .batchId(entity.getBatchId())
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .groupId(entity.getGroupId())
@@ -275,30 +276,29 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     }
 
 
-    private void extractedKryptonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem,
-                                                   List<AgenticPaperFilterOutput> parentObj, String modelName,
-                                                   String modelVersion, String request, String response,
+    private void extractedKryptonOutputDataRequest(AgenticPaperFilterInput entity,
+                                                   List<AgenticPaperFilterOutput> parentObj, RadonKvpDataOutput modelResponse, String request, String response,
                                                    String endpoint) throws JsonProcessingException {
 
-        String cleanedJson = stringDataItem.replace("```json", "").replace("```", "").trim();
 
-        JSONObject json = new JSONObject(cleanedJson);
+        try{
         JsonNode inferResponseNode = null;
         String formattedInferResponse;
-        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
-        String inferResponseJson = dataExtractionDataItem.getInferResponse();
+//        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
+        String cleanedJson = modelResponse.getInferResponse().replace("```json", "").replace("```", "").trim();
 
-        if (json.has(MODEL)) {
-            String modelValue = json.getString(MODEL);
+
+        if (!modelResponse.getModel().isEmpty()) {
+            String modelValue = modelResponse.getModel();
             if (!MODEL_TYPE.equalsIgnoreCase(modelValue)) {
                 //KRYPTON
-                inferResponseNode = mapper.readTree(inferResponseJson);
+                inferResponseNode = mapper.readTree(cleanedJson);
             } else {
-                inferResponseNode = TextNode.valueOf(inferResponseJson.trim());
+                inferResponseNode = TextNode.valueOf(cleanedJson.trim());
             }
         }
         formattedInferResponse = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(inferResponseNode);
-        String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+        String flag = (cleanedJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
         String encryptSotPageContent = action.getContext().get(ENCRYPT_AGENTIC_FILTER_OUTPUT);
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
@@ -310,58 +310,73 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String templateId = entity.getTemplateId();
         Iterator<Map.Entry<String, JsonNode>> fields = Objects.requireNonNull(inferResponseNode).fields();
 
-        if (MODEL_TYPE.equalsIgnoreCase(json.getString(MODEL))) {
-            doOptimusParentObjectBuild(entity, parentObj, modelName, modelVersion, request, response, endpoint, extractedContent, dataExtractionDataItem, flag, templateId, inferResponseNode);
+        if (MODEL_TYPE.equalsIgnoreCase(modelResponse.getModel())) {
+            doOptimusParentObjectBuild(entity, parentObj, modelResponse, request, response, endpoint, extractedContent, flag, templateId, inferResponseNode);
 
         } else {
-            doKryptonParentObjBuild(entity, parentObj, modelName, modelVersion, request, response, endpoint, fields, extractedContent, dataExtractionDataItem, flag, templateId);
+            doKryptonParentObjBuild(entity, parentObj, modelResponse, request, response, endpoint, fields, extractedContent, flag, templateId);
         }
 
+    }catch (Exception e){
+            String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + " code " + modelResponse.getStatusCode() + " message : " + modelResponse.getErrorMessage();
+            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(entity.getRootPipelineId()).templateName(entity.getTemplateName()).response("Error In Response").endpoint(String.valueOf(endpoint)).requestId(entity.getRequestId()).build());
+            HandymanException handymanException = new HandymanException(errorMessage);
+            HandymanException.insertException(errorMessage, handymanException, this.action);
+            log.error(aMarker, errorMessage);
+        }
     }
 
-    private void doKryptonParentObjBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint, Iterator<Map.Entry<String, JsonNode>> fields, String extractedContent, RadonKvpLineItem dataExtractionDataItem, String flag, String templateId) {
+    private void doKryptonParentObjBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, RadonKvpDataOutput modelResponse, String request, String response, String endpoint, Iterator<Map.Entry<String, JsonNode>> fields, String extractedContent, String flag, String templateId) throws JsonProcessingException {
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
             String containerName = entry.getKey();
             String containerValue = entry.getValue().asText();
+            final String metrics = mapper.writeValueAsString(modelResponse.getComputationDetails());
+
 
             parentObj.add(AgenticPaperFilterOutput.builder()
                     .filePath(entity.getFilePath())
                     .extractedText(extractedContent)
-                    .originId(dataExtractionDataItem.getOriginId())
-                    .groupId(Math.toIntExact(dataExtractionDataItem.getGroupId()))
-                    .paperNo(dataExtractionDataItem.getPaperNo())
+                    .originId(modelResponse.getOriginId())
+                    .groupId(Math.toIntExact(Long.parseLong(modelResponse.getGroupId())))
+                    .paperNo(Integer.valueOf(modelResponse.getPaperNo()))
                     .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
                     .stage(PROCESS_NAME)
                     .message("Agentic Paper Filter macro completed with krypton triton api call " + entity.getModelName())
                     .createdOn(entity.getCreatedOn())
                     .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                     .isBlankPage(flag)
-                    .tenantId(dataExtractionDataItem.getTenantId())
+                    .tenantId(Long.valueOf(modelResponse.getTenantId()))
                     .templateId(templateId)
-                    .processId(dataExtractionDataItem.getProcessId())
+                    .processId(Long.valueOf(modelResponse.getProcessId()))
                     .templateName(entity.getTemplateName())
-                    .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
-                    .modelName(entity.getModelName() != null ? entity.getModelName() : modelName)
-                    .modelVersion(modelVersion)
+                    .rootPipelineId(Long.valueOf(modelResponse.getRootPipelineId()))
+                    .modelName(entity.getModelName())
+                    .modelVersion(String.valueOf(modelResponse.getModelVersion()))
                     .batchId(entity.getBatchId())
                     .request(encryptRequestResponse(request))
                     .response(encryptRequestResponse(response))
                     .endpoint(String.valueOf(endpoint))
                     .containerName(containerName)
                     .containerValue(containerValue)
+                    .requestId(modelResponse.getRequestId())
+                    .status_code(modelResponse.getStatusCode())
+                    .log(modelResponse.getErrorMessage())
+                    .detail(modelResponse.getDetail())
+                    .metrics(metrics)
                     .build());
         }
     }
 
-    private void doOptimusParentObjectBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String response, String endpoint, String extractedContent, RadonKvpLineItem dataExtractionDataItem, String flag, String templateId, JsonNode inferResponseNode) {
-        Long groupId = dataExtractionDataItem.getGroupId();
-        Integer paperNo = dataExtractionDataItem.getPaperNo();
+    private void doOptimusParentObjectBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, RadonKvpDataOutput modelResponse, String request, String response, String endpoint, String extractedContent, String flag, String templateId, JsonNode inferResponseNode) throws JsonProcessingException {
+        Long groupId = Long.valueOf(modelResponse.getGroupId());
+        Integer paperNo = Integer.valueOf(modelResponse.getPaperNo());
         String statusDescription = ConsumerProcessApiStatus.COMPLETED.getStatusDescription();
-        String originId = dataExtractionDataItem.getOriginId();
+        String originId = modelResponse.getOriginId();
         Timestamp createdOn = entity.getCreatedOn();
         String batchId = entity.getBatchId();
         String promptType = entity.getPromptType();
+        String metrics = mapper.writeValueAsString(modelResponse.getComputationDetails());
         parentObj.add(AgenticPaperFilterOutput.builder()
                 .filePath(entity.getFilePath())
                 .extractedText(extractedContent)
@@ -374,13 +389,13 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .createdOn(createdOn)
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .isBlankPage(flag)
-                .tenantId(dataExtractionDataItem.getTenantId())
+                .tenantId(Long.valueOf(modelResponse.getTenantId()))
                 .templateId(templateId)
-                .processId(dataExtractionDataItem.getProcessId())
+                .processId(Long.valueOf(modelResponse.getProcessId()))
                 .templateName(entity.getTemplateName())
-                .rootPipelineId(dataExtractionDataItem.getRootPipelineId())
-                .modelName(entity.getModelName() != null ? entity.getModelName() : modelName)
-                .modelVersion(modelVersion)
+                .rootPipelineId(Long.valueOf(modelResponse.getRootPipelineId()))
+                .modelName(modelResponse.getModel())
+                .modelVersion(String.valueOf(modelResponse.getModelVersion()))
                 .batchId(batchId)
                 .request(encryptRequestResponse(request))
                 .response(encryptRequestResponse(response))
@@ -389,6 +404,11 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .containerName(entity.getUniqueName())
                 .containerId(entity.getUniqueId())
                 .promptType(promptType)
+                .requestId(modelResponse.getRequestId())
+                .status_code(modelResponse.getStatusCode())
+                .detail(modelResponse.getDetail())
+                .log(modelResponse.getErrorMessage())
+                .metrics(metrics)
                 .build());
     }
 

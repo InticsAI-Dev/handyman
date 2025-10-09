@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -31,5 +34,7 @@ public class RadonKvpDataOutput {
     private Integer imageHeight;
     private String extractedImageUnit;
     private Integer sorContainerId;
+    private Integer modelVersion;
+    private UUID requestId;
 
 }
