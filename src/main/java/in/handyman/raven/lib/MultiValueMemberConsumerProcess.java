@@ -211,8 +211,12 @@ public class MultiValueMemberConsumerProcess {
             String ln = i < lastNames.size() ? lastNames.get(i).toLowerCase().trim() : "";
 
             List<String> parts = new ArrayList<>();
-            if (!fn.isEmpty()) parts.add(fn);
-            if (!ln.isEmpty()) parts.add(ln);
+            if (!fn.isEmpty()) {
+                parts.add(fn);
+            }
+            if (!ln.isEmpty())  {
+                parts.add(ln);
+            }
             parts.sort(String::compareTo);
 
             String canonicalName = String.join(" ", parts);
