@@ -26,4 +26,5 @@ public class extractedSorItemList {
     private String modelRegistry;
     private Long rootPipelineId;
     private String batchId;
+    private String documentType;
 }
