@@ -70,18 +70,22 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
         log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
 
-        Map<String, Map<String, String>> originalBboxByDocAndValue = new HashMap<>();
+        Map<String, Map<String, String>> originalBboxByOriginAndPaperAndValue = new HashMap<>();
         for (PostProcessingExecutorInput input : postProcessingExecutorInputs) {
-            String docId = input.getDocumentId();
-            if (docId != null) {
-                originalBboxByDocAndValue.computeIfAbsent(docId, k -> new HashMap<>())
-                        .put(input.getExtractedValue(), input.getBbox());
+            String originId = input.getOriginId();
+            Integer paperNo = input.getPaperNo();
+            String extractedValue = input.getExtractedValue();
+            if (originId != null && paperNo != null && extractedValue != null) {
+                String key = originId + "|" + paperNo;
+                originalBboxByOriginAndPaperAndValue
+                        .computeIfAbsent(key, k -> new HashMap<>())
+                        .put(extractedValue, input.getBbox());
             }
         }
 
         postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
 
-        updateBboxAfterValidation(originalBboxByDocAndValue, postProcessingExecutorInputs);
+        updateBboxAfterValidation(originalBboxByOriginAndPaperAndValue, postProcessingExecutorInputs);
 
         log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
 
@@ -93,18 +97,50 @@ public class PostProcessingExecutorAction implements IActionExecution {
         log.info(aMarker, "Batch insert completed into {}", outputTable);
     }
 
-    private void updateBboxAfterValidation(Map<String, Map<String, String>> originalBboxByDocAndValue, List<PostProcessingExecutorInput> inputs) {
+    private void updateBboxAfterValidation(Map<String, Map<String, String>> originalBboxByOriginAndPaperAndValue,
+                                           List<PostProcessingExecutorInput> inputs) {
+        if (inputs == null || originalBboxByOriginAndPaperAndValue == null) {
+            return;
+        }
         for (PostProcessingExecutorInput input : inputs) {
-            String docId = input.getDocumentId();
-            if (docId != null && originalBboxByDocAndValue.containsKey(docId)) {
-                String newValue = input.getExtractedValue();
-                Map<String, String> docBboxMap = originalBboxByDocAndValue.get(docId);
-                if (docBboxMap.containsKey(newValue)) {
-                    String originalBbox = docBboxMap.get(newValue);
-                    if (originalBbox != null && !originalBbox.trim().isEmpty()) {
-                        input.setBbox(originalBbox);
+            if (input == null) {
+                continue;
+            }
+            String originId = input.getOriginId();
+            Integer paperNo = input.getPaperNo();
+            String extractedValue = input.getExtractedValue();
+            if (originId == null || paperNo == null || extractedValue == null) {
+                continue;
+            }
+            String key = originId + "|" + paperNo;
+            Map<String, String> bboxMap = originalBboxByOriginAndPaperAndValue.get(key);
+            if (bboxMap == null || bboxMap.isEmpty()) {
+                continue;
+            }
+            // Try exact match first
+            String bbox = bboxMap.get(extractedValue);
+            // If not found, try case-insensitive match
+            if (bbox == null) {
+                for (Map.Entry<String, String> entry : bboxMap.entrySet()) {
+                    if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(extractedValue)) {
+                        bbox = entry.getValue();
+                        break;
                     }
                 }
+            }
+            // If still not found, try partial match (inherit from full name, e.g. "THOMAS STARLAND")
+            if (bbox == null) {
+                for (Map.Entry<String, String> entry : bboxMap.entrySet()) {
+                    String keyValue = entry.getKey();
+                    if (keyValue != null && keyValue.toUpperCase().contains(extractedValue.toUpperCase())) {
+                        bbox = entry.getValue();
+                        break;
+                    }
+                }
+            }
+            // Assign the found bbox (if valid)
+            if (bbox != null && bbox.trim().length() > 0) {
+                input.setBbox(bbox);
             }
         }
     }
