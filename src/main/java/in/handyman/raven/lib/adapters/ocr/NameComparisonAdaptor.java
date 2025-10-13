@@ -268,6 +268,6 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
 
     @Override
     public String getName() {
-        return "alpha";
+        return "NAME_ADAPTER";
     }
 }

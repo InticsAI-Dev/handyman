@@ -16,10 +16,11 @@ void execute() throws Exception {
             .condition(true)
             .outputTable("macro.ocr_text_comparison_result")
             .resourceConn("intics_zio_db_conn")
-            .querySet("SELECT\n" +
-                    "    now(),\n" +
+            .querySet("\n" +
+                    "SELECT\n" +
+                    "    NOW(),\n" +
                     "    1,\n" +
-                    "    now(),\n" +
+                    "    NOW(),\n" +
                     "    1,\n" +
                     "    1,\n" +
                     "    vt.origin_id,\n" +
@@ -42,31 +43,37 @@ void execute() throws Exception {
                     "    vt.batch_id,\n" +
                     "    si.is_ocr_field_comparable,\n" +
                     "    dsoa.extracted_text,\n" +
-                    "    si.allowed_adapter,\n" +
-                    "    ep.encryption_policy\n" +
-                    "FROM sor_validation.sor_validation_payload_queue_archive sqv\n" +
-                    "JOIN sor_transaction.vqa_transaction vt\n" +
-                    "    ON vt.origin_id = sqv.origin_id\n" +
-                    "   AND vt.batch_id = sqv.batch_id\n" +
-                    "LEFT JOIN deep_sift.deep_sift_output_audit dsoa\n" +
-                    "    ON dsoa.origin_id = vt.origin_id\n" +
-                    "   AND dsoa.paper_no = vt.paper_no\n" +
-                    "   AND vt.batch_id = dsoa.batch_id\n" +
-                    "JOIN sor_meta.sor_container sc\n" +
-                    "    ON vt.tenant_id = sc.tenant_id\n" +
-                    "JOIN sor_meta.sor_item si\n" +
-                    "    ON si.sor_container_id = sc.sor_container_id\n" +
-                    "   AND si.tenant_id = sc.tenant_id\n" +
-                    "   AND si.sor_item_name = vt.sor_item_name\n" +
-                    "JOIN sor_meta.encryption_policies ep\n" +
-                    "    ON si.encryption_policy_id = ep.encryption_policy_id\n" +
-                    "WHERE vt.group_id = '79'\n" +
-                    "  AND vt.tenant_id = 1\n" +
-                    "  AND sqv.batch_id = 'BATCH-79_0'\n" +
-                    "  AND sqv.status = 'COMPLETED'\n" +
-                    "  AND sc.document_type = 'MEDICAL_GBD'\n" +
-                    "  AND sc.status = 'ACTIVE'\n" +
-                    "  AND si.status = 'ACTIVE';")
+                    "    si.adapter_type AS allowed_adapter,\n" +
+                    "    ep.encryption_policy,\n" +
+                    "    si.is_encrypted\n" +
+                    "FROM\n" +
+                    "    sor_validation.sor_validation_payload_queue_archive sqv\n" +
+                    "    JOIN sor_transaction.vqa_transaction vt\n" +
+                    "        ON vt.origin_id = sqv.origin_id\n" +
+                    "        AND vt.batch_id = sqv.batch_id\n" +
+                    "    LEFT JOIN deep_sift.deep_sift_output_audit dsoa\n" +
+                    "        ON dsoa.origin_id = vt.origin_id\n" +
+                    "        AND dsoa.paper_no = vt.paper_no\n" +
+                    "        AND vt.batch_id = dsoa.batch_id\n" +
+                    "    JOIN sor_meta.sor_container sc\n" +
+                    "        ON vt.tenant_id = sc.tenant_id\n" +
+                    "    JOIN sor_meta.sor_item si\n" +
+                    "        ON si.sor_container_id = sc.sor_container_id\n" +
+                    "        AND si.tenant_id = sc.tenant_id\n" +
+                    "        AND si.sor_item_name = vt.sor_item_name\n" +
+                    "    JOIN sor_meta.encryption_policies ep\n" +
+                    "        ON si.encryption_policy_id = ep.encryption_policy_id\n" +
+                    "WHERE\n" +
+                    "    vt.group_id = '16'\n" +
+                    "    AND vt.tenant_id = 1\n" +
+                    "    AND sqv.batch_id = 'BATCH-16_0'\n" +
+                    "    AND sqv.status = 'COMPLETED'\n" +
+                    "    AND sc.document_type = 'MEDICAL_COMMERCIAL'\n" +
+                    "    and vt.sor_item_name ='member_id'\n" +
+                    "    and vt.origin_id ='ORIGIN-20'\n" +
+                    "    and vt.paper_no =3\n" +
+                    "    AND sc.status = 'ACTIVE'\n" +
+                    "    AND si.status = 'ACTIVE';\n")
             .build();
 
     final ActionExecutionAudit action = ActionExecutionAudit.builder().build();

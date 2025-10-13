@@ -1,9 +1,10 @@
 package in.handyman.raven.lib.adapters.ocr;
 
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -11,11 +12,15 @@ import java.util.stream.Collectors;
 
 public class IdAdaptor implements OcrComparisonAdapter {
 
+    private static final Logger logger = LoggerFactory.getLogger(IdAdaptor.class);
     private static final JaroWinklerSimilarity SIMILARITY = new JaroWinklerSimilarity();
 
     @Override
     public OcrComparisonResult compareValues(String expectedValue, String extractedText, double threshold) {
+        logger.debug("Starting name comparison with threshold: {}", threshold);
+
         if (expectedValue == null || expectedValue.trim().isEmpty()) {
+            logger.warn("Expected value is null or empty");
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -26,6 +31,7 @@ public class IdAdaptor implements OcrComparisonAdapter {
         }
 
         if (extractedText == null || extractedText.trim().isEmpty()) {
+            logger.warn("Extracted text is null or empty");
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -35,12 +41,19 @@ public class IdAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        List<String> expectedValues = splitByCommaAndClean(expectedValue);
+        // Detect if expected value has comma format
+        boolean hasCommaFormat = expectedValue.contains(",");
+        logger.debug("Expected value comma format detected: {}", hasCommaFormat);
 
-        List<String> ocrWords = extractAllWordsAndPhrases(extractedText);
+        List<String> expectedWords = extractAllWords(expectedValue);
+        logger.debug("Expected words count: {}", expectedWords.size());
+
+        List<String> ocrWords = extractAllWords(extractedText);
         String candidatesList = String.join(",", ocrWords);
+        logger.debug("OCR words count: {}", ocrWords.size());
 
         if (ocrWords.isEmpty()) {
+            logger.info("No candidates found in OCR text");
             return OcrComparisonResult.builder()
                     .isMatch(false)
                     .bestMatch(expectedValue)
@@ -52,48 +65,15 @@ public class IdAdaptor implements OcrComparisonAdapter {
 
         List<OcrComparisonMatchResult> allMatches = new ArrayList<>();
 
-        for (String expected : expectedValues) {
-            String cleanedExpected = expected.toLowerCase().trim();
-            OcrComparisonMatchResult bestMatch = findBestMatch(cleanedExpected, ocrWords, extractedText);
-            bestMatch.setOriginalExpected(expected);
+        for (String expectedWord : expectedWords) {
+            String cleanedExpected = expectedWord.toLowerCase().trim();
+            OcrComparisonMatchResult bestMatch = findBestMatchForWord(cleanedExpected, ocrWords, extractedText);
+            bestMatch.setOriginalExpected(expectedWord);
             allMatches.add(bestMatch);
         }
 
-        return buildFinalResult(allMatches, expectedValue, candidatesList, threshold);
-    }
-
-    /**
-     * Splits text by comma and cleans each part
-     */
-    private List<String> splitByCommaAndClean(String text) {
-        return Arrays.stream(text.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Extracts all individual words and phrases from text (dynamic)
-     */
-    private List<String> extractAllWordsAndPhrases(String text) {
-        List<String> wordsAndPhrases = new ArrayList<>();
-
-        if (text == null || text.trim().isEmpty()) {
-            return wordsAndPhrases;
-        }
-
-        List<String> commaSeparated = splitByCommaAndClean(text);
-        wordsAndPhrases.addAll(commaSeparated);
-
-        List<String> individualWords = extractAllWords(text);
-        wordsAndPhrases.addAll(individualWords);
-
-        extractCommonPatterns(text, wordsAndPhrases);
-
-        return wordsAndPhrases.stream()
-                .distinct()
-                .filter(s -> s.length() >= 2)
-                .collect(Collectors.toList());
+        logger.debug("Completed word matching for {} expected words", expectedWords.size());
+        return buildFinalResult(allMatches, expectedValue, candidatesList, threshold, hasCommaFormat);
     }
 
     /**
@@ -106,58 +86,38 @@ public class IdAdaptor implements OcrComparisonAdapter {
             return words;
         }
 
-        Pattern wordPattern = Pattern.compile("[\\p{L}\\p{N}'-]+");
+        Pattern wordPattern = Pattern.compile("[\\p{L}\\p{N}]+");
         Matcher matcher = wordPattern.matcher(text.toLowerCase());
 
         while (matcher.find()) {
             String word = matcher.group().trim();
-            if (!word.isEmpty()) {
+            if (!word.isEmpty() && word.length() > 1) {
                 words.add(word);
             }
         }
 
-        return words;
+        return words.stream().distinct().collect(Collectors.toList());
     }
 
     /**
-     * Extracts common multi-word patterns from text
+     * Finds the best match for a single expected word against all OCR words
      */
-    private void extractCommonPatterns(String text, List<String> results) {
-        String lowerText = text.toLowerCase();
-
-        // Extract 2-word phrases
-        Pattern twoWordPattern = Pattern.compile("\\b[\\p{L}\\p{N}'-]+\\s+[\\p{L}\\p{N}'-]+\\b");
-        Matcher matcher = twoWordPattern.matcher(lowerText);
-        while (matcher.find()) {
-            results.add(matcher.group());
-        }
-
-        // Extract 3-word phrases
-        Pattern threeWordPattern = Pattern.compile("\\b[\\p{L}\\p{N}'-]+\\s+[\\p{L}\\p{N}'-]+\\s+[\\p{L}\\p{N}'-]+\\b");
-        matcher = threeWordPattern.matcher(lowerText);
-        while (matcher.find()) {
-            results.add(matcher.group());
-        }
-    }
-
-    /**
-     * Finds the best match for a single expected value against all OCR words/phrases
-     */
-    private OcrComparisonMatchResult findBestMatch(String expectedValue, List<String> candidates, String originalExtracted) {
+    private OcrComparisonMatchResult findBestMatchForWord(String expectedWord, List<String> ocrWords, String originalExtracted) {
         double bestScore = 0.0;
-        String bestCandidate = expectedValue;
-        String bestOriginalCandidate = expectedValue;
+        String bestCandidate = expectedWord;
+        String bestOriginalCandidate = expectedWord;
 
-        for (String candidate : candidates) {
-            double score = SIMILARITY.apply(expectedValue, candidate);
+        for (String ocrWord : ocrWords) {
+            double score = SIMILARITY.apply(expectedWord, ocrWord);
 
             if (score > bestScore) {
                 bestScore = score;
-                bestCandidate = candidate;
-                bestOriginalCandidate = findOriginalInText(candidate, originalExtracted);
+                bestCandidate = ocrWord;
+                bestOriginalCandidate = findOriginalWordInText(ocrWord, originalExtracted);
             }
 
             if (score == 1.0) {
+                logger.debug("Perfect match found for word with score: 1.0");
                 break;
             }
         }
@@ -170,34 +130,37 @@ public class IdAdaptor implements OcrComparisonAdapter {
     }
 
     /**
-     * Finds the original text in the extracted text with proper casing
+     * Finds the original word in the text with exact casing
      */
-    private String findOriginalInText(String searchText, String originalText) {
-        if (originalText == null || searchText == null || searchText.isEmpty()) {
-            return searchText;
+    private String findOriginalWordInText(String wordToFind, String originalText) {
+        if (originalText == null || wordToFind == null) {
+            return wordToFind;
         }
 
-        Pattern pattern = Pattern.compile("\\b" + Pattern.quote(searchText) + "\\b", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("\\b" + Pattern.quote(wordToFind) + "\\b", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(originalText);
 
         if (matcher.find()) {
             return originalText.substring(matcher.start(), matcher.end());
         }
 
-        return searchText;
+        return wordToFind;
     }
 
     private OcrComparisonResult buildFinalResult(List<OcrComparisonMatchResult> matches, String originalExpected,
-                                                 String candidatesList, double threshold) {
-        boolean allMatch = matches.stream().allMatch(match -> match.getScore() >= threshold);
+                                                 String candidatesList, double threshold, boolean hasCommaFormat) {
+        boolean allWordsMatch = matches.stream()
+                .allMatch(match -> match.getScore() >= threshold);
 
-        boolean anyMatch = matches.stream().anyMatch(match -> match.getScore() >= threshold);
+        boolean anyWordMatches = matches.stream()
+                .anyMatch(match -> match.getScore() >= threshold);
 
-        List<OcrComparisonMatchResult> matchedValues = matches.stream()
+        List<OcrComparisonMatchResult> matchedWords = matches.stream()
                 .filter(match -> match.getScore() >= threshold)
                 .collect(Collectors.toList());
 
         String method = determineMatchingMethod(matches, threshold);
+        logger.debug("Matching method determined: {}", method);
 
         String matchSummary = matches.stream()
                 .map(match -> String.format("%s:%.2f->%s", match.getOriginalExpected(), match.getScore(), match.getCandidate()))
@@ -206,24 +169,28 @@ public class IdAdaptor implements OcrComparisonAdapter {
         String finalBestMatch;
         int finalScore;
 
-        if (anyMatch) {
-            finalBestMatch = reconstructCommaSeparatedMatch(matches, threshold);
+        if (anyWordMatches) {
+            finalBestMatch = reconstructBestMatch(matches, threshold, hasCommaFormat, originalExpected);
 
-            double avgScore = matchedValues.stream()
+            double avgScore = matchedWords.stream()
                     .mapToDouble(OcrComparisonMatchResult::getScore)
                     .average()
                     .orElse(0.0);
             finalScore = (int) (avgScore * 100);
+            logger.info("Match found with average score: {}", finalScore);
         } else {
             finalBestMatch = originalExpected;
             finalScore = matches.stream()
                     .mapToInt(match -> (int) (match.getScore() * 100))
                     .max()
                     .orElse(0);
+            logger.info("No match found, best score: {}", finalScore);
         }
 
+        logger.debug("Final result - isMatch: {}, score: {}, method: {}", allWordsMatch, finalScore, method);
+
         return OcrComparisonResult.builder()
-                .isMatch(allMatch)
+                .isMatch(allWordsMatch)
                 .bestMatch(finalBestMatch)
                 .bestScore(finalScore)
                 .matchingMethod(method)
@@ -231,21 +198,55 @@ public class IdAdaptor implements OcrComparisonAdapter {
                 .build();
     }
 
-    /**
-     * Reconstructs comma-separated match preserving original order
-     */
-    private String reconstructCommaSeparatedMatch(List<OcrComparisonMatchResult> matches, double threshold) {
-        List<String> matchedParts = new ArrayList<>();
+    private String reconstructBestMatch(List<OcrComparisonMatchResult> matches, double threshold,
+                                        boolean hasCommaFormat, String originalExpected) {
+        List<String> matchedWords = new ArrayList<>();
 
         for (OcrComparisonMatchResult match : matches) {
             if (match.getScore() >= threshold) {
-                matchedParts.add(match.getRestoredMatch());
-            } else {
-                matchedParts.add(match.getOriginalExpected());
+                matchedWords.add(match.getRestoredMatch());
             }
         }
 
-        return String.join(", ", matchedParts);
+        if (matchedWords.isEmpty()) {
+            return originalExpected;
+        }
+
+        if (hasCommaFormat) {
+            int commaIndex = getCommaPositionInWords(originalExpected, matches);
+
+            if (commaIndex > 0 && commaIndex < matchedWords.size()) {
+                StringBuilder result = new StringBuilder();
+                for (int i = 0; i < matchedWords.size(); i++) {
+                    if (i == commaIndex) {
+                        result.append(", ");
+                    } else if (i > 0) {
+                        result.append(" ");
+                    }
+                    result.append(matchedWords.get(i));
+                }
+                return result.toString();
+            }
+        }
+
+        // Default format without comma: "First Middle Last"
+        return String.join(" ", matchedWords);
+    }
+
+    /**
+     * Determines where the comma should be placed based on the original expected value
+     */
+    private int getCommaPositionInWords(String originalExpected, List<OcrComparisonMatchResult> matches) {
+        List<String> expectedWords = extractAllWords(originalExpected);
+        String[] parts = originalExpected.split(",");
+
+        if (parts.length >= 2) {
+            // Count words before the comma
+            List<String> beforeComma = extractAllWords(parts[0]);
+            return beforeComma.size();
+        }
+
+        return -1;
     }
 
     private String determineMatchingMethod(List<OcrComparisonMatchResult> matches, double threshold) {
@@ -254,10 +255,12 @@ public class IdAdaptor implements OcrComparisonAdapter {
                 .count();
         long totalCount = matches.size();
 
+        logger.debug("Match statistics - matched: {}, total: {}", matchCount, totalCount);
+
         if (matchCount == 0) {
             return "NO_MATCH";
         } else if (matchCount == totalCount) {
-            return "ALL_MATCH";
+            return "ALL_WORDS_MATCH";
         } else {
             return "PARTIAL_MATCH_" + matchCount + "_OF_" + totalCount;
         }
@@ -265,7 +268,7 @@ public class IdAdaptor implements OcrComparisonAdapter {
 
     @Override
     public String getName() {
-        return "alphanumeric";
+        return "ID_ADAPTER";
     }
     
 }
