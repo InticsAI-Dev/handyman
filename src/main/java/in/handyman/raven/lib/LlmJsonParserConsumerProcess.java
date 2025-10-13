@@ -361,14 +361,16 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         String rawLabel = safeTrim(response.getLabel());
         String rawValue = safeTrim(response.getValue());
 
-        String label = sanitizeEndingPunctuations(rawLabel);
-        String value = sanitizeEndingPunctuations(rawValue);
+        // Sanitize by removing special characters and ending punctuations
+        String label = removeSpecialCharacters(sanitizeEndingPunctuations(rawLabel));
+        String value = removeSpecialCharacters(sanitizeEndingPunctuations(rawValue));
 
         // Prepare blacklist with sanitized entries
         List<String> sanitizedBlacklist = blackListLabels == null ? List.of() :
                 blackListLabels.stream()
                         .filter(Objects::nonNull)
                         .map(this::sanitizeEndingPunctuations)
+                        .map(this::removeSpecialCharacters)
                         .map(String::toLowerCase)
                         .collect(Collectors.toList());
 
@@ -398,7 +400,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             response.setLabel(updatedLabel);
 
             // Convert to lowercase for comparison
-            String updatedLabelLower = updatedLabel.toLowerCase();
+            String updatedLabelLower = removeSpecialCharacters(updatedLabel).toLowerCase();
 
             // After removal, check conditions
             if (updatedLabel.isEmpty() && sanitizedBlacklist.contains("")) {
@@ -423,7 +425,14 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         return response;
     }
 
-
+    /**
+     * Removes special characters from the input string, keeping only alphanumeric characters and spaces.
+     */
+    public String removeSpecialCharacters(String input) {
+        if (input == null) return "";
+        // Replace all non-alphanumeric characters (except spaces) with an empty string
+        return input.replaceAll("[^a-zA-Z0-9\\s]", "").trim();
+    }
     /**
      * Removes trailing punctuation like commas, hyphens, colons, or semicolons.
      */
