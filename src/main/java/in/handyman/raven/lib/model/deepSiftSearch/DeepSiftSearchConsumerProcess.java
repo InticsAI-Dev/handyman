@@ -32,6 +32,9 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private final ActionExecutionAudit action;
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
+    private static final String EXACT_SEARCH = "exact";
+    private static final String CONTAINS_SEARCH = "contains";
+    private static final String FLAG_SEARCH = "flag";
 
     @Override
     public List<DeepSiftSearchOutputTable> process(URL endpoint, DeepSiftSearchInputTable entity) {
@@ -73,7 +76,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             log.debug(marker, "Processing searchType: {} for sorItemId: {}, total keywords: {}",
                     searchType, entity.getSorItemId(), keywordList.size());
 
-            if ("exact".equals(searchType)) {
+            if (EXACT_SEARCH.equals(searchType)) {
                 for (String keyword : keywordList) {
                     String pattern = "\\b" + Pattern.quote(keyword) + "\\b";
                     if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
@@ -83,13 +86,24 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         matchFound = true;
                     }
                 }
-            } else if ("contains".equals(searchType)) {
+            } else if (CONTAINS_SEARCH.equals(searchType)) {
                 for (String kw : keywordList) {
                     if (finalExtractedText.toLowerCase().contains(kw.toLowerCase())) {
                         matchedKeywords.add(kw);
                         matchFound = true;
                     }
                 }
+            } else if (FLAG_SEARCH.equals((searchType))) {
+                for (String kw : keywordList) {
+                    String pattern = "\\b" + Pattern.quote(kw) + "\\b";
+                    if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
+                            .matcher(finalExtractedText)
+                            .find()) {
+                        matchFound = true;
+                        break;
+                    }
+                }
+                matchedKeywords.add(matchFound ? "Y" : "N");
             } else {
                 log.error(marker, "Invalid searchType: {} for sorItemId: {}", searchType, entity.getSorItemId());
                 HandymanException handymanException = new HandymanException("Invalid searchType: " + searchType);
