@@ -13,233 +13,513 @@ class PostProcessingExecutorActionTest {
 
         PostProcessingExecutor postProcessingExecutor = PostProcessingExecutor.builder()
                 .name("Post Processing executor")
-                .batchId("BATCH-24_0")
-                .groupId("2014")
+                .batchId("BATCH-4_0")
+                .groupId("4")
                 .condition(true)
                 .outputTable("score.aggregation_evaluator")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("  SELECT DISTINCT\n" +
-                        "          b.tenant_id,\n" +
-                        "          b.aggregated_score,\n" +
-                        "          b.masked_score,\n" +
-                        "          b.origin_id,\n" +
-                        "          b.paper_no,\n" +
-                        "          b.predicted_value as extracted_value ,\n" +
-                        "          b.vqa_score,\n" +
-                        "          b.rank,\n" +
-                        "          smca.sor_item_attribution_id as sor_item_attribution_id,\n" +
-                        "          b.sor_item_name,\n" +
-                        "          'TMP-AGD-001' as documentId,\n" +
-                        "  1 as acc_transaction_id,\n" +
-                        "  b.b_box,\n" +
-                        "  b.root_pipeline_id as root_pipeline_id,\n" +
-                        "  b.frequency,\n" +
-                        "  b.question_id,\n" +
-                        "  b.synonym_id,\n" +
-                        "  b.model_registry,\n" +
-                        "  smca.is_encrypted,\n" +
-                        "  smca.encryption_policy,\n" +
-                        "  'multi_value' as line_item_type\n" +
-                        "   from macro.multi_value_sor_item_audit b\n" +
-                        "      JOIN macro.sor_meta_consolidated_audit smca ON smca.tenant_id = b.tenant_id\n" +
-                        "                      AND smca.root_pipeline_id = b.root_pipeline_id\n" +
-                        "                      AND smca.synonym_id = b.synonym_id\n" +
-                        "                      AND smca.sor_item_name = b.sor_item_name\n" +
-                        "      JOIN sor_transaction.sor_transaction_payload_queue_archive st ON st.origin_id = b.origin_id\n" +
-                        "                      AND st.batch_id = b.batch_id\n" +
-                        "                      AND st.tenant_id = b.tenant_id\n" +
-                        "    WHERE\n" +
-                        "          b.group_id = '2014'\n" +
-                        "      AND b.tenant_id = 1\n" +
-                        "      AND b.batch_id = 'BATCH-24_0'\n" +
-                        "      AND b.root_pipeline_id = '903'\n" +
-                        "      AND smca.line_item_type = 'multi_value'\n" +
-                        "      and b.sor_item_name = 'member_address_line1';")
+                .querySet("SELECT DISTINCT\n" +
+                        "    a.tenant_id AS tenant_id,\n" +
+                        "    a.confidence_score AS aggregated_score,\n" +
+                        "    a.weight_score AS masked_score,\n" +
+                        "    a.origin_id,\n" +
+                        "    a.paper_no,\n" +
+                        "    a.extracted_value,\n" +
+                        "    b.vqa_score,\n" +
+                        "    a.weight_rank AS rank,\n" +
+                        "    smca.sor_item_attribution_id AS sor_item_attribution_id,\n" +
+                        "    a.sor_item_name,\n" +
+                        "    'TMP-AGD-001' AS documentId,\n" +
+                        "    1 AS acc_transaction_id,\n" +
+                        "    b.b_box,\n" +
+                        "    a.root_pipeline_id AS root_pipeline_id,\n" +
+                        "    a.freq AS frequency,\n" +
+                        "    b.question_id,\n" +
+                        "    b.synonym_id,\n" +
+                        "    a.model_registry,\n" +
+                        "    smca.is_encrypted,\n" +
+                        "    smca.encryption_policy,\n" +
+                        "    'single_value' AS line_item_type\n" +
+                        "FROM voting.weighted_value a\n" +
+                        "JOIN score.scalar_validation b \n" +
+                        "    ON a.validation_id = b.validation_id\n" +
+                        "JOIN macro.sor_meta_consolidated_audit smca \n" +
+                        "    ON smca.tenant_id = b.tenant_id\n" +
+                        "    AND smca.group_id = b.group_id\n" +
+                        "    AND smca.synonym_id = b.synonym_id\n" +
+                        "    AND smca.sor_item_name = b.sor_item_name\n" +
+                        "JOIN sor_validation.sor_validation_payload_queue_archive st \n" +
+                        "    ON st.origin_id = a.origin_id\n" +
+                        "    AND st.batch_id = a.batch_id\n" +
+                        "    AND st.tenant_id = b.tenant_id\n" +
+                        "WHERE a.group_id = '4'\n" +
+                        "    AND a.weight_rank = 1\n" +
+                        "    AND a.tenant_id = 1\n" +
+                        "    AND a.batch_id = 'BATCH-4_0'\n" +
+                        "    AND smca.line_item_type <> 'multi_value';")
                 .build();
 
-        final ActionExecutionAudit action = ActionExecutionAudit.builder()
-                .build();
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
         action.getContext().put("tenant_id", "1");
-        action.getContext().put("group_id", "2014");
-        action.getContext().put("batch_id", "BATCH-24_0");
+        action.getContext().put("group_id", "4");
+        action.getContext().put("batch_id", "BATCH-4_0");
         action.getContext().put("created_user_id", "1");
-        action.getContext().put("outbound.mapper.bsh.class.order", "AuthIdValidator");
-        action.getContext().put("pipeline.end.to.end.encryption", "true");
-        action.getContext().put("AuthIdValidator", "import org.slf4j.Logger;\n" +
-                "import java.util.*;\n" +
+        action.getContext().put("outbound.mapper.bsh.class.order", "MedicaidMemberIdValidator");
+        action.getContext().put("pipeline.end.to.end.encryption", "false");
+        action.getContext().put("MedicaidMemberIdValidator", "package com.intics.inticsencryptionservice.validatorMayRelease.membermapper.v2;\n" +
                 "\n" +
-                "public class AuthIdValidator {\n" +
+                "import org.slf4j.Logger;\n" +
+                "import java.util.ArrayList;\n" +
+                "import java.util.Hashtable;\n" +
+                "import java.util.Iterator;\n" +
+                "import java.util.List;\n" +
+                "import java.util.Map;\n" +
+                "import java.util.regex.Matcher;\n" +
+                "import java.util.regex.Pattern;\n" +
+                "import in.handyman.raven.lib.model.SharedItemData;\n" +  // New import for shared ItemData\n" +
+                "\n" +
+                "public class MedicaidMemberIdValidator {\n" +
+                "    private Long rootPipelineId;\n" +
+                "\n" +
+                "    private static final Pattern NINE_CHAR_ALPHANUMERIC = Pattern.compile(\"^[a-zA-Z0-9]{9}$\");\n" +
+                "    private static final Pattern SEVEN_EIGHT_DIGITS = Pattern.compile(\"^[a-zA-Z0-9]{7,8}$\");\n" +
+                "    private static final Pattern LESS_THAN_SEVEN_DIGITS = Pattern.compile(\"^[0-9]{1,6}$\");\n" +
+                "    private static final Pattern FIRST_THREE_ALPHA_PREFIX = Pattern.compile(\"^[a-zA-Z]{3}(?:[^a-zA-Z].*|$)\");\n" +
+                "    private static final Pattern FIRST_THREE_ALPHA_NUMERIC_PREFIX = Pattern.compile(\"^(?=.{0,2}[A-Za-z])(?=.{0,2}[0-9])[A-Za-z0-9]{3}.*\");\n" +
+                "    private static final Pattern ALL_ALPHA = Pattern.compile(\"^[a-zA-Z]+$\");\n" +
+                "    private static final Pattern UM_PATTERN = Pattern.compile(\"^[uU][mM][0-9]{8}$\");\n" +
+                "    private static final Pattern UM_INVALID_PATTERN = Pattern.compile(\"^[uU][mM][0-9]*$\");\n" +
+                "    private static final Pattern COMBINED_FIELD = Pattern.compile(\"([a-zA-Z0-9]+)(?:\\\\([^)]*\\\\))?\\\\s*[#/:,–|\\\\\\\\]\\\\s*([a-zA-Z0-9]+)(?:\\\\([^)]*\\\\))?\");\n" +
+                "    private static final Pattern STRICT_ALPHANUMERIC = Pattern.compile(\"^[a-zA-Z0-9]+$\");\n" +
+                "    private static final Pattern WITH_PARENTHESES = Pattern.compile(\"^([a-zA-Z0-9]+)(?:\\\\([^)]*\\\\))?$\");\n" +
+                "    private static final Pattern LAST_ID = Pattern.compile(\"([a-zA-Z0-9]+)(?!.*[a-zA-Z0-9])\");\n" +
                 "\n" +
                 "    private Logger logger;\n" +
+                "    private List authIdCandidates;\n" +
+                "    private List additionalAuthCandidates;\n" +
                 "\n" +
-                "    public AuthIdValidator(Logger logger) {\n" +
+                "    // Removed inner ItemData - use SharedItemData\n" +
+                "\n" +
+                "    public static class Candidate {\n" +
+                "        String value;\n" +
+                "        String bbox;\n" +
+                "\n" +
+                "        public Candidate(String value, String bbox) {\n" +
+                "            this.value = value;\n" +
+                "            this.bbox = bbox;\n" +
+                "        }\n" +
+                "    }\n" +
+                "\n" +
+                "    public MedicaidMemberIdValidator(Logger logger) {\n" +
                 "        this.logger = logger;\n" +
+                "        this.authIdCandidates = new ArrayList();\n" +
+                "        this.additionalAuthCandidates = new ArrayList();\n" +
                 "    }\n" +
                 "\n" +
                 "    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {\n" +
-                "        logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Starting Auth ID mapping process\");\n" +
+                "        this.rootPipelineId = rootPipelineId;\n" +
+                "        this.authIdCandidates.clear();\n" +
+                "        this.additionalAuthCandidates.clear();\n" +
+                "        String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Entered doCustomPredictionMapping method\";\n" +
+                "        logger.info(logMsg);\n" +
                 "\n" +
-                "        if (predictionKeyMap != null) {\n" +
-                "            processAuthAndMemberIds(predictionKeyMap, rootPipelineId);\n" +
-                "        } else {\n" +
-                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Input map is null\");\n" +
-                "            Map result = new HashMap();\n" +
-                "            result.put(\"auth_id\", \"\");\n" +
-                "            result.put(\"member_id\", \"\");\n" +
-                "            return new MappingResult(result);\n" +
+                "        if (predictionKeyMap == null) {\n" +
+                "            logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Input map is null for medicaid member id validator\";\n" +
+                "            logger.error(logMsg);\n" +
+                "            return new MappingResult(predictionKeyMap);\n" +
                 "        }\n" +
                 "\n" +
-                "        return new MappingResult(predictionKeyMap);\n" +
+                "        Map resultMap = new Hashtable(predictionKeyMap);\n" +
+                "        validateAndMapIds(resultMap);\n" +
+                "        mapAuthIdAndAdditionalProperties(resultMap, predictionKeyMap);\n" +
+                "\n" +
+                "        return new MappingResult(resultMap);\n" +
                 "    }\n" +
                 "\n" +
-                "    private void processAuthAndMemberIds(Map data, Long rootPipelineId) {\n" +
-                "        // Handle null inputs explicitly\n" +
-                "        String authId = data.containsKey(\"auth_id\") && data.get(\"auth_id\") != null ? String.valueOf(data.get(\"auth_id\")) : \"\";\n" +
-                "        String memberId = data.containsKey(\"member_id\") && data.get(\"member_id\") != null ? String.valueOf(data.get(\"member_id\")) : \"\";\n" +
-                "        String additionalAuthProperties = data.containsKey(\"additional_auth_properties\") && data.get(\"additional_auth_properties\") != null ? String.valueOf(data.get(\"additional_auth_properties\")) : \"\";\n" +
+                "    private void validateAndMapIds(Map resultMap) {\n" +
+                "        String[] idFields = {\"member_id\", \"medicaid_id\"};\n" +
+                "        Map validatedIds = new Hashtable();\n" +
                 "\n" +
-                "        // Validate auth_id\n" +
-                "        boolean authIdValid = false;\n" +
-                "        String firstValidAuthId = null;\n" +
-                "        ArrayList remainingValidAuthIds = new ArrayList();\n" +
-                "        if (!authId.equals(\"\")) {\n" +
-                "            String[] authIds = authId.split(\",\");\n" +
-                "            HashSet uniqueAuthIds = new HashSet();\n" +
-                "            for (String id : authIds) {\n" +
-                "                id = id.trim();\n" +
-                "                if (!id.equals(\"\") && !uniqueAuthIds.contains(id) && isValidAuthId(id)) {\n" +
-                "                    uniqueAuthIds.add(id);\n" +
-                "                    if (firstValidAuthId == null) {\n" +
-                "                        firstValidAuthId = id;\n" +
-                "                        authIdValid = true;\n" +
+                "        for (String field : idFields) {\n" +
+                "            SharedItemData data = (SharedItemData) resultMap.get(field);  // Use shared type\n" +
+                "            String value = data != null ? data.getExtractedValue() : null;\n" +
+                "            String originalBbox = data != null ? data.getBbox() : null;  // Allow null\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: validateAndMapIds - field=\" + field + \", originalBbox='\" + (originalBbox == null ? \"NULL\" : originalBbox) + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "\n" +
+                "            if (value != null && value.trim().length() != 0) {\n" +
+                "                value = cleanString(value); // Clean whitespace and non-alphanumeric characters\n" +
+                "                Matcher combinedMatcher = COMBINED_FIELD.matcher(value);\n" +
+                "                if (combinedMatcher.find()) {\n" +
+                "                    String firstPart = combinedMatcher.group(1);\n" +
+                "                    String secondPart = combinedMatcher.group(2);\n" +
+                "                    String logMsg2 = \"[RootPipelineID: \" + rootPipelineId + \"] Combined field in \" + field + \" split into two parts\";\n" +
+                "                    logger.info(logMsg2);\n" +
+                "                    assignCombinedValues(validatedIds, firstPart, secondPart, field, data, originalBbox);\n" +
+                "                } else {\n" +
+                "                    // Apply WITH_PARENTHESES for single values\n" +
+                "                    Matcher parenMatcher = WITH_PARENTHESES.matcher(value);\n" +
+                "                    if (parenMatcher.find()) {\n" +
+                "                        value = parenMatcher.group(1);\n" +
+                "                        String logMsg2 = \"[RootPipelineID: \" + rootPipelineId + \"] Stripped parentheses in field \" + field;\n" +
+                "                        logger.info(logMsg2);\n" +
                 "                    } else {\n" +
-                "                        remainingValidAuthIds.add(id);\n" +
-                "                    }\n" +
-                "                } else if (!id.equals(\"\")) {\n" +
-                "                    logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Invalid auth_id (must be UM + 8 digits or greater than 8 digits)\");\n" +
-                "                }\n" +
-                "            }\n" +
-                "        } else {\n" +
-                "            data.put(\"auth_id\", \"\");\n" +
-                "        }\n" +
-                "\n" +
-                "        // Handle member_id\n" +
-                "        if (!memberId.equals(\"\")) {\n" +
-                "            String[] memberIds = memberId.split(\",\");\n" +
-                "            HashSet uniqueMemberIds = new HashSet();\n" +
-                "            ArrayList validMemberIds = new ArrayList();\n" +
-                "            String umId = null;\n" +
-                "            ArrayList validUmIds = new ArrayList();\n" +
-                "\n" +
-                "            for (String id : memberIds) {\n" +
-                "                id = id.trim();\n" +
-                "                if (!id.equals(\"\") && !uniqueMemberIds.contains(id)) {\n" +
-                "                    uniqueMemberIds.add(id);\n" +
-                "                    if (id.toUpperCase().startsWith(\"UM\")) {\n" +
-                "                        if (isValidAuthId(id)) {\n" +
-                "                            if (!authIdValid && umId == null) {\n" +
-                "                                umId = id;\n" +
-                "                            } else {\n" +
-                "                                validUmIds.add(id);\n" +
-                "                            }\n" +
-                "                        } else {\n" +
-                "                            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Invalid UM member_id (must be UM + 8 digits or greater than 8 digits)\");\n" +
-                "                        }\n" +
-                "                    } else {\n" +
-                "                        if (isValidMemberId(id)) {\n" +
-                "                            validMemberIds.add(id);\n" +
-                "                        } else {\n" +
-                "                            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Invalid member_id (length 9-13 or non-alphanumeric)\");\n" +
+                "                        // Try to extract the last valid ID\n" +
+                "                        Matcher lastIdMatcher = LAST_ID.matcher(value);\n" +
+                "                        if (lastIdMatcher.find()) {\n" +
+                "                            value = lastIdMatcher.group(1);\n" +
+                "                            String logMsg2 = \"[RootPipelineID: \" + rootPipelineId + \"] Extracted last ID in field \" + field;\n" +
+                "                            logger.info(logMsg2);\n" +
                 "                        }\n" +
                 "                    }\n" +
+                "                    assignSingleValue(validatedIds, value, field, data, originalBbox);\n" +
                 "                }\n" +
-                "            }\n" +
-                "\n" +
-                "            if (umId != null || !validUmIds.isEmpty()) {\n" +
-                "                logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] member_id starts with UM, reassigning to auth_id\");\n" +
-                "                if (umId != null) {\n" +
-                "                    data.put(\"auth_id\", umId);\n" +
-                "                    authIdValid = true;\n" +
-                "                }\n" +
-                "                if (!validUmIds.isEmpty()) {\n" +
-                "                    String newAdditional = join(validUmIds, \",\");\n" +
-                "                    additionalAuthProperties = additionalAuthProperties.equals(\"\") ? newAdditional : additionalAuthProperties + \",\" + newAdditional;\n" +
-                "                }\n" +
-                "                data.put(\"member_id\", validMemberIds.isEmpty() ? \"\" : join(validMemberIds, \",\"));\n" +
                 "            } else {\n" +
-                "                data.put(\"member_id\", validMemberIds.isEmpty() ? \"\" : join(validMemberIds, \",\"));\n" +
+                "                String logMsg2 = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + field + \" is null or empty\";\n" +
+                "                logger.info(logMsg2);\n" +
+                "                if (data != null) {\n" +
+                "                    data.setExtractedValue(\"\");  // Clear value but preserve bbox\n" +
+                "                    // Do NOT set bbox to \"{}\" - keep original\n" +
+                "                }\n" +
+                "            }\n" +
+                "        }\n" +
+                "\n" +
+                "        // Assign validated IDs to resultMap\n" +
+                "        assignValidatedToResult(\"member_id\", validatedIds, resultMap);\n" +
+                "        assignValidatedToResult(\"medicaid_id\", validatedIds, resultMap);\n" +
+                "    }\n" +
+                "\n" +
+                "    private void assignValidatedToResult(String field, Map validatedIds, Map resultMap) {\n" +
+                "        SharedItemData validatedData = (SharedItemData) validatedIds.get(field);  // Use shared\n" +
+                "        SharedItemData targetData = (SharedItemData) resultMap.get(field);  // Use shared\n" +
+                "        String originalBbox = targetData != null ? targetData.getBbox() : null;  // Allow null\n" +
+                "\n" +
+                "        if (validatedData != null) {\n" +
+                "            String newValue = validatedData.getExtractedValue();\n" +
+                "            String newBbox = validatedData.getBbox();\n" +
+                "            if (targetData != null) {\n" +
+                "                targetData.setExtractedValue(newValue);\n" +
+                "                // Preserve bbox if validated didn't change it\n" +
+                "                targetData.setBbox(newBbox != null ? newBbox : originalBbox);\n" +
+                "                String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: assignValidatedToResult - field=\" + field + \", final bbox='\" + (targetData != null ? targetData.getBbox() : \"NULL\") + \"', preserved?=\" + (newBbox != null ? \"yes\" : \"no\");\n" +
+                "                logger.info(logMsg);\n" +
+                "                logger.info(\"[RootPipelineID: {}] Updated {} with bbox preserved: '{}'\", rootPipelineId, field, targetData.getBbox());\n" +
+                "            } else {\n" +
+                "                resultMap.put(field, validatedData);\n" +
                 "            }\n" +
                 "        } else {\n" +
-                "            data.put(\"member_id\", \"\");\n" +
-                "        }\n" +
-                "\n" +
-                "        // Handle auth_id if it contains valid IDs and hasn't been overridden\n" +
-                "        if (authIdValid && firstValidAuthId != null && data.get(\"auth_id\").equals(authId)) {\n" +
-                "            data.put(\"auth_id\", firstValidAuthId);\n" +
-                "            if (!remainingValidAuthIds.isEmpty()) {\n" +
-                "                String newAdditional = join(remainingValidAuthIds, \",\");\n" +
-                "                additionalAuthProperties = additionalAuthProperties.equals(\"\") ? newAdditional : additionalAuthProperties + \",\" + newAdditional;\n" +
-                "            }\n" +
-                "        } else if (!authIdValid && data.get(\"auth_id\").equals(authId)) {\n" +
-                "            data.put(\"auth_id\", \"\");\n" +
-                "        }\n" +
-                "\n" +
-                "        // Update additional_auth_properties without clearing existing values\n" +
-                "        data.put(\"additional_auth_properties\", additionalAuthProperties);\n" +
-                "    }\n" +
-                "\n" +
-                "    private boolean isValidAuthId(String id) {\n" +
-                "        if (id == null || id.equals(\"\")) {\n" +
-                "            return false;\n" +
-                "        }\n" +
-                "        // Check for UM followed by 8 or more digits (case-insensitive)\n" +
-                "        if (!id.toUpperCase().startsWith(\"UM\")) {\n" +
-                "            return false;\n" +
-                "        }\n" +
-                "        if (id.length() < 10) { // UM + 8 digits = 10 characters minimum\n" +
-                "            return false;\n" +
-                "        }\n" +
-                "        // Check if remaining characters after UM are digits\n" +
-                "        for (int i = 2; i < id.length(); i++) {\n" +
-                "            if (!Character.isDigit(id.charAt(i))) {\n" +
-                "                return false;\n" +
+                "            // No validated data - clear value but preserve bbox\n" +
+                "            if (targetData != null) {\n" +
+                "                targetData.setExtractedValue(\"\");\n" +
+                "                // Keep existing bbox\n" +
+                "                logger.info(\"[RootPipelineID: {}] Cleared {} value but preserved bbox: '{}'\", rootPipelineId, field, targetData.getBbox());\n" +
+                "            } else {\n" +
+                "                SharedItemData newData = new SharedItemData();  // Use shared\n" +
+                "                newData.setExtractedValue(\"\");\n" +
+                "                newData.setBbox(originalBbox);  // Use original if available\n" +
+                "                resultMap.put(field, newData);\n" +
+                "                logger.info(\"[RootPipelineID: {}] Created empty {} with bbox: '{}'\", rootPipelineId, field, newData.getBbox());\n" +
                 "            }\n" +
                 "        }\n" +
-                "        return true;\n" +
                 "    }\n" +
                 "\n" +
-                "    private boolean isValidMemberId(String id) {\n" +
-                "        if (id == null || id.equals(\"\")) {\n" +
-                "            return false;\n" +
+                "    private void assignSingleValue(Map validatedIds, String value, String originalField, SharedItemData data, String originalBbox) {\n" +
+                "        if (value.length() == 0) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" is empty after cleaning\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            return;\n" +
                 "        }\n" +
-                "        // Check length between 9 and 13\n" +
-                "        int length = id.length();\n" +
-                "        if (length < 9 || length > 13) {\n" +
-                "            return false;\n" +
+                "\n" +
+                "        if (!STRICT_ALPHANUMERIC.matcher(value).matches()) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" contains non-alphanumeric characters\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            return;\n" +
                 "        }\n" +
-                "        // Check if id contains only alphanumeric characters\n" +
-                "        for (int i = 0; i < id.length(); i++) {\n" +
-                "            char c = id.charAt(i);\n" +
-                "            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {\n" +
-                "                return false;\n" +
+                "\n" +
+                "        String assignedField = determineIdType(value);\n" +
+                "        String logMsg;\n" +
+                "        String bboxToSet = data != null ? data.getBbox() : originalBbox;\n" +
+                "        String traceLog = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: assignSingleValue - field=\" + originalField + \", bbox to set='\" + (bboxToSet == null ? \"NULL\" : bboxToSet) + \"'\";\n" +
+                "        logger.info(traceLog);\n" +
+                "\n" +
+                "        if (\"auth_id\".equals(assignedField)) {\n" +
+                "            logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" starts with UM and has 8 digits, adding to auth_id candidates\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            authIdCandidates.add(new Candidate(value, bboxToSet));  // Use preserved bbox\n" +
+                "        } else if (\"additional_auth_properties\".equals(assignedField)) {\n" +
+                "            logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" starts with UM but does not have 8 digits, adding to additional_auth_properties candidates\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            additionalAuthCandidates.add(new Candidate(value, bboxToSet));\n" +
+                "        } else if (\"member_id\".equals(assignedField)) {\n" +
+                "            logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" validated as member_id\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData validatedData = new SharedItemData();  // Use shared\n" +
+                "            validatedData.setExtractedValue(value);\n" +
+                "            validatedData.setBbox(bboxToSet);  // Preserve\n" +
+                "            validatedIds.put(\"member_id\", validatedData);\n" +
+                "        } else if (\"medicaid_id\".equals(assignedField)) {\n" +
+                "            logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" validated as medicaid_id\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData validatedData = new SharedItemData();  // Use shared\n" +
+                "            validatedData.setExtractedValue(value);\n" +
+                "            validatedData.setBbox(bboxToSet);\n" +
+                "            validatedIds.put(\"medicaid_id\", validatedData);\n" +
+                "        } else {\n" +
+                "            logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Field \" + originalField + \" does not match any ID criteria\";\n" +
+                "            logger.info(logMsg);\n" +
+                "        }\n" +
+                "    }\n" +
+                "\n" +
+                "    private void assignCombinedValues(Map validatedIds, String firstPart, String secondPart, String originalField, SharedItemData data, String originalBbox) {\n" +
+                "        firstPart = cleanString(firstPart);\n" +
+                "        secondPart = cleanString(secondPart);\n" +
+                "\n" +
+                "        // Strip parentheses from both parts\n" +
+                "        Matcher parenMatcher = WITH_PARENTHESES.matcher(firstPart);\n" +
+                "        if (parenMatcher.find()) {\n" +
+                "            firstPart = parenMatcher.group(1);\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Stripped parentheses from first part in field \" + originalField;\n" +
+                "            logger.info(logMsg);\n" +
+                "        }\n" +
+                "\n" +
+                "        parenMatcher = WITH_PARENTHESES.matcher(secondPart);\n" +
+                "        if (parenMatcher.find()) {\n" +
+                "            secondPart = parenMatcher.group(1);\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Stripped parentheses from second part in field \" + originalField;\n" +
+                "            logger.info(logMsg);\n" +
+                "        }\n" +
+                "\n" +
+                "\n" +
+                "        String firstAssignedField = determineIdType(firstPart);\n" +
+                "        String secondAssignedField = determineIdType(secondPart);\n" +
+                "\n" +
+                "        if (firstPart.length() == 0 || ALL_ALPHA.matcher(firstPart).matches() || !STRICT_ALPHANUMERIC.matcher(firstPart).matches()) {\n" +
+                "            String reason = firstPart.length() == 0 ? \"is empty after cleaning\" : !STRICT_ALPHANUMERIC.matcher(firstPart).matches() ? \"contains non-alphanumeric characters\" : \"contains only alphabets\";\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] First part of combined field in \" + originalField + \" \" + reason;\n" +
+                "            logger.info(logMsg);\n" +
+                "            firstAssignedField = null;\n" +
+                "        }\n" +
+                "        if (secondPart.length() == 0 || ALL_ALPHA.matcher(secondPart).matches() || !STRICT_ALPHANUMERIC.matcher(secondPart).matches()) {\n" +
+                "            String reason = secondPart.length() == 0 ? \"is empty after cleaning\" : !STRICT_ALPHANUMERIC.matcher(secondPart).matches() ? \"contains non-alphanumeric characters\" : \"contains only alphabets\";\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Second part of combined field in \" + originalField + \" \" + reason;\n" +
+                "            logger.info(logMsg);\n" +
+                "            secondAssignedField = null;\n" +
+                "        }\n" +
+                "\n" +
+                "        String preservedBbox = data != null ? data.getBbox() : originalBbox;\n" +
+                "\n" +
+                "        // Handle first part\n" +
+                "        if (\"auth_id\".equals(firstAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] First part of combined field in \" + originalField + \" starts with UM and has 8 digits, adding to auth_id candidates with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            authIdCandidates.add(new Candidate(firstPart, preservedBbox));\n" +
+                "        } else if (\"additional_auth_properties\".equals(firstAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] First part of combined field in \" + originalField + \" starts with UM but does not have 8 digits, adding to additional_auth_properties candidates with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            additionalAuthCandidates.add(new Candidate(firstPart, preservedBbox));\n" +
+                "        } else if (\"member_id\".equals(firstAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] First part of combined field in \" + originalField + \" assigned to member_id with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData validatedData = new SharedItemData();  // Use shared\n" +
+                "            validatedData.setExtractedValue(firstPart);\n" +
+                "            validatedData.setBbox(preservedBbox);\n" +
+                "            validatedIds.put(\"member_id\", validatedData);\n" +
+                "        } else if (\"medicaid_id\".equals(firstAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] First part of combined field in \" + originalField + \" assigned to medicaid_id with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData validatedData = new SharedItemData();  // Use shared\n" +
+                "            validatedData.setExtractedValue(firstPart);\n" +
+                "            validatedData.setBbox(preservedBbox);\n" +
+                "            validatedIds.put(\"medicaid_id\", validatedData);\n" +
+                "        }\n" +
+                "\n" +
+                "        // Handle second part\n" +
+                "        if (\"auth_id\".equals(secondAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Second part of combined field in \" + originalField + \" starts with UM and has 8 digits, adding to auth_id candidates with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            authIdCandidates.add(new Candidate(secondPart, preservedBbox));\n" +
+                "        } else if (\"additional_auth_properties\".equals(secondAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Second part of combined field in \" + originalField + \" starts with UM but does not have 8 digits, adding to additional_auth_properties candidates with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            additionalAuthCandidates.add(new Candidate(secondPart, preservedBbox));\n" +
+                "        } else if (\"member_id\".equals(secondAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Second part of combined field in \" + originalField + \" assigned to member_id with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData validatedData = new SharedItemData();  // Use shared\n" +
+                "            validatedData.setExtractedValue(secondPart);\n" +
+                "            validatedData.setBbox(preservedBbox);\n" +
+                "            validatedIds.put(\"member_id\", validatedData);\n" +
+                "        } else if (\"medicaid_id\".equals(secondAssignedField)) {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Second part of combined field in \" + originalField + \" assigned to medicaid_id with bbox: '\" + preservedBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData validatedData = new SharedItemData();  // Use shared\n" +
+                "            validatedData.setExtractedValue(secondPart);\n" +
+                "            validatedData.setBbox(preservedBbox);\n" +
+                "            validatedIds.put(\"medicaid_id\", validatedData);\n" +
+                "        }\n" +
+                "    }\n" +
+                "\n" +
+                "    private String determineIdType(String value) {\n" +
+                "        if (value == null || value.length() == 0) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value rejected as it is null or empty\");\n" +
+                "            return null;\n" +
+                "        } else if (ALL_ALPHA.matcher(value).matches()) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value rejected as it contains only alphabets\");\n" +
+                "            return null;\n" +
+                "        }     // Regex: matches UM/um/Um/uM followed by exactly 8 digits\n" +
+                "        String UM_REGEX = \"^[Uu][Mm]\\\\d{8}$\";\n" +
+                "        String UM_PREFIX_REGEX = \"^[Uu][Mm].*\";\n" +
+                "\n" +
+                "        // Check if starts with any case variant of UM\n" +
+                "        if (value.matches(UM_PREFIX_REGEX)) {\n" +
+                "            if (value.matches(UM_REGEX)) {\n" +
+                "                logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value starts with UM variant and valid (8 digits) → auth_id\");\n" +
+                "                return \"auth_id\";\n" +
+                "            } else {\n" +
+                "                logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value starts with UM variant but invalid format → additional_auth_properties\");\n" +
+                "                return \"additional_auth_properties\";\n" +
                 "            }\n" +
                 "        }\n" +
-                "        return true;\n" +
+                "        else if (NINE_CHAR_ALPHANUMERIC.matcher(value).matches()) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value validated as member_id\");\n" +
+                "            return \"member_id\";\n" +
+                "        } else if (SEVEN_EIGHT_DIGITS.matcher(value).matches()) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value validated as medicaid_id\");\n" +
+                "            return \"medicaid_id\";\n" +
+                "        } else if (LESS_THAN_SEVEN_DIGITS.matcher(value).matches()) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value rejected as it has less than 7 digits\");\n" +
+                "            return null;\n" +
+                "        } else if (value.length() > 9 && FIRST_THREE_ALPHA_PREFIX.matcher(value).matches()) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value validated as member_id\");\n" +
+                "            return \"member_id\";\n" +
+                "        } else if (value.length() > 9 && FIRST_THREE_ALPHA_NUMERIC_PREFIX.matcher(value).matches()) {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value validated as member_id\");\n" +
+                "            return \"member_id\";\n" +
+                "        } else {\n" +
+                "            logger.info(\"[RootPipelineID: \" + rootPipelineId + \"] Value validated as medicaid_id\");\n" +
+                "            return \"medicaid_id\";\n" +
+                "        }\n" +
                 "    }\n" +
                 "\n" +
-                "    private String join(List list, String separator) {\n" +
-                "        StringJoiner joiner = new StringJoiner(separator);\n" +
-                "        for (Object item : list) {\n" +
-                "            joiner.add(item.toString());\n" +
+                "    private void mapAuthIdAndAdditionalProperties(Map resultMap, Map inputMap) {\n" +
+                "        SharedItemData authDataObj = (SharedItemData) inputMap.get(\"auth_id\");  // Use shared\n" +
+                "        String rawAuthId = authDataObj != null ? authDataObj.getExtractedValue() : null;\n" +
+                "        String originalAuthBbox = authDataObj != null ? authDataObj.getBbox() : null;  // Allow null\n" +
+                "        String authId = null;\n" +
+                "        if (rawAuthId != null && rawAuthId.trim().length() != 0) {\n" +
+                "            authId = cleanString(rawAuthId);\n" +
+                "            if (UM_PATTERN.matcher(authId).matches()) {\n" +
+                "                authIdCandidates.add(new Candidate(authId, originalAuthBbox));\n" +
+                "                String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] auth_id field validated as auth_id with bbox: '\" + originalAuthBbox + \"'\";\n" +
+                "                logger.info(logMsg);\n" +
+                "            } else if (UM_INVALID_PATTERN.matcher(authId).matches()) {\n" +
+                "                additionalAuthCandidates.add(new Candidate(authId, originalAuthBbox));\n" +
+                "                String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] auth_id field validated as additional_auth_properties with bbox: '\" + originalAuthBbox + \"'\";\n" +
+                "                logger.info(logMsg);\n" +
+                "            }\n" +
                 "        }\n" +
-                "        return joiner.toString();\n" +
+                "\n" +
+                "        List allAdditionalAuth = new ArrayList();\n" +
+                "        for (int j = 0; j < additionalAuthCandidates.size(); j++) {\n" +
+                "            Candidate c = (Candidate) additionalAuthCandidates.get(j);\n" +
+                "            allAdditionalAuth.add(c.value);\n" +
+                "        }\n" +
+                "        if (!authIdCandidates.isEmpty()) {\n" +
+                "            Candidate firstCandidate = (Candidate) authIdCandidates.get(0);\n" +
+                "            String firstAuthId = firstCandidate.value;\n" +
+                "            String firstBbox = firstCandidate.bbox;  // From candidate (preserved)\n" +
+                "            SharedItemData authResultData = (SharedItemData) resultMap.get(\"auth_id\");  // Use shared\n" +
+                "            if (authResultData != null) {\n" +
+                "                authResultData.setExtractedValue(firstAuthId);\n" +
+                "                authResultData.setBbox(firstBbox);  // Use preserved\n" +
+                "            } else {\n" +
+                "                SharedItemData newData = new SharedItemData();  // Use shared\n" +
+                "                newData.setExtractedValue(firstAuthId);\n" +
+                "                newData.setBbox(firstBbox);\n" +
+                "                resultMap.put(\"auth_id\", newData);\n" +
+                "            }\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Assigned first valid UM value to auth_id with bbox: '\" + firstBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            String traceLog = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: mapAuth... - auth_id bbox set to '\" + (authResultData != null ? authResultData.getBbox() : \"NULL\") + \"'\";\n" +
+                "            logger.info(traceLog);\n" +
+                "            if (authIdCandidates.size() > 1) {\n" +
+                "                for (int i = 1; i < authIdCandidates.size(); i++) {\n" +
+                "                    Candidate c = (Candidate) authIdCandidates.get(i);\n" +
+                "                    allAdditionalAuth.add(c.value);\n" +
+                "                }\n" +
+                "            }\n" +
+                "        } else {\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] No valid UM values found, clearing auth_id but preserving bbox: '\" + originalAuthBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            SharedItemData authResultData = (SharedItemData) resultMap.get(\"auth_id\");  // Use shared\n" +
+                "            if (authResultData != null) {\n" +
+                "                authResultData.setExtractedValue(\"\");  // Clear value\n" +
+                "                authResultData.setBbox(originalAuthBbox);  // Preserve!\n" +
+                "            } else {\n" +
+                "                SharedItemData newData = new SharedItemData();  // Use shared\n" +
+                "                newData.setExtractedValue(\"\");\n" +
+                "                newData.setBbox(originalAuthBbox);\n" +
+                "                resultMap.put(\"auth_id\", newData);\n" +
+                "            }\n" +
+                "            String traceLog = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: mapAuth... - auth_id bbox set to '\" + originalAuthBbox + \"'\";\n" +
+                "            logger.info(traceLog);\n" +
+                "        }\n" +
+                "\n" +
+                "        if (!allAdditionalAuth.isEmpty()) {\n" +
+                "            StringBuffer additionalAuthIds = new StringBuffer();\n" +
+                "            Iterator it = allAdditionalAuth.iterator();\n" +
+                "            while (it.hasNext()) {\n" +
+                "                additionalAuthIds.append((String) it.next());\n" +
+                "                if (it.hasNext()) {\n" +
+                "                    additionalAuthIds.append(\",\");\n" +
+                "                }\n" +
+                "            }\n" +
+                "            SharedItemData addData = (SharedItemData) resultMap.get(\"additional_auth_properties\");  // Use shared\n" +
+                "            String additionalValue = additionalAuthIds.toString();\n" +
+                "            String addBbox = originalAuthBbox;  // Preserve from original\n" +
+                "            if (addData != null) {\n" +
+                "                addData.setExtractedValue(additionalValue);\n" +
+                "                addData.setBbox(addBbox);\n" +
+                "            } else {\n" +
+                "                SharedItemData newData = new SharedItemData();  // Use shared\n" +
+                "                newData.setExtractedValue(additionalValue);\n" +
+                "                newData.setBbox(addBbox);\n" +
+                "                resultMap.put(\"additional_auth_properties\", newData);\n" +
+                "            }\n" +
+                "            String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Appended UM values to additional_auth_properties with bbox: '\" + addBbox + \"'\";\n" +
+                "            logger.info(logMsg);\n" +
+                "            String traceLog = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: mapAuth... - additional_auth_properties bbox set to '\" + addBbox + \"'\";\n" +
+                "            logger.info(traceLog);\n" +
+                "        } else {\n" +
+                "            // For empty additional, preserve if exists\n" +
+                "            SharedItemData addData = (SharedItemData) resultMap.get(\"additional_auth_properties\");  // Use shared\n" +
+                "            if (addData != null) {\n" +
+                "                addData.setExtractedValue(\"\");\n" +
+                "                // Keep existing bbox\n" +
+                "            } else {\n" +
+                "                SharedItemData newData = new SharedItemData();  // Use shared\n" +
+                "                newData.setExtractedValue(\"\");\n" +
+                "                newData.setBbox(originalAuthBbox);  // From auth original\n" +
+                "                resultMap.put(\"additional_auth_properties\", newData);\n" +
+                "            }\n" +
+                "            String traceLog = \"[RootPipelineID: \" + rootPipelineId + \"] BBOX-TRACE: mapAuth... - additional_auth_properties bbox set to '\" + (addData != null ? addData.getBbox() : originalAuthBbox) + \"'\";\n" +
+                "            logger.info(traceLog);\n" +
+                "        }\n" +
+                "    }\n" +
+                "\n" +
+                "    private String cleanString(String str) {\n" +
+                "        if (str == null || str.trim().length() == 0) {\n" +
+                "            return \"\";\n" +
+                "        }\n" +
+                "        // Remove non-alphanumeric characters except for allowed separators and parentheses\n" +
+                "        return str.trim().replaceAll(\"[^a-zA-Z0-9/:,–|\\\\\\\\()]\", \"\");\n" +
                 "    }\n" +
                 "\n" +
                 "    public static class MappingResult {\n" +
                 "        private Map mappedData;\n" +
                 "\n" +
                 "        public MappingResult(Map mappedData) {\n" +
-                "            this.mappedData = mappedData != null ? mappedData : new HashMap();\n" +
+                "            this.mappedData = mappedData;\n" +
                 "        }\n" +
                 "\n" +
                 "        public Map getMappedData() {\n" +
@@ -247,14 +527,18 @@ class PostProcessingExecutorActionTest {
                 "        }\n" +
                 "    }\n" +
                 "}");
-        action.getContext().put("MedicaidMemberIdValidator", "");
         String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
         String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
+
         action.setRootPipelineId(929L);
         action.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
-        action.getContext().put("protegrity.enc.api.url",encryptionUrl);
-        action.getContext().put("protegrity.dec.api.url",decryptionUrl);
-        PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, postProcessingExecutor);
+        action.getContext().put("protegrity.enc.api.url", encryptionUrl);
+        action.getContext().put("protegrity.dec.api.url", decryptionUrl);
+
+        PostProcessingExecutorAction postProcessingExecutorAction =
+                new PostProcessingExecutorAction(action, log, postProcessingExecutor);
+
+        // Execute safely
         postProcessingExecutorAction.execute();
     }
 }
