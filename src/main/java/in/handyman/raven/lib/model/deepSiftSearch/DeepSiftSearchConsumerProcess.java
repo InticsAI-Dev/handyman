@@ -71,6 +71,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             }
 
             List<String> matchedKeywords = new ArrayList<>();
+            List<String> matchedTerms = new ArrayList<>();
             boolean matchFound = false;
 
             log.debug(marker, "Processing searchType: {} for sorItemId: {}, total keywords: {}",
@@ -99,8 +100,8 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                     if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
                             .matcher(finalExtractedText)
                             .find()) {
+                        matchedTerms.add(kw);
                         matchFound = true;
-                        break;
                     }
                 }
                 matchedKeywords.add(matchFound ? "Y" : "N");
@@ -134,6 +135,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .createdOn(entity.getCreatedOn())
                         .createdBy(entity.getTenantId().toString())
                         .searchOutput(matchedKeywords)
+                        .matchedTerms(matchedTerms)
                         .paperNo(entity.getPaperNo())
                         .groupId(entity.getGroupId())
                         .timeTakenMS(elapsedTimeMs)
@@ -156,6 +158,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .createdOn(entity.getCreatedOn())
                         .createdBy(entity.getTenantId().toString())
                         .searchOutput(matchedKeywords)
+                        .matchedTerms(matchedTerms)
                         .paperNo(entity.getPaperNo())
                         .groupId(entity.getGroupId())
                         .timeTakenMS(elapsedTimeMs)
@@ -181,10 +184,10 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, long timeTakenMS) {
-        return buildOutputTable(entity, status, message, new ArrayList<>(), timeTakenMS);
+        return buildOutputTable(entity, status, message, new ArrayList<>(), new ArrayList<>(), timeTakenMS);
     }
 
-    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, List<String> matchedKeywords, long timeTakenMS) {
+    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, List<String> matchedTerms, List<String> matchedKeywords, long timeTakenMS) {
         log.debug(marker, "Building output table for sorItemId: {} with status: {}", entity.getSorItemId(), status);
         return DeepSiftSearchOutputTable.builder()
                 .sorItemId(entity.getSorItemId())
@@ -201,6 +204,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 .createdOn(entity.getCreatedOn())
                 .createdBy(entity.getTenantId().toString())
                 .searchOutput(matchedKeywords)
+                .matchedTerms(matchedTerms)
                 .paperNo(entity.getPaperNo())
                 .groupId(entity.getGroupId())
                 .timeTakenMS(timeTakenMS)

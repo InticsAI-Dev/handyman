@@ -34,6 +34,7 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
     private String createdBy;
     private String status;
     private List<String> searchOutput;
+    private List<String> matchedTerms;
     private Integer paperNo;
     private String groupId;
     private Long timeTakenMS;
@@ -55,6 +56,7 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
                 createdOn,
                 createdBy,
                 searchOutput != null ? String.join(", ", searchOutput) : null,
+                matchedTerms != null ? String.join(", ", matchedTerms) : null,
                 paperNo,
                 groupId,
                 timeTakenMS,
