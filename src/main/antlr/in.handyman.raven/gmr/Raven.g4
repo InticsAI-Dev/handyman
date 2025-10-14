@@ -191,6 +191,7 @@ action:
     |pipelineEventActionAudit
     |multiValueMemberMapper
     |ocrTextComparator
+    |sectionFiltering
     );
 
 
@@ -1519,6 +1520,15 @@ ocrTextComparator:
     'using' '{'
         querySet=STRING
     '}' ('on-condition' condition=expression)* ;
+
+sectionFiltering:
+    'sectionFiltering' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
 
 //rules
 

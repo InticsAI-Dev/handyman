@@ -80,7 +80,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         this.httpclient = builder.build();
 
-        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient,log);
     }
 
 
