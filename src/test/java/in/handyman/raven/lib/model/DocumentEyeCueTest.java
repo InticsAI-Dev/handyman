@@ -112,6 +112,7 @@ class DocumentEyeCueTest {
                 Map.entry("doc.eyecue.storecontent.repository", "FilenetCE"),
                 Map.entry("doc.eyecue.storecontent.application.id", "CUE"),
                 Map.entry("doc.eyecue.storecontent.upload", "true"),
+                Map.entry("doc.eyecue.file.rename.activator", "true"),
 
                 // Metadata (storecontent meta headers)
                 Map.entry("storecontent.meta.SYSID", "SYSTEM_TEST_CUE"),
