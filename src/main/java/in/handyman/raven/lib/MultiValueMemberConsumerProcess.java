@@ -19,10 +19,7 @@ import org.slf4j.Marker;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class MultiValueMemberConsumerProcess {
@@ -43,6 +40,7 @@ public class MultiValueMemberConsumerProcess {
     private final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
     private final String MULTI_MEMBER_NAME_THRESHOLD = "multi.member.name.similarity.threshold";
     private final String MULTI_MEMBER_ID_THRESHOLD = "multi.member.id.similarity.threshold";
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
 
     public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action,
                                            List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables,
@@ -57,16 +55,15 @@ public class MultiValueMemberConsumerProcess {
     }
 
     public List<MultiValueMemberMapperOutputTable> doMultiMemberValidation() throws Exception {
-        log.info(marker, "Starting MultiValueMemberMapper process for tenantId: {}, actionId: {}", tenantId, action.getActionId());
+        log.info(marker, "Starting MultiValueMemberMapper process for tenantId={} actionId={}", tenantId, action.getActionId());
 
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multiValueMemberMapper.getResourceConn());
         List<MultiValueMemberMapperOutputTable> finalOutput = Collections.synchronizedList(new ArrayList<>());
 
         String processingSorItemName = action.getContext().get(PROCESSING_SOR_ITEM_NAME);
+        log.debug(marker, "Processing SOR item name(s): {}", processingSorItemName);
 
         try {
-            log.info(marker, "Processing MultiValueMemberMapper for tenantId: {}, actionId: {}", tenantId, action.getActionId());
-
             Set<String> targetSorItems = Arrays.stream(processingSorItemName.split(","))
                     .map(String::trim)
                     .collect(Collectors.toSet());
@@ -77,26 +74,27 @@ public class MultiValueMemberConsumerProcess {
                     String threadName = Thread.currentThread().getName();
                     String originId = inputTable.getOriginId();
 
+                    log.info(marker, "[{}] Processing originId={} on thread={}", action.getActionId(), originId, threadName);
+
                     double nameSimilarityThreshold = Double.parseDouble(action.getContext().get(MULTI_MEMBER_NAME_THRESHOLD));
                     double idSimilarityThreshold = Double.parseDouble(action.getContext().get(MULTI_MEMBER_ID_THRESHOLD));
 
-                    try {
-                        log.info(marker, "[Thread: {}] START processing for originId: {}", threadName, originId);
+                    log.debug(marker, "[{}] Name threshold={} ID threshold={}", originId, nameSimilarityThreshold, idSimilarityThreshold);
 
+                    try {
                         MultipleMemberSummary result = evaluateMultivaluePresenceAndUniqueness(
                                 inputTable, targetSorItems, nameSimilarityThreshold, idSimilarityThreshold, log);
                         MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.getOutput());
                         finalOutput.add(outputRow);
 
                         jdbi.useTransaction(handle -> {
+                            log.info(marker, "[{}] Inserting audit entries...", originId);
                             executeMMIAuditInsert(handle, result, originId);
                             log.info("Executed audit insert for originId: {}", originId);
                         });
-
-                        log.info(marker, "[Thread: {}] SUCCESS for originId: {}", threadName, originId);
-
+                        log.info(marker, "SUCCESS for originId: {}", originId);
                     } catch (Exception e) {
-                        log.error(marker, "[Thread: {}] ERROR processing originId: {}", threadName, originId, e);
+                        log.error(marker, "ERROR processing originId: {}", originId, e);
                         throw new HandymanException("Error processing input table for originId: " + originId, e);
                     }
                 }));
@@ -111,6 +109,7 @@ public class MultiValueMemberConsumerProcess {
             HandymanException handymanException = new HandymanException("Error processing MultiValueMemberMapper", e);
             HandymanException.insertException("Error processing MultiValueMemberMapper", handymanException, action);
         } finally {
+            log.info(marker, "Shutting down executor service...");
             executor.shutdown();
             try {
                 if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
@@ -134,7 +133,8 @@ public class MultiValueMemberConsumerProcess {
             double idThreshold,
             Logger log) {
 
-        log.info("Starting evaluation for originId: {}", inputRows.getOriginId());
+        log.info("Evaluating multi-member presence for originId={}", inputRows.getOriginId());
+        log.debug("Target SOR items: {}", targetSorItems);
 
         List<extractedSorItemList> multiValueMember = inputRows.getSorItemList();
 
@@ -176,30 +176,16 @@ public class MultiValueMemberConsumerProcess {
         }
 
         String pageNo = composePageNumbers(pageNumbersSet);
-        Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
+        log.debug("Page numbers composed: {}", pageNo);
 
-        List<ValueTrace> valueTraces = new ArrayList<>();
-        if (rawValuesPerSorItem.containsKey("member_id")) {
-            valueTraces.add(ValueTrace.builder()
-                    .key("member_id")
-                    .values(String.join(",", rawValuesPerSorItem.get("member_id")))
-                    .build());
-        }
-        valueTraces.add(ValueTrace.builder()
-                .key("member_full_name")
-                .values(String.join(",", canonicalFullNames))
-                .build());
-        if (rawValuesPerSorItem.containsKey("member_date_of_birth")) {
-            valueTraces.add(ValueTrace.builder()
-                    .key("member_date_of_birth")
-                    .values(String.join(",", rawValuesPerSorItem.get("member_date_of_birth")))
-                    .build());
-        }
+        Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
 
         int canonicalFullNameCount = clusterAndCount(new ArrayList<>(canonicalFullNames), nameThreshold);
         int lastNameCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_last_name", Collections.emptyList()), nameThreshold);
         int memberIdCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_id", Collections.emptyList()), idThreshold);
         int dobCount = rawValuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptyList()).size();
+
+        log.info("Cluster summary -> Name clusters={} Last name clusters={} ID clusters={} DOB count={}", canonicalFullNameCount, lastNameCount, memberIdCount, dobCount);
 
         String comments;
         String output;
@@ -214,59 +200,77 @@ public class MultiValueMemberConsumerProcess {
             log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
-            comments = String.format("COMMERCIAL document: member_id clusters = %d, canonical full name clusters = %d, dob unique count = %d.",
-                    memberIdCount, canonicalFullNameCount, dobCount);
-            log.info(comments);
+            comments = String.format("COMMERCIAL doc: member_id clusters=%d, name clusters=%d, dob count=%d", memberIdCount, canonicalFullNameCount, dobCount);
+            log.info("MEDICAL_COMMERCIAL comments: {}", comments);
             output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
-            comments += output.equals("Y") ? " All these counts are >1, indicating multiple members." : " One or more counts are <=1, indicating a single member.";
+            log.info("Determined output for MEDICAL_COMMERCIAL={}", output);
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
-            comments = String.format("GBD document: member_id clusters = %d, canonical full name clusters = %d.",
-                    memberIdCount, canonicalFullNameCount);
-            log.info(comments);
+            comments = String.format("GBD doc: member_id clusters=%d, name clusters=%d", memberIdCount, canonicalFullNameCount);
+            log.info("MEDICAL_GBD comments: {}", comments);
             output = (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
-            comments += output.equals("Y") ? " Either member_id or canonical full name cluster count is >1, indicating multiple members." : " Both counts are <=1, indicating a single member.";
+            log.info("Determined output for MEDICAL_GBD={}", output);
         } else {
-            comments = String.format("Unknown document type '%s'. Insufficient data to determine member multiplicity.", documentType);
-            log.info(comments);
+            comments = "Unknown document type or insufficient data for multiplicity check.";
+            log.info("fallback case comments: {}", comments);
             output = "N";
+            log.info("Determined output for fallback case={}", output);
         }
+
+        log.info("Evaluation completed for originId={} → output={} comments={}", inputRows.getOriginId(), output, comments);
 
         return MultipleMemberSummary.builder()
                 .pageNo(pageNo)
                 .output(output)
                 .comments(comments)
-                .valueTraces(valueTraces)
+                .valueTraces(buildValueTraces(rawValuesPerSorItem, canonicalFullNames))
                 .build();
     }
 
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    private static List<ValueTrace> buildValueTraces(Map<String, List<String>> rawValuesPerSorItem, Set<String> canonicalFullNames) {
+        List<ValueTrace> traces = new ArrayList<>();
+        if (rawValuesPerSorItem.containsKey("member_id")) {
+            traces.add(ValueTrace.builder().key("member_id").values(String.join(",", rawValuesPerSorItem.get("member_id"))).build());
+        }
+        traces.add(ValueTrace.builder().key("member_full_name").values(String.join(",", canonicalFullNames)).build());
+        if (rawValuesPerSorItem.containsKey("member_date_of_birth")) {
+            traces.add(ValueTrace.builder().key("member_date_of_birth").values(String.join(",", rawValuesPerSorItem.get("member_date_of_birth"))).build());
+        }
+        return traces;
+    }
 
     private static double computeSimilarity(String s1, String s2) {
         if (s1 == null || s2 == null) return 0.0;
-        s1 = s1.trim().toLowerCase();
-        s2 = s2.trim().toLowerCase();
+
+        s1 = normalizeName(s1);
+        s2 = normalizeName(s2);
+
         if (s1.isEmpty() || s2.isEmpty()) return 0.0;
         return jaroWinkler.apply(s1, s2);
     }
 
+    private static String normalizeName(String raw) {
+        if (raw == null) return "";
+        raw = raw.toLowerCase(Locale.ROOT).trim();
+        raw = raw.replaceAll("[^a-z\\s]", "");
+        String[] parts = raw.split("\\s+");
+        Arrays.sort(parts);
+        return String.join(" ", parts).trim();
+    }
+
     private static int clusterAndCount(List<String> values, double threshold) {
         if (values == null || values.isEmpty()) return 0;
-
         List<Set<String>> clusters = new ArrayList<>();
         for (String value : values) {
             boolean placed = false;
             for (Set<String> cluster : clusters) {
-                String rep = cluster.iterator().next();
-                if (computeSimilarity(value, rep) >= threshold) {
+                if (computeSimilarity(value, cluster.iterator().next()) >= threshold) {
                     cluster.add(value);
                     placed = true;
                     break;
                 }
             }
             if (!placed) {
-                Set<String> newCluster = new HashSet<>();
-                newCluster.add(value);
-                clusters.add(newCluster);
+                clusters.add(new HashSet<>(Collections.singletonList(value)));
             }
         }
         return clusters.size();
@@ -286,66 +290,67 @@ public class MultiValueMemberConsumerProcess {
         for (int i = 0; i < maxNames; i++) {
             String fn = i < firstNames.size() ? firstNames.get(i).toLowerCase().trim() : "";
             String ln = i < lastNames.size() ? lastNames.get(i).toLowerCase().trim() : "";
-
             List<String> parts = new ArrayList<>();
             if (!fn.isEmpty()) parts.add(fn);
             if (!ln.isEmpty()) parts.add(ln);
             parts.sort(String::compareTo);
-
             String canonicalName = String.join(" ", parts);
-            if (!canonicalName.isEmpty()) {
-                canonicalFullNames.add(canonicalName);
-            }
+            if (!canonicalName.isEmpty()) canonicalFullNames.add(canonicalName);
         }
         return canonicalFullNames;
     }
 
     private MultiValueMemberMapperOutputTable outputTableCreation(
             MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable,
-            String extractedValue) {
+            String extractedValue
+    ) {
         Optional<extractedSorItemList> mmIndicatorRowOpt = multiValueMemberMapperTransformInputTable.getSorItemList()
                 .stream()
                 .filter(row -> "multiple_member_indicator".equalsIgnoreCase(row.getSorItemName()))
                 .findFirst();
 
+        if (mmIndicatorRowOpt.isEmpty()) {
+            log.info("No row found with sor_item_name = 'multiple_member_indicator'");
+        }
+
         extractedSorItemList mmIndicatorRow = null;
-        if (mmIndicatorRowOpt.isPresent()) {
-            mmIndicatorRow = mmIndicatorRowOpt.get();
+        if (mmIndicatorRowOpt.isEmpty()) {
+            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId()); // fallback
         } else {
-            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.",
-                    multiValueMemberMapperTransformInputTable.getOriginId());
+            mmIndicatorRow = mmIndicatorRowOpt.get();
         }
 
         Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
 
         return MultiValueMemberMapperOutputTable.builder()
                 .createdOn(LocalDateTime.now())
-                .createdUserId(mmIndicatorRow != null ? mmIndicatorRow.getTenantId() : tenantId)
+                .createdUserId(mmIndicatorRow.getTenantId())
                 .lastUpdatedOn(LocalDateTime.now())
-                .lastUpdatedUserId(mmIndicatorRow != null ? mmIndicatorRow.getTenantId() : tenantId)
+                .lastUpdatedUserId(mmIndicatorRow.getTenantId())
                 .status("ACTIVE")
                 .version(1)
-                .frequency(mmIndicatorRow != null ? mmIndicatorRow.getFrequency() : 1)
+                .frequency(mmIndicatorRow.getFrequency())
                 .bBox("")
                 .confidenceScore(defaultConfidenceScore)
                 .extractedValue(extractedValue)
                 .filterScore(0L)
-                .groupId(mmIndicatorRow != null ? mmIndicatorRow.getGroupId() : null)
+                .groupId(mmIndicatorRow.getGroupId())
                 .maximumScore(defaultConfidenceScore)
                 .originId(multiValueMemberMapperTransformInputTable.getOriginId())
-                .paperNo(mmIndicatorRow != null ? mmIndicatorRow.getPaperNo() : null)
-                .questionId(mmIndicatorRow != null ? mmIndicatorRow.getQuestionId() : null)
-                .rootPipelineId(mmIndicatorRow != null ? mmIndicatorRow.getRootPipelineId() : null)
+                .paperNo(mmIndicatorRow.getPaperNo())
+                .questionId(mmIndicatorRow.getQuestionId())
+                .rootPipelineId(mmIndicatorRow.getRootPipelineId())
                 .sorItemName("multiple_member_indicator")
-                .synonymId(mmIndicatorRow != null ? mmIndicatorRow.getSynonymId() : null)
-                .tenantId(tenantId)
-                .modelRegistry(mmIndicatorRow != null ? mmIndicatorRow.getModelRegistry() : null)
-                .batchId(mmIndicatorRow != null ? mmIndicatorRow.getBatchId() : null)
+                .synonymId(mmIndicatorRow.getSynonymId())
+                .tenantId(mmIndicatorRow.getTenantId())
+                .modelRegistry(mmIndicatorRow.getModelRegistry())
+                .batchId(mmIndicatorRow.getBatchId())
                 .build();
     }
 
     private void executeMMIAuditInsert(Handle handle, MultipleMemberSummary rows, String originId) {
         String insertQuery = INSERT_INTO + TABLE_NAME + " ( " + INSERT_COLUMNS + " ) " + INSERT_VALUES;
+        log.debug(marker, "[{}] Executing audit insert into {}", originId, TABLE_NAME);
 
         try (PreparedBatch batch = handle.prepareBatch(insertQuery)) {
             for (ValueTrace vt : rows.getValueTraces()) {
@@ -366,9 +371,9 @@ public class MultiValueMemberConsumerProcess {
                 batch.add();
             }
             int[] counts = batch.execute();
-            log.info("Batch inserted {} records", counts.length);
+            log.info(marker, "[{}] Audit insert complete. {} records inserted.", originId, counts.length);
         } catch (Exception e) {
-            log.error("Batch insert failed", e);
+            log.error(marker, "[{}] Batch insert failed: {}", originId, e.getMessage(), e);
             HandymanException.insertException("Error in batch insert into " + TABLE_NAME, new HandymanException(e), action);
         }
     }
@@ -394,5 +399,4 @@ public class MultiValueMemberConsumerProcess {
         private String comments;
         private List<ValueTrace> valueTraces;
     }
-
 }
