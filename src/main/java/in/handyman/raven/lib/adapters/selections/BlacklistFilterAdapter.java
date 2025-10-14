@@ -39,14 +39,14 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
         String labelSource = filteringType.equals("SECTIONS") ? response.getSectionAlias() : response.getLabel();
         String rawLabel = safeTrim(labelSource);
         String rawValue = safeTrim(response.getValue());
-        String label = sanitizeEndingPunctuations(rawLabel);
-        String value = sanitizeEndingPunctuations(rawValue);
+        String label = removeSpecialCharacters(rawLabel);
+        String value = removeSpecialCharacters(rawValue);
 
         // Prepare sanitized blacklist
         List<String> sanitizedBlacklist = blackListFields == null ? List.of() :
                 blackListFields.stream()
                         .filter(Objects::nonNull)
-                        .map(this::sanitizeEndingPunctuations)
+                        .map(this::removeSpecialCharacters)
                         .map(String::toLowerCase)
                         .collect(Collectors.toList());
 
@@ -58,7 +58,7 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
 
         // Case 1: Label is directly blacklisted
         boolean isBlacklisted = sanitizedBlacklist.stream()
-                .anyMatch(blk -> !blk.isEmpty() && labelLower.equals(blk));
+                .anyMatch(labelLower::equals);
 
         if (isBlacklisted) {
             isLabelMatching = false;
@@ -73,7 +73,7 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
             String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
             response.setLabel(updatedLabel);
 
-            String updatedLabelLower = sanitizeEndingPunctuations(updatedLabel.toLowerCase());
+            String updatedLabelLower = removeSpecialCharacters(updatedLabel.toLowerCase());
 
             if (updatedLabel.isEmpty() && sanitizedBlacklist.contains("")) {
 
@@ -102,6 +102,16 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
     public String safeTrim(String input) {
         return input == null ? "" : input.trim();
     }
+
+    /**
+     * Removes special characters from the input string, keeping only alphanumeric characters and spaces.
+     */
+    public String removeSpecialCharacters(String input) {
+        if (input == null) return "";
+        // Replace all non-alphanumeric characters (except spaces) with an empty string
+        return input.replaceAll("[^a-zA-Z0-9\\s]", "").trim();
+    }
+
 
     @Override
     public String getName() {

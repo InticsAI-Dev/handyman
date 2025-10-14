@@ -34,28 +34,11 @@ public class SectionFilteringActionTest {
         final SectionFiltering build = SectionFiltering.builder()
                 .condition(true)
                 .name("Test section Filtering")
-                .outputTable("transit_data.selection_over_filtering_output_10027")
+                .outputTable("sor_transaction.selection_over_filtering_output_audit")
                 .inputTable("${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id}")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("SELECT a.id, now() as created_on ,a.tenant_id as created_user_id,now() as last_updated_on,a.tenant_id as last_updated_user_id,a.tenant_id,a.group_id,\n" +
-                        "a.root_pipeline_id,a.batch_id,a.model_registry,a.sor_container_id, a.sor_container_name,\n" +
-                        "a.sor_item_name,a.sor_item_label, a.section_alias, a.answer, a.confidence, a.bbox,\n" +
-                        "a.bbox_asis,a.paper_no,a.origin_id,a.extracted_image_unit, a.image_dpi, a.image_height,\n" +
-                        "a.image_width,string_agg(distinct silc.black_list_keyword,',') as blacklisted_labels ,\n" +
-                        "string_agg(distinct tep.truth_entity,',') as blacklisted_sections,a.is_encrypted,a.encryption_policy\n" +
-                        "from sor_transaction.llm_json_parser_output_audit a\n" +
-                        "left join sor_meta.sor_container sc on sc.sor_container_id =a.sor_container_id\n" +
-                        "left join sor_meta.truth_entity_priority tep on tep.sor_container_id =sc.sor_container_id\n" +
-                        "left join sor_meta.sor_item si on si.sor_item_name =a.sor_item_name  and sc.sor_container_id =si.sor_container_id\n" +
-                        "left join sor_meta.sor_item_label_config silc on silc.sor_item_id =si.sor_item_id and silc.\"instance\" ='root.processor#6'\n" +
-                        "WHERE a.tenant_id =1 and a.group_id =197 and a.batch_id ='BATCH-197_0' and tep.section_type ='BLACKLISTED'\n" +
-                        "and sc.status='ACTIVE' and si.status='ACTIVE' and si.sor_item_name='member_id'\n" +
-                        "and silc.active is true\n" +
-                        "group by a.tenant_id,a.tenant_id,a.group_id,\n" +
-                        "a.root_pipeline_id,a.batch_id,a.model_registry,a.sor_container_id, a.sor_container_name,\n" +
-                        "a.sor_item_name,a.sor_item_label, a.section_alias, a.answer, a.confidence, a.bbox,\n" +
-                        "a.bbox_asis,a.paper_no,a.origin_id,a.extracted_image_unit, a.image_dpi, a.image_width, \n" +
-                        "a.image_height,a.is_encrypted,a.encryption_policy,a.id;")
+                .querySet("SELECT id, answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, extracted_image_unit, confidence, bbox, bbox_asis, is_label_matching, label_match_message, sor_container_id, sor_item_name, section_alias, sor_item_label, image_dpi, image_width, image_height, blacklisted_labels, blacklisted_sections, is_encrypted, encryption_policy\n" +
+                        "FROM sor_transaction.selection_over_filtering_input_audit where id=513")
                 .build();
 
         String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
