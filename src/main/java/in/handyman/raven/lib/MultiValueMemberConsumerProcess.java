@@ -181,11 +181,10 @@ public class MultiValueMemberConsumerProcess {
         Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
 
         int canonicalFullNameCount = clusterAndCount(new ArrayList<>(canonicalFullNames), nameThreshold);
-        int lastNameCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_last_name", Collections.emptyList()), nameThreshold);
         int memberIdCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_id", Collections.emptyList()), idThreshold);
         int dobCount = rawValuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptyList()).size();
 
-        log.info("Cluster summary -> Name clusters={} Last name clusters={} ID clusters={} DOB count={}", canonicalFullNameCount, lastNameCount, memberIdCount, dobCount);
+        log.info("Cluster summary -> Name clusters={} ID clusters={} DOB count={}", canonicalFullNameCount, memberIdCount, dobCount);
 
         String comments;
         String output;
@@ -193,10 +192,6 @@ public class MultiValueMemberConsumerProcess {
         if (!presentSorItems.containsAll(targetSorItems)) {
             String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
             comments = String.format("Missing target SOR items: [%s]. Cannot confirm multiple members.", missingItems);
-            log.info(comments);
-            output = "N";
-        } else if (lastNameCount == 1) {
-            comments = "Only one unique (fuzzy-matched) last name found, indicating a single member.";
             log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
