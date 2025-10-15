@@ -196,9 +196,10 @@ public class StoreContent {
                     context, updatedFileName);
             return updatedFileName;
         } else {
+            String finalFileName = baseFileName + ".pdf";
             log.info(MARKER, "{} - File rename activator is disabled. Using original filename: {}",
-                    context, baseFileName);
-            return baseFileName;
+                    context, finalFileName);
+            return finalFileName;
         }
     }
 
