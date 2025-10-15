@@ -43,4 +43,5 @@ public class SelectionFilteringInputTable {
     private String encryptionPolicy;
     private boolean labelMatching;
     private String labelMatchMessage;
+    private String whitelistedLabels;
 }

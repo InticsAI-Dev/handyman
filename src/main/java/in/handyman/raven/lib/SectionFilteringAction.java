@@ -88,7 +88,11 @@ public class SectionFilteringAction implements IActionExecution {
       // 2 Decrypt values
       if(action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION).equals("true")){
           decryptAnswers(tableInfos, encryption);
-          decryptLabels(tableInfos, encryption);
+          if(action.getContext().get("llm.json.parser.label.encryption").equals("true")){
+              decryptLabels(tableInfos, encryption);
+              decryptSectionAlias(tableInfos,encryption);
+          }
+
 
       }
       log.info(aMarker, "Decryption completed for fetched records {}", tableInfos.size());
@@ -101,7 +105,8 @@ public class SectionFilteringAction implements IActionExecution {
 
       // 5 Apply adapter-based filtering
       FieldSelectionAdapter adapter = FieldSelectionAdapterFactory.getAdapter("blacklist");
-      List<ExtractedField> filteredExtractedFields = filterExtractedFields(adapter, extractedFields);
+      FieldSelectionAdapter whiteListedAdapter = FieldSelectionAdapterFactory.getAdapter("whitelist");
+      List<ExtractedField> filteredExtractedFields = filterExtractedFields(adapter, extractedFields, whiteListedAdapter);
 
       // 6 Merge filtered results back into original list
       mergeFilteredResults(tableInfos, filteredExtractedFields);
@@ -111,7 +116,11 @@ public class SectionFilteringAction implements IActionExecution {
       // 7 Encrypt results before persistence or outbound
       if(action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION).equals("true")){
           encryptAnswers(tableInfos, encryption);
-          encryptLabels(tableInfos, encryption);
+          if(action.getContext().get("llm.json.parser.label.encryption").equals("true")){
+              encryptLabels(tableInfos, encryption);
+              encryptSectionAlias(tableInfos,encryption);
+          }
+
       }
 
       // 8 Prepare output rows
@@ -195,6 +204,7 @@ public class SectionFilteringAction implements IActionExecution {
                         .value(row.getAnswer())
                         .blacklistedLabels(splitCsvToSet(row.getBlacklistedLabels()))
                         .blacklistedSections(splitCsvToSet(row.getBlacklistedSections()))
+                        .whitelistedLabels(splitCsvToSet(row.getWhitelistedLabels()))
                         .build())
                 .collect(Collectors.toList());
     }
@@ -212,14 +222,18 @@ public class SectionFilteringAction implements IActionExecution {
     /**
      * Applies the blacklist adapter filtering logic
      */
-    private List<ExtractedField> filterExtractedFields(FieldSelectionAdapter adapter, List<ExtractedField> fields) {
+    private List<ExtractedField> filterExtractedFields(FieldSelectionAdapter adapter, List<ExtractedField> fields, FieldSelectionAdapter whiteListedAdapter) {
         if (adapter == null) {
             log.warn(aMarker, "No adapter found. Skipping filtering step.");
             return fields;
         }
 
         try {
-            return adapter.filter(fields);
+            List<ExtractedField> filtered = adapter.filter(fields);
+            log.info(aMarker, "Adapter filtering completed. Original count: {}, Filtered count: {}",
+                    fields.size(), filtered.size());
+
+            return whiteListedAdapter.filter(filtered);
         } catch (Exception e) {
             log.error(aMarker, "Error during field filtering: {}", e.getMessage(), e);
             return fields;
@@ -293,7 +307,7 @@ public class SectionFilteringAction implements IActionExecution {
                 .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().equals(""))
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
-        log.info(aMarker, "Total records to decrypt: {}", encryptionRequests.size());
+        log.info(aMarker, "Total records to decrypt for answers: {}", encryptionRequests.size());
         // Step 2: Call external Protegrity API
         List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
 
@@ -324,11 +338,10 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(SelectionFilteringInputTable::getIsEncrypted)
-                .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null && !obj.getSorItemLabel().equals(""))
+                .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null && !obj.getSorItemLabel().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSorItemLabel(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
-        log.info(aMarker, "Total records to decrypt: {}", encryptionRequests.size());
+        log.info(aMarker, "Total records to decrypt for labels: {}", encryptionRequests.size());
         // Step 2: Call external Protegrity API
         List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
 
@@ -363,7 +376,7 @@ public class SectionFilteringAction implements IActionExecution {
                 .filter(obj -> obj.getId() != null && obj.getAnswer() != null)
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(),String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
-
+        log.info(aMarker, "Total records to encrypt for answers: {}", encryptionRequests.size());
         // Step 2: Call external Protegrity API
         List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
 
@@ -392,11 +405,10 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(SelectionFilteringInputTable::getIsEncrypted)
-                .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null)
+                .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null && !obj.getSorItemLabel().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSorItemLabel(),String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
-
+        log.info(aMarker, "Total records to encrypt for Labels: {}", encryptionRequests.size());
         // Step 2: Call external Protegrity API
         List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
 
@@ -416,6 +428,75 @@ public class SectionFilteringAction implements IActionExecution {
             }
         }
     }
+
+
+
+    public void encryptSectionAlias(List<SelectionFilteringInputTable> inputList, InticsIntegrity encryption) {
+        if (inputList == null || inputList.isEmpty()) {
+            return;
+        }
+
+        // Step 1: Convert to EncryptionRequestClass
+        List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().isEmpty())
+                .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(),String.valueOf(obj.getId())))
+                .collect(Collectors.toList());
+        log.info(aMarker, "Total records to encrypt for section alias: {}", encryptionRequests.size());
+        // Step 2: Call external Protegrity API
+        List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
+
+        // Step 3: Build a lookup map from response
+        Map<Long, String> encryptedMap = responseList.stream()
+                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .collect(Collectors.toMap(
+                        item -> Long.parseLong(item.getKey()),
+                        EncryptionRequestClass::getValue
+                ));
+
+
+        // Step 4: Update original list
+        for (SelectionFilteringInputTable item : inputList) {
+            if (item.getId() != null && encryptedMap.containsKey(item.getId())) {
+                item.setSectionAlias(encryptedMap.get(item.getId()));
+            }
+        }
+    }
+
+
+
+    public void decryptSectionAlias(List<SelectionFilteringInputTable> inputList, InticsIntegrity encryption) {
+        if (inputList == null || inputList.isEmpty()) {
+            return;
+        }
+
+        // Step 1: Convert to EncryptionRequestClass
+        List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().equals(""))
+                .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(), String.valueOf(obj.getId())))
+                .collect(Collectors.toList());
+        log.info(aMarker, "Total records to decrypt for section alias: {}", encryptionRequests.size());
+        // Step 2: Call external Protegrity API
+        List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
+
+        // Step 3: Build a lookup map from response
+        Map<Long, String> encryptedMap = responseList.stream()
+                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .collect(Collectors.toMap(
+                        item -> Long.parseLong(item.getKey()),
+                        EncryptionRequestClass::getValue
+                ));
+
+
+        // Step 4: Update original list
+        for (SelectionFilteringInputTable item : inputList) {
+            if (item.getId() != null && encryptedMap.containsKey(item.getId())) {
+                String answer = encryptedMap.get(item.getId());
+                item.setSectionAlias(answer);
+
+            }
+        }
+    }
+
 
     @Override
   public boolean executeIf() throws Exception {
