@@ -56,7 +56,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .writeTimeout(timeOut, TimeUnit.MINUTES)
                 .readTimeout(timeOut, TimeUnit.MINUTES)
                 .build();
-        coproRetryService = new CoproRetryService(handymanRepo, httpClient);
+        coproRetryService = new CoproRetryService(handymanRepo, httpClient, log);
     }
 
     @Override

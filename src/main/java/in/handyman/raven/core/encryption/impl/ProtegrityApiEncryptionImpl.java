@@ -262,8 +262,6 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                 logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms]",
                         auditId, uuid, protegrityList.size(), tat);
 
-                // Return the list of EncryptionRequestClass objects
-                System.out.println(encryptedValues);
                 return encryptedValues;
 
             }
