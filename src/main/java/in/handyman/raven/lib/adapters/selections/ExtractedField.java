@@ -20,5 +20,6 @@ public class ExtractedField {
     private Set<String> blacklistedSections;
     private boolean isLabelMatching;
     private String labelMatchMessage;
+    private Set<String> whitelistedLabels;
 
 }

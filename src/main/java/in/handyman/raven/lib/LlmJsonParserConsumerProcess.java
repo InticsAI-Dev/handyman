@@ -358,8 +358,10 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
                 if(action.getContext().getOrDefault("llm.json.parser.label.encryption","true").equals("true")){
                     response.setLabel(inticsIntegrity.encrypt(response.getLabel(), AES_256, response.getKey()));
+                    response.setSectionAlias(inticsIntegrity.encrypt(response.getSectionAlias(), AES_256, response.getKey()));
                 }else {
                     response.setLabel(response.getLabel());
+                    response.setSectionAlias(response.getSectionAlias());
                 }
 
 
@@ -376,12 +378,12 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
             if (label != null && !label.isEmpty() && value != null && !value.isEmpty()) {
                 String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
-                response.setLabel(inticsIntegrity.encrypt(updatedLabel, AES_256, response.getKey()));
+                response.setLabel(updatedLabel);
             } else {
                 // handle null/empty label gracefully
-                response.setLabel(inticsIntegrity.encrypt(
-                        label == null ? "" : label, AES_256, response.getKey()
-                ));
+                response.setLabel(
+                        label
+                );
             }
 
             response.setIsEncrypted(meta.getIsEncrypted());
@@ -396,10 +398,10 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
             if (label != null && !label.isEmpty() && value != null && !value.isEmpty()) {
                 String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
-                response.setLabel(inticsIntegrity.encrypt(updatedLabel, AES_256, response.getKey()));
+                response.setLabel((updatedLabel));
             } else {
-                response.setLabel(inticsIntegrity.encrypt(
-                        label == null ? "" : label, AES_256, response.getKey()
+                response.setLabel((
+                         label
                 ));
             }
 

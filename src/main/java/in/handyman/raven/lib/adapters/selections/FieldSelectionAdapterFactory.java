@@ -9,6 +9,7 @@ public class FieldSelectionAdapterFactory {
     private static final Map<String, FieldSelectionAdapter> registry = new HashMap<>();
     static {
         register(new BlacklistFilterAdapter());
+        register(new WhitelistFilterAdapter());
     }
 
     public static void register(FieldSelectionAdapter adapter) {
