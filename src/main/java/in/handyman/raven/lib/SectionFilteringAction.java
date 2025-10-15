@@ -304,7 +304,7 @@ public class SectionFilteringAction implements IActionExecution {
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
                 .filter(SelectionFilteringInputTable::getIsEncrypted)
-                .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().equals(""))
+                .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
         log.info(aMarker, "Total records to decrypt for answers: {}", encryptionRequests.size());
@@ -338,7 +338,6 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(SelectionFilteringInputTable::getIsEncrypted)
                 .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null && !obj.getSorItemLabel().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSorItemLabel(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
@@ -374,7 +373,7 @@ public class SectionFilteringAction implements IActionExecution {
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
                 .filter(SelectionFilteringInputTable::getIsEncrypted)
-                .filter(obj -> obj.getId() != null && obj.getAnswer() != null)
+                .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(),String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
         log.info(aMarker, "Total records to encrypt for answers: {}", encryptionRequests.size());
@@ -474,7 +473,6 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(SelectionFilteringInputTable::getIsEncrypted)
                 .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().equals(""))
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
