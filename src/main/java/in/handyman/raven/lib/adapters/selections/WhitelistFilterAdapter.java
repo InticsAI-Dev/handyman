@@ -32,6 +32,11 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
         if (response == null) {
             return null;
         }
+        if(whitelistFields == null || whitelistFields.isEmpty()){
+            response.setLabelMatching(true);
+            response.setLabelMatchMessage("No whitelist provided for " + filteringType + ". All values are allowed.");
+            return response;
+        }
 
         String labelSource = filteringType.equals("SECTIONS") ? response.getSectionAlias() : response.getLabel();
         String rawLabel = safeTrim(labelSource);

@@ -35,6 +35,11 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
             return null;
         }
 
+        if(blackListFields == null || blackListFields.isEmpty()){
+            response.setLabelMatching(true);
+            response.setLabelMatchMessage("No blacklist provided for " + filteringType + ". All values are allowed.");
+            return response;
+        }
         // Normalize and sanitize input
         String labelSource = filteringType.equals("SECTIONS") ? response.getSectionAlias() : response.getLabel();
         String rawLabel = safeTrim(labelSource);

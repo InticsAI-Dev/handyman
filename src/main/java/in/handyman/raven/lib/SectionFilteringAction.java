@@ -338,6 +338,7 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(SelectionFilteringInputTable::getIsEncrypted)
                 .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null && !obj.getSorItemLabel().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSorItemLabel(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
@@ -405,6 +406,7 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(SelectionFilteringInputTable::getIsEncrypted)
                 .filter(obj -> obj.getId() != null && obj.getSorItemLabel() != null && !obj.getSorItemLabel().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSorItemLabel(),String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
@@ -438,6 +440,7 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(SelectionFilteringInputTable::getIsEncrypted)
                 .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(),String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
@@ -471,6 +474,7 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(SelectionFilteringInputTable::getIsEncrypted)
                 .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().equals(""))
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
