@@ -1,3 +1,4 @@
+
 package in.handyman.raven.lib.model.scalar;
 
 import bsh.EvalError;
@@ -5,13 +6,12 @@ import bsh.Interpreter;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
-import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,6 +48,7 @@ public class ValidatorByBeanShellExecutor {
         }
     }
 
+
     public ValidatorByBeanShellExecutor(List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs,
                                         ActionExecutionAudit actionExecutionAudit,
                                         final Logger log,
@@ -55,49 +56,106 @@ public class ValidatorByBeanShellExecutor {
         this.postProcessingExecutorInputs = postProcessingExecutorInputs;
         this.actionExecutionAudit = actionExecutionAudit;
         this.log = log;
-        this.executor = Executors.newFixedThreadPool(threadPoolSize);
+        this.executor = Executors.newFixedThreadPool(Math.max(1, threadPoolSize));
     }
 
+
     public List<PostProcessingExecutorAction.PostProcessingExecutorInput> doRowWiseValidator() throws InterruptedException, ExecutionException {
-        int inputSize = postProcessingExecutorInputs.size();
+        int inputSize = postProcessingExecutorInputs == null ? 0 : postProcessingExecutorInputs.size();
         log.info("Starting row-wise validation for {} inputs", inputSize);
+
+        if (inputSize == 0) {
+            // set metrics to context and return
+            try {
+                if (actionExecutionAudit != null && actionExecutionAudit.getContext() != null) {
+                    actionExecutionAudit.getContext().put("postprocessing.inputs", String.valueOf(0));
+                }
+            } catch (Exception ignored) {}
+            return postProcessingExecutorInputs;
+        }
 
         Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOrigin(postProcessingExecutorInputs);
         List<CompletableFuture<Void>> originFutures = new ArrayList<>();
+        final AtomicInteger originProcessed = new AtomicInteger(0);
+        final AtomicInteger pagesProcessed = new AtomicInteger(0);
 
         byOrigin.forEach((origin, originInputs) -> originFutures.add(
-                CompletableFuture.runAsync(() -> processOrigin(origin, originInputs), executor)
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        processOrigin(origin, originInputs);
+                        originProcessed.incrementAndGet();
+                    } finally {
+                        // no-op
+                    }
+                }, executor)
         ));
 
-        CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
-
-        // Flatten all expanded origin lists back to main list
-        postProcessingExecutorInputs.clear();
-        for (List<PostProcessingExecutorAction.PostProcessingExecutorInput> originList : byOrigin.values()) {
-            postProcessingExecutorInputs.addAll(originList);
+        CompletableFuture<Void> allOrigins = CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0]));
+        try {
+            // wait with a reasonable timeout to avoid hanging indefinitely
+            allOrigins.get(Math.max(60, Math.min(600, inputSize / 10 + 60)), TimeUnit.SECONDS);
+        } catch (TimeoutException te) {
+            log.warn("Timeout waiting for origin tasks to complete: {}", te.getMessage());
+            // attempt to continue and force shutdown below
+        } catch (ExecutionException ee) {
+            log.error("Execution exception in origin processing: {}", ee.getMessage(), ee);
+            throw ee;
+        } finally {
+            // graceful shutdown with forced fallback
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(2, TimeUnit.MINUTES)) {
+                    log.warn("Executor did not terminate in time, forcing shutdown");
+                    List<Runnable> dropped = executor.shutdownNow();
+                    log.warn("Forced shutdown, dropped tasks: {}", dropped == null ? 0 : dropped.size());
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while awaiting executor shutdown");
+                executor.shutdownNow();
+            }
         }
-        log.info("Merged back {} total items to main list", postProcessingExecutorInputs.size());
-
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.MINUTES);
 
         log.info("Completed all validations for post processing inputs.");
+        // store some lightweight metrics into audit context if available
+        try {
+            if (actionExecutionAudit != null && actionExecutionAudit.getContext() != null) {
+                actionExecutionAudit.getContext().put("postprocessing.inputs", String.valueOf(inputSize));
+                actionExecutionAudit.getContext().put("postprocessing.originsProcessed", String.valueOf(byOrigin.size()));
+            }
+        } catch (Exception ignored) {}
+
         return postProcessingExecutorInputs;
     }
 
     private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOrigin(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
         log.info("Grouping inputs by origin");
+        if (inputs == null) return Collections.emptyMap();
         return inputs.stream()
                 .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getOriginId));
     }
 
     private void processOrigin(String originId, List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs) {
-        log.info("Processing origin {} with {} inputs", originId, originInputs.size());
+        log.info("Processing origin {} with {} inputs", originId, originInputs == null ? 0 : originInputs.size());
         Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byPage = groupByPage(originInputs);
 
         List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
         byPage.forEach((pageNo, pageInputs) ->
-                pageFutures.add(CompletableFuture.runAsync(() -> processPage(originId, pageNo, pageInputs), executor))
+                pageFutures.add(CompletableFuture.runAsync(() -> {
+                    long start = System.currentTimeMillis();
+                    try {
+                        processPage(originId, pageNo, pageInputs);
+                    } finally {
+                        long duration = System.currentTimeMillis() - start;
+                        // record per-page timing into audit context
+                        try {
+                            if (actionExecutionAudit != null && actionExecutionAudit.getContext() != null) {
+                                String key = "postprocessing.page.time." + originId + "." + pageNo;
+                                actionExecutionAudit.getContext().put(key, String.valueOf(duration));
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }, executor))
         );
 
         try {
@@ -106,17 +164,11 @@ public class ValidatorByBeanShellExecutor {
             log.error("Error processing pages for origin {}", originId, e);
             throw new RuntimeException(e);
         }
-
-        // After all pages processed, flatten expanded pages back to origin list
-        originInputs.clear();
-        for (List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageList : byPage.values()) {
-            originInputs.addAll(pageList);
-        }
-        log.info("Flattened {} items back to origin {} after page processing", originInputs.size(), originId);
     }
 
     private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
         log.info("Grouping inputs by page");
+        if (inputs == null) return Collections.emptyMap();
         return inputs.stream()
                 .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getPaperNo));
     }
@@ -340,20 +392,6 @@ public class ValidatorByBeanShellExecutor {
         }
     }
 
-    @NotNull
-    private Map<String, ItemData> getMappedDataResult(Map<?, ?> mappedData) {
-        Map<String, ItemData> mappedDataResult = new HashMap<>();
-
-        for (Map.Entry<?, ?> entry : mappedData.entrySet()) {
-            if (entry.getKey() instanceof String && entry.getValue() instanceof ItemData) {
-                mappedDataResult.put((String) entry.getKey(), (ItemData) entry.getValue());
-            } else {
-                log.error("Expected mappedData to be a Map<String, ItemData>, but got: {}", mappedData.getClass().getName());
-            }
-        }
-        return mappedDataResult;
-    }
-
     private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, ItemData> resultMap) {
         if (inputs == null || resultMap == null || resultMap.isEmpty()) {
             log.debug("No updates to apply to inputs");
@@ -370,77 +408,34 @@ public class ValidatorByBeanShellExecutor {
                                 (existing, replacement) -> existing  // in case of duplicates, keep first (consistent with previous behavior)
                         ));
 
-        // Collect added inputs to append later
-        List<PostProcessingExecutorAction.PostProcessingExecutorInput> addedInputs = new ArrayList<>();
-
         resultMap.forEach((sorItem, itemData) -> {
             PostProcessingExecutorAction.PostProcessingExecutorInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
-            String newValue = itemData != null ? (itemData.getExtractedValue() == null ? "" : itemData.getExtractedValue()) : "";
-            String newBbox = itemData != null ? (itemData.getBbox() == null ? "{}" : itemData.getBbox()) : "{}";
-
             if (postProcessingExecutorInput != null) {
-                // Only update extractedValue and bbox from BeanShell result
-                // Preserve original scores unless emptying (as per existing logic)
-                String originalValue = postProcessingExecutorInput.getExtractedValue();
-                if (StringUtils.isBlank(newValue) && StringUtils.isNotBlank(originalValue)) {
-                    // Handle emptying: set scores to 0.0 as seen in logs
-                    postProcessingExecutorInput.setAggregatedScore(0.0);
-                    postProcessingExecutorInput.setVqaScore(0.0);
-                    log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
-                }
+                log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
+                String originalValue = postProcessingExecutorInput.getExtractedValue() == null ? "" : postProcessingExecutorInput.getExtractedValue();
+                String newValue = itemData == null || itemData.getExtractedValue() == null ? "" : itemData.getExtractedValue();
+                String newBbox = itemData == null || itemData.getBbox() == null ? "{}" : itemData.getBbox();
+                log.info("BBOX-TRACE: updateInputs - sorItem={}, original input bbox={}, script bbox={}, final newBbox={}",
+                        sorItem,
+                        (postProcessingExecutorInput.getBbox() == null ? "NULL" : "'" + postProcessingExecutorInput.getBbox() + "'"),
+                        (itemData == null || itemData.getBbox() == null ? "NULL" : "'" + itemData.getBbox() + "'"),
+                        newBbox);
+
                 postProcessingExecutorInput.setExtractedValue(newValue);
                 postProcessingExecutorInput.setBbox(newBbox);
 
-                log.info("Updated extractedValue and bbox alone for existing sorItem {}: value='{}', bbox='{}'", sorItem, newValue, newBbox);
-                log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
-                log.info("BBOX-TRACE: updateInputs - sorItem={}, original input bbox='{}', script bbox='{}', final newBbox={}",
-                        sorItem, postProcessingExecutorInput.getBbox(), newBbox, newBbox);
-                if (StringUtils.isNotBlank(originalValue) && StringUtils.isNotBlank(newValue) && originalValue.equals(newValue)) {
+                if (Objects.equals(originalValue, newValue)) {
                     log.info("Extracted value and the PostProcessing value are same for the sorItem {}, bbox updated if changed.", sorItem);
+                } else if (!newValue.isEmpty()) {
+                    log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItem);
+                } else {
+                    log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
+                    postProcessingExecutorInput.setVqaScore(0);
+                    postProcessingExecutorInput.setAggregatedScore(0);
                 }
-
-                // No other fields are updated; preserve originals
             } else {
-                // Create new input for new sorItems with templated required fields to avoid skipping
-                if (StringUtils.isBlank(newValue)) {
-                    log.info("PostProcessing input does not exist for sorItem {} (skipped as empty value)", sorItem);
-                    return;
-                }
-                log.info("PostProcessing input does not exist for sorItem {}, creating new", sorItem);
-                PostProcessingExecutorAction.PostProcessingExecutorInput newInput = new PostProcessingExecutorAction.PostProcessingExecutorInput();
-                // Template from first input in page
-                if (!inputs.isEmpty()) {
-                    PostProcessingExecutorAction.PostProcessingExecutorInput template = inputs.get(0);
-                    newInput.setTenantId(template.getTenantId());
-                    newInput.setOriginId(template.getOriginId());
-                    newInput.setPaperNo(template.getPaperNo());
-                    newInput.setDocumentId(template.getDocumentId());
-                    newInput.setAccTransactionId(template.getAccTransactionId());
-                    newInput.setRootPipelineId(template.getRootPipelineId());
-                    newInput.setAggregatedScore(0.0);  // Default for new derived
-                    newInput.setVqaScore(0.0);  // Default for new derived
-                    newInput.setRank(1);
-                    newInput.setFrequency(template.getFrequency());
-                    newInput.setLineItemType(template.getLineItemType());
-                    newInput.setIsEncrypted(template.getIsEncrypted());
-                    // Fallback to template for these; customize per sorItem if needed (e.g., via config for medicaid_id)
-                    newInput.setQuestionId(template.getQuestionId());
-                    newInput.setSynonymId(template.getSynonymId());
-                    newInput.setModelRegistry(template.getModelRegistry());
-                    newInput.setEncryptionPolicy(template.getEncryptionPolicy());
-                    newInput.setSorItemAttributionId(template.getSorItemAttributionId());
-                    newInput.setMaskedScore(template.getMaskedScore());
-                }
-                newInput.setSorItemName(sorItem);
-                newInput.setExtractedValue(newValue);
-                newInput.setBbox(newBbox);
-                addedInputs.add(newInput);
-                log.info("Created new input for sorItem {}: value='{}', bbox='{}'", sorItem, newValue, newBbox);
+                log.info("PostProcessing input does not exist for sorItem {}", sorItem);
             }
         });
-
-        // Append new inputs to the list
-        inputs.addAll(addedInputs);
-        log.info("Appended {} new inputs to page after post-processing", addedInputs.size());
     }
 }
