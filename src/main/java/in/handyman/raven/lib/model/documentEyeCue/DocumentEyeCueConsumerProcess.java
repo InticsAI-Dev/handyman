@@ -63,7 +63,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
-        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
     }
 
     private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");

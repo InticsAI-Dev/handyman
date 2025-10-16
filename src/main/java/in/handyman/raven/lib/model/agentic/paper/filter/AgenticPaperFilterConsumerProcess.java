@@ -88,7 +88,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.httpclient = builder.build();
 
         this.jdbiResourceName = jdbiResourceName;
-        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
     }
 
     @Override

@@ -39,6 +39,7 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
         this.logger = logger;
         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout.seconds", "60"));
         this.client = new OkHttpClient.Builder()
+                .connectionPool(new ConnectionPool(50, 5, TimeUnit.MINUTES))
                 .connectTimeout(timeout, TimeUnit.SECONDS)
                 .writeTimeout(timeout, TimeUnit.SECONDS)
                 .readTimeout(timeout, TimeUnit.SECONDS)
@@ -262,8 +263,6 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                 logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms]",
                         auditId, uuid, protegrityList.size(), tat);
 
-                // Return the list of EncryptionRequestClass objects
-                System.out.println(encryptedValues);
                 return encryptedValues;
 
             }
