@@ -63,14 +63,9 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
         boolean encryptEnabled = Boolean.parseBoolean(itemWiseEncryptionActivator);
         log.info(aMarker, "PostProcessingExecutor started with encryptEnabled: {}", encryptEnabled);
-
         jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
-
-        log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
         postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
         log.info(aMarker, "after post-processing is : {}", postProcessingExecutorInputs);
-        log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
-
         postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
 
         String outputTable = postProcessingExecutor.getOutputTable();
