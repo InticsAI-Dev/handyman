@@ -107,8 +107,6 @@ public class MultiValueMemberMapperAction implements IActionExecution {
         }
       }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-      Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
-
       Integer consumerApiCount = Integer.valueOf(action.getContext().get(MULTI_MEMBER_CONSUMER_API_COUNT));
 
       Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId =
