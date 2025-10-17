@@ -133,11 +133,42 @@ public class ValidatorByBeanShellExecutor {
         }
     }
 
+    // ===== Updated groupByPage to handle multiple pages per input =====
     private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
-        log.info("Grouping inputs by page");
-        if (inputs == null) return Collections.emptyMap();
-        return inputs.stream()
-                .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getPaperNo));
+        log.info("Grouping inputs by page (custom: allow multiple pages per input)");
+
+        Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> pageMap = new HashMap<>();
+        if (inputs == null) return pageMap;
+
+        for (PostProcessingExecutorAction.PostProcessingExecutorInput input : inputs) {
+            if (input == null) continue;
+
+            List<Integer> pageNos = getCustomPageNumbers(input);
+            if (pageNos == null || pageNos.isEmpty()) continue;
+
+            for (Integer pageNo : pageNos) {
+                pageMap.computeIfAbsent(pageNo, k -> new ArrayList<>()).add(input);
+            }
+        }
+
+        return pageMap;
+    }
+
+    // ===== Helper: get custom page numbers per input =====
+    private List<Integer> getCustomPageNumbers(PostProcessingExecutorAction.PostProcessingExecutorInput input) {
+        List<Integer> pages = new ArrayList<>();
+        if (input.getPaperNo() != null) {
+            pages.add(input.getPaperNo()); // always include original page
+
+            // Example custom rules for multiple pages
+            if ("age".equals(input.getSorItemName())) {
+                pages.add(2); // "age" also appears in page 2
+            }
+            if ("name".equals(input.getSorItemName()) && input.getPaperNo() == 2) {
+                pages.add(3); // "name" on page 2 also goes to page 3
+            }
+        }
+        return pages;
     }
 
     private void processPage(String originId, Integer pageNo, List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
