@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.adapters.selections;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -68,6 +69,18 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
         if (isBlacklisted) {
             isLabelMatching = false;
             message = filteringType + " is blacklisted and not allowed.";
+        }
+        // Case 1.5: For SECTIONS, label contains any blacklisted substring
+        else if ("SECTIONS".equalsIgnoreCase(filteringType)) {
+            String matchedSubstring = sanitizedBlacklist.stream()
+                    .filter(bl -> !bl.isEmpty() && labelLower.contains(bl.toLowerCase(Locale.ROOT)))
+                    .findFirst()
+                    .orElse(null);
+
+            if (matchedSubstring != null) {
+                isLabelMatching = false;
+                message = "Section contains a blacklisted substring: '" + matchedSubstring + "'.";
+            }
         }
         // Case 2: Label exactly equals value
         else if (labelLower.equals(valueLower)) {
