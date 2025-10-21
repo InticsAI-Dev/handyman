@@ -49,7 +49,8 @@ class InticsIntegrityTest {
                         "}", "key456")
         );
         ProtegrityApiEncryptionImpl protegrityApiEncryption=new ProtegrityApiEncryptionImpl(encryptionUrl,decryptionUrl, actionExecutionAudit, log);
-        List<EncryptionRequestClass> encryptedString = protegrityApiEncryption.encrypt(requestList);
+//        List<EncryptionRequestClass> encryptedString = protegrityApiEncryption.encrypt(requestList);
+        String encryptedString = protegrityApiEncryption.encrypt("Patti street ","AES256","Address");
     }
 
 

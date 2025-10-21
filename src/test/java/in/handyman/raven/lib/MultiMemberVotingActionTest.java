@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultiValueMemberMapper;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ class MultiMemberVotingActionTest {
         action.getContext().put("multi.member.indicator.fields","member_id,member_last_name, member_first_name");
         action.getContext().put("radon.kvp.bbox.vqa.score.default","50");
         action.getContext().put("multi.member.consumer.API.count","1");
-        action.getContext().put("pipeline.end.to.end.encryption", "false");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         action.setRootPipelineId(9413L);
 
         MultiValueMemberMapperAction multiValueMemberMapperAction = new MultiValueMemberMapperAction(action, logger, multiValueMemberMapper);

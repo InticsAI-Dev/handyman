@@ -6,10 +6,9 @@ import in.handyman.raven.core.encryption.impl.ProtegrityEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.util.LoggingInitializer;
-import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.*;
+import static in.handyman.raven.core.enums.EncryptionConstants.*;
 
 public class SecurityEngine {
 

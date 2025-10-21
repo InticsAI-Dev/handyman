@@ -34,9 +34,7 @@ public class OptimizedAssetInfoAction  {
 //    private final Marker aMarker;
 //
 //    // Configuration constants
-//    public static final String READ_BATCH_SIZE = "read.batch.size";
 //    public static final String DUMMY_URL = "http://localhost:10181/copro/preprocess/autorotation";
-//    public static final String WRITE_BATCH_SIZE = "write.batch.size";
 //    public static final String ASSET_INFO_CONSUMER_API_COUNT = "asset.info.consumer.API.count";
 //    public static final String ENABLE_ASYNC_PROCESSING = "enable.async.processing";
 //    public static final String ASYNC_TIMEOUT_MINUTES = "async.timeout.minutes";
@@ -65,7 +63,7 @@ public class OptimizedAssetInfoAction  {
 //            // Get configuration
 //            Integer readBatchSize = Integer.valueOf(action.getContext().get(READ_BATCH_SIZE));
 //            Integer consumerApiCount = Integer.valueOf(action.getContext().get(ASSET_INFO_CONSUMER_API_COUNT));
-//            Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+//            Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
 //            boolean enableAsync = Boolean.parseBoolean(action.getContext().getOrDefault(ENABLE_ASYNC_PROCESSING, "true"));
 //            int asyncTimeoutMinutes = Integer.parseInt(action.getContext().getOrDefault(ASYNC_TIMEOUT_MINUTES, "30"));
 //

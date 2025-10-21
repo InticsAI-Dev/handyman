@@ -30,6 +30,13 @@ public class LlmJsonParserConsumerProcessBlacklistTest {
         return field;
     }
 
+    private ExtractedField createSections(String section, String value) {
+        ExtractedField field = new ExtractedField();
+        field.setSectionAlias(section);
+        field.setValue(value);
+        return field;
+    }
+
     @Test
     public void testExactBlacklistedLabel() {
         Set<String> blackListLabels = Set.of("FirstName", "LastName", "Email");
@@ -51,6 +58,17 @@ public class LlmJsonParserConsumerProcessBlacklistTest {
 
         assertFalse(result.isLabelMatching(), "Label should be blacklisted after sanitization");
         assertEquals("LABELS is blacklisted and not allowed.", result.getLabelMatchMessage());
+    }
+
+    @Test
+    public void testBlacklistedLabelSubstringOfLabel() {
+        Set<String> blackListLabels = Set.of("FirstName", "LastName", "Email");
+        ExtractedField response = createSections("FirstName information", "John");
+
+        ExtractedField result = blacklistAdapter.isLabelValueMatching(blackListLabels, response, "SECTIONS");
+
+        assertFalse(result.isLabelMatching(), "Blacklisted label was a substring of the Label");
+        assertEquals("Section contains a blacklisted substring: 'firstname'.", result.getLabelMatchMessage());
     }
 
     @Test

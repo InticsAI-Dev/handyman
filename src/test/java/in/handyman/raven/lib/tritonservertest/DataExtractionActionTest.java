@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_AGENTIC_FILTER_OUTPUT;
 
 @Slf4j
 class DataExtractionActionTest {

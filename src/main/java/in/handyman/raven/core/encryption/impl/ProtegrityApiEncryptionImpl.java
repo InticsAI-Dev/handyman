@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
+import in.handyman.raven.core.encryption.ProtegrityApiAudit;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
@@ -16,11 +17,14 @@ import okhttp3.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static in.handyman.raven.core.enums.EncryptionConstants.*;
 
 public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
@@ -32,11 +36,19 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     private final Logger logger;
     private static final HandymanRepo REPO = new HandymanRepoImpl();
 
+    // Retry configuration
+    private final int maxRetryAttempts;
+    private final long retryIntervalSecs;
+    private final Set<Integer> retryableStatusCodes;
+    private final boolean retryActivated;
+
+
     public ProtegrityApiEncryptionImpl(String encryptionUrl, String decryptionUrl, ActionExecutionAudit actionExecutionAudit, Logger logger) {
         this.protegrityEncApiUrl = encryptionUrl;
         this.protegrityDecApiUrl = decryptionUrl;
         this.actionExecutionAudit = actionExecutionAudit;
         this.logger = logger;
+
         int timeout = Integer.parseInt(actionExecutionAudit.getContext().getOrDefault("protegrity.timeout.seconds", "60"));
         this.client = new OkHttpClient.Builder()
                 .connectionPool(new ConnectionPool(50, 5, TimeUnit.MINUTES))
@@ -44,6 +56,29 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                 .writeTimeout(timeout, TimeUnit.SECONDS)
                 .readTimeout(timeout, TimeUnit.SECONDS)
                 .build();
+
+        // Initialize retry configuration from context
+        this.maxRetryAttempts = Integer.parseInt(
+                actionExecutionAudit.getContext().getOrDefault(PROTEGRITY_API_RETRY_COUNT, "3")
+        );
+
+        this.retryIntervalSecs = Long.parseLong(
+                actionExecutionAudit.getContext().getOrDefault(PROTEGRITY_API_RETRY_INTERVAL_SEC, "1")
+        );
+
+        // Parse retryable status codes from comma-separated string
+        String retryableCodesStr = actionExecutionAudit.getContext()
+                .getOrDefault(PROTEGRITY_API_RETRY_STATUS_CODES, "400,408,429,500,502,503,504");
+        this.retryableStatusCodes = Stream.of(retryableCodesStr.split(","))
+                .map(String::trim)
+                .map(Integer::parseInt)
+                .collect(Collectors.toSet());
+        this.retryActivated = Boolean.parseBoolean(
+                actionExecutionAudit.getContext().getOrDefault(PROTEGRITY_API_RETRY_ACTIVATE, "true")
+        );
+
+        logger.info("Retry configuration initialized - maxAttempts: {}, intervalSec: {}, retryableCodes: {}",
+                maxRetryAttempts, retryIntervalSecs, retryableStatusCodes);
     }
 
     @Override
@@ -59,13 +94,10 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
 
     public List<EncryptionRequestClass> encrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         if (requestList == null || requestList.isEmpty()) {
-            //logger.warn("Encryption skipped: inputToken is null or blank for sorItem: {}", sorItem);
             return Collections.emptyList();
         }
-        //logger.info("Encrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
         return callProtegrityListApi(requestList, protegrityEncApiUrl);
     }
-
 
     @Override
     public String decrypt(String encryptedToken, String encryptionPolicy, String sorItem) throws HandymanException {
@@ -81,14 +113,10 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     @Override
     public List<EncryptionRequestClass> decrypt(List<EncryptionRequestClass> requestList) throws HandymanException {
         if (requestList == null || requestList.isEmpty()) {
-            //logger.warn("Decryption skipped: encryptedToken is null or blank for sorItem: {}", sorItem);
             return Collections.emptyList();
         }
-
-        //logger.info("Decrypting data for sorItem: {}, encryptionPolicy: {}", sorItem, encryptionPolicy);
         return callProtegrityListApi(requestList, protegrityDecApiUrl);
     }
-
 
     @Override
     public String getEncryptionMethod() {
@@ -97,23 +125,11 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
     }
 
     private String callProtegrityApi(String value, String policy, String key, String endpoint) throws HandymanException {
-        long auditId = -1;
         String uuid = UUID.randomUUID().toString();
         long startTime = System.currentTimeMillis();
+        int attempt = 0;
 
         try {
-            auditId = REPO.insertProtegrityAuditRecord(
-                    key,
-                    getEncryptionMethod(),
-                    endpoint,
-                    actionExecutionAudit.getRootPipelineId(),
-                    actionExecutionAudit.getActionId(),
-                    Thread.currentThread().getName(),
-                    uuid
-            );
-
-            logger.info("Calling Protegrity API with auditId={}, uuid={}, endpoint={}, key={}", auditId, uuid, endpoint, key);
-
             List<EncryptionRequest> encryptionPayload = Collections.singletonList(
                     new EncryptionRequest(policy, value, key)
             );
@@ -125,169 +141,349 @@ public class ProtegrityApiEncryptionImpl implements InticsDataEncryptionApi {
                     .post(body)
                     .build();
 
-            try (Response response = client.newCall(request).execute()) {
-                long endTime = System.currentTimeMillis();
-                long tat = endTime - startTime;
+            while (attempt <= maxRetryAttempts) {
+                attempt++;
+                long auditId = -1;
+                long attemptStartTime = System.currentTimeMillis();
 
-                String responseBody = response.body().string();
+                try {
+                    // Create separate audit record for each attempt
+                    auditId = REPO.insertProtegrityAuditRecord(
+                            key,
+                            getEncryptionMethod(),
+                            endpoint,
+                            actionExecutionAudit.getRootPipelineId(),
+                            actionExecutionAudit.getActionId(),
+                            Thread.currentThread().getName(),
+                            uuid
+                    );
 
-                if (!response.isSuccessful()) {
-                    String errorMessage = String.format(
-                            "FAILURE | uuid=%s | auditId=%d | key=%s | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms",
+                    logger.info("Calling Protegrity API with auditId={}, uuid={}, endpoint={}, key={}, attempt={}/{}",
+                            auditId, uuid, endpoint, key, attempt, maxRetryAttempts + 1);
+
+                    try (Response response = client.newCall(request).execute()) {
+                        long endTime = System.currentTimeMillis();
+                        long tat = endTime - startTime;
+                        long attemptTat = endTime - attemptStartTime;
+
+                        String responseBody = response.body().string();
+
+                        if (!response.isSuccessful()) {
+                            boolean isRetryable = retryableStatusCodes.contains(response.code());
+                            boolean canRetry = retryActivated && isRetryable && attempt <= maxRetryAttempts;
+
+                            String errorMessage = String.format(
+                                    "FAILURE | uuid=%s | auditId=%d | key=%s | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | attempt=%d/%d | retryable=%s",
+                                    uuid,
+                                    auditId,
+                                    key,
+                                    endpoint,
+                                    response.code(),
+                                    response.message(),
+                                    attemptTat,
+                                    attempt,
+                                    maxRetryAttempts + 1,
+                                    canRetry
+                            );
+
+                            logger.error(errorMessage);
+                            REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
+
+                            if (canRetry) {
+                                logger.warn("Retrying API call after {} ms [uuid={}, attempt={}/{}]",
+                                        retryIntervalSecs, uuid, attempt, maxRetryAttempts + 1);
+                                Thread.sleep(retryIntervalSecs);
+                                continue;
+                            } else {
+                                HandymanException exception = new HandymanException(response.message());
+                                HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
+                                logger.error("All retry attempts exhausted for uuid={}, returning null", uuid);
+                                return null;
+                            }
+                        }
+
+                        JsonNode jsonResponse = objectMapper.readTree(responseBody);
+                        String encryptedValue = jsonResponse.get(0).get("value").asText();
+
+                        String successMessage = String.format(
+                                "SUCCESS | uuid=%s | auditId=%d | key=%s | endpoint=%s | TAT=%d ms | attempt=%d/%d",
+                                uuid,
+                                auditId,
+                                key,
+                                endpoint,
+                                tat,
+                                attempt,
+                                maxRetryAttempts + 1
+                        );
+
+                        REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
+                        logger.info("Protegrity API call SUCCESS [auditId={}, uuid={}, key={}, TAT={} ms, attempt={}/{}]",
+                                auditId, uuid, key, tat, attempt, maxRetryAttempts + 1);
+                        return encryptedValue;
+                    }
+
+                } catch (IOException e) {
+                    boolean canRetry = retryActivated && attempt <= maxRetryAttempts;
+
+                    long endTime = System.currentTimeMillis();
+                    long tat = endTime - startTime;
+                    long attemptTat = endTime - attemptStartTime;
+
+                    String errMsg = String.format(
+                            "EXCEPTION | uuid=%s | auditId=%d | key=%s | endpoint=%s | message=%s | TAT=%d ms | attempt=%d/%d | retryable=%s",
                             uuid,
                             auditId,
                             key,
                             endpoint,
-                            response.code(),
-                            response.message(),
-                            tat
+                            e.getMessage(),
+                            attemptTat,
+                            attempt,
+                            maxRetryAttempts + 1,
+                            canRetry
                     );
 
-                    logger.error(errorMessage);
-                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
-                    HandymanException exception = new HandymanException(response.message());
-                    HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
-                    throw exception;
+                    logger.error(errMsg, e);
+
+                    if (auditId != -1) {
+                        REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
+                    }
+
+                    if (canRetry) {
+                        logger.warn("Retrying API call after {} ms due to IOException [uuid={}, attempt={}/{}]",
+                                retryIntervalSecs, uuid, attempt, maxRetryAttempts + 1);
+                        Thread.sleep(retryIntervalSecs);
+                        continue;
+                    } else {
+                        HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
+                        HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
+                        logger.error("All retry attempts exhausted for uuid={}, returning null", uuid);
+                        return null;
+                    }
                 }
-
-                JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                String encryptedValue = jsonResponse.get(0).get("value").asText();
-
-                String successMessage = String.format(
-                        "SUCCESS | uuid=%s | auditId=%d | key=%s | endpoint=%s | TAT=%d ms",
-                        uuid,
-                        auditId,
-                        key,
-                        endpoint,
-                        tat
-                );
-
-                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
-                logger.info("Protegrity API call SUCCESS [auditId={}, uuid={}, key={}, TAT={} ms]", auditId, uuid, key, tat);
-                return encryptedValue;
             }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long endTime = System.currentTimeMillis();
+            long tat = endTime - startTime;
+
+            String errMsg = String.format(
+                    "INTERRUPTED | uuid=%s | key=%s | endpoint=%s | message=%s | TAT=%d ms | attempt=%d/%d",
+                    uuid,
+                    key,
+                    endpoint,
+                    e.getMessage(),
+                    tat,
+                    attempt,
+                    maxRetryAttempts + 1
+            );
+
+            logger.error(errMsg, e);
+            HandymanException handymanException = new HandymanException("Retry interrupted", e, actionExecutionAudit);
+            HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
+            return null;
 
         } catch (IOException e) {
             long endTime = System.currentTimeMillis();
             long tat = endTime - startTime;
 
             String errMsg = String.format(
-                    "EXCEPTION | uuid=%s | auditId=%d | key=%s | endpoint=%s | message=%s | TAT=%d ms",
+                    "EXCEPTION | uuid=%s | key=%s | endpoint=%s | message=%s | TAT=%d ms | attempt=%d/%d",
                     uuid,
-                    auditId,
                     key,
                     endpoint,
                     e.getMessage(),
-                    tat
+                    tat,
+                    attempt,
+                    maxRetryAttempts + 1
             );
 
             logger.error(errMsg, e);
             HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
-
-            if (auditId != -1) {
-                REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
-            }
-
             HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
-            throw handymanException;
+            return null;
         }
+
+        // This should never be reached due to the logic above, but added for safety
+        return null;
     }
 
     private List<EncryptionRequestClass> callProtegrityListApi(List<EncryptionRequestClass> protegrityList, String endpoint) throws HandymanException {
-        long auditId = -1;
         String uuid = UUID.randomUUID().toString();
         long startTime = System.currentTimeMillis();
+        int attempt = 0;
 
         try {
-            // Insert the Protegrity audit record into your database or repository
-            auditId = REPO.insertProtegrityAuditRecord(
-                    "BATCH",
-                    getEncryptionMethod(),
-                    endpoint,
-                    actionExecutionAudit.getRootPipelineId(),
-                    actionExecutionAudit.getActionId(),
-                    Thread.currentThread().getName(),
-                    uuid
-            );
-
-            logger.info("Calling Protegrity API (BATCH) with auditId={}, uuid={}, endpoint={}, items={}",
-                    auditId, uuid, endpoint, protegrityList.size());
-
-            // Convert the entire list to JSON and send in one request
             String jsonPayload = objectMapper.writeValueAsString(protegrityList);
             RequestBody body = RequestBody.create(jsonPayload, MediaType.get("application/json"));
             Request request = new Request.Builder().url(endpoint).post(body).build();
 
-            try (Response response = client.newCall(request).execute()) {
-                long endTime = System.currentTimeMillis();
-                long tat = endTime - startTime;
+            while (attempt <= maxRetryAttempts) {
+                attempt++;
+                long auditId = -1;
+                long attemptStartTime = System.currentTimeMillis();
 
-                String responseBody = response.body().string();
+                try {
 
-                if (!response.isSuccessful()) {
-                    String errorMessage = String.format(
-                            "FAILURE | uuid=%s | auditId=%d | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | jsonSize=%d",
-                            uuid, auditId, endpoint, response.code(), response.message(), tat, protegrityList.size()
+                    ProtegrityApiAudit auditRecord = ProtegrityApiAudit.builder()
+                            .key(actionExecutionAudit.getActionName())
+                            .encryptionType(getEncryptionMethod())
+                            .endpoint(endpoint)
+                            .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                            .actionId(actionExecutionAudit.getActionId())
+                            .threadName(Thread.currentThread().getName())
+                            .uuid(uuid)
+                            .startedOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .build();
+
+                    logger.info("Calling Protegrity API (BATCH) with auditId={}, uuid={}, endpoint={}, items={}, attempt={}/{}",
+                            auditId, uuid, endpoint, protegrityList.size(), attempt, maxRetryAttempts + 1);
+
+                    try (Response response = client.newCall(request).execute()) {
+                        long endTime = System.currentTimeMillis();
+                        long tat = endTime - startTime;
+                        long attemptTat = endTime - attemptStartTime;
+
+                        String responseBody = response.body().string();
+
+                        if (!response.isSuccessful()) {
+                            boolean isRetryable = retryableStatusCodes.contains(response.code());
+                            boolean canRetry = retryActivated && isRetryable && attempt <= maxRetryAttempts;
+
+                            String errorMessage = String.format(
+                                    "FAILURE | uuid=%s | auditId=%d | endpoint=%s | statusCode=%d | error=%s | TAT=%d ms | jsonSize=%d | attempt=%d/%d | retryable=%s",
+                                    uuid, auditId, endpoint, response.code(), response.message(), attemptTat,
+                                    protegrityList.size(), attempt, maxRetryAttempts + 1, canRetry
+                            );
+
+                            logger.error(errorMessage);
+                            auditRecord.setCompletedOn(Timestamp.valueOf(LocalDateTime.now()));
+                            auditRecord.setMessage(errorMessage);
+                            auditRecord.setStatus("FAILED");
+                            REPO.insertProtegrityAudit(auditRecord);
+
+                            if (canRetry) {
+                                logger.warn("Retrying BATCH API call after {} ms [uuid={}, attempt={}/{}]",
+                                        retryIntervalSecs, uuid, attempt, maxRetryAttempts + 1);
+                                Thread.sleep(retryIntervalSecs);
+                                continue;
+                            } else {
+                                HandymanException exception = new HandymanException(response.message());
+                                HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
+                                logger.error("All retry attempts exhausted for BATCH uuid={}, returning empty list", uuid);
+                                return Collections.emptyList();
+                            }
+                        }
+
+                        JsonNode jsonResponse = objectMapper.readTree(responseBody);
+                        List<EncryptionRequestClass> encryptedValues = new ArrayList<>();
+
+                        for (int i = 0; i < jsonResponse.size(); i++) {
+                            JsonNode responseItem = jsonResponse.get(i);
+                            String encryptedValue = responseItem.get("value").asText();
+
+                            EncryptionRequestClass encryptedRequest = new EncryptionRequestClass(
+                                    responseItem.get("policy").asText(),
+                                    encryptedValue,
+                                    responseItem.get("key").asText()
+                            );
+
+                            encryptedValues.add(encryptedRequest);
+                        }
+
+                        String successMessage = String.format(
+                                "SUCCESS | uuid=%s | auditId=%d | endpoint=%s | TAT=%d ms | jsonSize=%d | attempt=%d/%d",
+                                uuid, auditId, endpoint, tat, protegrityList.size(), attempt, maxRetryAttempts + 1
+                        );
+                        auditRecord.setCompletedOn(Timestamp.valueOf(LocalDateTime.now()));
+                        auditRecord.setMessage(successMessage);
+                        auditRecord.setStatus("SUCCESS");
+                        REPO.insertProtegrityAudit(auditRecord);
+
+                        logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms, attempt={}/{}]",
+                                auditId, uuid, protegrityList.size(), tat, attempt, maxRetryAttempts + 1);
+
+                        return encryptedValues;
+                    }
+
+                } catch (IOException e) {
+                    boolean canRetry = retryActivated && attempt <= maxRetryAttempts;
+                    long endTime = System.currentTimeMillis();
+                    long tat = endTime - startTime;
+                    long attemptTat = endTime - attemptStartTime;
+
+                    String errMsg = String.format(
+                            "EXCEPTION | uuid=%s | auditId=%d | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d | attempt=%d/%d | retryable=%s",
+                            uuid, auditId, endpoint, e.getMessage(), attemptTat, protegrityList.size(),
+                            attempt, maxRetryAttempts + 1, canRetry
                     );
-                    logger.error(errorMessage);
-                    REPO.updateProtegrityAuditRecord(auditId, "FAILED", errorMessage);
-                    HandymanException exception = new HandymanException(response.message());
-                    HandymanException.insertException("Protegrity API error [uuid=" + uuid + "]", exception, actionExecutionAudit);
-                    throw exception;
+
+                    logger.error(errMsg, e);
+
+                    if (auditId != -1) {
+
+                        ProtegrityApiAudit auditRecord = ProtegrityApiAudit.builder()
+                                .key(actionExecutionAudit.getActionName())
+                                .encryptionType(getEncryptionMethod())
+                                .endpoint(endpoint)
+                                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                                .actionId(actionExecutionAudit.getActionId())
+                                .threadName(Thread.currentThread().getName())
+                                .uuid(uuid)
+                                .startedOn(Timestamp.valueOf(LocalDateTime.now()))
+                                .build();
+
+
+                        REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
+                    }
+
+                    if (canRetry) {
+                        logger.warn("Retrying BATCH API call after {} ms due to IOException [uuid={}, attempt={}/{}]",
+                                retryIntervalSecs, uuid, attempt, maxRetryAttempts + 1);
+                        Thread.sleep(retryIntervalSecs);
+                        continue;
+                    } else {
+                        HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
+                        HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
+                        logger.error("All retry attempts exhausted for BATCH uuid={}, returning empty list", uuid);
+                        return Collections.emptyList();
+                    }
                 }
-
-                // Parse the JSON response from the Protegrity API
-                JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                List<EncryptionRequestClass> encryptedValues = new ArrayList<>();
-
-                // Iterate over the response JSON array and map to EncryptionRequestClass
-                for (int i = 0; i < jsonResponse.size(); i++) {
-                    JsonNode responseItem = jsonResponse.get(i);
-                    String encryptedValue = responseItem.get("value").asText();
-
-                    // Map the encrypted value back to EncryptionRequestClass
-                    EncryptionRequestClass encryptedRequest = new EncryptionRequestClass(
-                            responseItem.get("policy").asText(), // Assuming policy is in the response
-                            encryptedValue,
-                            responseItem.get("key").asText() // Assuming key is in the response
-                    );
-
-                    encryptedValues.add(encryptedRequest);
-                }
-
-                String successMessage = String.format(
-                        "SUCCESS | uuid=%s | auditId=%d | endpoint=%s | TAT=%d ms | jsonSize=%d",
-                        uuid, auditId, endpoint, tat, protegrityList.size()
-                );
-                REPO.updateProtegrityAuditRecord(auditId, "SUCCESS", successMessage);
-                logger.info("Protegrity API (BATCH) call SUCCESS [auditId={}, uuid={}, items={}, TAT={} ms]",
-                        auditId, uuid, protegrityList.size(), tat);
-
-                return encryptedValues;
-
             }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long endTime = System.currentTimeMillis();
+            long tat = endTime - startTime;
+
+            String errMsg = String.format(
+                    "INTERRUPTED | uuid=%s | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d | attempt=%d/%d",
+                    uuid, endpoint, e.getMessage(), tat, protegrityList.size(), attempt, maxRetryAttempts + 1
+            );
+
+            logger.error(errMsg, e);
+            HandymanException handymanException = new HandymanException("Retry interrupted", e, actionExecutionAudit);
+            HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
+            return Collections.emptyList();
 
         } catch (IOException e) {
             long endTime = System.currentTimeMillis();
             long tat = endTime - startTime;
 
             String errMsg = String.format(
-                    "EXCEPTION | uuid=%s | auditId=%d | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d",
-                    uuid, auditId, endpoint, e.getMessage(), tat, protegrityList.size()
+                    "EXCEPTION | uuid=%s | endpoint=%s | message=%s | TAT=%d ms | jsonSize=%d | attempt=%d/%d",
+                    uuid, endpoint, e.getMessage(), tat, protegrityList.size(), attempt, maxRetryAttempts + 1
             );
 
             logger.error(errMsg, e);
             HandymanException handymanException = new HandymanException("Error calling Protegrity API", e, actionExecutionAudit);
-
-            if (auditId != -1) {
-                REPO.updateProtegrityAuditRecord(auditId, "FAILED", errMsg);
-            }
-
             HandymanException.insertException(errMsg, handymanException, actionExecutionAudit);
-            throw handymanException;
+            return Collections.emptyList();
         }
-    }
 
+        // This should never be reached due to the logic above, but added for safety
+        return Collections.emptyList();
+    }
 
     //TODO to increase performance call this method
     private String callProtegrityApiList(List<EncryptionRequest> encryptionRequestLists, String endpoint) throws HandymanException {

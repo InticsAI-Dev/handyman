@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.OcrTextComparator;
 import lombok.extern.slf4j.Slf4j;
@@ -74,7 +75,7 @@ void execute() throws Exception {
     action.getContext().put("group_id", "71");
     action.getContext().put("batch_id", "BATCH-71_0");
     action.getContext().put("created_user_id", "1");
-    action.getContext().put("pipeline.end.to.end.encryption", "false");
+    action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
     action.getContext().put("ocr.comparison.fuzzy.match.threshold", "70");
     action.setRootPipelineId(929L);
 
