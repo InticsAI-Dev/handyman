@@ -198,7 +198,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
                         modelResponse.getOutputs().forEach(o -> o.getData().forEach(s -> {
                             try {
-                                extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), requestForInsert, endpoint.toString());
+                                extractedKryptonOutputDataRequest(entity, s, parentObj, modelResponse.getModelName(), modelResponse.getModelVersion(), requestForInsert, endpoint, safeResponse);
                             } catch (JsonProcessingException e) {
                                 String errorMessage = "Error in parsing response in consumer failed for batch/group " + entity.getGroupId() + " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + " code " + safeResponse.code() + " message : " + safeResponse.message();
                                 handleKryptonErrorResponse(entity, parentObj, requestForInsert, endpoint, tenantId, templateId, processId, safeResponse, rootPipelineId, templateName);
@@ -275,7 +275,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private void extractedKryptonOutputDataRequest(AgenticPaperFilterInput entity, String stringDataItem,
                                                    List<AgenticPaperFilterOutput> parentObj, String modelName,
                                                    String modelVersion, String request,
-                                                   String endpoint) throws JsonProcessingException {
+                                                   URL endpoint,Response safeResponse) throws JsonProcessingException {
 
         String cleanedJson = stringDataItem.replace("```json", "").replace("```", "").trim();
 
@@ -285,26 +285,30 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
         String inferResponseJson = dataExtractionDataItem.getInferResponse();
 
-        if (json.has(MODEL)) {
-            String modelValue = json.getString(MODEL);
-            if (!MODEL_TYPE.equalsIgnoreCase(modelValue)) {
-                //KRYPTON
-                inferResponseNode = mapper.readTree(inferResponseJson);
+        if(inferResponseJson == null){
+            handleKryptonErrorResponse(entity, parentObj, request, endpoint, entity.getTenantId(), entity.getTemplateId(), entity.getProcessId(), safeResponse, entity.getRootPipelineId(), entity.getTemplateName());
+        }else {
+
+            if (json.has(MODEL)) {
+                String modelValue = json.getString(MODEL);
+                if (!MODEL_TYPE.equalsIgnoreCase(modelValue)) {
+                    //KRYPTON
+                    inferResponseNode = mapper.readTree(inferResponseJson);
+                } else {
+                    inferResponseNode = TextNode.valueOf(inferResponseJson.trim());
+                }
+            }
+            String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
+            String templateId = entity.getTemplateId();
+            Iterator<Map.Entry<String, JsonNode>> fields = Objects.requireNonNull(inferResponseNode).fields();
+            if (MODEL_TYPE.equalsIgnoreCase(json.getString(MODEL))) {
+                doOptimusParentObjectBuild(entity, parentObj, modelName, modelVersion, request, endpoint.toString(), dataExtractionDataItem, flag, templateId, inferResponseNode);
+
             } else {
-                inferResponseNode = TextNode.valueOf(inferResponseJson.trim());
+                doKryptonParentObjBuild(entity, parentObj, modelName, modelVersion, request, endpoint.toString(), fields, dataExtractionDataItem, flag, templateId);
             }
         }
-        String flag = (inferResponseJson.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
-        String templateId = entity.getTemplateId();
-        Iterator<Map.Entry<String, JsonNode>> fields = Objects.requireNonNull(inferResponseNode).fields();
-
-        if (MODEL_TYPE.equalsIgnoreCase(json.getString(MODEL))) {
-            doOptimusParentObjectBuild(entity, parentObj, modelName, modelVersion, request, endpoint, dataExtractionDataItem, flag, templateId, inferResponseNode);
-
-        } else {
-            doKryptonParentObjBuild(entity, parentObj, modelName, modelVersion, request, endpoint, fields, dataExtractionDataItem, flag, templateId);
-        }
 
     }
 
