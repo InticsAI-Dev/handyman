@@ -87,7 +87,7 @@ class InticsIntegrityTest {
         contextMap.put("protegrity.api.retry.activated", "true");
         contextMap.put("protegrity.api.retry.count", "3");
         contextMap.put("protegrity.api.retry.interval.secs", "1");
-        contextMap.put("protegrity.api.retry.status.codes", "400,408,429,500,502,503,504");
+        contextMap.put("protegrity.api.retry.status.codes", "404,408,429,500,502,503,504");
 
         actionExecutionAudit.setContext(contextMap);
 
