@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.core.encryption.EncryptionHandlers;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 
@@ -61,7 +62,7 @@ public class ControlDataComparisonTest {
                 Map.entry("control.data.one.touch.threshold", "1"),
                 Map.entry("control.data.low.touch.threshold", "3"),
                 Map.entry("control.data.date.comparison.format", "yyyy/MM/dd"),
-                Map.entry("pipeline.end.to.end.encryption", "true"),
+                Map.entry(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true"),
                 Map.entry("date.input.formats", "M/d/yy"),
                 Map.entry("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt"),
                 Map.entry("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt"),
@@ -100,7 +101,7 @@ public class ControlDataComparisonTest {
                 Map.entry("control.data.one.touch.threshold", "1"),
                 Map.entry("control.data.low.touch.threshold", "3"),
                 Map.entry("control.data.date.comparison.format", "yyyy/MM/dd"),
-                Map.entry("pipeline.end.to.end.encryption", "true"),
+                Map.entry(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true"),
                 Map.entry("date.input.formats", "M/d/yy"),
                 Map.entry("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt"),
                 Map.entry("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt"),

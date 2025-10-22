@@ -5,7 +5,6 @@ import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.selections.ExtractedField;
 import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
-import in.handyman.raven.lib.model.ScalarAdapter;
 import in.handyman.raven.lib.model.SectionFiltering;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -16,7 +15,7 @@ import org.mockito.Mockito;
 import java.sql.Timestamp;
 import java.util.List;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 

@@ -1,44 +1,5 @@
 package in.handyman.raven.lib.model.asset.info;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.ResourceAccess;
-import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.core.encryption.SecurityEngine;
-import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.AssetInfo;
-import in.handyman.raven.lib.model.AssetInfoInputTable;
-import in.handyman.raven.lib.model.AssetInfoOutputTable;
-import in.handyman.raven.util.ExceptionUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.Update;
-import org.slf4j.Logger;
-import org.slf4j.Marker;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
-
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
-import static java.lang.Math.random;
-
 /**
  * Optimized Consumer process with async processing and parallel streams
  */

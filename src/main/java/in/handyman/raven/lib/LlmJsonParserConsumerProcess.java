@@ -29,7 +29,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.KVP_JSON_PARSER_ENCRYPTION;
 
 public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProcess<LlmJsonQueryInputTable, LlmJsonQueryOutputTable> {
     public static final String AES_256 = "AES256";
@@ -356,7 +357,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     log.info("The item {} has not been encrypted as per the metadata configuration, but the label has been encrypted.", response.getKey());
                 }
 
-                if(action.getContext().getOrDefault("llm.json.parser.label.encryption","true").equals("true")){
+                if(action.getContext().getOrDefault(KVP_JSON_PARSER_ENCRYPTION,"true").equals("true")){
                     response.setLabel(inticsIntegrity.encrypt(response.getLabel(), AES_256, response.getKey()));
                     response.setSectionAlias(inticsIntegrity.encrypt(response.getSectionAlias(), AES_256, response.getKey()));
                 }else {

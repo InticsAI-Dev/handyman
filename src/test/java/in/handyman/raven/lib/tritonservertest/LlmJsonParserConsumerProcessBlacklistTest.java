@@ -75,6 +75,17 @@ public class LlmJsonParserConsumerProcessBlacklistTest {
                 "Incorrect message when section alias contains a blacklisted term.");
     }
     @Test
+    public void testBlacklistedLabelSubstringOfLabel() {
+        Set<String> blackListLabels = Set.of("FirstName", "LastName", "Email");
+        ExtractedField response = createSections("FirstName information", "John");
+
+        ExtractedField result = blacklistAdapter.isLabelValueMatching(blackListLabels, response, "SECTIONS");
+
+        assertFalse(result.isLabelMatching(), "Blacklisted label was a substring of the Label");
+        assertEquals("Section contains a blacklisted substring: 'firstname'.", result.getLabelMatchMessage());
+    }
+
+    @Test
     public void testBlacklistedLabelAfterValueRemoval() {
         Set<String> blackListLabels = Set.of("Customer", "OtherLabel");
         ExtractedField response = createField("CustomerName!@#", "Name$%^");
