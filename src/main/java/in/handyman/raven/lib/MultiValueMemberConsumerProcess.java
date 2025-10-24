@@ -193,6 +193,8 @@ public class MultiValueMemberConsumerProcess {
         String pageNo = composePageNumbers(pageNumbersSet);
         Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
 
+        System.out.println(canonicalFullNames);
+
         List<ValueTrace> valueTraces = buildValueTracesVersion1(valuesPerSorItem, canonicalFullNames);
 
         return determineOutputAndBuildSummary(inputRows, targetSorItems, valuesPerSorItem, presentSorItems, documentType, pageNo, canonicalFullNames, valueTraces, log);
@@ -303,6 +305,8 @@ public class MultiValueMemberConsumerProcess {
         log.debug("Page numbers composed: {}", pageNo);
 
         Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
+
+        System.out.println(canonicalFullNames);
 
         int canonicalFullNameCount = clusterAndCount(new ArrayList<>(canonicalFullNames), nameThreshold);
         int memberIdCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_id", Collections.emptyList()), idThreshold);
