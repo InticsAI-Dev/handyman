@@ -45,11 +45,10 @@ public class MultiValueMemberConsumerProcess {
     private final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
     private final String MULTI_MEMBER_NAME_THRESHOLD = "multi.member.name.similarity.threshold";
     private final String MULTI_MEMBER_ID_THRESHOLD = "multi.member.id.similarity.threshold";
+    private final String MULTI_MEMBER_VOTING_VERSION = "multi.member.voting.v1";
     private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
 
-    public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action,
-                                           List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables,
-                                           Long tenantId, Integer threadCount, MultiValueMemberMapper multiValueMemberMapper) {
+    public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables, Long tenantId, Integer threadCount, MultiValueMemberMapper multiValueMemberMapper) {
         this.log = log;
         this.marker = marker;
         this.action = action;
@@ -67,6 +66,8 @@ public class MultiValueMemberConsumerProcess {
         List<MultiValueMemberMapperOutputTable> finalOutput = Collections.synchronizedList(new ArrayList<>());
 
         String processingSorItemName = action.getContext().get(PROCESSING_SOR_ITEM_NAME);
+
+        String votingFeatureFlags = action.getContext().get(MULTI_MEMBER_VOTING_VERSION);
         log.debug(marker, "Processing SOR item name(s): {}", processingSorItemName);
 
         try {
@@ -82,8 +83,6 @@ public class MultiValueMemberConsumerProcess {
                     String threadName = Thread.currentThread().getName();
                     String originId = inputTable.getOriginId();
 
-                    String votingFeatureFlags = action.getContext().get("multi_member_voting_v1");
-
                     log.info(marker, "[{}] Processing originId={} on thread={}", action.getActionId(), originId, threadName);
 
                     double nameSimilarityThreshold = Double.parseDouble(action.getContext().get(MULTI_MEMBER_NAME_THRESHOLD));
@@ -94,9 +93,9 @@ public class MultiValueMemberConsumerProcess {
                     try {
                         MultipleMemberSummary result;
                         if(votingFeatureFlags.equals("true")) {
-                            result = evaluateMultivaluePresenceAndUniquenessVersion2(inputTable, targetSorItems, nameSimilarityThreshold, idSimilarityThreshold, log);
-                        } else {
                             result = evaluateMultivaluePresenceAndUniquenessVersion1(inputTable, targetSorItems, log);
+                        } else {
+                            result = evaluateMultivaluePresenceAndUniquenessVersion2(inputTable, targetSorItems, nameSimilarityThreshold, idSimilarityThreshold, log);
                         }
                         MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.getOutput());
                         finalOutput.add(outputRow);
@@ -141,14 +140,7 @@ public class MultiValueMemberConsumerProcess {
         return finalOutput;
     }
 
-    private static String collectValuesAndMetadata(List<extractedSorItemList> multiValueMember,
-                                                   Set<String> targetSorItems,
-                                                   Map<String, Set<String>> valuesPerSorItem,
-                                                   Set<String> presentSorItems,
-                                                   Set<String> pageNumbersSet,
-                                                   List<String> firstNames,
-                                                   List<String> lastNames,
-                                                   Logger log) {
+    private static String collectValuesAndMetadata(List<extractedSorItemList> multiValueMember, Set<String> targetSorItems, Map<String, Set<String>> valuesPerSorItem, Set<String> presentSorItems, Set<String> pageNumbersSet, List<String> firstNames, List<String> lastNames, Logger log) {
         String documentType = "";
         for (extractedSorItemList row : multiValueMember) {
             String sorItemName = row.getSorItemName();
@@ -184,11 +176,7 @@ public class MultiValueMemberConsumerProcess {
         return documentType;
     }
 
-    public static MultipleMemberSummary evaluateMultivaluePresenceAndUniquenessVersion1(
-            MultiValueMemberMapperTransformInputTable inputRows,
-            Set<String> targetSorItems,
-            Logger log) {
-
+    public static MultipleMemberSummary evaluateMultivaluePresenceAndUniquenessVersion1(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, Logger log) {
         log.info("Starting evaluation for originId: {}", inputRows.getOriginId());
 
         List<extractedSorItemList> multiValueMember = inputRows.getSorItemList();
@@ -200,7 +188,6 @@ public class MultiValueMemberConsumerProcess {
         List<String> lastNames = new ArrayList<>();
         String documentType = "";
 
-        // Collect values and metadata
         documentType = collectValuesAndMetadata(multiValueMember, targetSorItems, valuesPerSorItem, presentSorItems, pageNumbersSet, firstNames, lastNames, log);
 
         String pageNo = composePageNumbers(pageNumbersSet);
@@ -223,15 +210,7 @@ public class MultiValueMemberConsumerProcess {
         return valueTraces;
     }
 
-    private static MultipleMemberSummary determineOutputAndBuildSummary(MultiValueMemberMapperTransformInputTable inputRows,
-                                                                        Set<String> targetSorItems,
-                                                                        Map<String, Set<String>> valuesPerSorItem,
-                                                                        Set<String> presentSorItems,
-                                                                        String documentType,
-                                                                        String pageNo,
-                                                                        Set<String> canonicalFullNames,
-                                                                        List<ValueTrace> valueTraces,
-                                                                        Logger log) {
+    private static MultipleMemberSummary determineOutputAndBuildSummary(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, Map<String, Set<String>> valuesPerSorItem, Set<String> presentSorItems, String documentType, String pageNo, Set<String> canonicalFullNames, List<ValueTrace> valueTraces, Logger log) {
         int canonicalFullNameCount = canonicalFullNames.size();
         int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
         int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
@@ -275,13 +254,7 @@ public class MultiValueMemberConsumerProcess {
                 .build();
     }
 
-    public static MultipleMemberSummary evaluateMultivaluePresenceAndUniquenessVersion2(
-            MultiValueMemberMapperTransformInputTable inputRows,
-            Set<String> targetSorItems,
-            double nameThreshold,
-            double idThreshold,
-            Logger log) {
-
+    public static MultipleMemberSummary evaluateMultivaluePresenceAndUniquenessVersion2(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, double nameThreshold, double idThreshold, Logger log) {
         log.info("Evaluating multi-member presence for originId={}", inputRows.getOriginId());
         log.debug("Target SOR items: {}", targetSorItems);
 
@@ -446,10 +419,7 @@ public class MultiValueMemberConsumerProcess {
         return canonicalFullNames;
     }
 
-    private MultiValueMemberMapperOutputTable outputTableCreation(
-            MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable,
-            String extractedValue
-    ) {
+    private MultiValueMemberMapperOutputTable outputTableCreation(MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable, String extractedValue) {
         Optional<extractedSorItemList> mmIndicatorRowOpt = multiValueMemberMapperTransformInputTable.getSorItemList()
                 .stream()
                 .filter(row -> "multiple_member_indicator".equalsIgnoreCase(row.getSorItemName()))
@@ -497,7 +467,6 @@ public class MultiValueMemberConsumerProcess {
     }
 
     private void executeMMIAuditInsert(Handle handle, MultipleMemberSummary rows, String originId) {
-
         String insertQuery = INSERT_INTO + TABLE_NAME + " ( " + INSERT_COLUMNS + " ) " + INSERT_VALUES;
         log.debug(marker, "[{}] Executing audit insert into {}", originId, TABLE_NAME);
 

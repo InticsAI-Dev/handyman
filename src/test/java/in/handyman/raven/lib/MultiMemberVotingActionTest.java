@@ -37,6 +37,7 @@ class MultiMemberVotingActionTest {
         action.getContext().put("multi.member.indicator.fields","member_id,member_last_name, member_first_name");
         action.getContext().put("radon.kvp.bbox.vqa.score.default","50");
         action.getContext().put("multi.member.consumer.API.count","1");
+        action.getContext().put("multi_member_voting_v1","true");
         action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         action.setRootPipelineId(9413L);
 
