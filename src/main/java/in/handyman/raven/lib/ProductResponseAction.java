@@ -90,7 +90,8 @@ public class ProductResponseAction implements IActionExecution {
                             new ProductResponseAction.ProductResponseInputTable(), urls, action);
             coproProcessor.startProducer(productResponse.getQuerySet(), Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE)));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, 1, Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
+            int consumerApiCountStr = Integer.parseInt(action.getContext().getOrDefault("alchemy.response.consumer.API.count", "10"));
+            coproProcessor.startConsumer(insertQuery, consumerApiCountStr, Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)), new ProductResponseAction.ProductResponseConsumerProcess(log, aMarker, action));
             log.info(aMarker, "Product Response has been completed {}  ", productResponse.getName());
         } catch (Exception t) {
             log.error(aMarker, "Error at Product Response execute method {}", ExceptionUtil.toString(t));
