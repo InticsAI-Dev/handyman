@@ -47,7 +47,6 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
     private Integer statusCode;
     private String log;
     private String detail;
-    private String modelName;
     private UUID requestId;
 
 
@@ -58,7 +57,7 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
         return Stream.of(this.createdOn,this.createdUserId,  this.lastUpdatedOn,this.lastUpdatedUserId,
                 this.inputFilePath, this.totalResponseJson,  this.paperNo, this.originId,
                 this.processId,this.actionId, this.process, this.groupId, this.tenantId,  this.rootPipelineId, this.batchId,
-                this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId, this.computationDetails, this.statusCode, this.log, this.detail, this.modelName, this.requestId).collect(Collectors.toList());
+                this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId, this.computationDetails, this.statusCode, this.log, this.detail, this.requestId).collect(Collectors.toList());
 
     }
 }
