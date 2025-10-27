@@ -3,7 +3,7 @@ package in.handyman.raven.lib.model.documentEyeCue;
 import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import in.handyman.raven.core.encryption.EncryptionConstants;
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
@@ -63,7 +63,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
-        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
     }
 
     private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");

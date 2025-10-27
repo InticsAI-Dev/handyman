@@ -11,7 +11,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ProtocolException;
@@ -22,13 +21,13 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class CoproRetryService {
-    private static final Logger log = LoggerFactory.getLogger(CoproRetryService.class);
 
     private final HandymanRepo handymanRepo;
     private final OkHttpClient httpClient;
+    private final Logger log;
 
     // HTTP/2 specific error patterns
     private static final List<String> HTTP2_RETRYABLE_ERRORS = Arrays.asList(
@@ -40,9 +39,10 @@ public class CoproRetryService {
             "ENHANCE_YOUR_CALM"
     );
 
-    public CoproRetryService(HandymanRepo handymanRepo, OkHttpClient httpClient) {
+    public CoproRetryService(HandymanRepo handymanRepo, OkHttpClient httpClient,Logger log) {
         this.handymanRepo = Objects.requireNonNull(handymanRepo, "handymanRepo");
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
+        this.log=log;
     }
 
     public Response callCoproApiWithRetry(Request request,
@@ -59,14 +59,21 @@ public class CoproRetryService {
                 response = httpClient.newCall(request).execute();
 
                 if (response.isSuccessful() && response.body() != null) {
+                    log.info("Copro API call successful for stage {} with id {} on attempt {}: {} - {}",
+                            retryAudit.getStage(),retryAudit.getCoproServiceId(),attempt, response.code(), response.message());
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
+                    retryAudit.setMessage(response.message());
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // ✅ return without auto-closing
                 }
 
                 if (!isRetryRequired(response)) {
+                    log.info("Copro API call unsuccessful for stage {}  with id {} on attempt {}: {} - {} ",
+                            retryAudit.getStage(),retryAudit.getCoproServiceId(),attempt, response.code(), response.message());
+                    retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
+                    retryAudit.setMessage(response.message());
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // non-retryable → exit early
                 }
@@ -217,6 +224,7 @@ public class CoproRetryService {
                              ActionExecutionAudit action) {
         try {
             populateAudit(attempt, retryAudit, requestBody, response, e, action);
+            retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
             handymanRepo.insertAuditToDb(retryAudit, action);
         } catch (Exception exception) {
             log.error("Error inserting into retry audit {}", ExceptionUtil.toString(exception));
@@ -253,7 +261,7 @@ public class CoproRetryService {
         }
     }
 
-    public static String encryptRequestResponse(String request, ActionExecutionAudit action) {
+    public String encryptRequestResponse(String request, ActionExecutionAudit action) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         if ("true".equals(encryptReqRes)) {
             return SecurityEngine.getInticsIntegrityMethod(action, log)

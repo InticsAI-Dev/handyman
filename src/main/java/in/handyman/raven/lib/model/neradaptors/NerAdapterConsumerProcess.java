@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
 public class NerAdapterConsumerProcess implements CoproProcessor.ConsumerProcess<NerInputTable, NerOutputTable> {
     private static final MediaType MediaTypeJSON = MediaType
