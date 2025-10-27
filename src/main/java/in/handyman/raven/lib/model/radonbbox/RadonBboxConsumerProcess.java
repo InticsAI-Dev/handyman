@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 
 public class RadonBboxConsumerProcess implements CoproProcessor.ConsumerProcess<RadonBboxInputEntity, RadonBboxOutputEntity> {

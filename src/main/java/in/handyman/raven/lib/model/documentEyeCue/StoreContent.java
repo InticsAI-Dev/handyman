@@ -27,6 +27,7 @@ public class StoreContent {
     private static Logger log;
 
     private static final long STREAMING_THRESHOLD = 7_864_320; // 7.5 * 1024 * 1024
+    private static final String KEY_FILE_RENAME_ACTIVATOR = "doc.eyecue.file.rename.activator";
 
     public StoreContent(Logger log) {
         this.log = log;
@@ -185,6 +186,23 @@ public class StoreContent {
         }
     }
 
+    private String getFileName(String baseFileName, ActionExecutionAudit action, String context) {
+        String fileRenameActivator = action.getContext().get(KEY_FILE_RENAME_ACTIVATOR);
+        boolean shouldRename = "true".equalsIgnoreCase(fileRenameActivator);
+
+        if (shouldRename) {
+            String updatedFileName = incrementUpdatedFileName(baseFileName);
+            log.info(MARKER, "{} - File rename activator is enabled. Using renamed filename: {}",
+                    context, updatedFileName);
+            return updatedFileName;
+        } else {
+            String finalFileName = baseFileName + ".pdf";
+            log.info(MARKER, "{} - File rename activator is disabled. Using original filename: {}",
+                    context, finalFileName);
+            return finalFileName;
+        }
+    }
+
     private StoreContentRequestDto createNonStreamingRequest(File file,
                                                              String processedPdfBase64,
                                                              String repository,
@@ -201,8 +219,9 @@ public class StoreContent {
             String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
                     ? entity.getFileName()
                     : file.getName();
-            String updatedFileName = incrementUpdatedFileName(baseFileName);
-            contentMetadata.put("FileName", updatedFileName);
+
+            String fileName = getFileName(baseFileName, action, "NON-STREAMING");
+            contentMetadata.put("FileName", fileName);
             contentMetadata.put("MimeType",
                     Files.probeContentType(file.toPath()) != null
                             ? Files.probeContentType(file.toPath())
@@ -277,8 +296,9 @@ public class StoreContent {
             String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
                     ? entity.getFileName()
                     : file.getName();
-            String updatedFileName = incrementUpdatedFileName(baseFileName);
-            contentMetadata.put("FileName", updatedFileName);
+
+            String fileName = getFileName(baseFileName, action, "STREAMING");
+            contentMetadata.put("FileName", fileName);
             contentMetadata.put("MimeType", DEFAULT_MIME_TYPE);
             requestDto.setContentMetaData(contentMetadata);
 

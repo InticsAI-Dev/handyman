@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PostProcessingExecutor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +65,7 @@ class PostProcessingExecutorActionTest {
         action.getContext().put("batch_id", "BATCH-24_0");
         action.getContext().put("created_user_id", "1");
         action.getContext().put("outbound.mapper.bsh.class.order", "AuthIdValidator");
-        action.getContext().put("pipeline.end.to.end.encryption", "true");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("AuthIdValidator", "import org.slf4j.Logger;\n" +
                 "import java.util.*;\n" +
                 "\n" +

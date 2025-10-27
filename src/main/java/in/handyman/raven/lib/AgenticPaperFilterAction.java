@@ -30,6 +30,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
+import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATCH_SIZE;
+
 @ActionExecution(actionName = "AgenticPaperFilter")
 public class AgenticPaperFilterAction implements IActionExecution {
 
@@ -41,9 +44,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
     public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?)";
     public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?,?,?)";
 
-    public static final String READ_BATCH_SIZE = "read.batch.size";
     public static final String AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT = "agentic.paper.filter.consumer.API.count";
-    public static final String WRITE_BATCH_SIZE = "write.batch.size";
     public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
     private final ActionExecutionAudit action;
     public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
@@ -111,7 +112,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             log.info(aMarker, "Consumer API count for Agentic Paper Filter is {}", consumerApiCount);
 
             String readBatchSizeDefaultValue = "10";
-            String value = action.getContext().getOrDefault(READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
+            String value = action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
             int readBatchSize = value.isEmpty() ? Integer.parseInt(readBatchSizeDefaultValue) : Integer.parseInt(value);
 
             if (consumerApiCount >= readBatchSize) {
@@ -124,7 +125,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             coproProcessor.startProducer(agenticPaperFilter.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
 
-            Integer writeBatchSize = Integer.valueOf(action.getContext().get(WRITE_BATCH_SIZE));
+            Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
             AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
                     new AgenticPaperFilterConsumerProcess(log, aMarker, action, this, pageContentMinLength, fileProcessingUtils, processBase64, agenticPaperFilter.getResourceConn());

@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess<AlchemyKvpInputEntity, AlchemyKvpOutputEntity> {
 

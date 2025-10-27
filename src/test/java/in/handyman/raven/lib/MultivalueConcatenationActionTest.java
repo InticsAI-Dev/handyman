@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultivalueConcatenation;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,7 @@ class MultivalueConcatenationActionTest {
         action.getContext().put("group_id", "2014");
         action.getContext().put("batch_id", "BATCH-2014_0_new");
         action.getContext().put("created_user_id", "1");
-        action.getContext().put("pipeline.end.to.end.encryption", "false");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         action.setRootPipelineId(929L);
 
         MultivalueConcatenationAction multivalueConcatenationAction = new MultivalueConcatenationAction(action, log, multivalueConcatenation);

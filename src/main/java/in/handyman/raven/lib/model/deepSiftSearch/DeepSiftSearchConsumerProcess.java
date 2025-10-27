@@ -13,14 +13,13 @@ import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 
 @Data
 @AllArgsConstructor
