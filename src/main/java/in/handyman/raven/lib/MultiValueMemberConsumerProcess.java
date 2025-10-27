@@ -208,16 +208,7 @@ public class MultiValueMemberConsumerProcess {
         return valueTraces;
     }
 
-    private static MultipleMemberSummary determineOutputAndBuildSummary(
-            MultiValueMemberMapperTransformInputTable inputRows,
-            Set<String> targetSorItems,
-            Map<String, Set<String>> valuesPerSorItem,
-            Set<String> presentSorItems,
-            String documentType,
-            String pageNo,
-            Set<String> canonicalFullNames,
-            List<ValueTrace> valueTraces,
-            Logger log) {
+    private static MultipleMemberSummary determineOutputAndBuildSummary(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, Map<String, Set<String>> valuesPerSorItem, Set<String> presentSorItems, String documentType, String pageNo, Set<String> canonicalFullNames, List<ValueTrace> valueTraces, Logger log) {
 
         int canonicalFullNameCount = canonicalFullNames.size();
         int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
@@ -261,7 +252,7 @@ public class MultiValueMemberConsumerProcess {
             output = "N";
         }
 
-        log.info(comments);
+        log.info("Evaluation completed for originId={} → output={} comments={}", inputRows.getOriginId(), output, comments);
 
         return MultipleMemberSummary.builder()
                 .pageNo(pageNo)
