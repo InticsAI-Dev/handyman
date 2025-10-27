@@ -216,12 +216,17 @@ public class MultiValueMemberConsumerProcess {
         int canonicalFullNameCount = canonicalFullNames.size();
         int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
         int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
-        int dobCount = valuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptySet()).size();
+        String multipleMemberIndicator = valuesPerSorItem.getOrDefault("multiple_member_indicator", Collections.emptySet()).toString();
 
         String comments;
         String output;
 
-        if (!presentSorItems.containsAll(targetSorItems)) {
+        if ("Y".equalsIgnoreCase(multipleMemberIndicator)) {
+            comments = "multiple_member_indicator explicitly marked as 'Y'. Confirming multiple members.";
+            log.info(comments);
+            output = "Y";
+        }
+        else if (!presentSorItems.containsAll(targetSorItems)) {
             String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
             comments = String.format("Missing target SOR items: [%s]. Cannot confirm multiple members.", missingItems);
             log.info(comments);
@@ -231,14 +236,12 @@ public class MultiValueMemberConsumerProcess {
             log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
-            comments = String.format("COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d, dob unique count = %d.", memberIdCount, canonicalFullNameCount, dobCount);
-
+            comments = String.format("COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d", memberIdCount, canonicalFullNameCount);
             log.info(comments);
-            output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
+            output = (memberIdCount > 1 && canonicalFullNameCount > 1) ? "Y" : "N";
             comments += output.equals("Y") ? " All these counts are >1, indicating multiple members." : " One or more counts are <=1, indicating a single member.";
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
             comments = String.format("GBD document: member_id unique count = %d, canonical full name unique count = %d.", memberIdCount, canonicalFullNameCount);
-
             log.info(comments);
             output = (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
             comments += output.equals("Y") ? " Either member_id count or canonical full name count is >1, indicating multiple members." : " Both counts are <=1, indicating a single member.";
@@ -310,22 +313,26 @@ public class MultiValueMemberConsumerProcess {
 
         int canonicalFullNameCount = clusterAndCount(new ArrayList<>(canonicalFullNames), nameThreshold);
         int memberIdCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_id", Collections.emptyList()), idThreshold);
-        int dobCount = rawValuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptyList()).size();
+        String multipleMemberIndicator = rawValuesPerSorItem.getOrDefault("multiple_member_indicator", Collections.emptyList()).toString();
 
-        log.info("Cluster summary -> Name clusters={} ID clusters={} DOB count={}", canonicalFullNameCount, memberIdCount, dobCount);
+        log.info("Cluster summary -> Name clusters={} ID clusters={}", canonicalFullNameCount, memberIdCount);
 
         String comments;
         String output;
 
-        if (!presentSorItems.containsAll(targetSorItems)) {
+        if ("Y".equalsIgnoreCase(multipleMemberIndicator)) {
+            comments = "multiple_member_indicator explicitly marked as 'Y'. Confirming multiple members.";
+            log.info(comments);
+            output = "Y";
+        } else if (!presentSorItems.containsAll(targetSorItems)) {
             String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
             comments = String.format("Missing target SOR items: [%s]. Cannot confirm multiple members.", missingItems);
             log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
-            comments = String.format("COMMERCIAL doc: member_id clusters=%d, name clusters=%d, dob count=%d", memberIdCount, canonicalFullNameCount, dobCount);
+            comments = String.format("COMMERCIAL doc: member_id clusters=%d, name clusters=%d", memberIdCount, canonicalFullNameCount);
             log.info("MEDICAL_COMMERCIAL comments: {}", comments);
-            output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
+            output = (memberIdCount > 1 && canonicalFullNameCount > 1) ? "Y" : "N";
             log.info("Determined output for MEDICAL_COMMERCIAL={}", output);
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
             comments = String.format("GBD doc: member_id clusters=%d, name clusters=%d", memberIdCount, canonicalFullNameCount);
@@ -430,20 +437,17 @@ public class MultiValueMemberConsumerProcess {
                 .findFirst();
 
         if (mmIndicatorRowOpt.isEmpty()) {
-            log.warn("No row found with sor_item_name = 'multiple_member_indicator' for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId());
+            log.info("No row found with sor_item_name = 'multiple_member_indicator'");
         }
 
-        extractedSorItemList mmIndicatorRow = mmIndicatorRowOpt.orElse(null);
-        Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
-
-        String finalExtractedValue;
-        if (mmIndicatorRow != null && "Y".equalsIgnoreCase(mmIndicatorRow.getPredictedValue())) {
-            finalExtractedValue = "Y";
-            log.info("Existing multiple_member_indicator found as 'Y'. Using 'Y' as final extracted value.");
+        extractedSorItemList mmIndicatorRow = null;
+        if (mmIndicatorRowOpt.isEmpty()) {
+            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId()); // fallback
         } else {
-            finalExtractedValue = extractedValue;
-            log.info("Using new extracted value for multiple_member_indicator: {}", extractedValue);
+            mmIndicatorRow = mmIndicatorRowOpt.get();
         }
+
+        Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
 
         return MultiValueMemberMapperOutputTable.builder()
                 .createdOn(LocalDateTime.now())
@@ -455,7 +459,7 @@ public class MultiValueMemberConsumerProcess {
                 .frequency(mmIndicatorRow.getFrequency())
                 .bBox("")
                 .confidenceScore(defaultConfidenceScore)
-                .extractedValue(finalExtractedValue)
+                .extractedValue(extractedValue)
                 .filterScore(0L)
                 .groupId(mmIndicatorRow.getGroupId())
                 .maximumScore(defaultConfidenceScore)
