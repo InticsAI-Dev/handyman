@@ -430,19 +430,20 @@ public class MultiValueMemberConsumerProcess {
                 .findFirst();
 
         if (mmIndicatorRowOpt.isEmpty()) {
-            log.info("No row found with sor_item_name = 'multiple_member_indicator'");
+            log.warn("No row found with sor_item_name = 'multiple_member_indicator' for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId());
         }
 
-        extractedSorItemList mmIndicatorRow = null;
-        if (mmIndicatorRowOpt.isEmpty()) {
-            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId()); // fallback
-        } else {
-            mmIndicatorRow = mmIndicatorRowOpt.get();
-
-
-        }
-
+        extractedSorItemList mmIndicatorRow = mmIndicatorRowOpt.orElse(null);
         Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
+
+        String finalExtractedValue;
+        if (mmIndicatorRow != null && "Y".equalsIgnoreCase(mmIndicatorRow.getPredictedValue())) {
+            finalExtractedValue = "Y";
+            log.info("Existing multiple_member_indicator found as 'Y'. Using 'Y' as final extracted value.");
+        } else {
+            finalExtractedValue = extractedValue;
+            log.info("Using new extracted value for multiple_member_indicator: {}", extractedValue);
+        }
 
         return MultiValueMemberMapperOutputTable.builder()
                 .createdOn(LocalDateTime.now())
@@ -454,7 +455,7 @@ public class MultiValueMemberConsumerProcess {
                 .frequency(mmIndicatorRow.getFrequency())
                 .bBox("")
                 .confidenceScore(defaultConfidenceScore)
-                .extractedValue(extractedValue)
+                .extractedValue(finalExtractedValue)
                 .filterScore(0L)
                 .groupId(mmIndicatorRow.getGroupId())
                 .maximumScore(defaultConfidenceScore)
