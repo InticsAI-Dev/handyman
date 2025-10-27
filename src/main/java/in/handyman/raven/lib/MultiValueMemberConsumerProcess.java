@@ -213,6 +213,7 @@ public class MultiValueMemberConsumerProcess {
         int canonicalFullNameCount = canonicalFullNames.size();
         int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
         int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
+        int dobCount = valuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptySet()).size();
 
         Set<String> multipleMemberIndicators = extractIndicators(valuesPerSorItem.get("multiple_member_indicator"));
 
@@ -223,30 +224,20 @@ public class MultiValueMemberConsumerProcess {
             comments = "multiple_member_indicator explicitly marked as 'Y'. Confirming multiple members.";
             output = "Y";
         } else if (!presentSorItems.containsAll(targetSorItems)) {
-            String missingItems = targetSorItems.stream()
-                    .filter(s -> !presentSorItems.contains(s))
-                    .collect(Collectors.joining(", "));
+            String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
             comments = String.format("Missing target SOR items: [%s]. Cannot confirm multiple members.", missingItems);
             output = "N";
         } else if (lastNameCount == 1) {
             comments = "Only one unique last name found, indicating a single member.";
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
-            comments = String.format(
-                    "COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d.",
-                    memberIdCount, canonicalFullNameCount);
-            output = (memberIdCount > 1 && canonicalFullNameCount > 1) ? "Y" : "N";
-            comments += output.equals("Y")
-                    ? " Both counts are >1, confirming multiple members."
-                    : " One or more counts are <=1, indicating a single member.";
+            comments = String.format("COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d, dob unique count = %d.", memberIdCount, canonicalFullNameCount, dobCount);
+            output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
+            comments += output.equals("Y") ? " All these counts are >1, indicating multiple members." : " One or more counts are <=1, indicating a single member.";
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
-            comments = String.format(
-                    "GBD document: member_id unique count = %d, canonical full name unique count = %d.",
-                    memberIdCount, canonicalFullNameCount);
+            comments = String.format("GBD document: member_id unique count = %d, canonical full name unique count = %d.", memberIdCount, canonicalFullNameCount);
             output = (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
-            comments += output.equals("Y")
-                    ? " Either member_id count or canonical full name count is >1, confirming multiple members."
-                    : " Both counts are <=1, indicating a single member.";
+            comments += output.equals("Y") ? " Either member_id count or canonical full name count is >1, indicating multiple members." : " Both counts are <=1, indicating a single member.";
         } else {
             comments = String.format("Unknown document type '%s'. Insufficient data to determine member multiplicity.", documentType);
             output = "N";
@@ -315,8 +306,9 @@ public class MultiValueMemberConsumerProcess {
 
         int canonicalFullNameCount = clusterAndCount(new ArrayList<>(canonicalFullNames), nameThreshold);
         int memberIdCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_id", Collections.emptyList()), idThreshold);
+        int dobCount = rawValuesPerSorItem.getOrDefault("member_date_of_birth", Collections.emptyList()).size();
 
-        log.info("Cluster summary -> Name clusters={} ID clusters={}", canonicalFullNameCount, memberIdCount);
+        log.info("Cluster summary -> Name clusters={} ID clusters={} DOB count={}", canonicalFullNameCount, memberIdCount, dobCount);
 
         Set<String> multipleMemberIndicators = extractIndicators(rawValuesPerSorItem.get("multiple_member_indicator"));
 
@@ -332,9 +324,9 @@ public class MultiValueMemberConsumerProcess {
             log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
-            comments = String.format("COMMERCIAL doc: member_id clusters=%d, name clusters=%d", memberIdCount, canonicalFullNameCount);
+            comments = String.format("COMMERCIAL doc: member_id clusters=%d, name clusters=%d, dob count=%d", memberIdCount, canonicalFullNameCount, dobCount);
             log.info("MEDICAL_COMMERCIAL comments: {}", comments);
-            output = (memberIdCount > 1 && canonicalFullNameCount > 1) ? "Y" : "N";
+            output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
             log.info("Determined output for MEDICAL_COMMERCIAL={}", output);
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
             comments = String.format("GBD doc: member_id clusters=%d, name clusters=%d", memberIdCount, canonicalFullNameCount);
