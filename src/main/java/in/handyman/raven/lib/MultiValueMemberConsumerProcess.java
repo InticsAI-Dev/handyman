@@ -40,12 +40,8 @@ public class MultiValueMemberConsumerProcess {
 
     public static final String INSERT_VALUES = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    private final String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
-
-    private final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
     private final String MULTI_MEMBER_NAME_THRESHOLD = "multi.member.name.similarity.threshold";
     private final String MULTI_MEMBER_ID_THRESHOLD = "multi.member.id.similarity.threshold";
-    private final String MULTI_MEMBER_VOTING_VERSION = "multi.member.voting.v1";
     private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
 
     public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables, Long tenantId, Integer threadCount, MultiValueMemberMapper multiValueMemberMapper) {
@@ -65,8 +61,10 @@ public class MultiValueMemberConsumerProcess {
 
         List<MultiValueMemberMapperOutputTable> finalOutput = Collections.synchronizedList(new ArrayList<>());
 
+        String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
         String processingSorItemName = action.getContext().get(PROCESSING_SOR_ITEM_NAME);
 
+        String MULTI_MEMBER_VOTING_VERSION = "multi.member.voting.v1";
         String votingFeatureFlags = action.getContext().get(MULTI_MEMBER_VOTING_VERSION);
         log.debug(marker, "Processing SOR item name(s): {}", processingSorItemName);
 
@@ -193,8 +191,6 @@ public class MultiValueMemberConsumerProcess {
         String pageNo = composePageNumbers(pageNumbersSet);
         Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
 
-        System.out.println(canonicalFullNames);
-
         List<ValueTrace> valueTraces = buildValueTracesVersion1(valuesPerSorItem, canonicalFullNames);
 
         return determineOutputAndBuildSummary(inputRows, targetSorItems, valuesPerSorItem, presentSorItems, documentType, pageNo, canonicalFullNames, valueTraces, log);
@@ -212,44 +208,60 @@ public class MultiValueMemberConsumerProcess {
         return valueTraces;
     }
 
-    private static MultipleMemberSummary determineOutputAndBuildSummary(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, Map<String, Set<String>> valuesPerSorItem, Set<String> presentSorItems, String documentType, String pageNo, Set<String> canonicalFullNames, List<ValueTrace> valueTraces, Logger log) {
+    private static MultipleMemberSummary determineOutputAndBuildSummary(
+            MultiValueMemberMapperTransformInputTable inputRows,
+            Set<String> targetSorItems,
+            Map<String, Set<String>> valuesPerSorItem,
+            Set<String> presentSorItems,
+            String documentType,
+            String pageNo,
+            Set<String> canonicalFullNames,
+            List<ValueTrace> valueTraces,
+            Logger log) {
+
         int canonicalFullNameCount = canonicalFullNames.size();
         int lastNameCount = valuesPerSorItem.getOrDefault("member_last_name", Collections.emptySet()).size();
         int memberIdCount = valuesPerSorItem.getOrDefault("member_id", Collections.emptySet()).size();
-        String multipleMemberIndicator = valuesPerSorItem.getOrDefault("multiple_member_indicator", Collections.emptySet()).toString();
 
-        String comments;
+        Set<String> multipleMemberIndicators = extractIndicators(valuesPerSorItem.get("multiple_member_indicator"));
+
         String output;
+        String comments;
 
-        if ("Y".equalsIgnoreCase(multipleMemberIndicator)) {
+        if (containsYes(multipleMemberIndicators)) {
             comments = "multiple_member_indicator explicitly marked as 'Y'. Confirming multiple members.";
-            log.info(comments);
             output = "Y";
-        }
-        else if (!presentSorItems.containsAll(targetSorItems)) {
-            String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
+        } else if (!presentSorItems.containsAll(targetSorItems)) {
+            String missingItems = targetSorItems.stream()
+                    .filter(s -> !presentSorItems.contains(s))
+                    .collect(Collectors.joining(", "));
             comments = String.format("Missing target SOR items: [%s]. Cannot confirm multiple members.", missingItems);
-            log.info(comments);
             output = "N";
         } else if (lastNameCount == 1) {
             comments = "Only one unique last name found, indicating a single member.";
-            log.info(comments);
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
-            comments = String.format("COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d", memberIdCount, canonicalFullNameCount);
-            log.info(comments);
+            comments = String.format(
+                    "COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d.",
+                    memberIdCount, canonicalFullNameCount);
             output = (memberIdCount > 1 && canonicalFullNameCount > 1) ? "Y" : "N";
-            comments += output.equals("Y") ? " All these counts are >1, indicating multiple members." : " One or more counts are <=1, indicating a single member.";
+            comments += output.equals("Y")
+                    ? " Both counts are >1, confirming multiple members."
+                    : " One or more counts are <=1, indicating a single member.";
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
-            comments = String.format("GBD document: member_id unique count = %d, canonical full name unique count = %d.", memberIdCount, canonicalFullNameCount);
-            log.info(comments);
+            comments = String.format(
+                    "GBD document: member_id unique count = %d, canonical full name unique count = %d.",
+                    memberIdCount, canonicalFullNameCount);
             output = (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
-            comments += output.equals("Y") ? " Either member_id count or canonical full name count is >1, indicating multiple members." : " Both counts are <=1, indicating a single member.";
+            comments += output.equals("Y")
+                    ? " Either member_id count or canonical full name count is >1, confirming multiple members."
+                    : " Both counts are <=1, indicating a single member.";
         } else {
             comments = String.format("Unknown document type '%s'. Insufficient data to determine member multiplicity.", documentType);
-            log.info(comments);
             output = "N";
         }
+
+        log.info(comments);
 
         return MultipleMemberSummary.builder()
                 .pageNo(pageNo)
@@ -258,6 +270,7 @@ public class MultiValueMemberConsumerProcess {
                 .valueTraces(valueTraces)
                 .build();
     }
+
 
     public static MultipleMemberSummary evaluateMultivaluePresenceAndUniquenessVersion2(MultiValueMemberMapperTransformInputTable inputRows, Set<String> targetSorItems, double nameThreshold, double idThreshold, Logger log) {
         log.info("Evaluating multi-member presence for originId={}", inputRows.getOriginId());
@@ -309,20 +322,18 @@ public class MultiValueMemberConsumerProcess {
 
         Set<String> canonicalFullNames = buildCanonicalFullNames(firstNames, lastNames);
 
-        System.out.println(canonicalFullNames);
-
         int canonicalFullNameCount = clusterAndCount(new ArrayList<>(canonicalFullNames), nameThreshold);
         int memberIdCount = clusterAndCount(rawValuesPerSorItem.getOrDefault("member_id", Collections.emptyList()), idThreshold);
-        String multipleMemberIndicator = rawValuesPerSorItem.getOrDefault("multiple_member_indicator", Collections.emptyList()).toString();
 
         log.info("Cluster summary -> Name clusters={} ID clusters={}", canonicalFullNameCount, memberIdCount);
 
-        String comments;
-        String output;
+        Set<String> multipleMemberIndicators = extractIndicators(rawValuesPerSorItem.get("multiple_member_indicator"));
 
-        if ("Y".equalsIgnoreCase(multipleMemberIndicator)) {
+        String output;
+        String comments;
+
+        if (containsYes(multipleMemberIndicators)) {
             comments = "multiple_member_indicator explicitly marked as 'Y'. Confirming multiple members.";
-            log.info(comments);
             output = "Y";
         } else if (!presentSorItems.containsAll(targetSorItems)) {
             String missingItems = targetSorItems.stream().filter(s -> !presentSorItems.contains(s)).collect(Collectors.joining(", "));
@@ -447,8 +458,10 @@ public class MultiValueMemberConsumerProcess {
             mmIndicatorRow = mmIndicatorRowOpt.get();
         }
 
+        String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
         Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
 
+        assert mmIndicatorRow != null;
         return MultiValueMemberMapperOutputTable.builder()
                 .createdOn(LocalDateTime.now())
                 .createdUserId(mmIndicatorRow.getTenantId())
@@ -525,6 +538,24 @@ public class MultiValueMemberConsumerProcess {
         private String output;
         private String comments;
         private List<ValueTrace> valueTraces;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Set<String> extractIndicators(Object rawValue) {
+        if (rawValue == null) {
+            return Collections.emptySet();
+        }
+        if (rawValue instanceof Set) {
+            return (Set<String>) rawValue;
+        }
+        if (rawValue instanceof Collection) {
+            return new HashSet<>((Collection<String>) rawValue);
+        }
+        return Set.of(rawValue.toString());
+    }
+
+    private static boolean containsYes(Collection<String> indicators) {
+        return indicators.stream().anyMatch("Y"::equalsIgnoreCase);
     }
 
 }

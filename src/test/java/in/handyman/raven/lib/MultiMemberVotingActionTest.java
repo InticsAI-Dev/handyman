@@ -34,7 +34,7 @@ class MultiMemberVotingActionTest {
         action.getContext().put("document_type", "MEDICAL_GBD");
         action.getContext().put("multi.member.name.similarity.threshold","0.85");
         action.getContext().put("multi.member.id.similarity.threshold","0.80");
-        action.getContext().put("multi.member.indicator.fields","member_id,member_last_name, member_first_name");
+        action.getContext().put("multi.member.indicator.fields","member_id,member_last_name,member_first_name,multiple_member_indicator");
         action.getContext().put("radon.kvp.bbox.vqa.score.default","50");
         action.getContext().put("multi.member.consumer.API.count","1");
         action.getContext().put("multi.member.voting.v1","true");
