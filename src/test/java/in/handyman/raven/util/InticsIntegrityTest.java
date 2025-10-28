@@ -22,8 +22,8 @@ class InticsIntegrityTest {
 
     private InticsDataEncryptionApi mockEncryptionImpl;
     private InticsIntegrity inticsIntegrity;
-    private static final String ENC_URL = "http://localhost:8190/vulcan/api/encryption/encrypt-1";
-    private static final String DEC_URL = "http://localhost:8190/vulcan/api/encryption/decrypt-1";
+    private static final String ENC_URL = "http://localhost:8190/vulcan/api/encryption/encrypt";
+    private static final String DEC_URL = "http://localhost:8190/vulcan/api/encryption/decrypt";
 
     private ActionExecutionAudit createAudit(boolean retryActivated, String retryCount, String retryIntervalSecs, String retryStatusCodes, String timeoutSecs) {
         ActionExecutionAudit audit = new ActionExecutionAudit();
