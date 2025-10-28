@@ -165,6 +165,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
         radonKvpExtractionRequest.setSorContainerId(entity.getSorContainerId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
+        radonKvpExtractionRequest.setRequestId(entity.getRequestId());
 
         String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
                 ? fileProcessingUtils.convertFileToBase64(filePath)
@@ -274,6 +275,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             .response(encryptRequestResponse(errorBody))
                             .endpoint(String.valueOf(endpoint))
                             .sorContainerId(entity.getSorContainerId())
+                            .requestId(entity.getRequestId())
                             .build());
                     HandymanException handymanException = new HandymanException("Unsuccessful response code : " + safeResponse.code() + " message : " + errorBody);
                     HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
@@ -332,6 +334,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .lastUpdatedUserId(entity.getTenantId())
                 .category(entity.getCategory())
                 .sorContainerId(entity.getSorContainerId())
+                .requestId(entity.getRequestId())
                 .build());
     }
 
@@ -406,6 +409,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .response(encryptRequestResponse(response))
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
+                    .requestId(entity.getRequestId())
+                    .coproStatusCode(Integer.parseInt(modelResponse.getStatusCode()))
+                    .coproLog(modelResponse.getErrorMessage())
+                    .coproErrorDetails(modelResponse.getDetail())
+                    .computationDetails(modelResponse.getComputationDetails())
                     .build()
             );
         }

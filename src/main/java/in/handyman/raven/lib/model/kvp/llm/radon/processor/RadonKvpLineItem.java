@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -36,5 +37,11 @@ public class RadonKvpLineItem {
     private Long imageHeight;
     private String extractedImageUnit;
     private String processName;
+    private String computationDetails;
+    private String statusCode;
+    private String errorMessage;
+    private String detail;
+    private String modelVersion;
+    private UUID requestId;
 
 }

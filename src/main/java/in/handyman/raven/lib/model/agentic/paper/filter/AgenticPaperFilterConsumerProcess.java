@@ -160,6 +160,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         radonKvpExtractionRequest.setModelName(action.getContext().get("agentic.paper.filter.activator").equalsIgnoreCase("true") ? "KRYPTON" : entity.getModelName());
+        radonKvpExtractionRequest.setRequestId(entity.getRequestId());
         return radonKvpExtractionRequest;
     }
 
@@ -182,7 +183,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).endpoint(String.valueOf(endpoint)).requestId(entity.getRequestId()).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -192,7 +193,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 Protocol protocol = response.protocol();
                 log.info(aMarker, " Protocol in use : {} ", protocol);
                 String responseBody = Objects.requireNonNull(safeResponse.body()).string();
-                
+
                 if (safeResponse.isSuccessful()) {
                     RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                     if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -224,7 +225,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             }
         } catch (Exception e) {
             String errorMessage = "Error in api call consumer failed for batch/group " + entity.getGroupId() + " origin Id " + entity.getOriginId() + " paper No " + entity.getPaperNo() + "\n message : " + e.getMessage();
-            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).endpoint(String.valueOf(endpoint)).build());
+            parentObj.add(AgenticPaperFilterOutput.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).templateId(templateId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).templateName(templateName).endpoint(String.valueOf(endpoint)).requestId(entity.getRequestId()).build());
             log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -268,7 +269,9 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .rootPipelineId(rootPipelineId)
                 .templateName(templateName)
-                .endpoint(String.valueOf(endpoint)).build());
+                .endpoint(String.valueOf(endpoint))
+                .requestId(entity.getRequestId())
+                .build());
     }
 
 
@@ -340,6 +343,11 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     .endpoint(String.valueOf(endpoint))
                     .containerName(containerName)
                     .containerValue(containerValue)
+                    .computationDetails(dataExtractionDataItem.getComputationDetails())
+                    .coproErrorDetails(dataExtractionDataItem.getDetail())
+                    .coproLog(dataExtractionDataItem.getErrorMessage())
+                    .coproStatusCode(Integer.valueOf(dataExtractionDataItem.getStatusCode()))
+                    .requestId(entity.getRequestId())
                     .build());
         }
     }
@@ -376,6 +384,11 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .containerName(entity.getUniqueName())
                 .containerId(entity.getUniqueId())
                 .promptType(promptType)
+                .computationDetails(dataExtractionDataItem.getComputationDetails())
+                .coproErrorDetails(dataExtractionDataItem.getDetail())
+                .coproLog(dataExtractionDataItem.getErrorMessage())
+                .coproStatusCode(Integer.valueOf(dataExtractionDataItem.getStatusCode()))
+                .requestId(dataExtractionDataItem.getRequestId())
                 .build());
     }
 
