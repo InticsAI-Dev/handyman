@@ -8,10 +8,7 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.adapters.ocr.OcrComparisonAdapter;
-import in.handyman.raven.lib.adapters.ocr.OcrComparisonAdapterFactory;
-import in.handyman.raven.lib.adapters.ocr.OcrComparisonResult;
-import in.handyman.raven.lib.adapters.ocr.OcrTextComparatorInput;
+import in.handyman.raven.lib.adapters.ocr.*;
 import in.handyman.raven.lib.model.OcrTextComparator;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
@@ -27,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
@@ -104,15 +100,15 @@ public class OcrTextComparatorAction implements IActionExecution {
 
                 performDecryption(ocrTextComparatorInputs, encryption, pipelineEndToEndEncryptionActivator, deepSiftOutputActivator);
 
-                doOcrTextComparison(ocrTextComparatorInputs,
+                List<OcrTextComparatorInput> updatedResults = doOcrTextComparison(ocrTextComparatorInputs,
                         fuzzyMatchThreshold);
 
-                performEncryption(ocrTextComparatorInputs, encryption,
+                performEncryption(updatedResults, encryption,
                         pipelineEndToEndEncryptionActivator, deepSiftOutputActivator);
 
                 // Batch insert results
-                if (!ocrTextComparatorInputs.isEmpty()) {
-                    batchInsertResults(jdbi, outputTableName, ocrTextComparatorInputs);
+                if (!updatedResults.isEmpty()) {
+                    batchInsertResults(jdbi, outputTableName, updatedResults);
                 }
 
 
@@ -370,58 +366,14 @@ public class OcrTextComparatorAction implements IActionExecution {
         }
 
     }
-    private void doOcrTextComparison(List<OcrTextComparatorInput> inputs,
-                                     double fuzzyMatchThreshold) throws Exception {
-        log.info(aMarker, "Starting OCR text comparison process for totalInputs: {}", inputs.size());
-
-
-        log.info(aMarker, "Filtered comparable inputs: {}/{} ",
-                inputs.size(), inputs.size());
-
-        // Process inputs and collect results
-        AtomicInteger processedCount = new AtomicInteger();
-        AtomicInteger errorCount = new AtomicInteger();
-        inputs.stream()
-                .filter(this::isComparable).forEach(input -> {
-                    log.debug(aMarker,
-                            "Skipped - originId: {}, sorItemName: {}, paperNo: {}, isComparable: {}",
-                            input.getOriginId(), input.getSorItemName(), input.getPaperNo(),
-                            input.getIsOcrFieldComparable());
-
-                    try {
-                        OcrComparisonResult result = processInput(input, fuzzyMatchThreshold);
-
-
-                        input.setBestMatch(result.getBestMatch());
-                        input.setBestScore(result.getBestScore());
-                        input.setCandidatesList(result.getCandidatesList());
-                        input.setIsOcrFieldComparable(result.isMatch());
-                        input.setThreshold((int)(fuzzyMatchThreshold * 100));
-
-                        processedCount.getAndIncrement();
-
-                        // Log every 100 records or at completion
-                        if (processedCount.get() % 100 == 0) {
-                            log.info(aMarker, "Processed {}/{} records",
-                                    processedCount, inputs.size());
-                        }
-                    } catch (Exception e) {
-                        errorCount.getAndIncrement();
-                        log.error(aMarker, "Processing failed for originId: {}, sorItemName: {}, paperNo: {}",
-                                input.getOriginId(), input.getSorItemName(), input.getPaperNo(), e);
-                        HandymanException handymanException = new HandymanException(e);
-                        HandymanException.insertException("Processing failed for originId: " + input.getOriginId() +
-                                ", sorItemName: " + input.getSorItemName(), handymanException, action);
-                    }
-                });
-
-
-        log.info(aMarker, "Comparison phase completed - Processed: {}, Errors: {}, Results to insert: {}",
-                processedCount, errorCount, inputs.size());
-
-        log.info(aMarker, "Completed OCR text comparison for - Total: {}, Processed: {}, Errors: {}",
-                inputs.size(), processedCount, errorCount);
+    private List<OcrTextComparatorInput> doOcrTextComparison(List<OcrTextComparatorInput> inputs, double fuzzyMatchThreshold) {
+        OcrTextComparisonExecutor executor =
+                new OcrTextComparisonExecutor(log, aMarker, action, 8); // 8 threads, tune as needed
+        List<OcrTextComparatorInput> updatedResults = executor.executeComparisons(inputs, fuzzyMatchThreshold);
+        log.info(aMarker, "OCR text comparison completed for {} inputs", updatedResults.size());
+        return updatedResults;
     }
+
 
 
     private boolean isComparable(OcrTextComparatorInput input) {

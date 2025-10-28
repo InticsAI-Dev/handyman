@@ -122,4 +122,13 @@ public interface HandymanRepo {
     long insertAuditToDb(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action);
 
     void insertProtegrityAudit(ProtegrityApiAudit audit);
+
+    List<CoproRetryErrorAuditTable> findAllCoproApiCalls();
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineId(Long rootPipelineId);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginId(String originId);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineIdAndOriginId(Long rootPipelineId, String originId);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByStatus(String status);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByStage(String stage);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginIdAndStage(String originId, String stage);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByStatusAndStage(String status, String stage);
 }

@@ -108,6 +108,7 @@ public class OcrTextComparatorActionTest {
         actionExecutionAudit.getContext().put("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt");
         actionExecutionAudit.getContext().put("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt");
         actionExecutionAudit.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
+        actionExecutionAudit.getContext().put("ocr.text.comparator.consumer.API.count", "20");
 
         OcrTextComparator comparatorConfig = new OcrTextComparator();
         comparatorConfig.setResourceConn("intics_zio_db_conn");
