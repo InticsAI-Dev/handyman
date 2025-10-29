@@ -299,7 +299,7 @@ public class OcrTextComparatorAction implements IActionExecution {
         for (OcrTextComparatorInput r : records) {
             if (!"t".equalsIgnoreCase(r.getIsEncrypted())) continue;
 
-            String rawVal = isPageContent ? r.getExtractedText() : r.getAnswer();
+            String rawVal = isPageContent ? r.getExtractedText() : r.getBestMatch();
             if (rawVal == null || rawVal.isEmpty()) continue;
 
             if ("multi_value".equalsIgnoreCase(r.getLineItemType()) && rawVal.contains(",")) {
@@ -336,7 +336,7 @@ public class OcrTextComparatorAction implements IActionExecution {
             if(isPageContent){
                 r.setExtractedText(finalValue);
             }else {
-                r.setAnswer(finalValue);
+                r.setBestMatch(finalValue);
             }
 
         }
@@ -487,7 +487,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                                 .bind("groupId", result.getGroupId())
                                 .bind("paperNo", result.getPaperNo())
                                 .bind("sorQuestion", result.getSorQuestion())
-                                .bind("answer", result.getAnswer())
+                                .bind("answer", result.getBestMatch())
                                 .bind("vqaScore", result.getVqaScore())
                                 .bind("score", result.getScore())
                                 .bind("weight", result.getWeight())
@@ -535,5 +535,3 @@ public class OcrTextComparatorAction implements IActionExecution {
         return ocrTextComparator != null && ocrTextComparator.getCondition();
     }
 }
-
-
