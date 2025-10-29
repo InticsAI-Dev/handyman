@@ -140,10 +140,10 @@ public class OcrTextComparatorAction implements IActionExecution {
         }
 
         if (deepSiftOutputActivator) {
-            log.info(aMarker, "Starting Decryption process for item-wise encryption");
+            log.info(aMarker, "Starting Decryption process for deep sift text encryption");
             decryptAndUpdate(records, encryptionHandler, true);
         } else {
-            log.info(aMarker, "Skipping Decryption as itemWiseEncryption is false");
+            log.info(aMarker, "Skipping Decryption as  deep sift text is false");
         }
 
 
@@ -359,10 +359,10 @@ public class OcrTextComparatorAction implements IActionExecution {
         }
 
         if (deepSiftOutputActivator) {
-            log.info(aMarker, "Starting Encryption process for item-wise encryption");
+            log.info(aMarker, "Starting Encryption process for  deep sift text encryption");
             encryptAndApply(controlDataComparisonQueryInputTables, encryptionHandler, true);
         } else {
-            log.info(aMarker, "Skipping Encryption as itemWiseEncryption is false");
+            log.info(aMarker, "Skipping Encryption as  deep sift text is false");
         }
 
     }
