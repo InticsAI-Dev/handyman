@@ -682,4 +682,75 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             throw handymanException;
         }
     }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findAllCoproApiCalls() {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findAll();
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineId(Long rootPipelineId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByRootPipelineId(rootPipelineId);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginId(String originId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByOriginId(originId);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineIdAndOriginId(Long rootPipelineId, String originId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByRootPipelineIdAndOriginId(rootPipelineId, originId);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByStatus(String status) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByStatus(status);
+        });
+    }
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginIdAndStage(String originId,String stage) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByOriginIdAndStage(originId,stage);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByStage(String stage) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByStage(stage);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByStatusAndStage(String status, String stage) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByStatusAndStage(status, stage);
+        });
+    }
 }
