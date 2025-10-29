@@ -368,7 +368,7 @@ public class OcrTextComparatorAction implements IActionExecution {
     }
     private List<OcrTextComparatorInput> doOcrTextComparison(List<OcrTextComparatorInput> inputs, double fuzzyMatchThreshold) {
         OcrTextComparisonExecutor executor =
-                new OcrTextComparisonExecutor(log, aMarker, action, 8); // 8 threads, tune as needed
+                new OcrTextComparisonExecutor(log, aMarker, action, 40); // 8 threads, tune as needed
         List<OcrTextComparatorInput> updatedResults = executor.executeComparisons(inputs, fuzzyMatchThreshold);
         log.info(aMarker, "OCR text comparison completed for {} inputs", updatedResults.size());
         return updatedResults;
@@ -506,7 +506,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                                 .bind("threshold", result.getThreshold())
                                 .bind("bestScore", result.getBestScore())
                                 .bind("regexPattern", result.getRegexPattern())
-                                .bind("candidates", result.getCandidatesList())
+                                .bind("candidates", "")
                                 .add();
                     }
 
