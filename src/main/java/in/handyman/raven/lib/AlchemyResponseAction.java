@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
@@ -72,6 +73,8 @@ public class AlchemyResponseAction implements IActionExecution {
     private final OkHttpClient httpclient ;
 
     public final Integer clientSocketTimeout;
+    private final InticsIntegrity encryption;
+
     public AlchemyResponseAction(final ActionExecutionAudit action, final Logger log, final Object alchemyResponse) {
         this.alchemyResponse = (AlchemyResponse) alchemyResponse;
         this.action = action;
@@ -83,6 +86,7 @@ public class AlchemyResponseAction implements IActionExecution {
                 .writeTimeout(this.clientSocketTimeout, TimeUnit.MINUTES)
                 .readTimeout(this.clientSocketTimeout, TimeUnit.MINUTES)
                 .build();
+        this.encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
     }
 
     @Override
@@ -507,7 +511,8 @@ public class AlchemyResponseAction implements IActionExecution {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = encryption.encrypt(request, "AES256", "COPRO_REQUEST");
+            log.info("Request/Response is enabled for encryption.");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;
