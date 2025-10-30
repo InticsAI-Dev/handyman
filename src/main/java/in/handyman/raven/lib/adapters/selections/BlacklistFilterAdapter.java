@@ -49,12 +49,11 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
         String value = removeSpecialCharacters(rawValue);
 
         // Prepare sanitized blacklist
-        List<String> sanitizedBlacklist = blackListFields == null ? List.of() :
-                blackListFields.stream()
-                        .filter(Objects::nonNull)
-                        .map(this::removeSpecialCharacters)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.toList());
+        List<String> sanitizedBlacklist = blackListFields.stream()
+                .filter(Objects::nonNull)
+                .map(this::removeSpecialCharacters)
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
 
         String labelLower = label.toLowerCase();
         String valueLower = value.toLowerCase();
@@ -62,7 +61,7 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
         boolean isLabelMatching = true;
         String message = "No match found between " + filteringType + " and value.";
 
-        // Case 1: Label is directly blacklisted
+        // Case 1: Label/Section is directly blacklisted
         boolean isBlacklisted = sanitizedBlacklist.stream()
                 .anyMatch(labelLower::equals);
 
@@ -82,25 +81,30 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
                 message = "Section contains a blacklisted substring: '" + matchedSubstring + "'.";
             }
         }
-        // Case 2: Label exactly equals value
+        // Case 2: Label/Section exactly equals value
         else if (labelLower.equals(valueLower)) {
             message = filteringType + " exactly matches the value.";
         }
-        // Case 3: Value is contained within label
+        // Case 3: Value is contained within label/section - Remove value from label/section
         else if (!valueLower.isEmpty() && labelLower.contains(valueLower)) {
             String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
-            response.setLabel(updatedLabel);
+
+            // Update the appropriate field based on filteringType
+            if ("SECTIONS".equalsIgnoreCase(filteringType)) {
+                response.setSectionAlias(updatedLabel);
+            } else {
+                response.setLabel(updatedLabel);
+            }
 
             String updatedLabelLower = removeSpecialCharacters(updatedLabel.toLowerCase());
 
             if (updatedLabel.isEmpty() && sanitizedBlacklist.contains("")) {
-
                 message = filteringType + " became empty after removing value and empty is allowed in blacklist.";
             } else if (!updatedLabel.isEmpty() && sanitizedBlacklist.contains(updatedLabelLower)) {
                 isLabelMatching = false;
                 message = "Updated " + filteringType + " is blacklisted after removing value.";
             } else {
-                message = "Value is contained within " + filteringType + ". Updated label after removal.";
+                message = "Value is contained within " + filteringType + ". Updated " + filteringType.toLowerCase() + " after removal.";
             }
         }
 
@@ -129,7 +133,6 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
         // Replace all non-alphanumeric characters (except spaces) with an empty string
         return input.replaceAll("[^a-zA-Z0-9\\s]", "").trim();
     }
-
 
     @Override
     public String getName() {
