@@ -38,6 +38,7 @@ import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE
         actionName = "OcrTextComparator"
 )
 public class OcrTextComparatorAction implements IActionExecution {
+    public static final String AES_256 = "AES256";
     private final int BATCH_INSERT_SIZE;
 
     private final ActionExecutionAudit action;
@@ -186,7 +187,7 @@ public class OcrTextComparatorAction implements IActionExecution {
             if ("multi_value".equalsIgnoreCase(r.getLineItemType()) && rawVal.contains(",")) {
                 addMultiValueRequests(requests, r, rawVal);
             } else {
-                requests.add(newRequest(String.valueOf(r.getId()), rawVal, r.getEncryptionPolicy()));
+                requests.add(newRequest(String.valueOf(r.getId()), rawVal, AES_256));
             }
         }
 
@@ -204,7 +205,7 @@ public class OcrTextComparatorAction implements IActionExecution {
         for (int i = 0; i < parts.length; i++) {
             String trimmed = parts[i].trim();
             if (!trimmed.isEmpty()) {
-                requests.add(newRequest(record.getId() + "_" + i, trimmed, record.getEncryptionPolicy()));
+                requests.add(newRequest(record.getId() + "_" + i, trimmed, AES_256));
             }
         }
     }
@@ -305,7 +306,7 @@ public class OcrTextComparatorAction implements IActionExecution {
             if ("multi_value".equalsIgnoreCase(r.getLineItemType()) && rawVal.contains(",")) {
                 addMultiValueRequests(requests, r, rawVal);
             } else {
-                requests.add(newRequest(String.valueOf(r.getId()), rawVal, r.getEncryptionPolicy()));
+                requests.add(newRequest(String.valueOf(r.getId()), rawVal, AES_256));
             }
         }
         return requests;
