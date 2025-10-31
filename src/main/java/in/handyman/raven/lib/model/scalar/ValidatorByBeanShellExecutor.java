@@ -21,16 +21,15 @@ public class ValidatorByBeanShellExecutor {
     private final Logger log;
     private final ExecutorService executor;
 
-    // === Updated ItemData to match primitive double types ===
     public static class ItemData {
         private String extractedValue;
         private String bbox;
-        private double vqaScore;   // ← PRIMITIVE double (matches PostProcessingExecutorInput)
-        private int rank;          // ← PRIMITIVE int (matches PostProcessingExecutorInput)
+        private double vqaScore;
+        private int rank;
 
         public ItemData() {
-            this.vqaScore = 0.0;  // ← Default 0.0
-            this.rank = 0;        // ← Default 0
+            this.vqaScore = 0.0;
+            this.rank = 0;
         }
 
         public String getExtractedValue() { return extractedValue; }
@@ -77,7 +76,6 @@ public class ValidatorByBeanShellExecutor {
                     try {
                         processOrigin(origin, originInputs);
                     } finally {
-                        // no-op
                     }
                 }, executor)
         ));
@@ -135,35 +133,10 @@ public class ValidatorByBeanShellExecutor {
     }
 
     private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
-        log.info("Grouping inputs by page (custom: allow multiple pages per input)");
-        Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> pageMap = new HashMap<>();
-        if (inputs == null) return pageMap;
-
-        for (PostProcessingExecutorAction.PostProcessingExecutorInput input : inputs) {
-            if (input == null) continue;
-
-            List<Integer> pageNos = getCustomPageNumbers(input);
-            if (pageNos == null || pageNos.isEmpty()) continue;
-
-            for (Integer pageNo : pageNos) {
-                pageMap.computeIfAbsent(pageNo, k -> new ArrayList<>()).add(input);
-            }
-        }
-        return pageMap;
-    }
-
-    private List<Integer> getCustomPageNumbers(PostProcessingExecutorAction.PostProcessingExecutorInput input) {
-        List<Integer> pages = new ArrayList<>();
-        if (input.getPaperNo() != null) {
-            pages.add(input.getPaperNo());
-            if ("age".equals(input.getSorItemName())) {
-                pages.add(2);
-            }
-            if ("name".equals(input.getSorItemName()) && input.getPaperNo() == 2) {
-                pages.add(3);
-            }
-        }
-        return pages;
+        log.info("Grouping inputs by page");
+        if (inputs == null) return Collections.emptyMap();
+        return inputs.stream()
+                .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getPaperNo));
     }
 
     private void processPage(String originId, Integer pageNo, List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
@@ -283,7 +256,6 @@ public class ValidatorByBeanShellExecutor {
         }
     }
 
-    // === Updated: Handle primitive double from script results ===
     private void processValidatorResult(Object validatorResultObject, Map<String, ItemData> updatedPostProcessingDetailsMap) {
         if (validatorResultObject == null || updatedPostProcessingDetailsMap == null) return;
 
@@ -305,29 +277,25 @@ public class ValidatorByBeanShellExecutor {
 
                     ItemData target = updatedPostProcessingDetailsMap.computeIfAbsent(key, k -> new ItemData());
 
-                    // Default values (preserve existing if script doesn't provide)
                     String newValue = target.getExtractedValue();
                     String newBbox = target.getBbox();
-                    double newVqaScore = target.getVqaScore();  // ← Preserve original
-                    int newRank = target.getRank();             // ← Preserve original
+                    double newVqaScore = target.getVqaScore();
+                    int newRank = target.getRank();
 
                     if (valueObj != null) {
                         try {
-                            // Extracted Value
                             Method getValueMethod = findMethod(valueObj, "getExtractedValue");
                             if (getValueMethod != null) {
                                 Object val = getValueMethod.invoke(valueObj);
                                 newValue = val != null ? val.toString() : "";
                             }
 
-                            // BBox
                             Method getBboxMethod = findMethod(valueObj, "getBbox");
                             if (getBboxMethod != null) {
                                 Object val = getBboxMethod.invoke(valueObj);
                                 newBbox = val != null ? val.toString() : "{}";
                             }
 
-                            // VqaScore (primitive double)
                             Method getVqaMethod = findMethod(valueObj, "getVqaScore");
                             if (getVqaMethod != null) {
                                 Object val = getVqaMethod.invoke(valueObj);
@@ -336,7 +304,6 @@ public class ValidatorByBeanShellExecutor {
                                 }
                             }
 
-                            // Rank (primitive int)
                             Method getRankMethod = findMethod(valueObj, "getRank");
                             if (getRankMethod != null) {
                                 Object val = getRankMethod.invoke(valueObj);
@@ -350,7 +317,6 @@ public class ValidatorByBeanShellExecutor {
                         }
                     }
 
-                    // Apply updates (only override if script provided values)
                     target.setExtractedValue(newValue);
                     target.setBbox(newBbox);
                     target.setVqaScore(newVqaScore);
@@ -375,7 +341,6 @@ public class ValidatorByBeanShellExecutor {
         }
     }
 
-    // === Updated: Write back primitive values ===
     private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, ItemData> resultMap) {
         if (inputs == null || resultMap == null || resultMap.isEmpty()) {
             log.debug("No updates to apply to inputs");
@@ -400,16 +365,14 @@ public class ValidatorByBeanShellExecutor {
             String newValue = itemData.getExtractedValue() == null ? "" : itemData.getExtractedValue();
             String newBbox = itemData.getBbox() == null ? "{}" : itemData.getBbox();
 
-            // Update values
             input.setExtractedValue(newValue);
             input.setBbox(newBbox);
             input.setVqaScore(itemData.getVqaScore());
             input.setRank(itemData.getRank());
 
-            // Zero out scores if value becomes empty (existing logic)
             if (!Objects.equals(originalValue, newValue) && newValue.isEmpty()) {
-                input.setVqaScore(0.0);  // ← Explicit 0.0
-                input.setAggregatedScore(0.0);  // ← Matches primitive double in input class
+                input.setVqaScore(0.0);
+                input.setAggregatedScore(0.0);
             }
         });
     }
