@@ -12,14 +12,13 @@ import java.sql.Timestamp;
 @Data
 @Builder
 public class CoproRetryErrorAuditTable {
+    private Long id;
     private String originId;
     private Integer groupId;
     private Long tenantId;
     private String templateId;
     private Long processId;
     private String filePath;
-    private String containerName;
-    private String containerValue;
     private String fileName;
     private Integer paperNo;
     private String status;

@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 public class OcrTextComparatorInput {
+    private Long id;
     private String originId;
     private String sorItemName;
     private String sorQuestion;
@@ -32,8 +33,15 @@ public class OcrTextComparatorInput {
     private String category;
     private Boolean isOcrFieldComparable;
     private String extractedText;
+    private String isEncrypted;
     private String encryptionPolicy;
     private String allowedAdapter;
-    private Boolean isEncrypted;
-
+    private int threshold;
+    private String bestMatch;
+    private int bestScore;
+    private String regexPattern;
+    private String candidatesList;
+    private String lineItemType;
+    private Long mismatchCount;
+    private String matchStatus;
 }

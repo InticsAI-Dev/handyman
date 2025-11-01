@@ -38,17 +38,18 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
     private final Marker marker;
     private final ActionExecutionAudit action;
     private final LlmJsonParser llmJsonParser;
+    private final InticsIntegrity encryption;
 
     public LlmJsonParserConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, LlmJsonParser llmJsonParser) {
         this.log = log;
         this.marker = marker;
         this.action = action;
         this.llmJsonParser = llmJsonParser;
+        this.encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
     }
 
     public List<LlmJsonQueryOutputTable> process(URL endpoint, LlmJsonQueryInputTable input) throws Exception {
         List<LlmJsonQueryOutputTable> llmJsonQueryOutputTables = new ArrayList<>();
-        InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
         String encryptOutputSorItem = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         String loggerInput = " Root pipeline Id " + input.getRootPipelineId() + " batch Id " + input.getBatchId() + " Origin Id " + input.getOriginId() + " paper No " + input.getPaperNo() + " Container Id " + input.getSorContainerId();
 

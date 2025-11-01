@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.core.enums.ConsumerApiCountConstants.P1_INGESTION_API;
 import static in.handyman.raven.core.enums.DatabaseConstants.*;
 
 
@@ -41,8 +42,6 @@ public class AssetInfoAction implements IActionExecution {
     private final Logger log;
 
     public static final String DUMMY_URL = "http://localhost:10181/copro/preprocess/autorotation";
-
-    public static final String ASSET_INFO_CONSUMER_API_COUNT = "asset.info.consumer.API.count";
 
     public static final String INSERT_INTO = "INSERT INTO ";
     public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -78,7 +77,7 @@ public class AssetInfoAction implements IActionExecution {
 
             Integer readBatchSize = Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE));
 
-            Integer consumerApiCount = Integer.valueOf(action.getContext().get(ASSET_INFO_CONSUMER_API_COUNT));
+            Integer consumerApiCount = Integer.valueOf(action.getContext().get(P1_INGESTION_API));
 
             final CoproProcessor<AssetInfoInputTable, AssetInfoOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), AssetInfoOutputTable.class, AssetInfoInputTable.class, assetInfo.getResourceConn(), log, new AssetInfoInputTable(), urls, action);
 

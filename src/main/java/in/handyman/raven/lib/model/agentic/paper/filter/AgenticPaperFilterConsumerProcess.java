@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
@@ -62,6 +63,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private final String processBase64;
     private final FileProcessingUtils fileProcessingUtils;
     private final CoproRetryService coproRetryService;
+    private final InticsIntegrity encryption;
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
         this.log = log;
@@ -70,6 +72,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
         this.pageContentMinLength = pageContentMinLength;
+        this.encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
         int timeOut = aAction.getTimeOut();
 
         String httpClientType = aAction.getHttpClientType();
@@ -409,7 +412,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action, log).encrypt(request, ENCRYPTION_ALGO, "AP_COPRO_REQUEST");
+            String encryptedRequest = encryption.encrypt(request, ENCRYPTION_ALGO, "AP_COPRO_REQUEST");
             log.debug(aMarker, "Request has been encrypted");
             requestStr = encryptedRequest;
         } else {
