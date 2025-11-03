@@ -29,9 +29,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.KVP_JSON_PARSER_ENCRYPTION;
 
 public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProcess<LlmJsonQueryInputTable, LlmJsonQueryOutputTable> {
+    public static final String AES_256 = "AES256";
     private final Logger log;
     private final Marker marker;
     private final ActionExecutionAudit action;
@@ -67,137 +69,16 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas = objectMapper.readValue(input.getSorMetaDetail(), new TypeReference<>() {
                 });
                 JsonNode stringObjectMap = convertFormattedJsonStringToJsonNode(jsonResponse, objectMapper);
+
                 if (stringObjectMap != null && stringObjectMap.isObject()) {
-                    log.info("Processing an object-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
-                    List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
-
-                    parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
-                    log.info("Total parsed responses before encryption for {} is {} ", loggerInput, innerParsedResponses.size());
-                    List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
-
-                    log.info("Total parsed responses after encryption for {} is {} ", loggerInput, parsedResponses.size());
-                    for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
-                        LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                                .createdOn(String.valueOf(input.getCreatedOn()))
-                                .tenantId(input.getTenantId())
-                                .createdUserId(input.getTenantId())
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .lastUpdatedUserId(input.getTenantId())
-                                .sorItemName(parsedResponse.getSorItemName())
-                                .answer(parsedResponse.getAnswer())
-                                .boundingBox(boundingBox)
-                                .paperNo(input.getPaperNo())
-                                .originId(input.getOriginId())
-                                .groupId(input.getGroupId())
-                                .rootPipelineId(input.getRootPipelineId())
-                                .batchId(input.getBatchId())
-                                .modelRegistry(input.getModelRegistry())
-                                .extractedImageUnit(input.getExtractedImageUnit())
-                                .imageDpi(input.getImageDpi())
-                                .imageHeight(input.getImageHeight())
-                                .imageWidth(input.getImageWidth())
-                                .sorContainerId(input.getSorContainerId())
-                                .build();
-
-                        llmJsonQueryOutputTables.add(insertData);
-                        log.info("Insert processing for {} and parsed xenon nodes size {}", loggerInput, parsedResponses.size());
-
-                    }
+                    extractObjectFromJson(input, stringObjectMap, loggerInput, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem, boundingBox, llmJsonQueryOutputTables);
                 } else if (stringObjectMap != null && stringObjectMap.isArray()) {
-
-                    log.info("Processing an array-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
-
-                    List<LlmJsonKvpKryptonParser> innerParsedResponsesKrypton = null;
-                    try {
-                        innerParsedResponsesKrypton = new ArrayList<>();
-
-                        innerParsedResponsesKrypton = objectMapper.readValue(
-                                stringObjectMap.traverse(),
-                                new TypeReference<List<LlmJsonKvpKryptonParser>>() {
-                                }
-                        );
-                    } catch (Exception e) {
-                        action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
-                        HandymanException handymanException = new HandymanException(e);
-                        HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + input.getOriginId() + " paper No " + input.getPaperNo(), handymanException, action);
-
-                    }
-
-
-                    for (LlmJsonKvpKryptonParser parsedResponse : innerParsedResponsesKrypton) {
-
-                        boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
-                        log.debug("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
-                        boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
-                        boolean isModifierEnable = Objects.equals(action.getContext().get("sor.transaction.bbox.modifier.activator"), "true");
-                        modifiedBoundingBox = (isBboxEnabled && isModifierEnable)
-                                ? Optional.ofNullable(contractedBoundingBox(boundingBox, input.getImageWidth(), input.getImageHeight()))
-                                .filter(b -> !b.isEmpty())
-                                .orElse("{}")
-                                : boundingBox;
-                        boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
-                        log.debug("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
-
-                        double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
-                        LlmJsonKvpKryptonParser parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
-
-                        LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                                .createdOn(String.valueOf(input.getCreatedOn()))
-                                .tenantId(input.getTenantId())
-                                .createdUserId(input.getTenantId())
-                                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                .lastUpdatedUserId(input.getTenantId())
-                                .confidenceScore(confidenceScore)
-                                .sorItemName(parsedEncryptResponse.getKey())
-                                .answer(parsedEncryptResponse.getValue())
-                                .boundingBox(modifiedBoundingBox)
-                                .paperNo(input.getPaperNo())
-                                .originId(input.getOriginId())
-                                .groupId(input.getGroupId())
-                                .rootPipelineId(input.getRootPipelineId())
-                                .batchId(input.getBatchId())
-                                .modelRegistry(input.getModelRegistry())
-                                .extractedImageUnit(input.getExtractedImageUnit())
-                                .imageDpi(input.getImageDpi())
-                                .imageHeight(input.getImageHeight())
-                                .imageWidth(input.getImageWidth())
-                                .sorContainerId(input.getSorContainerId())
-                                .sorItemLabel(parsedEncryptResponse.getLabel())
-                                .sectionAlias(parsedEncryptResponse.getSectionAlias())
-                                .bBoxAsIs(boundingBox)
-                                .isLabelMatching(parsedEncryptResponse.isLabelMatching())
-                                .labelMatchMessage(parsedEncryptResponse.getLabelMatchMessage())
-                                .build();
-
-                        llmJsonQueryOutputTables.add(insertData);
-                        log.debug("Insert processing for {} and parsed krypton nodes size {}", loggerInput, innerParsedResponsesKrypton.size());
-                    }
+                    extractJsonArrayFromJson(input, stringObjectMap, objectMapper, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem, llmJsonQueryOutputTables, loggerInput);
 
                 }
             }else {
                 log.debug("Extracted content is null for {}. Skipping processing.", loggerInput);
-                    LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
-                            .createdOn(String.valueOf(input.getCreatedOn()))
-                            .createdUserId(input.getTenantId())
-                            .tenantId(input.getTenantId())
-                            .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                            .lastUpdatedUserId(input.getTenantId())
-                            .boundingBox("{}")
-                            .paperNo(input.getPaperNo())
-                            .originId(input.getOriginId())
-                            .groupId(input.getGroupId())
-                            .rootPipelineId(input.getRootPipelineId())
-                            .answer("")
-                            .batchId(input.getBatchId())
-                            .modelRegistry(input.getModelRegistry())
-                            .extractedImageUnit(input.getExtractedImageUnit())
-                            .imageDpi(input.getImageDpi())
-                            .imageHeight(input.getImageHeight())
-                            .imageWidth(input.getImageWidth())
-                            .sorContainerId(input.getSorContainerId())
-                            .build();
-
-                    llmJsonQueryOutputTables.add(insertData);
+                emptyObjectForNullValues(input, llmJsonQueryOutputTables);
 
             }
 
@@ -211,6 +92,148 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         }
         log.info("Llm json parser action completed for {} with total output records {} ", loggerInput, llmJsonQueryOutputTables.size());
         return llmJsonQueryOutputTables;
+    }
+
+    private static void emptyObjectForNullValues(LlmJsonQueryInputTable input, List<LlmJsonQueryOutputTable> llmJsonQueryOutputTables) {
+        LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
+                .createdOn(String.valueOf(input.getCreatedOn()))
+                .createdUserId(input.getTenantId())
+                .tenantId(input.getTenantId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .lastUpdatedUserId(input.getTenantId())
+                .boundingBox("{}")
+                .paperNo(input.getPaperNo())
+                .originId(input.getOriginId())
+                .groupId(input.getGroupId())
+                .rootPipelineId(input.getRootPipelineId())
+                .answer("")
+                .batchId(input.getBatchId())
+                .modelRegistry(input.getModelRegistry())
+                .extractedImageUnit(input.getExtractedImageUnit())
+                .imageDpi(input.getImageDpi())
+                .imageHeight(input.getImageHeight())
+                .imageWidth(input.getImageWidth())
+                .sorContainerId(input.getSorContainerId())
+                .build();
+
+        llmJsonQueryOutputTables.add(insertData);
+    }
+
+    private void extractJsonArrayFromJson(LlmJsonQueryInputTable input, JsonNode stringObjectMap, ObjectMapper objectMapper, List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas, InticsIntegrity encryption, String encryptOutputSorItem, List<LlmJsonQueryOutputTable> llmJsonQueryOutputTables, String loggerInput) throws Exception {
+        log.info("Processing an array-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
+
+        List<LlmJsonKvpKryptonParser> innerParsedResponsesKrypton = null;
+        try {
+            innerParsedResponsesKrypton = new ArrayList<>();
+
+            innerParsedResponsesKrypton = objectMapper.readValue(
+                    stringObjectMap.traverse(),
+                    new TypeReference<List<LlmJsonKvpKryptonParser>>() {
+                    }
+            );
+        } catch (Exception e) {
+            action.getContext().put(llmJsonParser.getName() + ".isSuccessful", "false");
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in execute method for Llm json parser action for origin Id " + input.getOriginId() + " paper No " + input.getPaperNo(), handymanException, action);
+
+        }
+
+
+        for (LlmJsonKvpKryptonParser parsedResponse : innerParsedResponsesKrypton) {
+
+            extractEachNodeFromParser(input, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem, llmJsonQueryOutputTables, loggerInput, parsedResponse, innerParsedResponsesKrypton);
+        }
+    }
+
+    private void extractEachNodeFromParser(LlmJsonQueryInputTable input, List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas, InticsIntegrity encryption, String encryptOutputSorItem, List<LlmJsonQueryOutputTable> llmJsonQueryOutputTables, String loggerInput, LlmJsonKvpKryptonParser parsedResponse, List<LlmJsonKvpKryptonParser> innerParsedResponsesKrypton) throws Exception {
+        String boundingBox;
+        String modifiedBoundingBox;
+        boolean isBboxEnabled = Objects.equals(action.getContext().get("sor.transaction.bbox.parser.activator.enable"), "true");
+        log.debug("Status for the activator sor.transaction.bbox.parser.activator.enable. Result: {} ", isBboxEnabled);
+        boundingBox = isBboxEnabled ? Optional.ofNullable(parsedResponse.getBoundingBox()).map(Object::toString).orElse("{}") : "{}";
+        boolean isModifierEnable = Objects.equals(action.getContext().get("sor.transaction.bbox.modifier.activator"), "true");
+        modifiedBoundingBox = (isBboxEnabled && isModifierEnable)
+                ? Optional.ofNullable(contractedBoundingBox(boundingBox, input.getImageWidth(), input.getImageHeight()))
+                .filter(b -> !b.isEmpty())
+                .orElse("{}")
+                : boundingBox;
+        boolean isConfidenceScoreEnabled = Objects.equals(action.getContext().get("sor.transaction.parser.confidence.activator.enable"), "true");
+        log.debug("Status for the activator sor.transaction.parser.confidence.activator.enable. Result: {} ", isConfidenceScoreEnabled);
+
+        double confidenceScore = isConfidenceScoreEnabled ? parsedResponse.getConfidence() : 0.00;
+        LlmJsonKvpKryptonParser parsedEncryptResponse = encryptJsonArrayAnswers(action, parsedResponse, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
+
+        LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable
+                .builder()
+                .createdOn(String.valueOf(input.getCreatedOn()))
+                .tenantId(input.getTenantId())
+                .createdUserId(input.getTenantId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .lastUpdatedUserId(input.getTenantId())
+                .confidenceScore(confidenceScore)
+                .sorItemName(parsedEncryptResponse.getKey())
+                .answer(parsedEncryptResponse.getValue())
+                .boundingBox(modifiedBoundingBox)
+                .paperNo(input.getPaperNo())
+                .originId(input.getOriginId())
+                .groupId(input.getGroupId())
+                .rootPipelineId(input.getRootPipelineId())
+                .batchId(input.getBatchId())
+                .modelRegistry(input.getModelRegistry())
+                .extractedImageUnit(input.getExtractedImageUnit())
+                .imageDpi(input.getImageDpi())
+                .imageHeight(input.getImageHeight())
+                .imageWidth(input.getImageWidth())
+                .sorContainerId(input.getSorContainerId())
+                .sorItemLabel(parsedEncryptResponse.getLabel())
+                .sectionAlias(parsedEncryptResponse.getSectionAlias())
+                .bBoxAsIs(boundingBox)
+                .isLabelMatching(parsedEncryptResponse.isLabelMatching())
+                .labelMatchMessage(parsedEncryptResponse.getLabelMatchMessage())
+                .isEncrypted(parsedEncryptResponse.isEncrypted)
+                .encryptionPolicy(parsedEncryptResponse.getEncryptionPolicy())
+                .build();
+
+        llmJsonQueryOutputTables.add(insertData);
+        log.debug("Insert processing for {} and parsed krypton nodes size {}", loggerInput, innerParsedResponsesKrypton.size());
+    }
+
+    private void extractObjectFromJson(LlmJsonQueryInputTable input, JsonNode stringObjectMap, String loggerInput, List<LlmJsonQueryInputTableSorMeta> llmJsonQueryInputTableSorMetas, InticsIntegrity encryption, String encryptOutputSorItem, String boundingBox, List<LlmJsonQueryOutputTable> llmJsonQueryOutputTables) throws Exception {
+        log.info("Processing an object-type input. Type: {}", stringObjectMap.getClass().getSimpleName());
+        List<LlmJsonParsedResponse> innerParsedResponses = new ArrayList<>();
+
+        parseJsonNode(stringObjectMap, "", "", innerParsedResponses);
+        log.info("Total parsed responses before encryption for {} is {} ", loggerInput, innerParsedResponses.size());
+        List<LlmJsonParsedResponse> parsedResponses = encryptJsonAnswers(action, innerParsedResponses, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem);
+
+        log.info("Total parsed responses after encryption for {} is {} ", loggerInput, parsedResponses.size());
+        for (LlmJsonParsedResponse parsedResponse : parsedResponses) {
+            LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable.builder()
+                    .createdOn(String.valueOf(input.getCreatedOn()))
+                    .tenantId(input.getTenantId())
+                    .createdUserId(input.getTenantId())
+                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                    .lastUpdatedUserId(input.getTenantId())
+                    .sorItemName(parsedResponse.getSorItemName())
+                    .answer(parsedResponse.getAnswer())
+                    .boundingBox(boundingBox)
+                    .paperNo(input.getPaperNo())
+                    .originId(input.getOriginId())
+                    .groupId(input.getGroupId())
+                    .rootPipelineId(input.getRootPipelineId())
+                    .batchId(input.getBatchId())
+                    .modelRegistry(input.getModelRegistry())
+                    .extractedImageUnit(input.getExtractedImageUnit())
+                    .imageDpi(input.getImageDpi())
+                    .imageHeight(input.getImageHeight())
+                    .imageWidth(input.getImageWidth())
+                    .sorContainerId(input.getSorContainerId())
+                    .build();
+
+            llmJsonQueryOutputTables.add(insertData);
+            log.info("Insert processing for {} and parsed xenon nodes size {}", loggerInput, parsedResponses.size());
+
+        }
     }
 
     public String contractedBoundingBox(String boundingBox, Long width, Long height) {
@@ -250,7 +273,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
 
         if (Objects.equals(encryptOutputSorItem, "true")) {
-            return encryption.decrypt(extractedContent, "AES256", "LLM_OUTPUT_JSON");
+            return encryption.decrypt(extractedContent, AES_256, "LLM_OUTPUT_JSON");
         } else {
             return extractedContent;
         }
@@ -259,7 +282,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
     public List<LlmJsonParsedResponse> encryptJsonAnswers(ActionExecutionAudit action,
                                                           List<LlmJsonParsedResponse> responses,
-                                                          List<LlmJsonQueryInputTableSorMeta> metaList, InticsIntegrity inticsIntegrity, String encryptData
+                                                          List<LlmJsonQueryInputTableSorMeta> metaList,
+                                                          InticsIntegrity inticsIntegrity, String encryptData
     ) throws Exception {
 
         // Create a map of sorItemName to encryption policy
@@ -277,7 +301,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     if (Objects.equals(encryptData, "true")) {
                         if (Objects.equals(meta.getIsEncrypted().toString(), "true")) {
                             response.setAnswer(trimTo255Characters(response.getAnswer(), action));
-                            response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), "AES256", meta.getSorItemName()));
+                            response.setAnswer(inticsIntegrity.encrypt(response.getAnswer(), AES_256, meta.getSorItemName()));
                         } else {
                             response.setAnswer(trimTo255Characters(response.getAnswer(), action));
                             response.setAnswer(response.getAnswer());
@@ -314,23 +338,13 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
         // Check if response key exists in the metadata map
         LlmJsonQueryInputTableSorMeta meta = metaMap.get(response.getKey());
+        labelMatchingCondition(action, response, inticsIntegrity, meta);
 
-        List<String> blackListLabels = meta != null && meta.getSorItemLabels() != null
-                ? Arrays.asList(meta.getSorItemLabels().split(","))
-                : Collections.emptyList();
-        if(action.getContext().get("llm.json.parser.label.matching").equals("true")){
-            isLabelValueMatching(blackListLabels, response);
-        }else{
-            String updatedLabel = response.getLabel().replaceFirst("(?i)" + Pattern.quote(response.getValue()), "").trim();
-            response.setLabel(updatedLabel);
-            response.setLabelMatching(true);
-            response.setLabelMatchMessage("Label and value matching is disabled.");
-        }
 
-                if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
+        if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
                     if (Objects.equals(encryptData, "true")) {
                         response.setValue(trimTo255Characters(response.getValue(), action));
-                        response.setValue(inticsIntegrity.encrypt(response.getValue(), "AES256", meta.getSorItemName()));
+                        response.setValue(inticsIntegrity.encrypt(response.getValue(), AES_256, meta.getSorItemName()));
 
                         log.info("The item {} has been encrypted using the policy {}.", response.getKey(), meta.getEncryptionPolicy());
                     } else {
@@ -343,100 +357,61 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     log.info("The item {} has not been encrypted as per the metadata configuration, but the label has been encrypted.", response.getKey());
                 }
 
-                if(action.getContext().getOrDefault("llm.json.parser.label.encryption","true").equals("true")){
-                    response.setLabel(inticsIntegrity.encrypt(response.getLabel(), "AES256", response.getKey()));
+                if(action.getContext().getOrDefault(KVP_JSON_PARSER_ENCRYPTION,"true").equals("true")){
+                    response.setLabel(inticsIntegrity.encrypt(response.getLabel(), AES_256, response.getKey()));
+                    response.setSectionAlias(inticsIntegrity.encrypt(response.getSectionAlias(), AES_256, response.getKey()));
                 }else {
                     response.setLabel(response.getLabel());
+                    response.setSectionAlias(response.getSectionAlias());
                 }
 
+
+
         return response;
     }
 
-    public LlmJsonKvpKryptonParser isLabelValueMatching(List<String> blackListLabels, LlmJsonKvpKryptonParser response) {
-        if (response == null) {
-            return null;
-        }
 
-        // Normalize and sanitize the label and value
-        String rawLabel = safeTrim(response.getLabel());
-        String rawValue = safeTrim(response.getValue());
+    private static void labelMatchingCondition(ActionExecutionAudit action, LlmJsonKvpKryptonParser response, InticsIntegrity inticsIntegrity, LlmJsonQueryInputTableSorMeta meta) {
+        if ("true".equalsIgnoreCase(String.valueOf(action.getContext().get("llm.json.parser.label.matching")))) {
 
-        String label = sanitizeEndingPunctuations(rawLabel);
-        String value = sanitizeEndingPunctuations(rawValue);
+            String label = response.getLabel();
+            String value = response.getValue();
 
-        // Prepare blacklist with sanitized entries
-        List<String> sanitizedBlacklist = blackListLabels == null ? List.of() :
-                blackListLabels.stream()
-                        .filter(Objects::nonNull)
-                        .map(this::sanitizeEndingPunctuations)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.toList());
-
-        String labelLower = label.toLowerCase();
-        String valueLower = value.toLowerCase();
-
-        boolean isLabelMatching;
-        String message;
-
-        // Case 1: label is blacklisted (exact or substring)
-        boolean isBlacklisted = sanitizedBlacklist.stream()
-                .anyMatch(blk -> !blk.isEmpty() && labelLower.equals(blk) || blk.isEmpty() && labelLower.isEmpty());
-
-        if (isBlacklisted) {
-            isLabelMatching = false;
-            message = "Label is blacklisted and not allowed.";
-        }
-        // Case 2: label exactly equals value
-        else if (labelLower.equals(valueLower)) {
-            isLabelMatching = true;
-            message = "Label exactly matches the value.";
-        }
-        // Case 3: value is contained within label
-        else if (!valueLower.isEmpty() && labelLower.contains(valueLower)) {
-            // Remove value from label
-            String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
-            response.setLabel(updatedLabel);
-
-            // Convert to lowercase for comparison
-            String updatedLabelLower = updatedLabel.toLowerCase();
-
-            // After removal, check conditions
-            if (updatedLabel.isEmpty() && sanitizedBlacklist.contains("")) {
-                isLabelMatching = true;
-                message = "Label became empty after removing value and empty is allowed in blacklist.";
-            } else if (!updatedLabel.isEmpty() && sanitizedBlacklist.contains(updatedLabelLower)) {
-                isLabelMatching = false;
-                message = "Updated label is blacklisted after removing value.";
+            if (label != null && !label.isEmpty() && value != null && !value.isEmpty()) {
+                String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
+                response.setLabel(updatedLabel);
             } else {
-                isLabelMatching = true;
-                message = "Value is contained within label. Updated label after removal.";
+                // handle null/empty label gracefully
+                response.setLabel(
+                        label
+                );
             }
+
+            response.setIsEncrypted(meta.getIsEncrypted());
+            response.setEncryptionPolicy(AES_256);
+            response.setLabelMatching(true);
+            response.setLabelMatchMessage("Label and value matching is disabled.");
+
+        } else {
+
+            String label = response.getLabel();
+            String value = response.getValue();
+
+            if (label != null && !label.isEmpty() && value != null && !value.isEmpty()) {
+                String updatedLabel = label.replaceFirst("(?i)" + Pattern.quote(value), "").trim();
+                response.setLabel((updatedLabel));
+            } else {
+                response.setLabel((
+                         label
+                ));
+            }
+
+            response.setIsEncrypted(meta.getIsEncrypted());
+            response.setEncryptionPolicy(AES_256);
+            response.setLabelMatching(true);
+            response.setLabelMatchMessage("Label and value matching is disabled.");
         }
-        // Case 4: no matching
-        else {
-            isLabelMatching = true;
-            message = "No match found between label and value.";
-        }
-
-        response.setLabelMatching(isLabelMatching);
-        response.setLabelMatchMessage(message);
-        return response;
     }
-
-
-    /**
-     * Removes trailing punctuation like commas, hyphens, colons, or semicolons.
-     */
-    public String sanitizeEndingPunctuations(String input) {
-        if (input == null) return "";
-        return input.replaceAll("[,\\-:;\\s]+$", "").trim();
-    }
-
-
-    public String safeTrim(String input) {
-        return input == null ? "" : input.trim();
-    }
-
 
 
     private void parseJsonNode(JsonNode rootNode, String currentKey, String parentPath, List<LlmJsonParsedResponse> parsedResponses) {
@@ -589,6 +564,8 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         private JsonNode boundingBox ;
         private boolean isLabelMatching;
         private String labelMatchMessage;
+        private String isEncrypted;
+        private String encryptionPolicy;
     }
 
 }

@@ -146,19 +146,27 @@ public class FolderDeleteByProcessAction implements IActionExecution {
 
             if (files != null) {
                 for (File file : files) {
-                    // If it's a directory, call this method recursively
                     String absolutePath = file.getAbsolutePath();
                     if (file.isDirectory()) {
+                        // Recursively delete the subdirectory and all its contents
                         deleteAllFilesInFolder(absolutePath);
+                        // Delete the subdirectory itself after clearing it
+                        if (file.delete()) {
+                            log.info("Subdirectory deleted: {}", absolutePath);
+                        } else {
+                            log.warn("Failed to delete subdirectory: {}", absolutePath);
+                        }
                     } else {
                         if (file.delete()) {
                             log.info("File deleted with path {}", absolutePath);
                         } else {
-                            log.info("Not able to delete file with path {}", absolutePath);
+                            log.warn("Not able to delete file with path {}", absolutePath);
                         }
                     }
                 }
             }
+            // DO NOT delete the root folder itself - it should remain empty
+            log.info("All contents deleted from folder: {}", folderPath);
         } else {
             log.info("Provided path {} is not a folder or it doesn't exist", folderPath);
         }

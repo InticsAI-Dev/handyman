@@ -11,7 +11,9 @@ import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class HikariJdbiProvider {
 
@@ -24,8 +26,10 @@ public class HikariJdbiProvider {
     public static final String APPLICATION_NAME = "applicationName";
     public static final String HANDYMAN_RAVEN_APP = PropertyHandler.getOrDefault("azure.identity.hcp.application.name", "HandymanRavenApp");
 
-    // Singleton HikariDataSource
+    private static final long METRICS_LOG_INTERVAL_SECONDS = Long.parseLong(PropertyHandler.getOrDefault("hikari.metrics.log.interval.seconds", "60"));
+    private static final boolean METRICS_LOG_ENABLED = Boolean.parseBoolean(PropertyHandler.getOrDefault("hikari.metrics.log.enabled", "true"));
     private static HikariDataSource hikariDataSource;
+    private static ScheduledExecutorService metricsScheduler;
 
     // Initialize once at application startup
     public static void init() {
@@ -48,6 +52,7 @@ public class HikariJdbiProvider {
 
 
             hikariDataSource = dataSource;
+            startMetricsScheduler();
         } else {
             throw new HandymanException("Invalid legacy.resource.connection.type. Must be AZURE or LEGACY");
         }
@@ -69,18 +74,62 @@ public class HikariJdbiProvider {
         return hikariDataSource;
     }
 
+    private static void startMetricsScheduler() {
+        if (!METRICS_LOG_ENABLED) {
+            log.info("HikariCP metrics logging is disabled via configuration");
+            return;
+        }
+
+        metricsScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "HikariCP-Metrics-Logger");
+            t.setDaemon(true);
+            return t;
+        });
+
+        metricsScheduler.scheduleAtFixedRate(
+                HikariJdbiProvider::logHikariMetrics,
+                METRICS_LOG_INTERVAL_SECONDS,
+                METRICS_LOG_INTERVAL_SECONDS,
+                TimeUnit.SECONDS
+        );
+
+        log.info("HikariCP metrics logging scheduler started. Interval: {} seconds", METRICS_LOG_INTERVAL_SECONDS);
+    }
+
+
     public static void logHikariMetrics() {
         if (hikariDataSource != null) {
             HikariPoolMXBean poolMXBean = hikariDataSource.getHikariPoolMXBean();
             if (poolMXBean != null) {
-                log.debug("HikariCP Metrics - Active Connections: {}, Idle Connections: {}, Total Connections: {}, Threads Awaiting Connection: {}",
+                log.info("HikariCP Metrics - Active Connections: {}, Idle Connections: {}, Total Connections: {}, Threads Awaiting Connection: {}, Max Pool Size: {}",
                         poolMXBean.getActiveConnections(),
                         poolMXBean.getIdleConnections(),
                         poolMXBean.getTotalConnections(),
-                        poolMXBean.getThreadsAwaitingConnection());
+                        poolMXBean.getThreadsAwaitingConnection(),
+                        MAX_POOL_SIZE);
             } else {
                 log.warn("HikariPoolMXBean is null. Cannot fetch runtime metrics.");
             }
+        }
+    }
+
+    public static void shutdown() {
+        if (metricsScheduler != null && !metricsScheduler.isShutdown()) {
+            log.info("Shutting down HikariCP metrics scheduler...");
+            metricsScheduler.shutdown();
+            try {
+                if (!metricsScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    metricsScheduler.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                metricsScheduler.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (hikariDataSource != null && !hikariDataSource.isClosed()) {
+            log.info("Closing HikariDataSource...");
+            hikariDataSource.close();
         }
     }
 }

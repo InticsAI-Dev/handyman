@@ -24,6 +24,9 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
+import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATCH_SIZE;
+
 @ActionExecution(actionName = "DeepSiftSearch")
 public class DeepSiftSearchAction implements IActionExecution {
 
@@ -35,9 +38,7 @@ public class DeepSiftSearchAction implements IActionExecution {
   public static final String INSERT_INTO_VALUES =
           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::timestamp, ?, ?, ?, ?, ?, ?)";
 
-  public static final String READ_BATCH_SIZE = "read.batch.size";
   public static final String DEEP_SIFT_SEARCH_CONSUMER_API_COUNT = "deep.sift.search.consumer.API.count";
-  public static final String WRITE_BATCH_SIZE = "write.batch.size";
   public static final String COPRO_FILE_PROCESS_FORMAT = "pipeline.copro.api.process.file.format";
 
   private final ActionExecutionAudit action;
@@ -92,9 +93,9 @@ public class DeepSiftSearchAction implements IActionExecution {
                       action
               );
 
-      Integer readBatchSize = Integer.parseInt(action.getContext().getOrDefault(READ_BATCH_SIZE, "10"));
+      Integer readBatchSize = Integer.parseInt(action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, "10"));
       Integer consumerCount = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(DEEP_SIFT_SEARCH_CONSUMER_API_COUNT, "1")));
-      Integer writeBatchSize = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(WRITE_BATCH_SIZE, "1")));
+      Integer writeBatchSize = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(DB_INSERT_WRITE_BATCH_SIZE, "1")));
 
       DeepSiftSearchConsumerProcess searchConsumerProcess =
               new DeepSiftSearchConsumerProcess(log, aMarker, action);

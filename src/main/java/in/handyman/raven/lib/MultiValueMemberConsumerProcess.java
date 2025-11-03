@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -46,7 +47,10 @@ public class MultiValueMemberConsumerProcess {
 
     private final String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";
 
+
     public MultiValueMemberConsumerProcess(Logger log, Marker marker, ActionExecutionAudit action, List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTables, Long tenantId, Integer threadCount, MultiValueMemberMapper multiValueMemberMapper) {
+
+
         this.log = log;
         this.marker = marker;
         this.action = action;
@@ -78,15 +82,17 @@ public class MultiValueMemberConsumerProcess {
                     String threadName = Thread.currentThread().getName();
                     String originId = inputTable.getOriginId();
 
+
                     try {
                         log.info(marker, "[Thread: {}] START processing for originId: {}", threadName, originId);
 
                         MultipleMemberSummary result = evaluateMultivaluePresenceAndUniqueness(inputTable, targetSorItems, log);
+
                         MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.getOutput());
                         finalOutput.add(outputRow);
 
                         jdbi.useTransaction(handle -> {
-                                    executeMMIAuditInsert(handle, result, originId);
+                            executeMMIAuditInsert(handle, result, originId);
                             log.info("Executed query from by establishing handle for originId: {}", originId);
                         });
 
@@ -99,6 +105,7 @@ public class MultiValueMemberConsumerProcess {
                 }));
 
             }
+
             for (Future<?> future : futures) {
                 future.get();
             }
@@ -127,6 +134,8 @@ public class MultiValueMemberConsumerProcess {
     public static MultipleMemberSummary evaluateMultivaluePresenceAndUniqueness(
             MultiValueMemberMapperTransformInputTable inputRows,
             Set<String> targetSorItems,
+
+
             Logger log) {
 
         log.info("Starting evaluation for originId: {}", inputRows.getOriginId());
@@ -213,7 +222,7 @@ public class MultiValueMemberConsumerProcess {
             if (!fn.isEmpty()) {
                 parts.add(fn);
             }
-            if (!ln.isEmpty())  {
+            if (!ln.isEmpty()) {
                 parts.add(ln);
             }
             parts.sort(String::compareTo);
@@ -230,10 +239,14 @@ public class MultiValueMemberConsumerProcess {
         List<ValueTrace> valueTraces = new ArrayList<>();
         if (valuesPerSorItem.containsKey("member_id")) {
             valueTraces.add(ValueTrace.builder().key("member_id").values(String.join(",", valuesPerSorItem.get("member_id"))).build());
+
+
         }
         valueTraces.add(ValueTrace.builder().key("member_full_name").values(String.join(",", canonicalFullNames)).build());
         if (valuesPerSorItem.containsKey("member_date_of_birth")) {
             valueTraces.add(ValueTrace.builder().key("member_date_of_birth").values(String.join(",", valuesPerSorItem.get("member_date_of_birth"))).build());
+
+
         }
         return valueTraces;
     }
@@ -266,11 +279,13 @@ public class MultiValueMemberConsumerProcess {
             output = "N";
         } else if ("MEDICAL_COMMERCIAL".equalsIgnoreCase(documentType)) {
             comments = String.format("COMMERCIAL document: member_id unique count = %d, canonical full name unique count = %d, dob unique count = %d.", memberIdCount, canonicalFullNameCount, dobCount);
+
             log.info(comments);
             output = (memberIdCount > 1 && canonicalFullNameCount > 1 && dobCount > 1) ? "Y" : "N";
             comments += output.equals("Y") ? " All these counts are >1, indicating multiple members." : " One or more counts are <=1, indicating a single member.";
         } else if ("MEDICAL_GBD".equalsIgnoreCase(documentType)) {
             comments = String.format("GBD document: member_id unique count = %d, canonical full name unique count = %d.", memberIdCount, canonicalFullNameCount);
+
             log.info(comments);
             output = (memberIdCount > 1 || canonicalFullNameCount > 1) ? "Y" : "N";
             comments += output.equals("Y") ? " Either member_id count or canonical full name count is >1, indicating multiple members." : " Both counts are <=1, indicating a single member.";
@@ -287,6 +302,7 @@ public class MultiValueMemberConsumerProcess {
                 .valueTraces(valueTraces)
                 .build();
     }
+
 
     private MultiValueMemberMapperOutputTable outputTableCreation(
             MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable,
@@ -306,6 +322,8 @@ public class MultiValueMemberConsumerProcess {
             log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId()); // fallback
         } else {
             mmIndicatorRow = mmIndicatorRowOpt.get();
+
+
         }
 
         Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
