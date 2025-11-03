@@ -13,7 +13,9 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class PaperItemizerResponse {
-
+    private int statusCode;
+    private String errorMessage;
+    private String detail;
     @JsonProperty("model_name")
     private String modelName;
 
