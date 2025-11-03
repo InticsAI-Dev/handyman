@@ -19,14 +19,13 @@ class PaperItemizerActionTest {
                 .condition(true)
                 .processId("138980184199100180")
                 .resultTable("info.paper_itemizer")
-                .endpoint("${copro.paper-itemizer.url}")
+                .endpoint("http://localhost/v2/")
                 .outputDir("/data/output/")
-                .querySet("  SELECT 'ORIGIN-31' as origin_id, '31' as group_id ,'/data/input/agadia-synt-samples/BUILD-16-BATCH-May25/humana-2page/SYNT_166564144.pdf'  as file_path," +
-                        "'1' as tenant_id,'temp-1' as template_id,'1234' as process_id \n" +
-                        " from info.preprocess_payload_queue a \n" +
-                        " join info.source_of_origin b on a.origin_id=b.origin_id  \n" +
-                        " join info.asset c on b.file_id=c.file_id  \n" +
-                        " where a.status='IN_PROGRESS'\n")
+                .querySet(" SELECT *\n" +
+                        "from preprocess.preprocess_payload_error_queue a\n" +
+                        "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id \n" +
+                        "join info.asset c on b.file_id=c.file_id\n" +
+                        "where a.batch_id ='BATCH-37_0' and a.group_id='37' and  a.tenant_id = 1;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
@@ -94,13 +93,13 @@ class PaperItemizerActionTest {
                 .condition(true)
                 .processId("138980184199100180")
                 .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
-                .resultTable("info.paper_itemizer")
+                .resultTable("transit_data.paper_itemizer_2967")
                 .outputDir("/data/tenant/PI")
-                .querySet(" SELECT a.origin_id, a.group_id ,'/data/input/Hand Written_Final_8778811305.pdf' as file_path,b.tenant_id,a.producer_process_id as process_id, 1110 as root_pipeline_id, a.batch_id, now() as created_on\n" +
-                        "from preprocess.preprocess_payload_queue_archive a\n" +
-                        "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id\n" +
+                .querySet("SELECT a.origin_id, a.group_id ,c.file_path,b.tenant_id,a.producer_process_id as process_id,a.root_pipeline_id, a.batch_id, now() as created_on\n" +
+                        "from preprocess.preprocess_payload_error_queue a\n" +
+                        "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id \n" +
                         "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.root_pipeline_id in (64255)")
+                        "where a.batch_id ='BATCH-37_0' and a.group_id='37' and  a.tenant_id = 1;")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -123,7 +122,7 @@ class PaperItemizerActionTest {
                 Map.entry("extraction.preprocess.paper.itemizer.processing.paper.limiter.activator", "true"),
                 Map.entry("paper.itemization.resize.activator", "false"),
                 Map.entry("copro.processor.thread.creator", "FIXED_THREAD"),
-                Map.entry("write.batch.size", "5")));
+                Map.entry("write.batch.size", "1")));
 
 
         PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
