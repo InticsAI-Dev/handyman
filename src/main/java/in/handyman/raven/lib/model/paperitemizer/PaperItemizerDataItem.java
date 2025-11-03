@@ -19,6 +19,8 @@ public class PaperItemizerDataItem {
     private String batchId;
     private String rootPipelineId;
     private String base64Img;
+    private String processName;
+    private Integer actionId;
 }
 
 
