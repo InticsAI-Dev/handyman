@@ -61,6 +61,7 @@ public class KafkaPublishAction implements IActionExecution {
     private static final String PLAIN_SASL = "PLAIN";
     private static final String AES_ENCRYPTION = "AES";
     private static final String FAILED_STATUS = "FAILED";
+    private static final String ENABLE_RETRY_KEY = "kafka.enable.retry";
 
     // Retry configuration
 
@@ -115,9 +116,49 @@ public class KafkaPublishAction implements IActionExecution {
     }
 
     private void doKafkaPublishWithRetry(Jdbi jdbi, KafkaPublishQueryInput kafkaPublishQueryInput, String outputTable) throws Exception {
+        // Check if retry is enabled
+        boolean enableRetry = Boolean.parseBoolean(
+                action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true")
+        );
+
+        if (!enableRetry) {
+            // If retry is disabled, just attempt once
+            log.info(aMarker, "Retry is disabled. Attempting Kafka publish once for document {}",
+                    kafkaPublishQueryInput.getDocumentId());
+            try {
+                doKafkaPublish(jdbi, kafkaPublishQueryInput, outputTable, 0);
+                log.info(aMarker, "Successfully published message without retry");
+                return;
+            } catch (Exception e) {
+                log.error(aMarker, "Failed to publish message (retry disabled) for document {}",
+                        kafkaPublishQueryInput.getDocumentId(), e);
+
+                insertExecutionInfo(jdbi, outputTable,
+                        kafkaPublishQueryInput.getDocumentId(),
+                        kafkaPublishQueryInput.getFileChecksum(),
+                        kafkaPublishQueryInput.getTenantId(),
+                        kafkaPublishQueryInput.getOriginId(),
+                        kafkaPublishQueryInput.getBatchId(),
+                        ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.topic.name")),
+                        ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.endpoint")),
+                        ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.auth.security.protocol")),
+                        ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.mechanism")),
+                        "Failed (retry disabled): " + e.getMessage(),
+                        -1,
+                        FAILED_STATUS,
+                        kafkaPublishQueryInput.getTransactionId(),
+                        0);
+
+                throw new HandymanException("Failed to publish message (retry disabled)", e, action);
+            }
+        }
+
+        // Original retry logic starts here
         int MAX_RETRY_ATTEMPTS = Integer.parseInt(action.getContext().get("kafka.max.retry.attempts"));
         long INITIAL_RETRY_DELAY_MS = Long.parseLong(action.getContext().get("kafka.initial.retry.delays.ms"));
         final double RETRY_BACKOFF_MULTIPLIER = Double.parseDouble((action.getContext().get("kafka.retry.backoff.multiplier")));
+
+        log.info(aMarker, "Retry is enabled. Max attempts: {}", MAX_RETRY_ATTEMPTS);
 
         int attemptCount = 0;
         long retryDelay = INITIAL_RETRY_DELAY_MS;
@@ -205,7 +246,7 @@ public class KafkaPublishAction implements IActionExecution {
     }
 
     private void doKafkaPublish(Jdbi jdbi, KafkaPublishQueryInput kafkaPublishQueryInput, String outputTable, int retryCount) throws Exception {
-        log.info(aMarker, "Processing kafka input data for document {}", kafkaPublishQueryInput.getDocumentId());
+        log.info(aMarker, "Processing kafka input data");
 
         String topicName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.topic.name"));
         String responseNode = kafkaPublishQueryInput.getJsonData();
@@ -256,12 +297,12 @@ public class KafkaPublishAction implements IActionExecution {
 
         KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);;
         try {
-            log.info(aMarker, "Creating Kafka producer with config: {}", kafkaProperties.keySet());
+            log.info(aMarker, "Creating Kafka producer");
 
             log.info(aMarker, "Created Kafka producer instance successfully");
 
             ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
-            log.info(aMarker, "Created producer record for topic: {}", topicName);
+            log.info(aMarker, "Created producer record for topic");
 
             // Create CompletableFuture to handle async callback
             CompletableFuture<RecordMetadata> future = new CompletableFuture<>();
@@ -285,8 +326,8 @@ public class KafkaPublishAction implements IActionExecution {
             // Wait for the async result with timeout
             try {
                 RecordMetadata metadata = future.get(30, TimeUnit.SECONDS);
-                log.info(aMarker, "Successfully sent message to kafka topic: {}, partition: {}, offset: {}",
-                        metadata.topic(), metadata.partition(), metadata.offset());
+                log.info(aMarker, "Successfully sent message to kafka topic, partition: {}, offset: {}",
+                        metadata.partition(), metadata.offset());
 
                 insertExecutionInfo(jdbi, outputTable,
                         kafkaPublishQueryInput.getDocumentId(),
