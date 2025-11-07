@@ -55,7 +55,7 @@ public class ValidatorByBeanShellExecutor {
         this.executor = Executors.newFixedThreadPool(Math.max(1, threadPoolSize));
     }
 
-    public List<PostProcessingExecutorAction.PostProcessingExecutorInput> doRowWiseValidator() throws InterruptedException, ExecutionException {
+    public List<PostProcessingExecutorAction.PostProcessingExecutorInput> doRowWiseValidator() throws InterruptedException, ExecutionException, TimeoutException {
         int inputSize = postProcessingExecutorInputs == null ? 0 : postProcessingExecutorInputs.size();
         log.info("Starting row-wise validation for {} inputs", inputSize);
 
@@ -75,12 +75,16 @@ public class ValidatorByBeanShellExecutor {
                 CompletableFuture.runAsync(() -> {
                     try {
                         processOrigin(origin, originInputs);
-                    } finally {
+                    } catch (Exception e) {
+                        log.error("Unhandled exception in origin {}", origin, e);
+                        throw e;
                     }
                 }, executor)
         ));
 
-        CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
+        CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0]))
+                .get(30, TimeUnit.MINUTES);
+
         executor.shutdown();
         executor.awaitTermination(1, TimeUnit.MINUTES);
 
@@ -106,9 +110,8 @@ public class ValidatorByBeanShellExecutor {
         log.info("Processing origin {} with {} inputs", originId, originInputs == null ? 0 : originInputs.size());
         Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byPage = groupByPage(originInputs);
 
-        List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
         byPage.forEach((pageNo, pageInputs) ->
-                pageFutures.add(CompletableFuture.runAsync(() -> {
+                CompletableFuture.runAsync(() -> {
                     long start = System.currentTimeMillis();
                     try {
                         processPage(originId, pageNo, pageInputs);
@@ -121,15 +124,8 @@ public class ValidatorByBeanShellExecutor {
                             }
                         } catch (Exception ignored) {}
                     }
-                }, executor))
+                }, executor)
         );
-
-        try {
-            CompletableFuture.allOf(pageFutures.toArray(new CompletableFuture[0])).join();
-        } catch (Exception e) {
-            log.error("Error processing pages for origin {}", originId, e);
-            throw new RuntimeException(e);
-        }
     }
 
     private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
@@ -321,7 +317,6 @@ public class ValidatorByBeanShellExecutor {
                     target.setBbox(newBbox);
                     target.setVqaScore(newVqaScore);
                     target.setRank(newRank);
-
                 }
             } else {
                 log.warn("getMappedData() did not return a Map: {}", mappedData.getClass().getName());
