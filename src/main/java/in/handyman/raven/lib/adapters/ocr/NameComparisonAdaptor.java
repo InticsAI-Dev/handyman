@@ -5,7 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -14,6 +16,9 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(NameComparisonAdaptor.class);
     private static final JaroWinklerSimilarity SIMILARITY = new JaroWinklerSimilarity();
+
+    private static final Pattern WORD_PATTERN = Pattern.compile("[\\p{L}\\p{N}]+");
+    private static final Pattern CLEAN_WORD_PATTERN = Pattern.compile("\\b%s\\b", Pattern.CASE_INSENSITIVE);
 
     @Override
     public OcrComparisonResult compareValues(String expectedValue, String extractedText, double threshold) {
@@ -63,7 +68,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
-        List<OcrComparisonMatchResult> allMatches = new ArrayList<>();
+        List<OcrComparisonMatchResult> allMatches = new ArrayList<>(expectedWords.size());
 
         for (String expectedWord : expectedWords) {
             String cleanedExpected = expectedWord.toLowerCase().trim();
@@ -80,23 +85,18 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
      * Extracts all individual words from text
      */
     private List<String> extractAllWords(String text) {
-        List<String> words = new ArrayList<>();
-
-        if (text == null || text.trim().isEmpty()) {
-            return words;
+        if (text == null || text.isBlank()) {
+            return List.of();
         }
-
-        Pattern wordPattern = Pattern.compile("[\\p{L}\\p{N}]+");
-        Matcher matcher = wordPattern.matcher(text.toLowerCase());
-
+        Matcher matcher = WORD_PATTERN.matcher(text.toLowerCase());
+        Set<String> words = new LinkedHashSet<>();
         while (matcher.find()) {
             String word = matcher.group().trim();
-            if (!word.isEmpty() && word.length() > 1) {
+            if (word.length() > 1) {
                 words.add(word);
             }
         }
-
-        return words.stream().distinct().collect(Collectors.toList());
+        return new ArrayList<>(words);
     }
 
     /**
@@ -200,7 +200,8 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
 
     private String reconstructBestMatch(List<OcrComparisonMatchResult> matches, double threshold,
                                         boolean hasCommaFormat, String originalExpected) {
-        List<String> matchedWords = new ArrayList<>();
+        List<String> matchedWords = new ArrayList<>(matches.size());
+
 
         for (OcrComparisonMatchResult match : matches) {
             if (match.getScore() >= threshold) {
