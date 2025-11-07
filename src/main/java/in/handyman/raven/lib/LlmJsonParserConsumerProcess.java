@@ -387,7 +387,11 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 );
             }
 
-            response.setIsEncrypted(meta.getIsEncrypted());
+            if (meta != null) {
+                response.setIsEncrypted(meta.getIsEncrypted());
+            } else {
+                response.setIsEncrypted("false");
+            }
             response.setEncryptionPolicy(AES_256);
             response.setLabelMatching(true);
             response.setLabelMatchMessage("Label and value matching is disabled.");
@@ -406,7 +410,11 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 ));
             }
 
-            response.setIsEncrypted(meta.getIsEncrypted());
+            if (meta != null) {
+                response.setIsEncrypted(meta.getIsEncrypted());
+            } else {
+                response.setIsEncrypted("false");
+            }
             response.setEncryptionPolicy(AES_256);
             response.setLabelMatching(true);
             response.setLabelMatchMessage("Label and value matching is disabled.");
