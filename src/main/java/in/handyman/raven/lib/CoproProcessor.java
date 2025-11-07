@@ -183,27 +183,30 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     private void startConsumerModern(String insertSql, Integer consumerCount, Integer writeBatchSize, ConsumerProcess<I, O> callable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
+        int queueSize = queue.size();
+        int finalConsumerCount = Math.min(consumerCount, queueSize);
+        logger.info("Queue size is {} and configured consumer count is {}", queueSize, consumerCount);
 
-        final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
+        final CountDownLatch countDownLatch = new CountDownLatch(finalConsumerCount);
+        AtomicInteger threadNumber = new AtomicInteger(1);
 
-        // Always fixed size consumers
         ThreadFactory namedThreadFactory = r -> {
             Thread t = new Thread(r);
-            t.setName("copro-consumer-" + t.getId());
+            t.setName("copro-processor-consumer-" + threadNumber.getAndIncrement());
             t.setDaemon(false);
             return t;
         };
 
         executorService = new ThreadPoolExecutor(
-                consumerCount,               // core
-                consumerCount,               // max
+                finalConsumerCount,               // core
+                finalConsumerCount,               // max
                 120L, TimeUnit.SECONDS,       // keepAlive
-                new LinkedBlockingQueue<>(), // no task backlog
+                new LinkedBlockingQueue<>(),
                 namedThreadFactory,
                 new ThreadPoolExecutor.CallerRunsPolicy() // if pool full, run in caller
         );
 
-        logger.info("Copro processor created with fixed consumer thread pool of size {}", consumerCount);
+        logger.info("Copro processor created with fixed consumer thread pool of size {}", finalConsumerCount);
 
         for (int i = 0; i < consumerCount; i++) {
             executorService.submit(new InboundBatchDataConsumer<>(
