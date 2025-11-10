@@ -406,7 +406,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .coproStatusCode(Integer.parseInt(modelResponse.getStatusCode()))
                     .coproLog(modelResponse.getErrorMessage())
                     .coproErrorDetails(modelResponse.getDetail())
-                    .computationDetails(modelResponse.getComputationDetails())
+                    .computationDetails(mapper.writeValueAsString(modelResponse.getComputationDetails()))
                     .build()
             );
         }

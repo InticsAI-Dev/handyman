@@ -19,13 +19,14 @@ class PaperItemizerActionTest {
                 .condition(true)
                 .processId("138980184199100180")
                 .resultTable("info.paper_itemizer")
-                .endpoint("http://localhost/v2/")
+                .endpoint("${copro.paper-itemizer.url}")
                 .outputDir("/data/output/")
-                .querySet(" SELECT *\n" +
-                        "from preprocess.preprocess_payload_error_queue a\n" +
-                        "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id \n" +
-                        "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.batch_id ='BATCH-37_0' and a.group_id='37' and  a.tenant_id = 1;")
+                .querySet("  SELECT 'ORIGIN-31' as origin_id, '31' as group_id ,'/data/input/agadia-synt-samples/BUILD-16-BATCH-May25/humana-2page/SYNT_166564144.pdf'  as file_path," +
+                        "'1' as tenant_id,'temp-1' as template_id,'1234' as process_id \n" +
+                        " from info.preprocess_payload_queue a \n" +
+                        " join info.source_of_origin b on a.origin_id=b.origin_id  \n" +
+                        " join info.asset c on b.file_id=c.file_id  \n" +
+                        " where a.status='IN_PROGRESS'\n")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
 
@@ -93,13 +94,12 @@ class PaperItemizerActionTest {
                 .condition(true)
                 .processId("138980184199100180")
                 .endpoint("https://9fc26c9f2d6f.ngrok.app/paper-iterator/v2/models/paper-iterator-service/versions/1/infer")
-                .resultTable("transit_data.paper_itemizer_2967")
+                .resultTable("transit_data.paper_itemizer_3486")
                 .outputDir("/data/tenant/PI")
-                .querySet("SELECT a.origin_id, a.group_id ,c.file_path,b.tenant_id,a.producer_process_id as process_id,a.root_pipeline_id, a.batch_id, now() as created_on\n" +
-                        "from preprocess.preprocess_payload_error_queue a\n" +
-                        "join info.source_of_origin b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id \n" +
-                        "join info.asset c on b.file_id=c.file_id\n" +
-                        "where a.batch_id ='BATCH-37_0' and a.group_id='37' and  a.tenant_id = 1;")
+                .querySet(" SELECT a.origin_id, a.group_id ,c.file_path,b.tenant_id,a.producer_process_id as process_id,a.root_pipeline_id, \n" +
+                        "a.batch_id, now() as created_on  from preprocess.preprocess_payload_error_queue a  \n" +
+                        "join transit_data.source_of_origin_3644 b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id  \n" +
+                        "join info.asset c on b.file_id=c.file_id  where a.batch_id ='BATCH-52_0' and  a.group_id='52' and  a.tenant_id = 1;")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

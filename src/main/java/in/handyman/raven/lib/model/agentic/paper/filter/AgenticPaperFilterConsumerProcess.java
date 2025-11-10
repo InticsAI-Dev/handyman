@@ -318,7 +318,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
     }
 
-    private void doKryptonParentObjBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String endpoint, Iterator<Map.Entry<String, JsonNode>> fields, RadonKvpLineItem dataExtractionDataItem, String flag, String templateId) {
+    private void doKryptonParentObjBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String endpoint, Iterator<Map.Entry<String, JsonNode>> fields, RadonKvpLineItem dataExtractionDataItem, String flag, String templateId) throws JsonProcessingException {
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
             String containerName = entry.getKey();
@@ -346,7 +346,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     .endpoint(String.valueOf(endpoint))
                     .containerName(containerName)
                     .containerValue(containerValue)
-                    .computationDetails(dataExtractionDataItem.getComputationDetails())
+                    .computationDetails(mapper.writeValueAsString(dataExtractionDataItem.getComputationDetails()))
                     .coproErrorDetails(dataExtractionDataItem.getDetail())
                     .coproLog(dataExtractionDataItem.getErrorMessage())
                     .coproStatusCode(Integer.valueOf(dataExtractionDataItem.getStatusCode()))
@@ -355,7 +355,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         }
     }
 
-    private void doOptimusParentObjectBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String endpoint, RadonKvpLineItem dataExtractionDataItem, String flag, String templateId, JsonNode inferResponseNode) {
+    private void doOptimusParentObjectBuild(AgenticPaperFilterInput entity, List<AgenticPaperFilterOutput> parentObj, String modelName, String modelVersion, String request, String endpoint, RadonKvpLineItem dataExtractionDataItem, String flag, String templateId, JsonNode inferResponseNode) throws JsonProcessingException {
         Long groupId = dataExtractionDataItem.getGroupId();
         Integer paperNo = dataExtractionDataItem.getPaperNo();
         String statusDescription = ConsumerProcessApiStatus.COMPLETED.getStatusDescription();
@@ -387,7 +387,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 .containerName(entity.getUniqueName())
                 .containerId(entity.getUniqueId())
                 .promptType(promptType)
-                .computationDetails(dataExtractionDataItem.getComputationDetails())
+                .computationDetails(mapper.writeValueAsString(dataExtractionDataItem.getComputationDetails()))
                 .coproErrorDetails(dataExtractionDataItem.getDetail())
                 .coproLog(dataExtractionDataItem.getErrorMessage())
                 .coproStatusCode(Integer.valueOf(dataExtractionDataItem.getStatusCode()))
