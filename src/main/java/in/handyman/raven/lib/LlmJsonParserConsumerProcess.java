@@ -77,7 +77,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                     extractJsonArrayFromJson(input, stringObjectMap, objectMapper, llmJsonQueryInputTableSorMetas, encryption, encryptOutputSorItem, llmJsonQueryOutputTables, loggerInput);
 
                 }
-            }else {
+            } else {
                 log.debug("Extracted content is null for {}. Skipping processing.", loggerInput);
                 emptyObjectForNullValues(input, llmJsonQueryOutputTables);
 
@@ -260,12 +260,12 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
             updatedNode.put("topLeftY", y1);
             updatedNode.put("bottomRightX", x2);
             updatedNode.put("bottomRightY", y2);
-            log.debug("Extracted positions are calculated "+updatedNode);
+            log.debug("Extracted positions are calculated " + updatedNode);
             // Return as a JSON string
             return mapper.writeValueAsString(updatedNode);
         } catch (Exception e) {
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action ", handymanException, action);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error in modifying boundingbox method for Llm json parser action ", handymanException, action);
             return "{}";
         }
     }
@@ -329,7 +329,6 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
     ) throws Exception {
 
 
-
         // Create a map of sorItemName to encryption metadata
         Map<String, LlmJsonQueryInputTableSorMeta> metaMap = new HashMap<>();
         for (LlmJsonQueryInputTableSorMeta meta : metaList) {
@@ -339,45 +338,43 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
         // Check if response key exists in the metadata map
         LlmJsonQueryInputTableSorMeta meta = metaMap.get(response.getKey());
-        if(meta==null){
+        if (meta == null) {
             response.setValue("");
             response.setKey("");
             response.setLabel("");
             response.setLabelMatching(false);
-            response.setLabelMatchMessage("Meta data not found for the key "+response.getKey());
+            response.setLabelMatchMessage("Meta data not found for the key " + response.getKey());
             response.setSectionAlias("");
 
 
-        }else {
+        } else {
             labelMatchingCondition(action, response, inticsIntegrity, meta);
         }
 
 
-
         if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {
-                    if (Objects.equals(encryptData, "true")) {
-                        response.setValue(trimTo255Characters(response.getValue(), action));
-                        response.setValue(inticsIntegrity.encrypt(response.getValue(), AES_256, meta.getSorItemName()));
+            if (Objects.equals(encryptData, "true")) {
+                response.setValue(trimTo255Characters(response.getValue(), action));
+                response.setValue(inticsIntegrity.encrypt(response.getValue(), AES_256, meta.getSorItemName()));
 
-                        log.info("The item {} has been encrypted using the policy {}.", response.getKey(), meta.getEncryptionPolicy());
-                    } else {
-                        response.setValue(trimTo255Characters(response.getValue(), action));
+                log.info("The item {} has been encrypted using the policy {}.", response.getKey(), meta.getEncryptionPolicy());
+            } else {
+                response.setValue(trimTo255Characters(response.getValue(), action));
 
-                        log.info("The item {} has not been encrypted as per the configuration, but the label has been encrypted.", response.getKey());
-                    }
-                } else {
-                    response.setValue(trimTo255Characters(response.getValue(), action));
-                    log.info("The item {} has not been encrypted as per the metadata configuration, but the label has been encrypted.", response.getKey());
-                }
+                log.info("The item {} has not been encrypted as per the configuration, but the label has been encrypted.", response.getKey());
+            }
+        } else {
+            response.setValue(trimTo255Characters(response.getValue(), action));
+            log.info("The item {} has not been encrypted as per the metadata configuration, but the label has been encrypted.", response.getKey());
+        }
 
-                if(action.getContext().getOrDefault(KVP_JSON_PARSER_ENCRYPTION,"true").equals("true")){
-                    response.setLabel(inticsIntegrity.encrypt(response.getLabel(), AES_256, response.getKey()));
-                    response.setSectionAlias(inticsIntegrity.encrypt(response.getSectionAlias(), AES_256, response.getKey()));
-                }else {
-                    response.setLabel(response.getLabel());
-                    response.setSectionAlias(response.getSectionAlias());
-                }
-
+        if (action.getContext().getOrDefault(KVP_JSON_PARSER_ENCRYPTION, "true").equals("true")) {
+            response.setLabel(inticsIntegrity.encrypt(response.getLabel(), AES_256, response.getKey()));
+            response.setSectionAlias(inticsIntegrity.encrypt(response.getSectionAlias(), AES_256, response.getKey()));
+        } else {
+            response.setLabel(response.getLabel());
+            response.setSectionAlias(response.getSectionAlias());
+        }
 
 
         return response;
@@ -415,7 +412,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 response.setLabel((updatedLabel));
             } else {
                 response.setLabel((
-                         label
+                        label
                 ));
             }
 
@@ -574,7 +571,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
         @JsonProperty("section_alias")
         private String sectionAlias;
         private double confidence;
-        private JsonNode boundingBox ;
+        private JsonNode boundingBox;
         private boolean isLabelMatching;
         private String labelMatchMessage;
         private String isEncrypted;
