@@ -3,13 +3,13 @@ package in.handyman.raven.lib;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.KafkaPublish;
-import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.EncryptDecrypt;
 import lombok.AllArgsConstructor;
@@ -19,8 +19,11 @@ import lombok.NoArgsConstructor;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -31,6 +34,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -57,6 +61,7 @@ public class KafkaPublishAction implements IActionExecution {
     private static final String PLAIN_SASL = "PLAIN";
     private static final String AES_ENCRYPTION = "AES";
     private static final String FAILED_STATUS = "FAILED";
+    private static final String ENABLE_RETRY_KEY = "kafka.enable.retry";
 
     public KafkaPublishAction(final ActionExecutionAudit action, final Logger log,
                               final Object kafkaPublish) {
@@ -75,8 +80,17 @@ public class KafkaPublishAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(kafkaPublish.getResourceConn());
             final List<KafkaPublishQueryInput> kafkaPublishQueryInputs = new ArrayList<>();
 
+            final List<KafkaProductionResponseAudit> auditRecords = new ArrayList<>();
+
             String outputTable = kafkaPublish.getOutputTable();
-            jdbi.useTransaction(handle -> handle.execute("create table if not exists " + outputTable + " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, auth_security_protocol varchar, sasl_mechanism varchar, response varchar, partition varchar, exec_status varchar, created_on timestamp default now(), transaction_id varchar);"));
+
+            jdbi.useTransaction(handle -> handle.execute("create table if not exists " + outputTable +
+                    " (id bigserial not null, document_id varchar, checksum varchar, tenant_id int8, " +
+                    "origin_id varchar, batch_id varchar, topic_name varchar, endpoint varchar, " +
+                    "auth_security_protocol varchar, sasl_mechanism varchar, response varchar, " +
+                    "partition  int8, exec_status varchar, transaction_id varchar, root_pipeline_id  int8, " +
+                    "created_user_id  int8, last_updated_user_id  int8, created_on timestamp default now(), " +
+                    "last_updated_on timestamp, status varchar, version int, retry_count int default 0);"));
 
             jdbi.useTransaction(handle -> {
                 final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(kafkaPublish.getQuerySet());
@@ -94,18 +108,28 @@ public class KafkaPublishAction implements IActionExecution {
             log.info(aMarker, "Input Query output has {} objects present", inputQueryObjectSize);
             kafkaPublishQueryInputs.forEach(kafkaPublishQueryInput -> {
                 try {
-                    doKafkaPublish(kafkaPublishQueryInput);
+                    KafkaProductionResponseAudit audit = doKafkaPublish(kafkaPublishQueryInput, jdbi, outputTable);
+                    if (audit != null) {
+                        auditRecords.add(audit);
+                    }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
             });
+
+            if (!auditRecords.isEmpty()) {
+                insertExecutionInfoBatch(jdbi, outputTable, auditRecords);
+                log.info(aMarker, "Batch inserted {} audit records", auditRecords.size());
+            }
+
         } catch (Exception ex) {
             log.error(aMarker, "Error in execute method for kafka publish Action", ex);
             throw new HandymanException("Error in execute method for kafka publish Action", ex, action);
         }
     }
 
-    private void doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput) throws JsonProcessingException {
+    private KafkaProductionResponseAudit doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput,
+                                                        Jdbi jdbi, String outputTable) throws JsonProcessingException {
         log.info("processing the kafka input data ");
 
         String topicName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.topic.name"));
@@ -118,6 +142,8 @@ public class KafkaPublishAction implements IActionExecution {
         String password = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.password"));
         String endpoint = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.endpoint"));
 
+        KafkaProductionResponseAudit audit = getKafkaPublishOutputAudit(kafkaPublishQueryInput);
+
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
 
         Map<String, Object> kafkaProperties = new HashMap<>();
@@ -125,7 +151,21 @@ public class KafkaPublishAction implements IActionExecution {
         kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
+        boolean retryEnabled = Boolean.parseBoolean(
+                action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
 
+        if (retryEnabled) {
+            int maxRetries = Integer.parseInt(action.getContext().getOrDefault("kafka.max.retry.attempts", "3"));
+            long retryBackoffMs = Long.parseLong(action.getContext().getOrDefault("kafka.retry.backoff.ms", "100"));
+
+            kafkaProperties.put(ProducerConfig.RETRIES_CONFIG, maxRetries);
+            kafkaProperties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, retryBackoffMs);
+
+            log.info("Kafka retry enabled: retries={}, backoffMs={}", maxRetries, retryBackoffMs);
+        } else {
+            kafkaProperties.put(ProducerConfig.RETRIES_CONFIG, 0);
+            log.info("Kafka retry disabled");
+        }
         if (Objects.equals(authSecurityProtocol, "NONE")) {
             try {
 
@@ -139,35 +179,54 @@ public class KafkaPublishAction implements IActionExecution {
                     HandymanException.insertException("Error in converting json data to kafka topic message", handymanException, action);
                 }
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
-                log.info("creating the kafka instance");
+                log.info("Creating the kafka producer instance");
+
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
+
+                // ✅ CAPTURE METRICS BEFORE AND AFTER
+                int retriesBeforeSend = getKafkaRetryCount(producer);
 
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
+                        // ✅ CAPTURE RETRY COUNT IN CALLBACK
+                        int retriesAfterSend = getKafkaRetryCount(producer);
+                        int actualRetries = retriesAfterSend - retriesBeforeSend;
+
                         if (exception == null) {
-                            log.info("Successful in sending the message to kafka topic");
+                            log.info("✅ Message sent successfully after {} retries", actualRetries);
                             int partition = metadata.partition();
-                            log.info("Topic: {}, Partition: {}", metadata.topic(), partition);
-//                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
+                            audit.setRetryCount(actualRetries);
+                            updateKafkaPublishAudit(partition, "SUCCESS", audit,
+                                    String.format("Success after %d retries", actualRetries));
                         } else {
-                            log.error(aMarker, "Error in publishing message to kafka topic", exception);
+                            log.error(aMarker, "❌ Failed after {} retries: {}", actualRetries, exception.getMessage());
+                            audit.setRetryCount(actualRetries);
+                            updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
+                                    String.format("Failed after %d retries: %s", actualRetries, exception.getMessage()));
                             HandymanException handymanException = new HandymanException(exception);
                             HandymanException.insertException("Error in publishing message to kafka topic", handymanException, action);
                         }
                     });
+
+                } catch (Exception e) {
+                    int retriesAfterSend = getKafkaRetryCount(producer);
+                    int actualRetries = retriesAfterSend - retriesBeforeSend;
+                    log.error(aMarker, "Exception after {} retries", actualRetries, e);
+                    audit.setRetryCount(actualRetries);
+                    updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
+                            String.format("Exception after %d retries: %s", actualRetries, e.getMessage()));
                 } finally {
                     log.info("Closing Producer");
                     producer.close();
                 }
-            } catch (HandymanException e) {
-                log.info("Error in posting kafka topic message");
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error in posting kafka topic message", handymanException, action);
+            } catch (Exception e) {
+                log.error(aMarker, "Unexpected error in kafka publish", e);
+                updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Unexpected error: " + e.getMessage());
             }
         } else {
 
             try {
-                log.info("the kafka input data binding");
+                log.info("Processing kafka with authentication");
 
                 if (ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.authentication.sasl.ssl.include")).equals("certs")) {
                     setAuthenticationPropertiesWithCerts(authSecurityProtocol, kafkaProperties, saslMechanism, userName, password);
@@ -177,69 +236,64 @@ public class KafkaPublishAction implements IActionExecution {
 
                 }
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
-                log.info("creating the kafka instance");
-
-//            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
-//                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
-//            }
+                log.info("Creating the kafka instance with authentication");
 
                 String messageNode = "";
                 try {
                     messageNode = objectMapper.writeValueAsString(productJson);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
+                    updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Error converting JSON: " + e.getMessage());
                     HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error in converting json data to kafka topic message", handymanException, action);
+                    return audit;
                 }
 
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
-                log.info("sending the topic and output json");
+                log.info("Sending the topic and output json");
+
+                // ✅ CAPTURE METRICS BEFORE AND AFTER
+                int retriesBeforeSend = getKafkaRetryCount(producer);
 
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
-                        if (exception == null) {
-                            log.info("Successful in sending the message to kafka topic");
-                            int partition = metadata.partition();
+                        int retriesAfterSend = getKafkaRetryCount(producer);
+                        int actualRetries = retriesAfterSend - retriesBeforeSend;
 
-//                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
+                        if (exception == null) {
+                            log.info("✅ Message sent successfully after {} retries", actualRetries);
+                            int partition = metadata.partition();
+                            audit.setRetryCount(actualRetries);
+                            updateKafkaPublishAudit(partition, "SUCCESS", audit,
+                                    String.format("Success after %d retries", actualRetries));
                         } else {
-                            log.error(aMarker, "Error in publishing message to kafka topic", exception);
+                            log.error(aMarker, "❌ Failed after {} retries: {}", actualRetries, exception.getMessage());
+                            audit.setRetryCount(actualRetries);
+                            updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
+                                    String.format("Failed after %d retries: %s", actualRetries, exception.getMessage()));
                             HandymanException handymanException = new HandymanException(exception);
                             HandymanException.insertException("Error in publishing message to kafka topic", handymanException, action);
                         }
-                    });
+                    }); // Wait for completion
+
+                } catch (Exception e) {
+                    int retriesAfterSend = getKafkaRetryCount(producer);
+                    int actualRetries = retriesAfterSend - retriesBeforeSend;
+                    log.error(aMarker, "Exception after {} retries", actualRetries, e);
+                    audit.setRetryCount(actualRetries);
+                    updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
+                            String.format("Exception after %d retries: %s", actualRetries, e.getMessage()));
                 } finally {
                     producer.close();
                 }
-            } catch (HandymanException e) {
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Error in posting kafka topic message", handymanException, action);
+            } catch (Exception e) {
+                log.error(aMarker, "Unexpected error in kafka publish", e);
+                updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Unexpected error: " + e.getMessage());
             }
         }
 
-    }
-
-    private void insertExecutionInfo(Jdbi jdbi, String outputTable, String documentId, String checksum, Long tenantId, String originId,
-                                     String batchId, String topicName, String endpoint, String authSecurityProtocol,
-                                     String saslMechanism, String response, int partition, String executionStatus, String transactionId) {
-
-        jdbi.useHandle(handle -> handle.createUpdate("INSERT INTO " + outputTable + "(document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, auth_security_protocol, sasl_mechanism, response, partition, exec_status, transaction_id) " +
-                        "VALUES(:documentId, :checksum, :tenantId, :originId, :batchId, :topicName, :endpoint, :authSecurityProtocol, :saslMechanism, :response, :partition, :execStatus, :transactionId);")
-                .bind("documentId", documentId)
-                .bind("checksum", checksum)
-                .bind("tenantId", tenantId)
-                .bind("originId", originId)
-                .bind("batchId", batchId)
-                .bind("topicName", topicName)
-                .bind("endpoint", endpoint)
-                .bind("authSecurityProtocol", authSecurityProtocol)
-                .bind("saslMechanism", saslMechanism)
-                .bind("response", response)
-                .bind("partition", partition)
-                .bind("execStatus", executionStatus)
-                .bind("transactionId", transactionId)
-                .execute());
+        return audit;
     }
 
     private String doOptionalMessageEncryption(String messageNode, String encryptionType, String encryptionKey) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
@@ -292,6 +346,12 @@ public class KafkaPublishAction implements IActionExecution {
 //                            "username=\"" + userName + "\" " +
 //                            "password=\"" + password + "\";");
 
+            properties.put(ProducerConfig.ACKS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.acks")));
+            properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.request.timeout.ms")));
+            properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.delivery.timeout.ms")));
+            properties.put(ProducerConfig.LINGER_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.linger.ms")));
+
+            log.info(aMarker, "SASL_PLAINTEXT authentication configured successfully");
         }
     }
 
@@ -328,6 +388,139 @@ public class KafkaPublishAction implements IActionExecution {
         }
     }
 
+
+    private KafkaProductionResponseAudit getKafkaPublishOutputAudit(KafkaPublishQueryInput kafkaPublishQueryInput) {
+        KafkaProductionResponseAudit kafkaProductionResponseAudit = new KafkaProductionResponseAudit();
+
+        kafkaProductionResponseAudit.setDocumentId(kafkaPublishQueryInput.getDocumentId());
+        kafkaProductionResponseAudit.setChecksum(kafkaPublishQueryInput.getFileChecksum());
+        kafkaProductionResponseAudit.setTenantId(kafkaPublishQueryInput.getTenantId());
+        kafkaProductionResponseAudit.setOriginId(kafkaPublishQueryInput.getOriginId());
+        kafkaProductionResponseAudit.setTopicName(kafkaPublishQueryInput.getTopicName());
+        kafkaProductionResponseAudit.setEndpoint(kafkaPublishQueryInput.getEndpoint());
+        kafkaProductionResponseAudit.setAuthSecurityProtocol(kafkaPublishQueryInput.getAuthSecurityProtocol());
+        kafkaProductionResponseAudit.setSaslMechanism(kafkaPublishQueryInput.getSaslMechanism());
+        kafkaProductionResponseAudit.setBatchId(kafkaPublishQueryInput.getBatchId());
+        kafkaProductionResponseAudit.setTransactionId(kafkaPublishQueryInput.getTransactionId());
+        kafkaProductionResponseAudit.setCreatedUserId(kafkaPublishQueryInput.getTenantId());
+        kafkaProductionResponseAudit.setLastUpdatedUserId(kafkaPublishQueryInput.getTenantId());
+        kafkaProductionResponseAudit.setCreatedOn(LocalDateTime.now());
+        kafkaProductionResponseAudit.setVersion(1);
+        kafkaProductionResponseAudit.setRetryCount(0);
+
+        return kafkaProductionResponseAudit;
+    }
+
+    private void updateKafkaPublishAudit(int partition, String executionStatus,
+                                         KafkaProductionResponseAudit kafkaPublishOutput,
+                                         String response) {
+        kafkaPublishOutput.setPartition(partition);
+        kafkaPublishOutput.setExecStatus(executionStatus);
+        kafkaPublishOutput.setLastUpdatedOn(LocalDateTime.now());
+        kafkaPublishOutput.setResponse(response);
+        kafkaPublishOutput.setStatus("ACTIVE");
+    }
+
+    private void insertExecutionInfoBatch(Jdbi jdbi, String outputTable,
+                                          List<KafkaProductionResponseAudit> kafkaProductionResponseAudits) {
+        if (kafkaProductionResponseAudits == null || kafkaProductionResponseAudits.isEmpty()) {
+            log.warn("No KafkaProductionResponseAudit records to insert into table: {}", outputTable);
+            return;
+        }
+
+        String sql = "INSERT INTO " + outputTable + " (" +
+                "document_id, checksum, tenant_id, origin_id, batch_id, topic_name, endpoint, " +
+                "auth_security_protocol, sasl_mechanism, response, partition, exec_status, " +
+                "transaction_id, root_pipeline_id, created_user_id, last_updated_user_id, " +
+                "created_on, last_updated_on, status, version, retry_count" +
+                ") VALUES (" +
+                ":documentId, :checksum, :tenantId, :originId, :batchId, :topicName, :endpoint, " +
+                ":authSecurityProtocol, :saslMechanism, :response, :partition, :execStatus, " +
+                ":transactionId, :rootPipelineId, :createdUserId, :lastUpdatedUserId, " +
+                ":createdOn, :lastUpdatedOn, :status, :version, :retryCount" +
+                ")";
+
+        jdbi.useHandle(handle -> {
+            PreparedBatch batch = handle.prepareBatch(sql);
+
+            for (KafkaProductionResponseAudit record : kafkaProductionResponseAudits) {
+                batch.bind("documentId", record.getDocumentId())
+                        .bind("checksum", record.getChecksum())
+                        .bind("tenantId", record.getTenantId())
+                        .bind("originId", record.getOriginId())
+                        .bind("batchId", record.getBatchId())
+                        .bind("topicName", record.getTopicName())
+                        .bind("endpoint", record.getEndpoint())
+                        .bind("authSecurityProtocol", record.getAuthSecurityProtocol())
+                        .bind("saslMechanism", record.getSaslMechanism())
+                        .bind("response", record.getResponse())
+                        .bind("partition", record.getPartition())
+                        .bind("execStatus", record.getExecStatus())
+                        .bind("transactionId", record.getTransactionId())
+                        .bind("rootPipelineId", record.getRootPipelineId())
+                        .bind("createdUserId", record.getCreatedUserId())
+                        .bind("lastUpdatedUserId", record.getLastUpdatedUserId())
+                        .bind("createdOn", record.getCreatedOn())
+                        .bind("lastUpdatedOn", record.getLastUpdatedOn())
+                        .bind("status", record.getStatus())
+                        .bind("version", record.getVersion())
+                        .bind("retryCount", record.getRetryCount())
+                        .add();
+            }
+
+            int[] results = batch.execute();
+            log.info("✅ Batch insert completed into [{}]. Total Records: {}, Successful Inserts: {}",
+                    outputTable, kafkaProductionResponseAudits.size(), results.length);
+        });
+    }
+    private int getKafkaRetryCount(KafkaProducer<String, String> producer) {
+        try {
+            Map<MetricName, ? extends Metric> metrics = producer.metrics();
+
+            // Look for record-retry-total metric
+            for (Map.Entry<MetricName, ? extends Metric> entry : metrics.entrySet()) {
+                MetricName metricName = entry.getKey();
+                if ("record-retry-total".equals(metricName.name()) ||
+                        "record-retry-rate".equals(metricName.name())) {
+                    double value = (double) entry.getValue().metricValue();
+                    log.debug("Found retry metric: {} = {}", metricName.name(), value);
+                    return (int) value;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not retrieve retry metrics: {}", e.getMessage());
+        }
+        return 0;
+    }
+
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class KafkaProductionResponseAudit {
+        private String documentId;
+        private String checksum;
+        private Long tenantId;
+        private String originId;
+        private String batchId;
+        private String topicName;
+        private String endpoint;
+        private String authSecurityProtocol;
+        private String saslMechanism;
+        private String response;
+        private Integer partition;
+        private String execStatus;
+        private String transactionId;
+        private Long rootPipelineId;
+        private Long createdUserId;
+        private Long lastUpdatedUserId;
+        private LocalDateTime createdOn;
+        private LocalDateTime lastUpdatedOn;
+        private String status;
+        private Integer version;
+        private Integer retryCount;
+    }
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
