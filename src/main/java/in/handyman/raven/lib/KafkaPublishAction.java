@@ -113,6 +113,9 @@ public class KafkaPublishAction implements IActionExecution {
                         auditRecords.add(audit);
                     }
                 } catch (JsonProcessingException e) {
+                    log.error(aMarker, "Error processing kafka publish query input", e);
+                    HandymanException handymanException = new HandymanException(e);
+                    HandymanException.insertException("Error processing kafka publish query input", handymanException, action);
                     throw new RuntimeException(e);
                 }
             });
@@ -124,6 +127,8 @@ public class KafkaPublishAction implements IActionExecution {
 
         } catch (Exception ex) {
             log.error(aMarker, "Error in execute method for kafka publish Action", ex);
+            HandymanException handymanException = new HandymanException(ex);
+            HandymanException.insertException("Error in execute method for kafka publish Action", handymanException, action);
             throw new HandymanException("Error in execute method for kafka publish Action", ex, action);
         }
     }
@@ -222,6 +227,8 @@ public class KafkaPublishAction implements IActionExecution {
             } catch (Exception e) {
                 log.error(aMarker, "Unexpected error in kafka publish", e);
                 updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Unexpected error: " + e.getMessage());
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Unexpected error in kafka publish", handymanException, action);
             }
         } else {
 
@@ -290,6 +297,8 @@ public class KafkaPublishAction implements IActionExecution {
             } catch (Exception e) {
                 log.error(aMarker, "Unexpected error in kafka publish", e);
                 updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Unexpected error: " + e.getMessage());
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Unexpected error in kafka publish", handymanException, action);
             }
         }
 
@@ -424,7 +433,7 @@ public class KafkaPublishAction implements IActionExecution {
     private void insertExecutionInfoBatch(Jdbi jdbi, String outputTable,
                                           List<KafkaProductionResponseAudit> kafkaProductionResponseAudits) {
         if (kafkaProductionResponseAudits == null || kafkaProductionResponseAudits.isEmpty()) {
-            log.warn("No KafkaProductionResponseAudit records to insert into table: {}", outputTable);
+            log.warn("No KafkaProductionResponseAudit records to insert into table");
             return;
         }
 
@@ -489,6 +498,8 @@ public class KafkaPublishAction implements IActionExecution {
             }
         } catch (Exception e) {
             log.warn("Could not retrieve retry metrics: {}", e.getMessage());
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Could not retrieve retry metrics", handymanException, action);
         }
         return 0;
     }
