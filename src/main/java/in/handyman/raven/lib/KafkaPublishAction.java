@@ -138,16 +138,17 @@ public class KafkaPublishAction implements IActionExecution {
         log.info("processing the kafka input data ");
 
         String topicName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.topic.name"));
-        String responseNode = kafkaPublishQueryInput.getJsonData();
-        JsonNode productJson = objectMapper.readTree(responseNode);
         String authSecurityProtocol = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.auth.security.protocol"));
         String saslMechanism = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.mechanism"));
-
         String userName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.username"));
         String password = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.password"));
         String endpoint = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.endpoint"));
 
-        KafkaProductionResponseAudit audit = getKafkaPublishOutputAudit(kafkaPublishQueryInput);
+        String responseNode = kafkaPublishQueryInput.getJsonData();
+        JsonNode productJson = objectMapper.readTree(responseNode);
+
+        // ✅ FIX: Pass actual config values to audit
+        KafkaProductionResponseAudit audit = getKafkaPublishOutputAudit(kafkaPublishQueryInput, topicName, endpoint, authSecurityProtocol, saslMechanism);
 
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
 
@@ -350,10 +351,6 @@ public class KafkaPublishAction implements IActionExecution {
             properties.put(SASL_MECHANISM, PLAIN_SASL);
             String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
             properties.put("sasl.jaas.config", jaasConfig);
-//            properties.put("sasl.jaas.config",
-//                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
-//                            "username=\"" + userName + "\" " +
-//                            "password=\"" + password + "\";");
 
             properties.put(ProducerConfig.ACKS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.acks")));
             properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.request.timeout.ms")));
@@ -389,26 +386,29 @@ public class KafkaPublishAction implements IActionExecution {
             properties.put(SASL_MECHANISM, PLAIN_SASL);
             String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
             properties.put("sasl.jaas.config", jaasConfig);
-//            properties.put("sasl.jaas.config",
-//                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
-//                            "username=\"" + userName + "\" " +
-//                            "password=\"" + password + "\";");
-
         }
     }
 
 
-    private KafkaProductionResponseAudit getKafkaPublishOutputAudit(KafkaPublishQueryInput kafkaPublishQueryInput) {
+    // ✅ FIX: Updated method signature to accept actual config values
+    private KafkaProductionResponseAudit getKafkaPublishOutputAudit(KafkaPublishQueryInput kafkaPublishQueryInput,
+                                                                    String topicName,
+                                                                    String endpoint,
+                                                                    String authSecurityProtocol,
+                                                                    String saslMechanism) {
         KafkaProductionResponseAudit kafkaProductionResponseAudit = new KafkaProductionResponseAudit();
 
         kafkaProductionResponseAudit.setDocumentId(kafkaPublishQueryInput.getDocumentId());
         kafkaProductionResponseAudit.setChecksum(kafkaPublishQueryInput.getFileChecksum());
         kafkaProductionResponseAudit.setTenantId(kafkaPublishQueryInput.getTenantId());
         kafkaProductionResponseAudit.setOriginId(kafkaPublishQueryInput.getOriginId());
-        kafkaProductionResponseAudit.setTopicName(kafkaPublishQueryInput.getTopicName());
-        kafkaProductionResponseAudit.setEndpoint(kafkaPublishQueryInput.getEndpoint());
-        kafkaProductionResponseAudit.setAuthSecurityProtocol(kafkaPublishQueryInput.getAuthSecurityProtocol());
-        kafkaProductionResponseAudit.setSaslMechanism(kafkaPublishQueryInput.getSaslMechanism());
+
+        // ✅ FIX: Set values from actual config, not from query input
+        kafkaProductionResponseAudit.setTopicName(topicName);
+        kafkaProductionResponseAudit.setEndpoint(endpoint);
+        kafkaProductionResponseAudit.setAuthSecurityProtocol(authSecurityProtocol);
+        kafkaProductionResponseAudit.setSaslMechanism(saslMechanism);
+
         kafkaProductionResponseAudit.setBatchId(kafkaPublishQueryInput.getBatchId());
         kafkaProductionResponseAudit.setTransactionId(kafkaPublishQueryInput.getTransactionId());
         kafkaProductionResponseAudit.setCreatedUserId(kafkaPublishQueryInput.getTenantId());
