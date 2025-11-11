@@ -153,6 +153,7 @@ public class KafkaPublishAction implements IActionExecution {
                 // Insert all attempts (failed + successful) as a single batch
                 insertExecutionInfoBatch(jdbi, outputTable, auditRecordsForAllAttempts);
                 log.info(aMarker, "Batch inserted {} audit records", auditRecordsForAllAttempts.size());
+                return;
 
             } catch (Exception e) {
                 lastException = e;
