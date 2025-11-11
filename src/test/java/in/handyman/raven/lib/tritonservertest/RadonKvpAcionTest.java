@@ -20,13 +20,14 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                     .endpoint("http://0.0.0.0:7999/predict")
                 .outputTable("sor_transaction.radon_kvp_output_audit_1")
-                .querySet("SELECT 1 as sor_container_id , '/data/tenant/PI/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt, \n" +
-                        "a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START' \n" +
-                        "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START' \n" +
-                        "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing  as post_process,sc.post_process_class_name as post_process_class_name , 'fd286aec-e97d-4a84-adf9-1d0cc4539738' as request_id\n" +
-                        "FROM sor_transaction.radon_kvp_input_audit a \n" +
-                        "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id \n" +
-                        "WHERE a.model_registry = 'RADON'  and id =1388;")
+                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id,\n" +
+                        "a.root_pipeline_id, a.system_prompt,a.model_name,    a.batch_id, a.model_registry, a.category, now() as created_on,\n" +
+                        "(CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'    \n" +
+                        "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'    \n" +
+                        "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id, request_id    \n" +
+                        "FROM transit_data.radon_kvp_input_6708 a    \n" +
+                        "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id    \n" +
+                        "WHERE a.model_registry = 'RADON'  and a.group_id ='89' and a.tenant_id='1' and a.batch_id ='BATCH-89_0';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
