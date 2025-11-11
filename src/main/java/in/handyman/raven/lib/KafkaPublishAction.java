@@ -11,7 +11,6 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.KafkaPublish;
 import in.handyman.raven.util.CommonQueryUtil;
-import in.handyman.raven.util.EncryptDecrypt;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,8 +18,6 @@ import lombok.NoArgsConstructor;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -29,11 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -108,11 +100,11 @@ public class KafkaPublishAction implements IActionExecution {
             log.info(aMarker, "Input Query output has {} objects present", inputQueryObjectSize);
             kafkaPublishQueryInputs.forEach(kafkaPublishQueryInput -> {
                 try {
-                    KafkaProductionResponseAudit audit = doKafkaPublish(kafkaPublishQueryInput, jdbi, outputTable);
+                    KafkaProductionResponseAudit audit = doKafkaPublishWithRetry(jdbi, kafkaPublishQueryInput, outputTable);
                     if (audit != null) {
                         auditRecords.add(audit);
                     }
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     log.error(aMarker, "Error processing kafka publish query input", e);
                     HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error processing kafka publish query input", handymanException, action);
@@ -133,22 +125,106 @@ public class KafkaPublishAction implements IActionExecution {
         }
     }
 
-    private KafkaProductionResponseAudit doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput,
-                                                        Jdbi jdbi, String outputTable) throws JsonProcessingException {
+    private KafkaProductionResponseAudit doKafkaPublishWithRetry(Jdbi jdbi, KafkaPublishQueryInput kafkaPublishQueryInput,
+                                                                 String outputTable) throws Exception {
+        String topicName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.topic.name"));
+        String authSecurityProtocol = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.auth.security.protocol"));
+        String saslMechanism = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.mechanism"));
+        String endpoint = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.endpoint"));
+
+        KafkaProductionResponseAudit audit = getKafkaPublishOutputAudit(kafkaPublishQueryInput, topicName,
+                endpoint, authSecurityProtocol, saslMechanism);
+
+        // Check if retry is enabled
+        boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
+
+        if (!enableRetry) {
+            log.info(aMarker, "Retry is disabled. Attempting Kafka publish once for document {}",
+                    kafkaPublishQueryInput.getDocumentId());
+            try {
+                doKafkaPublish(kafkaPublishQueryInput, 0, audit);
+                log.info(aMarker, "Successfully published message without retry");
+                return audit;
+            } catch (Exception e) {
+                log.error(aMarker, "Failed to publish message (retry disabled) for document {}",
+                        kafkaPublishQueryInput.getDocumentId(), e);
+
+                updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
+                        "Failed (retry disabled): " + e.getMessage());
+                audit.setRetryCount(0);
+
+                throw new HandymanException("Failed to publish message (retry disabled)", e, action);
+            }
+        }
+
+        // Manual retry logic with exponential backoff
+        int MAX_RETRY_ATTEMPTS = Integer.parseInt(action.getContext().getOrDefault("kafka.max.retry.attempts", "3"));
+        long INITIAL_RETRY_DELAY_MS = Long.parseLong(action.getContext().getOrDefault("kafka.initial.retry.delays.ms", "1000"));
+        double RETRY_BACKOFF_MULTIPLIER = Double.parseDouble(action.getContext().getOrDefault("kafka.retry.backoff.multiplier", "2.0"));
+
+        log.info(aMarker, "Retry is enabled. Max attempts: {}", MAX_RETRY_ATTEMPTS);
+
+        int attemptCount = 0;
+        long retryDelay = INITIAL_RETRY_DELAY_MS;
+        Exception lastException = null;
+
+        while (attemptCount < MAX_RETRY_ATTEMPTS) {
+            try {
+                log.info(aMarker, "Kafka publish attempt {} for document {}",
+                        attemptCount + 1, kafkaPublishQueryInput.getDocumentId());
+
+                doKafkaPublish(kafkaPublishQueryInput, attemptCount, audit);
+
+                log.info(aMarker, "Successfully published message on attempt {}", attemptCount + 1);
+                audit.setRetryCount(attemptCount);
+                return audit;
+
+            } catch (Exception e) {
+                lastException = e;
+                attemptCount++;
+
+                log.warn(aMarker, "Kafka publish attempt {} failed for document {}. Error: {}",
+                        attemptCount, kafkaPublishQueryInput.getDocumentId(), e.getMessage());
+
+                if (attemptCount < MAX_RETRY_ATTEMPTS) {
+                    log.info(aMarker, "Retrying after {} ms (attempt {}/{})",
+                            retryDelay, attemptCount, MAX_RETRY_ATTEMPTS);
+
+                    try {
+                        Thread.sleep(retryDelay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new HandymanException("Retry interrupted", ie, action);
+                    }
+
+                    retryDelay = (long) (retryDelay * RETRY_BACKOFF_MULTIPLIER);
+                }
+            }
+        }
+
+        // All retries exhausted
+        String errorMsg = String.format("Failed to publish message after %d attempts for document %s",
+                attemptCount, kafkaPublishQueryInput.getDocumentId());
+        log.error(aMarker, errorMsg, lastException);
+
+        updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
+                "Failed after " + attemptCount + " attempts: " + lastException.getMessage());
+        audit.setRetryCount(attemptCount);
+
+        throw new HandymanException(errorMsg, lastException, action);
+    }
+
+    private void doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput, Integer retryCount, KafkaProductionResponseAudit audit) throws JsonProcessingException {
         log.info("processing the kafka input data ");
 
         String topicName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.topic.name"));
+        String responseNode = kafkaPublishQueryInput.getJsonData();
+        JsonNode productJson = objectMapper.readTree(responseNode);
         String authSecurityProtocol = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.auth.security.protocol"));
         String saslMechanism = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.mechanism"));
         String userName = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.username"));
         String password = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.password"));
         String endpoint = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.endpoint"));
-
-        String responseNode = kafkaPublishQueryInput.getJsonData();
-        JsonNode productJson = objectMapper.readTree(responseNode);
-
-        // ✅ FIX: Pass actual config values to audit
-        KafkaProductionResponseAudit audit = getKafkaPublishOutputAudit(kafkaPublishQueryInput, topicName, endpoint, authSecurityProtocol, saslMechanism);
 
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
 
@@ -157,21 +233,7 @@ public class KafkaPublishAction implements IActionExecution {
         kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
-        boolean retryEnabled = Boolean.parseBoolean(
-                action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
 
-        if (retryEnabled) {
-            int maxRetries = Integer.parseInt(action.getContext().getOrDefault("kafka.max.retry.attempts", "3"));
-            long retryBackoffMs = Long.parseLong(action.getContext().getOrDefault("kafka.retry.backoff.ms", "100"));
-
-            kafkaProperties.put(ProducerConfig.RETRIES_CONFIG, maxRetries);
-            kafkaProperties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, retryBackoffMs);
-
-            log.info("Kafka retry enabled: retries={}, backoffMs={}", maxRetries, retryBackoffMs);
-        } else {
-            kafkaProperties.put(ProducerConfig.RETRIES_CONFIG, 0);
-            log.info("Kafka retry disabled");
-        }
         if (Objects.equals(authSecurityProtocol, "NONE")) {
             try {
 
@@ -189,47 +251,27 @@ public class KafkaPublishAction implements IActionExecution {
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
 
-                // ✅ CAPTURE METRICS BEFORE AND AFTER
-                int retriesBeforeSend = getKafkaRetryCount(producer);
-
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
-                        // ✅ CAPTURE RETRY COUNT IN CALLBACK
-                        int retriesAfterSend = getKafkaRetryCount(producer);
-                        int actualRetries = retriesAfterSend - retriesBeforeSend;
-
                         if (exception == null) {
-                            log.info("✅ Message sent successfully after {} retries", actualRetries);
+                            log.info("Successful in sending the message to kafka topic");
                             int partition = metadata.partition();
-                            audit.setRetryCount(actualRetries);
-                            updateKafkaPublishAudit(partition, "SUCCESS", audit,
-                                    String.format("Success after %d retries", actualRetries));
+                            log.info("Topic: {}, Partition: {}", metadata.topic(), partition);
+//                            insertExecutionInfo(jdbi, outputTable, documentId, fileChecksum, tenantId, originId, batchId, topicName, endpoint, authSecurityProtocol, saslMechanism, "Successful in sending message to topic", partition, "SUCCESS", transactionId);
                         } else {
-                            log.error(aMarker, "❌ Failed after {} retries: {}", actualRetries, exception.getMessage());
-                            audit.setRetryCount(actualRetries);
-                            updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
-                                    String.format("Failed after %d retries: %s", actualRetries, exception.getMessage()));
+                            log.error(aMarker, "Error in publishing message to kafka topic", exception);
                             HandymanException handymanException = new HandymanException(exception);
                             HandymanException.insertException("Error in publishing message to kafka topic", handymanException, action);
                         }
                     });
-
-                } catch (Exception e) {
-                    int retriesAfterSend = getKafkaRetryCount(producer);
-                    int actualRetries = retriesAfterSend - retriesBeforeSend;
-                    log.error(aMarker, "Exception after {} retries", actualRetries, e);
-                    audit.setRetryCount(actualRetries);
-                    updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
-                            String.format("Exception after %d retries: %s", actualRetries, e.getMessage()));
                 } finally {
                     log.info("Closing Producer");
                     producer.close();
                 }
-            } catch (Exception e) {
-                log.error(aMarker, "Unexpected error in kafka publish", e);
-                updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Unexpected error: " + e.getMessage());
+            } catch (HandymanException e) {
+                log.info("Error in posting kafka topic message");
                 HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Unexpected error in kafka publish", handymanException, action);
+                HandymanException.insertException("Error in posting kafka topic message", handymanException, action);
             }
         } else {
 
@@ -244,76 +286,53 @@ public class KafkaPublishAction implements IActionExecution {
 
                 }
                 KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProperties);
-                log.info("Creating the kafka instance with authentication");
+                log.info("creating the kafka instance");
+
+//            if (encryptionType.equalsIgnoreCase(AES_ENCRYPTION)) {
+//                responseNode = doOptionalMessageEncryption(responseNode, encryptionType, encryptionKey);
+//            }
 
                 String messageNode = "";
                 try {
                     messageNode = objectMapper.writeValueAsString(productJson);
                 } catch (Exception e) {
                     log.error(aMarker, "Error in converting json data to kafka topic message", e);
-                    updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Error converting JSON: " + e.getMessage());
                     HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error in converting json data to kafka topic message", handymanException, action);
-                    return audit;
                 }
 
 
                 ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
-                log.info("Sending the topic and output json");
-
-                // ✅ CAPTURE METRICS BEFORE AND AFTER
-                int retriesBeforeSend = getKafkaRetryCount(producer);
+                log.info("sending the topic and output json");
 
                 try {
                     producer.send(producerRecord, (metadata, exception) -> {
-                        int retriesAfterSend = getKafkaRetryCount(producer);
-                        int actualRetries = retriesAfterSend - retriesBeforeSend;
-
                         if (exception == null) {
-                            log.info("✅ Message sent successfully after {} retries", actualRetries);
+                            log.info("✅ Message sent successfully after {} retries", retryCount);
                             int partition = metadata.partition();
-                            audit.setRetryCount(actualRetries);
                             updateKafkaPublishAudit(partition, "SUCCESS", audit,
-                                    String.format("Success after %d retries", actualRetries));
+                                    String.format("Success after %d retries", retryCount));
                         } else {
-                            log.error(aMarker, "❌ Failed after {} retries: {}", actualRetries, exception.getMessage());
-                            audit.setRetryCount(actualRetries);
+                            log.error(aMarker, "❌ Failed after {} retries: {}", retryCount, exception.getMessage());
                             updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
-                                    String.format("Failed after %d retries: %s", actualRetries, exception.getMessage()));
+                                    String.format("Failed after %d retries: %s", retryCount, exception.getMessage()));
                             HandymanException handymanException = new HandymanException(exception);
                             HandymanException.insertException("Error in publishing message to kafka topic", handymanException, action);
                         }
-                    }); // Wait for completion
-
-                } catch (Exception e) {
-                    int retriesAfterSend = getKafkaRetryCount(producer);
-                    int actualRetries = retriesAfterSend - retriesBeforeSend;
-                    log.error(aMarker, "Exception after {} retries", actualRetries, e);
-                    audit.setRetryCount(actualRetries);
-                    updateKafkaPublishAudit(-1, FAILED_STATUS, audit,
-                            String.format("Exception after %d retries: %s", actualRetries, e.getMessage()));
+                    });
                 } finally {
                     producer.close();
                 }
-            } catch (Exception e) {
-                log.error(aMarker, "Unexpected error in kafka publish", e);
-                updateKafkaPublishAudit(-1, FAILED_STATUS, audit, "Unexpected error: " + e.getMessage());
+            } catch (HandymanException e) {
                 HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Unexpected error in kafka publish", handymanException, action);
+                HandymanException.insertException("Error in posting kafka topic message", handymanException, action);
             }
         }
 
-        return audit;
     }
 
-    private String doOptionalMessageEncryption(String messageNode, String encryptionType, String encryptionKey) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
-        String message = EncryptDecrypt.encrypt(messageNode, encryptionKey, encryptionType);
-        log.info("Encrypted message using algorithm {}", encryptionType);
-        return message;
-
-    }
-
-    private void setAuthenticationPropertiesWithCerts(String authSecurityProtocol, Map<String, Object> properties, String saslMechanism, String userName, String password) {
+    private void setAuthenticationPropertiesWithCerts(String authSecurityProtocol, Map<String, Object> properties,
+                                                      String saslMechanism, String userName, String password) {
         if (authSecurityProtocol.equalsIgnoreCase(SASL_SSL)) {
             properties.put("security.protocol", SASL_SSL);
             if (saslMechanism.equalsIgnoreCase(PLAIN_SASL)) {
@@ -351,13 +370,11 @@ public class KafkaPublishAction implements IActionExecution {
             properties.put(SASL_MECHANISM, PLAIN_SASL);
             String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
             properties.put("sasl.jaas.config", jaasConfig);
+//            properties.put("sasl.jaas.config",
+//                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+//                            "username=\"" + userName + "\" " +
+//                            "password=\"" + password + "\";");
 
-            properties.put(ProducerConfig.ACKS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.acks")));
-            properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.request.timeout.ms")));
-            properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.delivery.timeout.ms")));
-            properties.put(ProducerConfig.LINGER_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.linger.ms")));
-
-            log.info(aMarker, "SASL_PLAINTEXT authentication configured successfully");
         }
     }
 
@@ -389,35 +406,26 @@ public class KafkaPublishAction implements IActionExecution {
         }
     }
 
-
-    // ✅ FIX: Updated method signature to accept actual config values
     private KafkaProductionResponseAudit getKafkaPublishOutputAudit(KafkaPublishQueryInput kafkaPublishQueryInput,
-                                                                    String topicName,
-                                                                    String endpoint,
-                                                                    String authSecurityProtocol,
-                                                                    String saslMechanism) {
-        KafkaProductionResponseAudit kafkaProductionResponseAudit = new KafkaProductionResponseAudit();
-
-        kafkaProductionResponseAudit.setDocumentId(kafkaPublishQueryInput.getDocumentId());
-        kafkaProductionResponseAudit.setChecksum(kafkaPublishQueryInput.getFileChecksum());
-        kafkaProductionResponseAudit.setTenantId(kafkaPublishQueryInput.getTenantId());
-        kafkaProductionResponseAudit.setOriginId(kafkaPublishQueryInput.getOriginId());
-
-        // ✅ FIX: Set values from actual config, not from query input
-        kafkaProductionResponseAudit.setTopicName(topicName);
-        kafkaProductionResponseAudit.setEndpoint(endpoint);
-        kafkaProductionResponseAudit.setAuthSecurityProtocol(authSecurityProtocol);
-        kafkaProductionResponseAudit.setSaslMechanism(saslMechanism);
-
-        kafkaProductionResponseAudit.setBatchId(kafkaPublishQueryInput.getBatchId());
-        kafkaProductionResponseAudit.setTransactionId(kafkaPublishQueryInput.getTransactionId());
-        kafkaProductionResponseAudit.setCreatedUserId(kafkaPublishQueryInput.getTenantId());
-        kafkaProductionResponseAudit.setLastUpdatedUserId(kafkaPublishQueryInput.getTenantId());
-        kafkaProductionResponseAudit.setCreatedOn(LocalDateTime.now());
-        kafkaProductionResponseAudit.setVersion(1);
-        kafkaProductionResponseAudit.setRetryCount(0);
-
-        return kafkaProductionResponseAudit;
+                                                                    String topicName, String endpoint,
+                                                                    String authSecurityProtocol, String saslMechanism) {
+        KafkaProductionResponseAudit audit = new KafkaProductionResponseAudit();
+        audit.setDocumentId(kafkaPublishQueryInput.getDocumentId());
+        audit.setChecksum(kafkaPublishQueryInput.getFileChecksum());
+        audit.setTenantId(kafkaPublishQueryInput.getTenantId());
+        audit.setOriginId(kafkaPublishQueryInput.getOriginId());
+        audit.setTopicName(topicName);
+        audit.setEndpoint(endpoint);
+        audit.setAuthSecurityProtocol(authSecurityProtocol);
+        audit.setSaslMechanism(saslMechanism);
+        audit.setBatchId(kafkaPublishQueryInput.getBatchId());
+        audit.setTransactionId(kafkaPublishQueryInput.getTransactionId());
+        audit.setCreatedUserId(kafkaPublishQueryInput.getTenantId());
+        audit.setLastUpdatedUserId(kafkaPublishQueryInput.getTenantId());
+        audit.setCreatedOn(LocalDateTime.now());
+        audit.setVersion(1);
+        audit.setRetryCount(0);
+        return audit;
     }
 
     private void updateKafkaPublishAudit(int partition, String executionStatus,
@@ -482,28 +490,6 @@ public class KafkaPublishAction implements IActionExecution {
                     outputTable, kafkaProductionResponseAudits.size(), results.length);
         });
     }
-    private int getKafkaRetryCount(KafkaProducer<String, String> producer) {
-        try {
-            Map<MetricName, ? extends Metric> metrics = producer.metrics();
-
-            // Look for record-retry-total metric
-            for (Map.Entry<MetricName, ? extends Metric> entry : metrics.entrySet()) {
-                MetricName metricName = entry.getKey();
-                if ("record-retry-total".equals(metricName.name()) ||
-                        "record-retry-rate".equals(metricName.name())) {
-                    double value = (double) entry.getValue().metricValue();
-                    log.debug("Found retry metric: {} = {}", metricName.name(), value);
-                    return (int) value;
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Could not retrieve retry metrics: {}", e.getMessage());
-            HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("Could not retrieve retry metrics", handymanException, action);
-        }
-        return 0;
-    }
-
 
     @Data
     @AllArgsConstructor
@@ -532,6 +518,7 @@ public class KafkaPublishAction implements IActionExecution {
         private Integer version;
         private Integer retryCount;
     }
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
