@@ -14,7 +14,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 @Slf4j
-class KafkaPublishActionTest {
+class   KafkaPublishActionTest {
 
     private static final String AES_ENCRYPTION = "AES";
 
@@ -833,7 +833,7 @@ class KafkaPublishActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .outputTable("product_outbound.kafka_response_info")
-                .querySet("select 'localhost' as endpoint, " +
+                .querySet("select 'localhost:9092' as endpoint, " +
                         "'elv_json' as topic_name, " +
                         "'SASL_PLAINTEXT' as auth_security_protocol, " +
                         "'PLAIN' as sasl_mechanism, " +
@@ -847,7 +847,7 @@ class KafkaPublishActionTest {
                         "\"errorMessageDetail\":\"\"," +
                         "\"errorCd\":null," +
                         "\"documentId\":\"IPCOMCA\"," +
-                        "\"inboundTransactionId\":\"ITX-19\"," +
+                        "\"inboundTransactionId\":\"ITX-19234567qwerty890\"," +
                         "\"metadata\":{" +
                         "\"documentType\":\"MEDICAL_COMMERCIAL\"," +
                         "\"documentExtension\":\"pdf\"," +
@@ -894,14 +894,19 @@ class KafkaPublishActionTest {
                 Map.entry("kafka.authentication.sasl.ssl.include", "certs"),
 
                 // ===== AGGRESSIVE TIMEOUT CONFIGURATION TO TRIGGER RETRIES =====
-                Map.entry("kafka.ssl.request.timeout.ms", "10"),        // Very low request timeout
-                Map.entry("kafka.ssl.delivery.timeout.ms", "50"),      // Total delivery timeout
+                Map.entry("kafka.ssl.request.timeout.ms", "1000"),        // Very low request timeout
+                Map.entry("kafka.ssl.delivery.timeout.ms", "5000"),      // Total delivery timeout
                 Map.entry("kafka.ssl.linger.ms", "0"),                   // No batching delay
-                Map.entry("kafka.ssl.acks", "0"),
+                Map.entry("kafka.ssl.acks", "all"),
                 // ===== RETRY CONFIGURATION =====
                 Map.entry("kafka.enable.retry", "true"),
                 Map.entry("kafka.max.retry.attempts", "3"),
-                Map.entry("kafka.retry.backoff.ms", "100"),
+                Map.entry("kafka.initial.retry.delays.ms", "3"),
+                Map.entry("kafka.max.in.flight.requests", "1"),
+                Map.entry("kafka.enable.idempotence", "true"),
+                Map.entry("kafka.ssl.api.retries", "3"),
+
+                Map.entry("kafka.retry.backoff.multiplier", "100"),
            // Short backoff
 // Short backoff
 
