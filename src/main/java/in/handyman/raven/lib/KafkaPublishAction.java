@@ -152,12 +152,12 @@ public class KafkaPublishAction implements IActionExecution {
 
                 // Success - return immediately
                 audit.setRetryCount(attempt);
-                log.info(aMarker, "✅ Published successfully on attempt {}/{}", attempt + 1, maxAttempts);
+                log.info(aMarker, " Published successfully on attempt {}/{}", attempt + 1, maxAttempts);
                 return audit;
 
             } catch (Exception e) {
                 lastException = e;
-                log.warn(aMarker, "❌ Attempt {}/{} failed: {}", attempt + 1, maxAttempts, e.getMessage());
+                log.warn(aMarker, "Attempt {}/{} failed: {}", attempt + 1, maxAttempts, e.getMessage());
 
                 // If this isn't the last attempt, sleep before retry
                 if (attempt < maxAttempts - 1) {
@@ -178,7 +178,7 @@ public class KafkaPublishAction implements IActionExecution {
         String errorMsg = String.format("Failed after %d attempts: %s",
                 maxAttempts, lastException != null ? lastException.getMessage() : "Unknown");
 
-        log.error(aMarker, "❌ All {} retry attempts exhausted for document {}",
+        log.error(aMarker, "All {} retry attempts exhausted for document {}",
                 maxAttempts, kafkaPublishQueryInput.getDocumentId());
 
         updateKafkaPublishAudit(-1, FAILED_STATUS, audit, errorMsg);
@@ -238,7 +238,7 @@ public class KafkaPublishAction implements IActionExecution {
             producer.send(producerRecord, (metadata, exception) -> {
                 try {
                     if (exception == null) {
-                        log.info("✅ Message sent to partition {} on attempt {}", metadata.partition(), retryCount);
+                        log.info("Message sent to partition {} on attempt {}", metadata.partition(), retryCount);
                         updateKafkaPublishAudit(metadata.partition(), "SUCCESS", audit,
                                 String.format("Success on attempt %d", retryCount));
                     } else {
@@ -430,7 +430,7 @@ public class KafkaPublishAction implements IActionExecution {
             }
 
             int[] results = batch.execute();
-            log.info("✅ Batch insert completed into [{}]. Total Records: {}, Successful Inserts: {}",
+            log.info("Batch insert completed into [{}]. Total Records: {}, Successful Inserts: {}",
                     outputTable, kafkaProductionResponseAudits.size(), results.length);
         });
     }
