@@ -20,8 +20,9 @@ public class RadonKvpAcionTest {
                 .resourceConn("intics_zio_db_conn")
                     .endpoint("http://0.0.0.0:7999/predict")
                 .outputTable("sor_transaction.radon_kvp_output_audit_1")
-                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id,\n" +
-                        "a.root_pipeline_id, a.system_prompt,a.model_name,    a.batch_id, a.model_registry, a.category, now() as created_on,\n" +
+                .querySet("SELECT '/data/processed_images/11-11-2025_04_11_40/tenant_1/group_91/preprocess/paper_itemizer/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_2.png' as input_file_path,\n" +
+                        "a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, 898 as group_id, a.tenant_id,\n" +
+                        "a.root_pipeline_id, a.system_prompt,a.model_name,   'batch-id-01' as  batch_id, a.model_registry, a.category, now() as created_on,\n" +
                         "(CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'    \n" +
                         "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'    \n" +
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id, request_id    \n" +
@@ -55,8 +56,8 @@ public class RadonKvpAcionTest {
         ac.getContext().put("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt");
         ac.getContext().put("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt");
         ac.getContext().put("legacy.resource.connection.type", "LEGACY");
-        ac.getContext().put("copro.isretry.enabled", "false");
         ac.getContext().put("pipeline.req.res.encryption", "false");
+        ac.getContext().put("copro.isretry.enabled", "true");
 
 
 

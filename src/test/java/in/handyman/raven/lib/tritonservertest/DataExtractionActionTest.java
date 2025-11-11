@@ -275,7 +275,7 @@ class DataExtractionActionTest {
                 .resultTable("paper_filter.agentic_paper_filter_output_audit_new")
                 .querySet("SELECT\n" +
                         "a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,\n" +
-                        "'/data/tenant/PI/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as file_path, b.root_pipeline_id, a.template_name , a.batch_id as batch_id\n" +
+                        "'/data/processed_images/11-11-2025_04_11_40/tenant_1/group_91/preprocess/paper_itemizer/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as file_path, b.root_pipeline_id, a.template_name , a.batch_id as batch_id\n" +
                         ",'61f0c404-5cb3-11e7-907b-a6006ad3dba0' as request_id,\n" +
                         "r.base_prompt  as user_prompt, r.system_prompt as system_prompt\n" +
                         "FROM info.source_of_truth a\n" +
@@ -313,7 +313,9 @@ class DataExtractionActionTest {
                 Map.entry("agentic.paper.filter.activator","true"),
                 Map.entry(ENCRYPT_AGENTIC_FILTER_OUTPUT, "false"),
                 Map.entry("page.content.min.length.threshold", "1"),
+                Map.entry("copro.isretry.enabled", "true"),
                 Map.entry("write.batch.size", "1")));
+
         AgenticPaperFilterAction dataExtractionAction = new AgenticPaperFilterAction(actionExecutionAudit, log, dataExtraction);
         dataExtractionAction.execute();
 

@@ -233,20 +233,25 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 Protocol protocol = response.protocol();
                 log.info(aMarker, " Protocol in use : {} ", protocol);
                 if (safeResponse.isSuccessful()) {
-                    assert safeResponse.body() != null;
-                    String responseBody = safeResponse.body().string();
-                    RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
-                    if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
-                        modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
-                            try {
-                                extractTritonOutputDataResponse(entity, radonDataItem, parentObj, "", responseBody, endpoint.toString());
-                            } catch (IOException | EvalError e) {
-                                HandymanException handymanException = new HandymanException(e);
-                                HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
-                                log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
-                            }
-                        }));
+                    if(safeResponse.body() != null) {
+                        String responseBody = safeResponse.body().string();
+                        RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
+                        if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
+                            modelResponse.getOutputs().forEach(o -> o.getData().forEach(radonDataItem -> {
+                                try {
+                                    extractTritonOutputDataResponse(entity, radonDataItem, parentObj, "", responseBody, endpoint.toString());
+                                } catch (IOException | EvalError e) {
+                                    HandymanException handymanException = new HandymanException(e);
+                                    HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                                    log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
+                                }
+                            }));
 
+                        }
+                    }else{
+                        HandymanException handymanException = new HandymanException(" response code : " + safeResponse.code() + " message : " + "No response body or detail found for the request.");
+                        HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                        log.error(aMarker, "Error in getting response from triton api: No response body or detail found for the request.");
                     }
                 } else {
                     String errorBody = safeResponse.body() != null ? safeResponse.body().string() : "No response body or detail found for the request.";
