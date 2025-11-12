@@ -1,13 +1,11 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.Map;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -36,5 +34,11 @@ public class RadonKvpLineItem {
     private Long imageHeight;
     private String extractedImageUnit;
     private String processName;
+    private ComputationDetails computationDetails;
+    private String statusCode;
+    private String errorMessage;
+    private String detail;
+    private String modelVersion;
+    private UUID requestId;
 
 }

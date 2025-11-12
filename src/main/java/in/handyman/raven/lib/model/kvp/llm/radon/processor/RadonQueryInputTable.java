@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -36,6 +38,7 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Boolean postProcess;
     private String postProcessClassName;
     private String modelName;
+    private UUID requestId;
 
     @Override
     public String getStatus() {

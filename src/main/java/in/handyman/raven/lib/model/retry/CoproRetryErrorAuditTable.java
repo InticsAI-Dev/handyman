@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -34,4 +35,14 @@ public class CoproRetryErrorAuditTable {
     @Builder.Default
     private int attempt = 0;
     private String coproServiceId;
+    private String computationDetails;
+    private Integer coproStatusCode;
+    private String coproLog;
+    private String coproErrorDetails;
+    private String requestId;
+    private Long imageDpi;
+    private Long imageWidth;
+    private Long imageHeight;
+    private String extractedImageUnit;
+
 }

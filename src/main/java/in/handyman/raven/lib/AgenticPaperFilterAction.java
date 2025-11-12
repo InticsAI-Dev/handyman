@@ -40,12 +40,15 @@ import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_HTTP_CL
 @ActionExecution(actionName = "AgenticPaperFilter")
 public class AgenticPaperFilterAction implements IActionExecution {
 
-    public static final String INSERT_COLUMNS_UPDATED = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint,container_id,prompt_type";
+    public static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint";
+    public static final String INSERT_COLUMNS_UPDATED = "origin_id,group_id,tenant_id,template_id,process_id, file_path, extracted_text,container_name,container_value,paper_no,file_name, status,stage,message,is_blank_page, created_on ,root_pipeline_id,template_name,model_name,model_version,batch_id, last_updated_on,request,response,endpoint,container_id,prompt_type, request_id, copro_status_code, copro_log, copro_error_details, computation_details";
     private static final String DEFAULT_SOCKET_TIMEOUT = "100";
 
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?,?,?)";
+    public static final String INSERT_INTO_VALUES = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?)";
+    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?,? ,?,?,? ,?,?,?,?, ?,?,?,?,? ,?, ?,?,?,?,  ?,?,?,?,?,?,?,?,?, ?, ?, ?, ? ::jsonb)";
 
+    public static final String AGENTIC_PAPER_FILTER_CONSUMER_API_COUNT = "agentic.paper.filter.consumer.API.count";
     public static final String PAGE_CONTENT_MIN_LENGTH = "page.content.min.length.threshold";
     private final ActionExecutionAudit action;
 

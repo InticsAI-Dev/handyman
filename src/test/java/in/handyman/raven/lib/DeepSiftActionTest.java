@@ -16,32 +16,30 @@ public class DeepSiftActionTest {
                 .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://localhost:5432/xenon-textract")
+                .endPoint("http://172.202.112.23/xenon-textract")
                 .processId("5443")
                 .resultTable("deep_sift.deep_sift_output_audit")
                 .forkBatchSize("8")
                 .querySet("SELECT\n" +
-                        "    dsi.origin_id,\n" +
-                        "    dsi.group_id,\n" +
-                        "    dsi.created_on,\n" +
-                        "    dsi.created_by,\n" +
-                        "    dsi.input_file_path,\n" +
-                        "    dsi.root_pipeline_id,\n" +
-                        "    dsi.tenant_id,\n" +
-                        "    dsi.batch_id,\n" +
-                        "    dsi.paper_no,\n" +
-                        "    dsi.source_document_type,\n" +
-                        "    dsi.model_id,\n" +
-                        "    dsi.model_name,\n" +
-                        "    dsi.base_prompt,\n" +
-                        "    dsi.system_prompt\n" +
+                        "dsi.origin_id,\n" +
+                        "dsi.group_id,\n" +
+                        "dsi.created_on,\n" +
+                        "dsi.created_by,\n" +
+                        " '/data/processed_images/11-11-2025_04_11_40/tenant_1/group_91/preprocess/paper_itemizer/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as input_file_path,\n" +
+                        "dsi.root_pipeline_id,\n" +
+                        "dsi.tenant_id,\n" +
+                        "dsi.batch_id,\n" +
+                        "dsi.paper_no,\n" +
+                        "dsi.source_document_type,\n" +
+                        "dsi.model_id,\n" +
+                        "dsi.model_name,\n" +
+                        "dsi.base_prompt,\n" +
+                        "dsi.system_prompt\n" +
                         "FROM deep_sift.deep_sift_input_audit dsi\n" +
                         "JOIN deep_sift.deep_sift_payload_queue_archive dspq\n" +
                         "ON dspq.origin_id = dsi.origin_id\n" +
-                        "WHERE\n" +
-                        "    dsi.batch_id = 'BATCH-129_0'\n" +
-                        "    AND dsi.tenant_id = 1\n" +
-                        "    AND dsi.group_id = '129'")
+                        "where dsi.origin_id ='ORIGIN-18361'\n" +
+                        "limit 3")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");
@@ -57,6 +55,7 @@ public class DeepSiftActionTest {
                 Map.entry("actionId", "21352"),
                 Map.entry("write.batch.size", "5"),
                 Map.entry("deep.sift.page.content.min.length.threshold", "1"),
+                Map.entry("copro.isretry.enabled", "true"),
                 Map.entry("deep.sift.extraction.activator", "true")
         ));
         DeepSiftAction deepSiftAction = new DeepSiftAction(actionExecutionAudit, log, deepSift);
@@ -70,36 +69,29 @@ public class DeepSiftActionTest {
                 .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
                 .resourceConn("intics_zio_db_conn")
                 .condition(true)
-                .endPoint("http://localhost:5432/xenon-textract")
+                .endPoint("http://172.202.112.23/xenon-textract")
                 .processId("138980184199100180")
-                .resultTable("transit_data.deep_sift_output_2036")
+                .resultTable("deep_sift.deep_sift_output_audit")
                 .querySet("SELECT\n" +
-                        "    dsi.origin_id,\n" +
-                        "    dsi.group_id,\n" +
-                        "    dsi.created_on,\n" +
-                        "    dsi.created_by,\n" +
-                        "    '" + filePath + "' as input_file_path,\n" +
-                        "    dsi.root_pipeline_id,\n" +
-                        "    dsi.tenant_id,\n" +
-                        "    dsi.batch_id,\n" +
-                        "    dsi.paper_no,\n" +
-                        "    dsi.source_document_type,\n" +
-                        "    dsi.sor_item_id,\n" +
-                        "    dsi.sor_item_name,\n" +
-                        "    dsi.sor_container_id,\n" +
-                        "    dsi.sor_container_name,\n" +
-                        "    dsi.model_id,\n" +
-                        "    dsi.model_name,\n" +
-                        "    dsi.search_name,\n" +
-                        "    'Extract all the page content and return as text and dont add preambles' as base_prompt,\n" +
-                        "    dsi.system_prompt\n" +
-                        "FROM transit_data.deep_sift_input_2036 dsi\n" +
-                        "JOIN deep_sift.deep_sift_payload_queue dspq\n" +
+                        "dsi.origin_id,\n" +
+                        "dsi.group_id,\n" +
+                        "dsi.created_on,\n" +
+                        "dsi.created_by,\n" +
+                        "dsi.input_file_path,\n" +
+                        "dsi.root_pipeline_id,\n" +
+                        "dsi.tenant_id,\n" +
+                        "dsi.batch_id,\n" +
+                        "dsi.paper_no,\n" +
+                        "dsi.source_document_type,\n" +
+                        "dsi.model_id,\n" +
+                        "dsi.model_name,\n" +
+                        "dsi.base_prompt,\n" +
+                        "dsi.system_prompt\n" +
+                        "FROM deep_sift.deep_sift_input_audit dsi\n" +
+                        "JOIN deep_sift.deep_sift_payload_queue_archive dspq\n" +
                         "ON dspq.origin_id = dsi.origin_id\n" +
-                        "WHERE\n" +
-                        "    dsi.batch_id = 'BATCH-52_0'\n" +
-                        "    AND dsi.tenant_id = 1\n" +
-                        "    AND dsi.group_id = '52';")
+                        "where dsi.origin_id ='ORIGIN-18361'\n" +
+                        "limit 3")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");

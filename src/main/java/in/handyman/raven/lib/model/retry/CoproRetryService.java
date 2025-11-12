@@ -1,12 +1,19 @@
 package in.handyman.raven.lib.model.retry;
 
+import bsh.EvalError;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.ComputationDetails;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpConsumerProcess;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpExtractionResponse;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.ExceptionUtil;
+import jakarta.json.Json;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -15,10 +22,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.net.SocketException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
@@ -52,20 +56,74 @@ public class CoproRetryService {
         int maxRetries = Integer.parseInt(actionAudit.getContext().getOrDefault("copro.retry.attempt", "1"));
         IOException lastException = null;
         retryAudit.setCoproServiceId(UUID.randomUUID().toString());
+        ObjectMapper objectMapper = new ObjectMapper();
 
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             Response response = null;
             try {
                 response = httpClient.newCall(request).execute();
-
                 if (response.isSuccessful() && response.body() != null) {
+                    JsonNode inp = objectMapper.readTree(response.peekBody(Long.MAX_VALUE).string());
+
+                    // Safe extraction in one line per field using Optional
+                    final JsonNode responseBodyData = Optional.ofNullable(inp.get("outputs"))
+                            .filter(JsonNode::isArray)
+                            .map(arr -> arr.get(0))
+                            .map(node -> node.get("data"))
+                            .filter(JsonNode::isArray)
+                            .map(arr -> arr.get(0))
+                            .orElse(objectMapper.nullNode());
+
+                    final String innerJsonText = responseBodyData.isTextual() ? responseBodyData.asText() : "{}";
+                    final JsonNode innerJson = objectMapper.readTree(innerJsonText);
+
+                    // Safe field extraction with sensible defaults
+                    final JsonNode computationDetails = Optional.ofNullable(innerJson.get("computationDetails"))
+                            .orElse(objectMapper.nullNode());
+                    final int statusCode = Optional.ofNullable(innerJson.get("statusCode"))
+                            .map(JsonNode::asInt)
+                            .orElse(-1);
+                    final String errorMessage = Optional.ofNullable(innerJson.get("errorMessage"))
+                            .map(JsonNode::asText)
+                            .orElse("");
+                    final String detail = Optional.ofNullable(innerJson.get("detail"))
+                            .map(JsonNode::asText)
+                            .orElse("");
+                    final String requestId = Optional.ofNullable(innerJson.get("requestId"))
+                            .map(JsonNode::asText)
+                            .orElse("");
+                    final long imageDPI = Optional.ofNullable(innerJson.get("imageDPI"))
+                            .map(JsonNode::asLong)
+                            .orElse(0L);
+                    final long imageWidth = Optional.ofNullable(innerJson.get("imageWidth"))
+                            .map(JsonNode::asLong)
+                            .orElse(0L);
+                    final long imageHeight = Optional.ofNullable(innerJson.get("imageHeight"))
+                            .map(JsonNode::asLong)
+                            .orElse(0L);
+                    final String extractedImageUnit = Optional.ofNullable(innerJson.get("extractedImageUnit"))
+                            .map(JsonNode::asText)
+                            .orElse("");
+
                     log.info("Copro API call successful for stage {} with id {} on attempt {}: {} - {}",
-                            retryAudit.getStage(),retryAudit.getCoproServiceId(),attempt, response.code(), response.message());
+                            retryAudit.getStage(), retryAudit.getCoproServiceId(), attempt, response.code(), response.message());
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                     retryAudit.setMessage(response.message());
+                    retryAudit.setComputationDetails(objectMapper.writeValueAsString(computationDetails));
+                    retryAudit.setCoproStatusCode(statusCode);
+                    retryAudit.setCoproLog(detail);
+                    retryAudit.setCoproErrorDetails(errorMessage);
+                    retryAudit.setRequestId(requestId);
+                    retryAudit.setImageDpi(imageDPI);
+                    retryAudit.setImageWidth(imageWidth);
+                    retryAudit.setImageHeight(imageHeight);
+                    retryAudit.setExtractedImageUnit(extractedImageUnit);
+
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // ✅ return without auto-closing
+
+
                 }
 
                 if (!isRetryRequired(response)) {
