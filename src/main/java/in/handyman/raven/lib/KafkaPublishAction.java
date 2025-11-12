@@ -141,29 +141,28 @@ public class KafkaPublishAction implements IActionExecution {
             audit.setRetryCount(attempt);
 
             try {
-                log.info(aMarker, "Kafka publish attempt {}/{}",
-                        attempt + 1, maxAttempts);
+                log.info(aMarker, "Kafka publish attempt {}/{} for document: {}",
+                        attempt + 1, maxAttempts, kafkaPublishQueryInput.getDocumentId());
 
                 doKafkaPublish(kafkaPublishQueryInput, attempt, audit);
 
-                // Success
-                log.info(aMarker, "Published successfully on attempt {}/{}", attempt + 1, maxAttempts);
+                log.info(aMarker, "Published successfully on attempt {}/{} for document: {}",
+                        attempt + 1, maxAttempts, kafkaPublishQueryInput.getDocumentId());
                 auditRecordsForAllAttempts.add(audit);
 
-                // Insert all attempts (failed + successful) as a single batch
-                insertExecutionInfoBatch(jdbi, outputTable, auditRecordsForAllAttempts);
-                log.info(aMarker, "Batch inserted {} audit records", auditRecordsForAllAttempts.size());
-                return;
+                break;
 
             } catch (Exception e) {
                 lastException = e;
                 String errorMsg = String.format("Attempt %d/%d failed: %s",
                         attempt + 1, maxAttempts, e.getMessage());
 
-                log.warn(aMarker, errorMsg);
-
-                // Audit this failed attempt
-                updateKafkaPublishAudit(-1, FAILED_STATUS, audit, errorMsg);
+                log.warn(aMarker, "{} for document: {}", errorMsg, kafkaPublishQueryInput.getDocumentId());
+                audit.setPartition(-1);
+                audit.setExecStatus(FAILED_STATUS);
+                audit.setResponse(errorMsg);
+                audit.setLastUpdatedOn(LocalDateTime.now());
+                audit.setStatus("ACTIVE");
                 auditRecordsForAllAttempts.add(audit);
 
                 // If not the last attempt, sleep before retry
@@ -181,20 +180,21 @@ public class KafkaPublishAction implements IActionExecution {
             }
         }
 
-        // All retries exhausted - insert all failed attempts as batch
-        log.error(aMarker, "All {} retry attempts exhausted for document {}",
-                maxAttempts, kafkaPublishQueryInput.getDocumentId());
-
         try {
             insertExecutionInfoBatch(jdbi, outputTable, auditRecordsForAllAttempts);
-            log.info(aMarker, "Batch inserted {} failure audit records", auditRecordsForAllAttempts.size());
+            log.info(aMarker, "Batch inserted {} audit records (success + failures) for document: {}",
+                    auditRecordsForAllAttempts.size(), kafkaPublishQueryInput.getDocumentId());
         } catch (Exception dbEx) {
-            log.error(aMarker, "Failed to insert audit records", dbEx);
+            log.error(aMarker, "Failed to insert audit records for document: {}",
+                    kafkaPublishQueryInput.getDocumentId(), dbEx);
+            throw dbEx;
         }
 
-        String finalErrorMsg = String.format("Failed after %d attempts: %s",
-                maxAttempts, lastException != null ? lastException.getMessage() : "Unknown");
-        throw new HandymanException(finalErrorMsg, lastException, action);
+        if (lastException != null) {
+            String finalErrorMsg = String.format("Failed after %d attempts: %s",
+                    maxAttempts, lastException.getMessage());
+            throw new HandymanException(finalErrorMsg, lastException, action);
+        }
     }
 
     private void doKafkaPublish(KafkaPublishQueryInput kafkaPublishQueryInput, Integer retryCount,
