@@ -53,7 +53,8 @@ public class KafkaPublishAction implements IActionExecution {
     private static final String SCRAM_SHA_256 = "SCRAM-SHA-256";
     private static final String PLAIN_SASL = "PLAIN";
     private static final String FAILED_STATUS = "FAILED";
-    private static final String ENABLE_RETRY_KEY = "kafka.enable.retry";
+    private static final String KAFKA_ENABLE_MANUAL_RETRY_KEY = "kafka.enable.manual.retry";
+    private static final String KAFKA_ENABLE_INBUILT_RETRY_KEY = "kafka.enable.inbuild.retry";
 
     public KafkaPublishAction(final ActionExecutionAudit action, final Logger log,
                               final Object kafkaPublish) {
@@ -106,7 +107,7 @@ public class KafkaPublishAction implements IActionExecution {
                             doKafkaPublishWithRetry(jdbi, input, outputTable, allAuditRecords);
                 } catch (Exception e) {
 
-                    log.error(aMarker, "Error processing kafka publish query input {}", input.getDocumentId(), e);
+                    log.error(aMarker, "Error processing kafka publish query", e);
                     HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error processing kafka publish query input", handymanException, action);
                 }
@@ -136,7 +137,7 @@ public class KafkaPublishAction implements IActionExecution {
         String saslMechanism = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.sasl.mechanism"));
         String endpoint = ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.endpoint"));
 
-        boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
+        boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(KAFKA_ENABLE_MANUAL_RETRY_KEY, "true"));
         int maxAttempts = enableRetry ? Integer.parseInt(action.getContext().getOrDefault("kafka.max.retry.attempts", "3")) : 1;
         long initialDelay = Long.parseLong(action.getContext().getOrDefault("kafka.initial.retry.delays.ms", "1000"));
         double backoffMultiplier = Double.parseDouble(action.getContext().getOrDefault("kafka.retry.backoff.multiplier", "2.0"));
@@ -153,13 +154,13 @@ public class KafkaPublishAction implements IActionExecution {
             audit.setRetryCount(attempt);
 
             try {
-                log.info(aMarker, "Kafka publish attempt {}/{} for document: {}",
-                        attempt + 1, maxAttempts, kafkaPublishQueryInput.getDocumentId());
+                log.info(aMarker, "Kafka publish attempt {}/{}",
+                        attempt + 1, maxAttempts);
 
                 doKafkaPublish(kafkaPublishQueryInput, attempt, audit);
 
-                log.info(aMarker, "Published successfully on attempt {}/{} for document: {}",
-                        attempt + 1, maxAttempts, kafkaPublishQueryInput.getDocumentId());
+                log.info(aMarker, "Published successfully on attempt {}/{} ",
+                        attempt + 1, maxAttempts);
 
                 localAudits.add(audit);
                 break;
@@ -169,7 +170,7 @@ public class KafkaPublishAction implements IActionExecution {
                 String errorMsg = String.format("Attempt %d/%d failed: %s",
                         attempt + 1, maxAttempts, e.getMessage());
 
-                log.warn(aMarker, "{} for document: {}", errorMsg, kafkaPublishQueryInput.getDocumentId());
+                log.warn(aMarker, "{} for document", errorMsg);
                 audit.setPartition(-1);
                 audit.setExecStatus(FAILED_STATUS);
                 audit.setResponse(errorMsg);
@@ -297,8 +298,8 @@ public class KafkaPublishAction implements IActionExecution {
                 properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.request.timeout.ms")));
                 properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.delivery.timeout.ms")));
                 properties.put(ProducerConfig.LINGER_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.linger.ms")));
-                boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
-                if (enableRetry) {
+                boolean inBuildEnableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(KAFKA_ENABLE_INBUILT_RETRY_KEY, "true"));
+                if (inBuildEnableRetry) {
                     properties.put(ProducerConfig.RETRIES_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.api.retries")));
                     properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.retry.backoff.multiplier")));
                     properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.enable.idempotence")));
@@ -323,7 +324,7 @@ public class KafkaPublishAction implements IActionExecution {
             properties.put(SASL_MECHANISM, PLAIN_SASL);
             String jaasConfig = String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", userName, password);
             properties.put("sasl.jaas.config", jaasConfig);
-            boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
+            boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(KAFKA_ENABLE_INBUILT_RETRY_KEY, "true"));
             if (enableRetry) {
                 properties.put(ProducerConfig.ACKS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.acks")));
                 properties.put(ProducerConfig.RETRIES_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.api.retries")));

@@ -894,8 +894,8 @@ class   KafkaPublishActionTest {
                 Map.entry("kafka.authentication.sasl.ssl.include", "certs"),
 
                 // ===== AGGRESSIVE TIMEOUT CONFIGURATION TO TRIGGER RETRIES =====
-                Map.entry("kafka.ssl.request.timeout.ms", "1000"),        // Very low request timeout
-                Map.entry("kafka.ssl.delivery.timeout.ms", "5000"),      // Total delivery timeout
+                Map.entry("kafka.ssl.request.timeout.ms", "10"),        // Very low request timeout
+                Map.entry("kafka.ssl.delivery.timeout.ms", "50"),      // Total delivery timeout
                 Map.entry("kafka.ssl.linger.ms", "0"),                   // No batching delay
                 Map.entry("kafka.ssl.acks", "all"),
                 // ===== RETRY CONFIGURATION =====
@@ -907,12 +907,13 @@ class   KafkaPublishActionTest {
                 Map.entry("kafka.ssl.api.retries", "3"),
 
                 Map.entry("kafka.retry.backoff.multiplier", "100"),
-           // Short backoff
-// Short backoff
+                Map.entry("kafka.enable.manual.retry", "true"),
+                Map.entry("kafka.enable.inbuild.retry", "false"),
+
 
                 // ===== CONNECTION CONFIGURATION =====
-                Map.entry("kafka.connections.max.idle.ms", "100"),   // Aggressive connection timeout
-                Map.entry("kafka.reconnect.backoff.ms", "50"),       // Quick reconnection
+                Map.entry("kafka.connections.max.idle.ms", "1000"),   // Aggressive connection timeout
+                Map.entry("kafka.reconnect.backoff.ms", "5000"),       // Quick reconnection
                 Map.entry("kafka.reconnect.backoff.max.ms", "100"),  // Max reconnection time
 
                 // ===== OTHER CONFIGURATION =====
@@ -930,7 +931,6 @@ class   KafkaPublishActionTest {
                 kafkaPublish
         );
 
-        // This should now retry 3 times with exponential backoff
         kafkaPublishAction.execute();
 
         System.out.println("✓ Kafka publish completed (check logs for retry attempts)!");
