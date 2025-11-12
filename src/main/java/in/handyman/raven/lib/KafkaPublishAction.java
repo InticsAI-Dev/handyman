@@ -262,7 +262,9 @@ public class KafkaPublishAction implements IActionExecution {
                 try {
                     producer.close();
                 } catch (Exception closeEx) {
-                    log.warn(aMarker, "Error closing producer: {}", closeEx.getMessage());
+                    log.error(aMarker, "Error closing producer: {}", closeEx.getMessage());
+                    HandymanException handymanException = new HandymanException(closeEx);
+                    HandymanException.insertException("Error in closing producer", handymanException, action);
                 }
             }
         }
