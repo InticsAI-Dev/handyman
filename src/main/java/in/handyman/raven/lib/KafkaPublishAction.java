@@ -107,7 +107,7 @@ public class KafkaPublishAction implements IActionExecution {
                             doKafkaPublishWithRetry(jdbi, input, outputTable, allAuditRecords);
                 } catch (Exception e) {
 
-                    log.error(aMarker, "Error processing kafka publish query input {}", input.getDocumentId(), e);
+                    log.error(aMarker, "Error processing kafka publish query", e);
                     HandymanException handymanException = new HandymanException(e);
                     HandymanException.insertException("Error processing kafka publish query input", handymanException, action);
                 }
@@ -154,13 +154,13 @@ public class KafkaPublishAction implements IActionExecution {
             audit.setRetryCount(attempt);
 
             try {
-                log.info(aMarker, "Kafka publish attempt {}/{} for document: {}",
-                        attempt + 1, maxAttempts, kafkaPublishQueryInput.getDocumentId());
+                log.info(aMarker, "Kafka publish attempt {}/{}",
+                        attempt + 1, maxAttempts);
 
                 doKafkaPublish(kafkaPublishQueryInput, attempt, audit);
 
-                log.info(aMarker, "Published successfully on attempt {}/{} for document: {}",
-                        attempt + 1, maxAttempts, kafkaPublishQueryInput.getDocumentId());
+                log.info(aMarker, "Published successfully on attempt {}/{} ",
+                        attempt + 1, maxAttempts);
 
                 localAudits.add(audit);
                 break;
@@ -170,7 +170,7 @@ public class KafkaPublishAction implements IActionExecution {
                 String errorMsg = String.format("Attempt %d/%d failed: %s",
                         attempt + 1, maxAttempts, e.getMessage());
 
-                log.warn(aMarker, "{} for document: {}", errorMsg, kafkaPublishQueryInput.getDocumentId());
+                log.warn(aMarker, "{} for document", errorMsg);
                 audit.setPartition(-1);
                 audit.setExecStatus(FAILED_STATUS);
                 audit.setResponse(errorMsg);
