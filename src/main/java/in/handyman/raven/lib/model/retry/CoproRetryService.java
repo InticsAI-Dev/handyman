@@ -63,7 +63,7 @@ public class CoproRetryService {
                             retryAudit.getStage(),retryAudit.getCoproServiceId(),attempt, response.code(), response.message());
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
-                    retryAudit.setMessage(response.message());
+                    retryAudit.setMessage(response.code() + response.message());
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // ✅ return without auto-closing
                 }
@@ -73,7 +73,7 @@ public class CoproRetryService {
                             retryAudit.getStage(),retryAudit.getCoproServiceId(),attempt, response.code(), response.message());
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
-                    retryAudit.setMessage(response.message());
+                    retryAudit.setMessage(response.code() + response.message());
                     insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                     return response; // non-retryable → exit early
                 }
@@ -243,7 +243,7 @@ public class CoproRetryService {
         retryAudit.setAttempt(attempt);
 
         if (response != null) {
-            retryAudit.setMessage(response.message());
+            retryAudit.setMessage(response.code() + response.message());
             try {
                 retryAudit.setResponse(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
             } catch (IOException ex) {

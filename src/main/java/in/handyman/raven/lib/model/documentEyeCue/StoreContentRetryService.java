@@ -64,9 +64,9 @@ public class StoreContentRetryService {
 
                 if (responseDto != null && responseDto.getStatus()==200) {
                     log.info("StoreContent upload SUCCESS on attempt {} | contentId={} | message={}",
-                            attempt, responseDto.getContentID(), responseDto.getMessage());
+                            attempt, responseDto.getContentID(), responseDto.getStatus());
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
-                    retryAudit.setMessage(responseDto.getMessage());
+                    retryAudit.setMessage(String.valueOf(responseDto.getStatus()));
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                     insertAudit(attempt, retryAudit, requestDto, responseDto, null, actionAudit);
                     return responseDto;
@@ -75,9 +75,9 @@ public class StoreContentRetryService {
                 // Non-retryable conditions
                 if (!isRetryRequired(responseDto)) {
                     log.warn("Non-retryable response on attempt {} - message: {}", attempt,
-                            responseDto != null ? responseDto.getMessage() : "null");
+                            responseDto != null ? String.valueOf(responseDto.getStatus()) : "null");
                     retryAudit.setStatus(ConsumerProcessApiStatus.COMPLETED.getStatusDescription());
-                    retryAudit.setMessage(responseDto != null ? responseDto.getMessage() : "null");
+                    retryAudit.setMessage(responseDto != null ? String.valueOf(responseDto.getStatus()) : "null");
                     retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                     insertAudit(attempt, retryAudit, requestDto, responseDto, null, actionAudit);
                     return responseDto;
@@ -180,7 +180,7 @@ public class StoreContentRetryService {
 //        retryAudit.setRequest(encryptRequestResponse(requestDto.toString(), action));
 
         if (response != null) {
-            retryAudit.setMessage(response.getMessage());
+            retryAudit.setMessage(String.valueOf(response.getStatus()));
 //            retryAudit.setResponse(encryptRequestResponse(response.toString(), action));
         } else if (e != null) {
             String message = e.getMessage() != null ? e.getMessage() : ExceptionUtil.toString(e);
