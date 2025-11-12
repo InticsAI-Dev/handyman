@@ -288,10 +288,18 @@ public class KafkaPublishAction implements IActionExecution {
                 properties.put("ssl.key.password", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.key.password")));
                 properties.put("ssl.endpoint.identification.algorithm", ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.endpoint.identification.algorithm")));
                 properties.put(ProducerConfig.ACKS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.acks")));
-                properties.put(ProducerConfig.RETRIES_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.api.retries")));
                 properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.request.timeout.ms")));
                 properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.delivery.timeout.ms")));
                 properties.put(ProducerConfig.LINGER_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.linger.ms")));
+                boolean enableRetry = Boolean.parseBoolean(action.getContext().getOrDefault(ENABLE_RETRY_KEY, "true"));
+                if (enableRetry) {
+                    properties.put(ProducerConfig.RETRIES_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.ssl.api.retries")));
+                    properties.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.retry.backoff.multiplier")));
+                    properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.enable.idempotence")));
+                    properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, ConfigEncryptionUtils.fromEnv().decryptProperty(action.getContext().get("kafka.max.in.flight.requests")));
+                }else{
+                    properties.put(ProducerConfig.RETRIES_CONFIG, 0);}
+
             } else {
                 if (saslMechanism.equalsIgnoreCase(SCRAM_SHA_256)) {
                     properties.put(SASL_MECHANISM, SCRAM_SHA_256);
