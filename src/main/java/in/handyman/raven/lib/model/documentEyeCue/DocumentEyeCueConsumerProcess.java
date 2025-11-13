@@ -258,7 +258,16 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
             if(action.getContext().getOrDefault("doc.eyecue.storecontent.upload","false").equals("true")){
                 log.info(MARKER, "StoreContent upload initiated for document_id: {} | origin_id: {}",
                         entity.getDocumentId(), entity.getOriginId());
-                uploadToStoreContent(outputFilePath, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+                final String outputFilePath1 = outputFilePath;
+                StoreContentUploadExecutor.getInstance().submit(() -> {
+                    try {
+                        uploadToStoreContent(outputFilePath1, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+                    } catch (Exception ex) {
+                        log.error(MARKER, "Error during StoreContent upload for origin_id {}: {}", entity.getOriginId(), ex.getMessage(), ex);
+                        HandymanException handymanException = new HandymanException(ex);
+                        HandymanException.insertException("StoreContent upload failed for origin_id " + entity.getOriginId(), handymanException, action);
+                    }
+                });
             }
 
         } catch (JsonProcessingException e) {
