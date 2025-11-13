@@ -169,10 +169,9 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
 
     private int calculateShift(String input) {
         if (input == null || input.isEmpty()) return 3; // fallback default
-        int len = input.length();
         // For every 10 characters, reduce shift by 1 (down to min 1)
-        int shift = 10 - (len / 10);
-        return Math.max(1, shift);
+
+        return input.length();
     }
 
     // Names & alphanumeric tokens
