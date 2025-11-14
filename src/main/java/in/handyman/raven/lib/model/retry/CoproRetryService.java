@@ -52,9 +52,13 @@ public class CoproRetryService {
         int maxRetries = Integer.parseInt(actionAudit.getContext().getOrDefault("copro.retry.attempt", "1"));
         IOException lastException = null;
         retryAudit.setCoproServiceId(UUID.randomUUID().toString());
+        log.info("Starting Copro API call with up to {} retries for stage {} with id {}",
+                maxRetries,retryAudit.getStage(),retryAudit.getCoproServiceId());
 
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             Response response = null;
+            retryAudit.setCreatedOn(CreateTimeStamp.currentTimestamp());
+
             try {
                 log.info("Copro API call retry attempt {} for stage {} with id {}",
                         attempt,retryAudit.getStage(),retryAudit.getCoproServiceId());
@@ -80,7 +84,7 @@ public class CoproRetryService {
                     return response; // non-retryable → exit early
                 }
 
-                logRetryAttempt(attempt, response);
+                logRetryAttempt(attempt, response, retryAudit.getCoproServiceId());
                 retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
                 insertAudit(attempt, retryAudit, requestBody, response, null, actionAudit);
                 safeClose(response); // free resources before retry
@@ -91,15 +95,15 @@ public class CoproRetryService {
 
                 // Check if this is a retryable error
                 if (!isRetryableException(e)) {
-                    log.error("Non-retryable exception encountered: {}", e.getClass().getName());
+                    log.error("Non-retryable exception encountered: {} for copro service id {}", e.getClass().getName(), retryAudit.getCoproServiceId());
                     handleIOException(attempt, retryAudit, requestBody, e, actionAudit);
                     throw e; // Don't retry non-retryable exceptions
                 }
 
                 // Log HTTP/2 specific errors with more context
                 if (isHttp2Error(e)) {
-                    log.warn("HTTP/2 protocol error detected on attempt {}: {}",
-                            attempt, e.getMessage());
+                    log.warn("HTTP/2 protocol error detected on attempt {}: {} for copro service id {}",
+                            attempt, e.getMessage(), retryAudit.getCoproServiceId());
                 }
 
                 handleIOException(attempt, retryAudit, requestBody, e, actionAudit);
@@ -118,7 +122,7 @@ public class CoproRetryService {
 
         throw lastException != null
                 ? lastException
-                : new IOException("Copro API call failed: no response and no exception.");
+                : new IOException("Copro API call failed: no response and no exception for copro service id " + retryAudit.getCoproServiceId());
     }
 
     /**
@@ -201,9 +205,9 @@ public class CoproRetryService {
                 && !nonRetractableErrors.contains(response.code()));
     }
 
-    private void logRetryAttempt(int attempt, Response response) {
-        log.error("Attempt {}: Unsuccessful response {} - {}",
-                attempt, response.code(), response.message());
+    private void logRetryAttempt(int attempt, Response response, String coproServiceId) {
+        log.error("Attempt {}: Unsuccessful response {} - {} for copro service id {}",
+                attempt, response.code(), response.message(),coproServiceId);
     }
 
     private void handleIOException(int attempt,
@@ -214,7 +218,7 @@ public class CoproRetryService {
         log.error("Attempt {}: for copro service ID {} : IOException - {} ", attempt, retryAudit.getCoproServiceId(),ExceptionUtil.toString(e));
         retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
         insertAudit(attempt, retryAudit, requestBody, null, e, action);
-        HandymanException.insertException("Error during copro API call",
+        HandymanException.insertException("Error during copro API call for id " + retryAudit.getCoproServiceId(),
                 new HandymanException(e), action);
     }
 
@@ -229,8 +233,8 @@ public class CoproRetryService {
             retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
             handymanRepo.insertAuditToDb(retryAudit, action);
         } catch (Exception exception) {
-            log.error("Error inserting into retry audit {}", ExceptionUtil.toString(exception));
-            HandymanException.insertException("Error inserting into copro retry audit",
+            log.error("Error inserting into retry audit {} for id {} ", ExceptionUtil.toString(exception),retryAudit.getCoproServiceId());
+            HandymanException.insertException("Error inserting into copro retry audit for id " + retryAudit.getCoproServiceId(),
                     new HandymanException(exception), action);
         }
     }
@@ -292,7 +296,7 @@ public class CoproRetryService {
         // Cap the maximum delay at 60 seconds
         backoffMillis = Math.min(backoffMillis, TimeUnit.SECONDS.toMillis(60));
 
-        log.info("Waiting {} ms before retry attempt {}", backoffMillis, attempt + 1);
+        log.info("Waiting {} ms before retry attempt {}", backoffMillis, attempt + 1    );
 
         try {
             Thread.sleep(backoffMillis);

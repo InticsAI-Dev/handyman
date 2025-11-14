@@ -150,6 +150,19 @@ public class PdfToPaperItemizerStreamingTest {
 //        assertEquals(50, resized.getWidth());
 //        assertEquals(50, resized.getHeight());
 //    }
+
+@Test
+public void convertBase64FromFileTest() throws IOException {
+
+    ActionExecutionAudit audit = new ActionExecutionAudit();
+    Marker marker = MarkerFactory.getMarker("PaperItemizer:");
+    String imagePath = "/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_2.png";
+    FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, marker, audit);
+    String base64Img = fileProcessingUtils.convertFileToBase64(imagePath);
+
+    System.out.println(base64Img);
+
+}
 @Test
 public void contextLoads() throws IOException {
     Path inputPath = Path.of("/Users/anandh.andrews/intics-workspace/repos-master/handyman/src/test/java/in/handyman/raven/lib/model/paperitemizer/processed/output_image_1762168515583/output_image_1762168515583_5.jpg");

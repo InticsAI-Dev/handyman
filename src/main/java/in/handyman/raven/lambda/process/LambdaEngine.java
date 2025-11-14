@@ -293,10 +293,15 @@ public class LambdaEngine {
             });
             logger.info("\n");
             log.info("Completed collecting LambdaEngine logs for action "+actionName);
-            actionExecutionAudit.setLog(stringBuilder.toString());
+            String cleanedLog = sanitizeLog(stringBuilder.toString());
+            actionExecutionAudit.setLog(cleanedLog);
             log.info(stringBuilder.toString());
             HandymanActorSystemAccess.update(actionExecutionAudit);
         }
+    }
+    private static String sanitizeLog(String s) {
+        if (s == null) return null;
+        return s.replace("\u0000", "").replaceAll("\\p{C}", "");
     }
 
     public static SubstituteLogger getLogger(final ActionExecutionAudit actionExecutionAudit) {
