@@ -52,10 +52,11 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         this.processBase64 = processBase64;
         int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, "100"));
         this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(timeOut, TimeUnit.MINUTES)
-                .writeTimeout(timeOut, TimeUnit.MINUTES)
-                .readTimeout(timeOut, TimeUnit.MINUTES)
-                .build();
+                    .connectTimeout(timeOut, TimeUnit.MINUTES)
+                    .writeTimeout(timeOut, TimeUnit.MINUTES)
+                    .readTimeout(timeOut, TimeUnit.MINUTES)
+                    .callTimeout(timeOut, TimeUnit.MINUTES)
+                    .build();
         coproRetryService = new CoproRetryService(handymanRepo, httpClient, log);
     }
 

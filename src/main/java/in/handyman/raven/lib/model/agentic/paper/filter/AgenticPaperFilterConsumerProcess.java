@@ -79,7 +79,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .connectTimeout(timeOut, TimeUnit.MINUTES)
                 .writeTimeout(timeOut, TimeUnit.MINUTES)
-                .readTimeout(timeOut, TimeUnit.MINUTES);
+                .readTimeout(timeOut, TimeUnit.MINUTES)
+                .callTimeout(timeOut, TimeUnit.MINUTES);
 
         if ("HTTP/1.1".equalsIgnoreCase(httpClientType)) {
             log.info(aMarker, "HTTP client protocol explicitly set to HTTP/1.1");
