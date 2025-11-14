@@ -1,5 +1,6 @@
 package in.handyman.raven.lambda.access.repo;
 
+import in.handyman.raven.core.encryption.ProtegrityApiAudit;
 import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
@@ -114,9 +115,20 @@ public interface HandymanRepo {
 
     List<HandymanExceptionAuditDetails> findAllHandymanExceptions();
 
-    long insertProtegrityAuditRecord(String key, String encryptionType, String endpoint, Long rootPipelineId, Long actionId, String threadName,String uuid);
+    long insertProtegrityAuditRecord(String key, String encryptionType, String endpoint, Long rootPipelineId, Long actionId, String threadName, String uuid);
 
     void updateProtegrityAuditRecord(long id, String status, String message);
 
     long insertAuditToDb(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action);
+
+    void insertProtegrityAudit(ProtegrityApiAudit audit);
+
+    List<CoproRetryErrorAuditTable> findAllCoproApiCalls();
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineId(Long rootPipelineId);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginId(String originId);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineIdAndOriginId(Long rootPipelineId, String originId);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByStatus(String status);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByStage(String stage);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginIdAndStage(String originId, String stage);
+    List<CoproRetryErrorAuditTable> findCoproApiCallsByStatusAndStage(String status, String stage);
 }

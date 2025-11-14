@@ -6,8 +6,9 @@ import in.handyman.raven.lib.model.RadonKvp;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
 
 @Slf4j
 public class RadonKvpAcionTest {
@@ -38,7 +39,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("text.to.replace.prompt", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("triton.request.radon.kvp.activator", "true");
         ac.getContext().put("prompt.base64.activator", "false");
-        ac.getContext().put("copro.client.socket.timeout", "10");
+        ac.getContext().put(COPRO_CLIENT_SOCKET_TIMEOUT, "10");
         ac.getContext().put("copro.client.api.sleeptime", "10");
         ac.getContext().put("pipeline.copro.api.process.file.format", "BASE64");
         ac.getContext().put("pipeline.encryption.default.holder", "");

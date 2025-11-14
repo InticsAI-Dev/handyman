@@ -3,7 +3,7 @@ package in.handyman.raven.lib.model.documentEyeCue;
 import com.anthem.acma.commonclient.storecontent.dto.StoreContentResponseDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import in.handyman.raven.core.encryption.EncryptionConstants;
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.utils.FileProcessingUtils;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
@@ -26,6 +26,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
@@ -48,11 +49,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
     private final CoproRetryService coproRetryService;
 
-    final OkHttpClient httpclient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.MINUTES)
-            .writeTimeout(10, TimeUnit.MINUTES)
-            .readTimeout(10, TimeUnit.MINUTES)
-            .build();
+    private final OkHttpClient httpclient ;
 
     public DocumentEyeCueConsumerProcess(Logger log, Marker aMarker,
                                          FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action,
@@ -63,7 +60,14 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
-        coproRetryService = new CoproRetryService(handymanRepo, httpclient);
+        Integer timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, "2"));
+        this.httpclient=new OkHttpClient.Builder()
+                .connectTimeout(timeOut, TimeUnit.MINUTES)
+                .writeTimeout(timeOut, TimeUnit.MINUTES)
+                .readTimeout(timeOut, TimeUnit.MINUTES)
+                .callTimeout(timeOut, TimeUnit.MINUTES)
+                .build();
+        coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
     }
 
     private static final Marker MARKER = MarkerFactory.getMarker("DocumentEyeCue");
@@ -258,7 +262,16 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
             if(action.getContext().getOrDefault("doc.eyecue.storecontent.upload","false").equals("true")){
                 log.info(MARKER, "StoreContent upload initiated for document_id: {} | origin_id: {}",
                         entity.getDocumentId(), entity.getOriginId());
-                uploadToStoreContent(outputFilePath, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+                final String outputFilePath1 = outputFilePath;
+                StoreContentUploadExecutor.getInstance().submit(() -> {
+                    try {
+                        uploadToStoreContent(outputFilePath1, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+                    } catch (Exception ex) {
+                        log.error(MARKER, "Error during StoreContent upload for origin_id {}: {}", entity.getOriginId(), ex.getMessage(), ex);
+                        HandymanException handymanException = new HandymanException(ex);
+                        HandymanException.insertException("StoreContent upload failed for origin_id " + entity.getOriginId(), handymanException, action);
+                    }
+                });
             }
 
         } catch (JsonProcessingException e) {

@@ -135,5 +135,52 @@ class PaperItemizerActionTest {
         System.out.println("Execution time: " + totalTimeMillis + " ms");
 
     }
+
+
+    @Test
+    void paperItemizerInputFromDbArgon() throws Exception {
+        PaperItemizer paperItemizer = PaperItemizer.builder()
+                .name("paper itemizer macro test after copro optimization")
+                .resourceConn("intics_zio_db_conn")
+                .condition(true)
+                .processId("138980184199100180")
+                .endpoint("http://192.168.10.241:10100/intics-copro/convert-pdf-2-image")
+                .resultTable("info.paper_itemizer")
+                .outputDir("/Users/Shared/myappdata/")
+                .querySet(" SELECT 'origin-1' as origin_id, 1 as group_id ,'/Users/Shared/myappdata/MCR_P69_Expedited_Prior_Auth_Request.pdf' as file_path,1 as tenant_id,1 as process_id, 1110 as root_pipeline_id, 'Batch-1' as batch_id, now() as created_on\n" )
+                .build();
+
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.setActionId(1L);
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(Map.entry("copro.paper-itemizer.url", "http://192.168.10.241:10100/intics-copro/convert-pdf-2-image"),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("triton.request.activator", "true"),
+                Map.entry("paper.itemizer.consumer.API.count", "1"),
+                Map.entry("pipeline.copro.api.process.file.format", "BASE64"),
+                Map.entry("paper.itemizer.model.name", "ARGON"),
+                Map.entry("actionId", "1"),
+                Map.entry("paper.itemization.using.app", "true"),
+                Map.entry("paper.itemizer.resize.width", "1700"),
+                Map.entry("paper.itemizer.resize.height", "2200"),
+                Map.entry("read.batch.size", "5"),
+                Map.entry("paper.itemizer.file.dpi", "200"),
+                Map.entry("paper.itemizer.output.format", "png"),
+                Map.entry("paper.itemizer.image.type.rgb", "true"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.count", "5"),
+                Map.entry("extraction.preprocess.paper.itemizer.processing.paper.limiter.activator", "true"),
+                Map.entry("paper.itemization.resize.activator", "false"),
+                Map.entry("copro.processor.thread.creator", "FIXED_THREAD"),
+                Map.entry("write.batch.size", "5")));
+
+
+        PaperItemizerAction paperItemizerAction = new PaperItemizerAction(actionExecutionAudit, log, paperItemizer);
+        long startTime = System.currentTimeMillis();
+
+        paperItemizerAction.execute();
+        long endTime = System.currentTimeMillis();
+        long totalTimeMillis = endTime - startTime;
+        System.out.println("Execution time: " + totalTimeMillis + " ms");
+
+    }
 }
 

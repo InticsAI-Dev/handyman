@@ -33,8 +33,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_TEXT_EXTRACTION_OUTPUT;
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
 
 public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<DataExtractionInputTable, DataExtractionOutputTable> {
     public static final String TEXT_EXTRACTOR_START = "TEXT EXTRACTOR START";
@@ -56,7 +57,6 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
     private final OkHttpClient httpclient;
 
-    private static final String COPRO_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String processBase64;
@@ -70,7 +70,7 @@ public class DataExtractionConsumerProcess implements CoproProcessor.ConsumerPro
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
-        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT, "100"));
+        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, "100"));
         this.pageContentMinLength = pageContentMinLength;
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;

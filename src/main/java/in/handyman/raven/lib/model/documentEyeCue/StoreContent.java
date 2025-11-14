@@ -9,15 +9,20 @@ import com.anthem.acma.commonclient.storecontent.dto.Repository;
 import com.anthem.acma.commonclient.storecontent.logic.Acmastorecontentclient;
 import com.anthem.acma.commonclient.storecontent.logic.AcmastorecontentclientFactory;
 import in.handyman.raven.lib.model.DocumentEyeCue;
+import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.*;
+import java.net.URL;
 import java.nio.file.Files;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +32,7 @@ public class StoreContent {
     private static Logger log;
 
     private static final long STREAMING_THRESHOLD = 7_864_320; // 7.5 * 1024 * 1024
+    private static final String KEY_FILE_RENAME_ACTIVATOR = "doc.eyecue.file.rename.activator";
 
     public StoreContent(Logger log) {
         this.log = log;
@@ -64,6 +70,8 @@ public class StoreContent {
                                            DocumentEyeCueInputTable entity,
                                            ActionExecutionAudit action,
                                            DocumentEyeCue documentEyeCue) {
+        StoreContentRetryService retryService = new StoreContentRetryService(log);
+
         log.info("{} - Initiating StoreContent upload for file: {}", MARKER, filePath);
 
         StoreContentResponseDto responseDto = null;
@@ -108,7 +116,10 @@ public class StoreContent {
             }
 
             Acmastorecontentclient client = AcmastorecontentclientFactory.createInstance(clientProps);
-            responseDto = client.storeContent(requestDto);
+            URL endPoint = isStreaming ? new URL(envUrlStream) : new URL(envUrlNonStream);
+            CoproRetryErrorAuditTable retryAudit = setErrorAuditInputDetails(entity, endPoint,"StoreContent upload mode isStreaming: "+isStreaming);
+
+            responseDto = retryService.uploadWithRetry(requestDto, client, action, retryAudit);
             log.info("Invoking Acmastorecontentclient.storeContent() with repo and applicationId - Upload type: {}", uploadType);
 
             if (responseDto != null) {
@@ -136,6 +147,24 @@ public class StoreContent {
         }
 
         return responseDto;
+    }
+
+    private CoproRetryErrorAuditTable setErrorAuditInputDetails(DocumentEyeCueInputTable entity, URL endPoint,String message) {
+        return CoproRetryErrorAuditTable.builder()
+                .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                .message(message)
+                .groupId(entity.getGroupId() )
+                .tenantId(entity.getTenantId())
+                .processId(entity.getProcessId())
+                .filePath(entity.getFilePath())
+                .createdOn(entity.getCreatedOn())
+                .rootPipelineId(entity.getRootPipelineId())
+                .stage("STORE_CONTENT_UPLOAD")
+                .batchId(entity.getBatchId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .endpoint(String.valueOf(endPoint))
+                .build();
+
     }
 
     private long getFileSize(File file, String processedPdfBase64) {
@@ -185,6 +214,23 @@ public class StoreContent {
         }
     }
 
+    private String getFileName(String baseFileName, ActionExecutionAudit action, String context) {
+        String fileRenameActivator = action.getContext().get(KEY_FILE_RENAME_ACTIVATOR);
+        boolean shouldRename = "true".equalsIgnoreCase(fileRenameActivator);
+
+        if (shouldRename) {
+            String updatedFileName = incrementUpdatedFileName(baseFileName);
+            log.info(MARKER, "{} - File rename activator is enabled. Using renamed filename: {}",
+                    context, updatedFileName);
+            return updatedFileName;
+        } else {
+            String finalFileName = baseFileName + ".pdf";
+            log.info(MARKER, "{} - File rename activator is disabled. Using original filename: {}",
+                    context, finalFileName);
+            return finalFileName;
+        }
+    }
+
     private StoreContentRequestDto createNonStreamingRequest(File file,
                                                              String processedPdfBase64,
                                                              String repository,
@@ -201,8 +247,9 @@ public class StoreContent {
             String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
                     ? entity.getFileName()
                     : file.getName();
-            String updatedFileName = incrementUpdatedFileName(baseFileName);
-            contentMetadata.put("FileName", updatedFileName);
+
+            String fileName = getFileName(baseFileName, action, "NON-STREAMING");
+            contentMetadata.put("FileName", fileName);
             contentMetadata.put("MimeType",
                     Files.probeContentType(file.toPath()) != null
                             ? Files.probeContentType(file.toPath())
@@ -277,8 +324,9 @@ public class StoreContent {
             String baseFileName = (entity != null && entity.getFileName() != null && !entity.getFileName().isBlank())
                     ? entity.getFileName()
                     : file.getName();
-            String updatedFileName = incrementUpdatedFileName(baseFileName);
-            contentMetadata.put("FileName", updatedFileName);
+
+            String fileName = getFileName(baseFileName, action, "STREAMING");
+            contentMetadata.put("FileName", fileName);
             contentMetadata.put("MimeType", DEFAULT_MIME_TYPE);
             requestDto.setContentMetaData(contentMetadata);
 

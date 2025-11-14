@@ -83,10 +83,12 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
+        //TODO SIMPLE FOR EACH , REMOVE STREAM, SEPARATE CLASS
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
             logger.info("Total no of rows created {}", counter.get());
+            //TODO REMOVE EXECUTOR SERVICE
             executorService.submit(() -> {
                 try {
                     partitions.forEach((integer, ts) -> {
@@ -183,27 +185,33 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     private void startConsumerModern(String insertSql, Integer consumerCount, Integer writeBatchSize, ConsumerProcess<I, O> callable) {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
+        int queueSize = queue.size();
+        int finalConsumerCount = consumerCount;
+        logger.info("Queue size is {} and configured consumer count is {}", queueSize, consumerCount);
+        logger.info("Available processors: {}", Runtime.getRuntime().availableProcessors());
+        logger.info("Initial consumer count: {}", finalConsumerCount);
 
-        final CountDownLatch countDownLatch = new CountDownLatch(consumerCount);
 
-        // Always fixed size consumers
+        final CountDownLatch countDownLatch = new CountDownLatch(finalConsumerCount);
+        AtomicInteger threadNumber = new AtomicInteger(1);
+
         ThreadFactory namedThreadFactory = r -> {
             Thread t = new Thread(r);
-            t.setName("copro-consumer-" + t.getId());
+            t.setName("copro-processor-consumer-" + threadNumber.getAndIncrement());
             t.setDaemon(false);
             return t;
         };
 
         executorService = new ThreadPoolExecutor(
-                consumerCount,               // core
-                consumerCount,               // max
+                finalConsumerCount,               // core
+                finalConsumerCount,               // max
                 120L, TimeUnit.SECONDS,       // keepAlive
-                new LinkedBlockingQueue<>(), // no task backlog
+                new LinkedBlockingQueue<>(),
                 namedThreadFactory,
                 new ThreadPoolExecutor.CallerRunsPolicy() // if pool full, run in caller
         );
 
-        logger.info("Copro processor created with fixed consumer thread pool of size {}", consumerCount);
+        logger.info("Copro processor created with fixed consumer thread pool of size {}", finalConsumerCount);
 
         for (int i = 0; i < consumerCount; i++) {
             executorService.submit(new InboundBatchDataConsumer<>(

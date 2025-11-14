@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
+import in.handyman.raven.core.encryption.ProtegrityApiAudit;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.ConfigEncryptionUtils;
@@ -635,6 +636,31 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         );
     }
 
+
+    public void insertProtegrityAudit(
+            ProtegrityApiAudit protegrityApiAudit
+    ) {
+        checkJDBIConnection();
+
+        JDBI.withHandle(handle ->
+                handle.createUpdate("INSERT INTO audit.protegrity_api_audit " +
+                                "(key, encryption_type, endpoint, started_on, root_pipeline_id, action_id, thread_name, uuid, status, message, completed_on) " +
+                                "VALUES (:key, :encryption_type, :endpoint, :started_on, :root_pipeline_id, :action_id, :thread_name, :uuid, :status, :message, :completed_on)")
+                        .bind("key", protegrityApiAudit.getKey())
+                        .bind("encryption_type", protegrityApiAudit.getEncryptionType())
+                        .bind("endpoint", protegrityApiAudit.getEndpoint())
+                        .bind("started_on", protegrityApiAudit.getStartedOn())
+                        .bind("root_pipeline_id", protegrityApiAudit.getRootPipelineId())
+                        .bind("action_id", protegrityApiAudit.getActionId())
+                        .bind("thread_name", protegrityApiAudit.getThreadName())
+                        .bind("uuid", protegrityApiAudit.getUuid())
+                        .bind("status", protegrityApiAudit.getStatus())
+                        .bind("message", protegrityApiAudit.getMessage())
+                        .bind("completed_on", protegrityApiAudit.getCompletedOn())
+                        .execute()
+        );
+    }
+
     public long insertAuditToDb(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action) {
         checkJDBIConnection();
         try {
@@ -655,5 +681,76 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             HandymanException.insertException("Error executing prepared insert query", handymanException, action);
             throw handymanException;
         }
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findAllCoproApiCalls() {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findAll();
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineId(Long rootPipelineId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByRootPipelineId(rootPipelineId);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginId(String originId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByOriginId(originId);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByRootPipelineIdAndOriginId(Long rootPipelineId, String originId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByRootPipelineIdAndOriginId(rootPipelineId, originId);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByStatus(String status) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByStatus(status);
+        });
+    }
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginIdAndStage(String originId,String stage) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByOriginIdAndStage(originId,stage);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByStage(String stage) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByStage(stage);
+        });
+    }
+
+    @Override
+    public List<CoproRetryErrorAuditTable> findCoproApiCallsByStatusAndStage(String status, String stage) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(CoproRetryErrorAuditRepo.class);
+            return repo.findByStatusAndStage(status, stage);
+        });
     }
 }

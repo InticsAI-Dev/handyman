@@ -75,7 +75,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String url = BASE_URL + "/api/test?mode=refused_stream";
             Request request = new Request.Builder()
@@ -113,7 +113,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String url = BASE_URL + "/api/test?mode=protocol_error";
             Request request = new Request.Builder()
@@ -151,7 +151,7 @@ public class RefusedStreamRetryTest {
 
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String clientId = "rate-limit-test-" + System.currentTimeMillis();
 
@@ -197,7 +197,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String url = BASE_URL + "/api/test?mode=internal_error";
             Request request = new Request.Builder()
@@ -227,7 +227,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String sessionId = UUID.randomUUID().toString();
             String url = BASE_URL + "/api/test?mode=success_after_n&attempts=3";
@@ -265,7 +265,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String url = BASE_URL + "/api/test?mode=intermittent&failure_rate=0.7";
             Request request = new Request.Builder()
@@ -302,7 +302,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String url = BASE_URL + "/api/test?mode=timeout&delay=35";
             Request request = new Request.Builder()
@@ -336,7 +336,7 @@ public class RefusedStreamRetryTest {
         try {
             OkHttpClient client = createHttpClient();
             CoproRetryService retryService = new CoproRetryService(
-                    createMockRepo(), client);
+                    createMockRepo(), client, log);
 
             String url = BASE_URL + "/api/test?mode=success";
             Request request = new Request.Builder()

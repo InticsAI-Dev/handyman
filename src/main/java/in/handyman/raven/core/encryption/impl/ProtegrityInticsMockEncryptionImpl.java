@@ -6,10 +6,8 @@ import in.handyman.raven.util.PropertyHandler;
 import org.slf4j.Logger;
 
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -143,7 +141,7 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
             case MEMBERIDENTIFIERS_UPPERALPHANUM_LP:
                 return shiftMemberIdentifier(input, encrypt ? dynamicShift : -dynamicShift);
             case AES_256:
-                return encrypt ? aesEncrypt(input) : aesDecrypt(input);
+                return encrypt ? aesEncrypt(input,AES_256) : aesDecrypt(input,AES_256);
             case BIRTHDATE_DATETIME_LP:
                 return shiftDate(input, encrypt, dynamicShift);
             default:
@@ -171,10 +169,9 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
 
     private int calculateShift(String input) {
         if (input == null || input.isEmpty()) return 3; // fallback default
-        int len = input.length();
         // For every 10 characters, reduce shift by 1 (down to min 1)
-        int shift = 10 - (len / 10);
-        return Math.max(1, shift);
+
+        return input.length();
     }
 
     // Names & alphanumeric tokens
@@ -226,26 +223,46 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
     }
 
     // AES256
-    private String aesEncrypt(String input) throws HandymanException {
+    private String aesEncrypt(String input,String encryptionPolicy) throws HandymanException {
         try {
+            if (input.isBlank()) {
+                logger.warn("Encryption skipped: Input token is blank.");
+                return input;
+            }
+
+            logger.debug("Encrypting data for encryptionPolicy: {}", encryptionPolicy);
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, aesKey);
-            byte[] encryptedBytes = cipher.doFinal(input.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(encryptedBytes);
+
+            byte[] encrypted = cipher.doFinal(input.getBytes());
+            String encryptedString = Base64.getEncoder().encodeToString(encrypted);
+
+            return encryptedString;
+
         } catch (Exception e) {
-            throw new HandymanException("AES Encryption failed", e);
+            logger.error("Error during AES-256 encryption - {}", e.getMessage(), e);
+            throw new HandymanException("Error during AES-256 encryption.", e);
         }
     }
 
-    private String aesDecrypt(String encrypted) throws HandymanException {
+    private String aesDecrypt(String encrypted,String encryptionPolicy) throws HandymanException {
         try {
+            if (encrypted.isBlank()) {
+                logger.warn("Decryption skipped: Input token is blank.");
+                return encrypted;
+            }
+
+            logger.debug("Decrypting data for encryptionPolicy: {}", encryptionPolicy);
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, aesKey);
-            byte[] decodedBytes = Base64.getDecoder().decode(encrypted);
-            byte[] decryptedBytes = cipher.doFinal(decodedBytes);
-            return new String(decryptedBytes, StandardCharsets.UTF_8);
+
+            byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(encrypted));
+            String decryptedString = new String(decrypted);
+            return decryptedString;
+
         } catch (Exception e) {
-            throw new HandymanException("AES Decryption failed", e);
+            logger.error("Error during AES-256 decryption - {}", e.getMessage(), e);
+            throw new HandymanException("Error during AES-256 decryption.", e);
         }
     }
 

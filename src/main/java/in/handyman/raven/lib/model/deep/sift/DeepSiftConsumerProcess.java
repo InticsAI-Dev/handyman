@@ -22,13 +22,13 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
-    private static final String COPRO_SOCKET_TIMEOUT = "copro.client.socket.timeout";
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
     private static final MediaType MEDIA_TYPE = MediaType.parse("application/json; charset=utf-8");
@@ -50,13 +50,14 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         this.fileProcessingUtils = fileProcessingUtils;
         this.objectMapper = new ObjectMapper();
         this.processBase64 = processBase64;
-        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_SOCKET_TIMEOUT, "100"));
+        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, "100"));
         this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(timeOut, TimeUnit.MINUTES)
-                .writeTimeout(timeOut, TimeUnit.MINUTES)
-                .readTimeout(timeOut, TimeUnit.MINUTES)
-                .build();
-        coproRetryService = new CoproRetryService(handymanRepo, httpClient);
+                    .connectTimeout(timeOut, TimeUnit.MINUTES)
+                    .writeTimeout(timeOut, TimeUnit.MINUTES)
+                    .readTimeout(timeOut, TimeUnit.MINUTES)
+                    .callTimeout(timeOut, TimeUnit.MINUTES)
+                    .build();
+        coproRetryService = new CoproRetryService(handymanRepo, httpClient, log);
     }
 
     @Override

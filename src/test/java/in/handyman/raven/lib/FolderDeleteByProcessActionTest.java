@@ -17,11 +17,7 @@ class FolderDeleteByProcessActionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                 .cleanupProcessName("FILE_PROCESS,PREPROCESS,DENOISE,RESPONSE_ARTIFACT")
-                .querySet("SELECT ar.current_directory as current_directory_path, ar.group_id as group_id,\n" +
-                        "ar.tenant_id as tenant_id, ar.created_on,\n" +
-                        "ar.root_pipeline_id as root_pipeline_id, ar.process_name\n" +
-                        "from ingestion.pipeline_directory_info ar\n" +
-                        "where ar.tenant_id = 1 and status = 'STAGED' and ar.root_pipeline_id IN (86)")
+                .querySet("SELECT ar.target_directory_path as current_directory_path, ar.group_id as group_id,            ar.tenant_id as tenant_id, ar.created_on,            ar.root_pipeline_id as root_pipeline_id, ar.process_name            from ingestion.pipeline_directory_info ar            where ar.tenant_id = 1 and status = 'STAGED' and ar.created_on < NOW() - INTERVAL '2 days'")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

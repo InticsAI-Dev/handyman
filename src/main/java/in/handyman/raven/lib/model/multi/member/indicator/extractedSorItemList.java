@@ -1,12 +1,10 @@
 package in.handyman.raven.lib.model.multi.member.indicator;
 
-import in.handyman.raven.lambda.doa.Auditable;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -26,4 +24,5 @@ public class extractedSorItemList {
     private String modelRegistry;
     private Long rootPipelineId;
     private String batchId;
+    private String documentType;
 }

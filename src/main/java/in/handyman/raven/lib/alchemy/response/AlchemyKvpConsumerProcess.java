@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.alchemy.response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AlchemyKvpResponseAction;
@@ -24,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.encryption.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
+import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 
 public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess<AlchemyKvpInputEntity, AlchemyKvpOutputEntity> {
 
@@ -42,6 +43,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
 
     private final int timeOut;
     private final String authToken;
+    private final InticsIntegrity encryption;
 
     public AlchemyKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AlchemyKvpResponseAction aAction) {
         this.log = log;
@@ -56,6 +58,7 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
                 .writeTimeout(this.timeOut, TimeUnit.MINUTES)
                 .readTimeout(this.timeOut, TimeUnit.MINUTES)
                 .build();
+        this.encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
     }
 
 
@@ -134,7 +137,8 @@ public class AlchemyKvpConsumerProcess implements CoproProcessor.ConsumerProcess
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
-            String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action,log).encrypt(request, "AES256", "COPRO_REQUEST");
+            String encryptedRequest = encryption.encrypt(request, "AES256", "COPRO_REQUEST");
+            log.info(aMarker, "Request/Response encrypted successfully");
             requestStr = encryptedRequest;
         } else {
             requestStr = request;
