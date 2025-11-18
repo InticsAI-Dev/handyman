@@ -83,10 +83,12 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         final LocalDateTime startTime = LocalDateTime.now();
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
+        //TODO SIMPLE FOR EACH , REMOVE STREAM, SEPARATE CLASS
         formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> handle.createQuery(sql).mapToBean(inputTargetClass).useStream(stream -> {
             final AtomicInteger counter = new AtomicInteger();
             final Map<Integer, List<I>> partitions = stream.collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
             logger.info("Total no of rows created {}", counter.get());
+            //TODO REMOVE EXECUTOR SERVICE
             executorService.submit(() -> {
                 try {
                     partitions.forEach((integer, ts) -> {
@@ -184,8 +186,11 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         final LocalDateTime startTime = LocalDateTime.now();
         final Predicate<I> tPredicate = t -> !Objects.equals(t, stoppingSeed);
         int queueSize = queue.size();
-        int finalConsumerCount = Math.min(consumerCount, queueSize);
+        int finalConsumerCount = consumerCount;
         logger.info("Queue size is {} and configured consumer count is {}", queueSize, consumerCount);
+        logger.info("Available processors: {}", Runtime.getRuntime().availableProcessors());
+        logger.info("Initial consumer count: {}", finalConsumerCount);
+
 
         final CountDownLatch countDownLatch = new CountDownLatch(finalConsumerCount);
         AtomicInteger threadNumber = new AtomicInteger(1);
