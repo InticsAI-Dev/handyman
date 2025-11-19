@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
@@ -11,6 +12,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.selections.ExtractedField;
 import in.handyman.raven.lib.adapters.selections.FieldSelectionAdapter;
 import in.handyman.raven.lib.adapters.selections.FieldSelectionAdapterFactory;
+import in.handyman.raven.lib.adapters.selections.LabelWithPriorityProcessor;
 import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
 import in.handyman.raven.lib.model.SectionFiltering;
 import in.handyman.raven.util.CommonQueryUtil;
@@ -40,6 +42,7 @@ import static in.handyman.raven.core.enums.EncryptionConstants.KVP_JSON_PARSER_E
 )
 public class SectionFilteringAction implements IActionExecution {
     public static final String AES_256 = "AES256";
+    public static final String SECTION_FILTERING_LABEL_WITH_PRIORITY = "section.filtering.label.with.priority";
     private final ActionExecutionAudit action;
 
   private final Logger log;
@@ -77,6 +80,9 @@ public class SectionFilteringAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(sectionFiltering.getResourceConn());
       final InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
+      ObjectMapper objectMapper = new ObjectMapper();
+      LabelWithPriorityProcessor LabelWithPriorityProcessor = new LabelWithPriorityProcessor(objectMapper);
+      List<SelectionFilteringInputTable> updatedTableInfos = new ArrayList<>();
 
       // 1 Fetch data
       List<SelectionFilteringInputTable> tableInfos = getDataFromSelectQuery(jdbi);
@@ -107,21 +113,30 @@ public class SectionFilteringAction implements IActionExecution {
 
       // 6 Merge filtered results back into original list
       mergeFilteredResults(tableInfos, filteredExtractedFields);
-
       log.info(aMarker, "Filtering completed. Filtered count: {} ", filteredExtractedFields.size());
+
+
+        // 6.1 Apply Label with priority processing
+      if(!action.getContext().getOrDefault(SECTION_FILTERING_LABEL_WITH_PRIORITY,"false").equals("true")){
+          log.info(aMarker, "Label with priority processing started.");
+          updatedTableInfos.addAll(tableInfos);
+        }else{
+           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));
+          log.info(aMarker, "Label with priority processing completed. Initial count {} and Final count: {} ", tableInfos.size(),updatedTableInfos.size());
+      }
 
       // 7 Encrypt results before persistence or outbound
       if(action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION).equals("true")){
-          encryptAnswers(tableInfos, encryption);
+          encryptAnswers(updatedTableInfos, encryption);
           if(action.getContext().get(KVP_JSON_PARSER_ENCRYPTION).equals("true")){
-              encryptLabels(tableInfos, encryption);
-              encryptSectionAlias(tableInfos,encryption);
+              encryptLabels(updatedTableInfos, encryption);
+              encryptSectionAlias(updatedTableInfos,encryption);
           }
 
       }
 
       // 8 Prepare output rows
-      executeBatchInsert(jdbi,tableInfos);
+      executeBatchInsert(jdbi,updatedTableInfos);
 
       log.info(aMarker, "Section Filtering Action completed successfully.");
   }
