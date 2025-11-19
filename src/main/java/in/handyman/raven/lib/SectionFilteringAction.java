@@ -118,7 +118,7 @@ public class SectionFilteringAction implements IActionExecution {
 
         // 6.1 Apply Label with priority processing
       if(!action.getContext().getOrDefault(SECTION_FILTERING_LABEL_WITH_PRIORITY,"false").equals("true")){
-          log.info(aMarker, "Label with priority processing started.");
+          log.info(aMarker, "Label with priority processing disabled count {} ", tableInfos.size());
           updatedTableInfos.addAll(tableInfos);
         }else{
            updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));

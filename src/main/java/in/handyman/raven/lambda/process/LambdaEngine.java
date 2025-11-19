@@ -301,7 +301,7 @@ public class LambdaEngine {
     }
     private static String sanitizeLog(String s) {
         if (s == null) return null;
-        return s.replace("\u0000", "").replaceAll("\\p{C}", "");
+        return s.replaceAll("[\\p{Cn}\\p{Co}\\p{Cc}&&[^\\n\\r\\t]]", "");
     }
 
     public static SubstituteLogger getLogger(final ActionExecutionAudit actionExecutionAudit) {
