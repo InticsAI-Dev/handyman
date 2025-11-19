@@ -127,7 +127,7 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
     public String removeSpecialCharacters(String input) {
         if (input == null) return "";
         // Replace all non-alphanumeric characters (except spaces) with an empty string
-        return input.replaceAll("[^a-zA-Z0-9\\s]", "").trim();
+        return input.replaceAll("[^a-zA-Z0-9]", "").trim();
     }
 
 
