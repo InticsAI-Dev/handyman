@@ -70,16 +70,6 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
             isLabelMatching = true;
             message = filteringType + " value is explicitly whitelisted.";
         }
-        // Case 3: Label contains a whitelisted substring
-        else {
-            boolean containsWhitelisted = sanitizedWhitelist.stream()
-                    .anyMatch(wl -> !wl.isEmpty() && labelLower.contains(wl));
-
-            if (containsWhitelisted) {
-                isLabelMatching = true;
-                message = filteringType + " contains a whitelisted keyword.";
-            }
-        }
 
         response.setLabelMatching(isLabelMatching);
         response.setLabelMatchMessage(message);
