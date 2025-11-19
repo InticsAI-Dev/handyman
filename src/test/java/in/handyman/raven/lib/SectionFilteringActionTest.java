@@ -34,10 +34,16 @@ public class SectionFilteringActionTest {
                 .condition(true)
                 .name("Test section Filtering")
                 .outputTable("sor_transaction.selection_over_filtering_output_audit")
-                .inputTable("${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id}")
+                .inputTable("transit_data.selection_over_filtering_input_8677")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("SELECT id, answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, extracted_image_unit, confidence, bbox, bbox_asis, is_label_matching, label_match_message, sor_container_id, sor_item_name, section_alias, sor_item_label, image_dpi, image_width, image_height, blacklisted_labels, blacklisted_sections, is_encrypted, encryption_policy\n" +
-                        "FROM sor_transaction.selection_over_filtering_input_audit where id=513")
+                .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id,\n" +
+                        "                    root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name,\n" +
+                        "                    sor_item_name, sor_item_label, section_alias, answer, confidence, bbox,\n" +
+                        "                    bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height,\n" +
+                        "                    image_width, blacklisted_labels,\n" +
+                        "                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels,whitelisted_labels_with_priority\n" +
+                        "             from transit_data.selection_over_filtering_input_8677 a;" +
+                        "             ")
                 .build();
 
         String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
@@ -50,6 +56,7 @@ public class SectionFilteringActionTest {
         action.getContext().put("validation.restricted-answers", "No,None of the above");
         action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("validaiton.char-limit-count", "1");
+        action.getContext().put("llm.json.parser.label.encryption", "true");
 
         action.getContext().put("scalar.adapter.scrubbing.alpha.activator", "true");
         action.getContext().put("scalar.adapter.scrubbing.numeric.activator", "false");

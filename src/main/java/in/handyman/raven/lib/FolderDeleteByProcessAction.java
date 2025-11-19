@@ -37,6 +37,11 @@ public class FolderDeleteByProcessAction implements IActionExecution {
 
     private static final String PIPELINE_DIRECTORY_INFO_TABLE_NAME = "ingestion.pipeline_directory_info";
 
+    private static final String COMPLETED = "COMPLETED";
+
+    private static final String FAILED = "FAILED";
+
+
     private final Marker aMarker;
 
     public FolderDeleteByProcessAction(final ActionExecutionAudit action, final Logger log,
@@ -72,8 +77,6 @@ public class FolderDeleteByProcessAction implements IActionExecution {
         log.info("Total folder count of processes found for deletion {} ", folderDeleteProcessInputTables.size());
         folderDeleteProcessInputTables.forEach(folderDeleteProcessInputTable -> deleteFilesAndUpdateStatus(folderDeleteProcessInputTable, jdbi));
         log.info(aMarker, "Folder delete by Process Name Action for {} has been completed", folderDeleteByProcess.getName());
-
-
     }
 
     private void deleteFilesAndUpdateStatus(FolderDeleteProcessInputTable folderDeleteProcessInputTable, Jdbi jdbi) {
@@ -82,44 +85,82 @@ public class FolderDeleteByProcessAction implements IActionExecution {
         String processName = folderDeleteProcessInputTable.getProcessName();
         Long tenantId = folderDeleteProcessInputTable.getTenantId();
         Long rootPipelineId = folderDeleteProcessInputTable.getRootPipelineId();
-        boolean isValidFile = isFile(directoryPath);
-        if(isValidFile){
-            deleteFile(directoryPath);
-        }else {
-            deleteAllFilesInFolder(directoryPath);
+        String transactionId = folderDeleteProcessInputTable.getTransactionId();
+
+        if (directoryPath == null || directoryPath.trim().isEmpty()) {
+            log.warn("Directory path is null or empty for process: {}, tenantId: {}, marking as FAILED", processName, tenantId);
+            callSaveStatus(jdbi, rootPipelineId, groupId, processName, tenantId, transactionId, FAILED);
+            return;
         }
 
-        try (var ignored = jdbi.open()) {
-            log.info("Jdbi connection is open, initiating the status updating for folder deletion");
-            updateStatusInTable(jdbi, rootPipelineId, groupId, processName, tenantId);
-        } catch (Exception e) {
-            log.error("Jdbi connection is closed, recreating the connection");
-            jdbi = ResourceAccess.rdbmsJDBIConn(folderDeleteByProcess.getResourceConn());
-            updateStatusInTable(jdbi, rootPipelineId, groupId, processName, tenantId);
+        Path path = Paths.get(directoryPath);
+        if (!Files.exists(path)) {
+            log.warn("Directory/file does not exist: {} for process: {}, tenantId: {}, marking as FAILED", directoryPath, processName, tenantId);
+            callSaveStatus(jdbi, rootPipelineId, groupId, processName, tenantId, transactionId, FAILED);
+        } else {
+            boolean isValidFile = isFile(directoryPath);
+            if(isValidFile){
+                deleteFile(directoryPath);
+            } else {
+                deleteAllFilesInFolder(directoryPath);
+            }
+            callSaveStatus(jdbi, rootPipelineId, groupId, processName, tenantId, transactionId, COMPLETED);
+            log.info("Process Status updated to completed status for the process {}, tenantId {}", processName, tenantId);
         }
-
-        log.info("Process Status updated to completed status for the process {}, tenantId {}", processName, tenantId);
     }
 
-    private void updateStatusInTable(Jdbi jdbi, Long rootPipelineId, Integer groupId, String processName, Long tenantId) {
-        jdbi.useHandle(handle -> {
-            String sql = "UPDATE " + PIPELINE_DIRECTORY_INFO_TABLE_NAME + " SET " +
-                    " status = 'COMPLETED' " +
-                    "WHERE root_pipeline_id = :rootPipelineId " +
-                    "AND group_id = :groupId " +
-                    "AND process_name = :processName " +
-                    "AND tenant_id = :tenantId";
+    private void callSaveStatus(Jdbi jdbi, Long rootPipelineId, Integer groupId, String processName, Long tenantId, String transactionId, String status) {
+        try (var ignored = jdbi.open()) {
+            log.info("Jdbi connection is open, initiating the status updating for folder deletion");
+            updateStatusInTable(jdbi, rootPipelineId, groupId, processName, tenantId, transactionId, status);
+        } catch (Exception e) {
+            log.error("Jdbi connection failed, recreating the connection and retrying", e);
+            Jdbi newJdbi = ResourceAccess.rdbmsJDBIConn(folderDeleteByProcess.getResourceConn());
+            updateStatusInTable(newJdbi, rootPipelineId, groupId, processName, tenantId, transactionId, status);
+        }
+    }
 
-            handle.createUpdate(sql)
-                    .bind("rootPipelineId", rootPipelineId)
-                    .bind("groupId", groupId)
-                    .bind("processName", processName)
-                    .bind("tenantId", tenantId)
-                    .execute();
-        });
+    private void updateStatusInTable(Jdbi jdbi, Long rootPipelineId, Integer groupId, String processName, Long tenantId, String transactionId, String status) {
+        if (rootPipelineId != null && groupId != null) {
+            jdbi.useHandle(handle -> {
+                String sql = "UPDATE " + PIPELINE_DIRECTORY_INFO_TABLE_NAME + " SET " +
+                        " status = :status " +
+                        "WHERE root_pipeline_id = :rootPipelineId " +
+                        "AND group_id = :groupId " +
+                        "AND process_name = :processName " +
+                        "AND tenant_id = :tenantId";
+
+                handle.createUpdate(sql)
+                        .bind("status", status)
+                        .bind("rootPipelineId", rootPipelineId)
+                        .bind("groupId", groupId)
+                        .bind("processName", processName)
+                        .bind("tenantId", tenantId)
+                        .execute();
+            });
+        }
+        else {
+            jdbi.useHandle(handle -> {
+                String sql = "UPDATE " + PIPELINE_DIRECTORY_INFO_TABLE_NAME + " SET " +
+                        " status = :status " +
+                        "WHERE transaction_id = :transactionId " +
+                        "AND process_name = :processName " +
+                        "AND tenant_id = :tenantId";
+
+                handle.createUpdate(sql)
+                        .bind("status", status)
+                        .bind("transactionId", transactionId)
+                        .bind("processName", processName)
+                        .bind("tenantId", tenantId)
+                        .execute();
+            });
+        }
     }
 
     public static boolean isFile(String pathStr) {
+        if (pathStr == null || pathStr.trim().isEmpty()) {
+            return false;
+        }
         Path path = Paths.get(pathStr);
         return Files.exists(path) && Files.isRegularFile(path);
     }
@@ -182,6 +223,7 @@ public class FolderDeleteByProcessAction implements IActionExecution {
         private LocalDateTime createdOn;
         private Long rootPipelineId;
         private String processName;
+        private String transactionId;
     }
 
     @AllArgsConstructor
