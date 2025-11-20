@@ -70,16 +70,6 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
             isLabelMatching = true;
             message = filteringType + " value is explicitly whitelisted.";
         }
-        // Case 3: Label contains a whitelisted substring
-        else {
-            boolean containsWhitelisted = sanitizedWhitelist.stream()
-                    .anyMatch(wl -> !wl.isEmpty() && labelLower.contains(wl));
-
-            if (containsWhitelisted) {
-                isLabelMatching = true;
-                message = filteringType + " contains a whitelisted keyword.";
-            }
-        }
 
         response.setLabelMatching(isLabelMatching);
         response.setLabelMatchMessage(message);
@@ -92,7 +82,7 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
 
     public String removeSpecialCharacters(String input) {
         if (input == null) return "";
-        return input.replaceAll("[^a-zA-Z0-9\\s]", "").trim();
+        return input.replaceAll("[^a-zA-Z0-9]", "").trim();
     }
 
     @Override
