@@ -66,6 +66,19 @@ public class LabelWithPriorityProcessor {
             List<SelectionFilteringInputTable> rows,
             List<String> messages) {
 
+        SelectionFilteringInputTable first = rows.get(0);
+        boolean isFirstEmpty =
+                        (first.getWhitelistedLabelsWithPriority() == null || first.getWhitelistedLabelsWithPriority().isBlank() || extractPriorityMap(rows).isEmpty());
+
+
+        if (isFirstEmpty) {
+            rows.forEach(r -> {
+                r.setLabelMatching(true);
+                r.setLabelMatchMessage(appendMsg(r,"Update with empty priority labels returning everything"));
+            });
+            return rows.get(0);
+        }
+
         if (rows.size() == 1) return handleSingleRow(rows.get(0), messages);
 
         if (rows.size() == 2 && rows.stream().filter(this::hasNonEmptyAnswer).count() == 1)
