@@ -30,6 +30,7 @@ import org.slf4j.MarkerFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -140,6 +141,9 @@ public class ProductResponseAction implements IActionExecution {
 
             String originId = entity.getOriginId();
 
+            LocalDateTime startTime = LocalDateTime.now();
+            log.info(aMarker, "Product Response Action started for originId: {} at {}", originId, startTime);
+
             Request request = getUrlFromFeature(endpoint, entity.getFeature(), entity.getTransactionId(), originId, entity.getTenantId(), requestBody, entity.getPipelineStatus());
 
 
@@ -165,6 +169,8 @@ public class ProductResponseAction implements IActionExecution {
                                 .message("alchemy product response completed for origin_id - " + originId)
                                 .batchId(entity.getBatchId())
                                 .inboundTransactionId(entity.getTransactionId())
+                                .createdOn(startTime)
+                                .lastUpdatedOn(LocalDateTime.now())
                                 .build();
                         if (Objects.equals(entity.getFeature(), "Product")) {
                             JsonNode predictionLogNode = payload.get("logs");
@@ -194,6 +200,8 @@ public class ProductResponseAction implements IActionExecution {
                             .message("alchemy product response failed for origin_id - " + originId)
                             .batchId(entity.getBatchId())
                             .inboundTransactionId(entity.getTransactionId())
+                            .createdOn(startTime)
+                            .lastUpdatedOn(LocalDateTime.now())
                             .build());
                 }
             } catch (Exception e) {
@@ -292,10 +300,14 @@ public class ProductResponseAction implements IActionExecution {
         private String feature;
         private String batchId;
         private String inboundTransactionId;
+        private LocalDateTime createdOn;
+        private LocalDateTime lastUpdatedOn;
 
         @Override
         public List<Object> getRowData() {
-            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId, this.status, this.stage, this.message, this.feature, this.triggeredUrl, this.batchId, this.inboundTransactionId).collect(Collectors.toList());
+            return Stream.of(this.processId, this.groupId, this.originId, this.productResponse, this.tenantId, this.rootPipelineId,
+                    this.status, this.stage, this.message, this.feature, this.triggeredUrl,
+                    this.batchId, this.inboundTransactionId, this.createdOn, this.lastUpdatedOn).collect(Collectors.toList());
         }
     }
 }
