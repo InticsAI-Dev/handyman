@@ -119,7 +119,8 @@ public class AlchemyResponseAction implements IActionExecution {
                         processInBatches(url, originData, tenantId, authToken, mapper, mediaTypeJSON, jdbi, DEFAULT_BATCH_SIZE, originId, httpclient);
                     } catch (Exception e) {
                         log.error("Error processing originId: {}", originId, e);
-                        throw new HandymanException("Error processing originId: " + originId, e); // Or handle differently
+                        HandymanException handymanException = new HandymanException(e);
+                        HandymanException.insertException("Error processing originId: "+  originId, handymanException, this.action);
                     }
                 }, originIdExecutor);
 
