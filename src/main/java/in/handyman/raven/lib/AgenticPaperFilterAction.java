@@ -67,10 +67,10 @@ public class AgenticPaperFilterAction implements IActionExecution {
         this.action = action;
         this.log = log;
         this.processBase64 = action.getContext().getOrDefault(COPRO_API_FILE_INPUT_FORMAT, ProcessFileFormatE.BASE64.name());
-        this.connectTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_CONNECT_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-        this.writeTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_WRITE_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-        this.readTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_READ_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-        this.callTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_CALL_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.connectTimeout = parseContextValue(action, COPRO_CLIENT_AGENTIC_PAPER_FILTER_CONNECT_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.writeTimeout = parseContextValue(action, COPRO_CLIENT_AGENTIC_PAPER_FILTER_WRITE_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.readTimeout = parseContextValue(action, COPRO_CLIENT_AGENTIC_PAPER_FILTER_READ_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.callTimeout = parseContextValue(action, COPRO_CLIENT_AGENTIC_PAPER_FILTER_CALL_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
         this.httpClientType = parseContextValueStr(action, COPRO_HTTP_CLIENT_TYPE, "default");
 
 

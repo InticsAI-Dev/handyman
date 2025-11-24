@@ -84,10 +84,10 @@ public class RadonKvpAction implements IActionExecution {
         this.securityEngine = SecurityEngine.getInticsIntegrityMethod(this.action, log);
         this.objectMapper = new ObjectMapper();
         this.aMarker = MarkerFactory.getMarker("RadonKvp:" + this.radonKvp.getName());
-        this.connectTimeout = parseContextValue(action, COPRO_RADON_KVP_CONNECT_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-        this.writeTimeout = parseContextValue(action, COPRO_RADON_KVP_WRITE_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-        this.readTimeout = parseContextValue(action, COPRO_RADON_KVP_READ_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-        this.callTimeout = parseContextValue(action, COPRO_RADON_KVP_CALL_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.connectTimeout = parseContextValue(action, COPRO_CLIENT_RADON_KVP_CONNECT_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.writeTimeout = parseContextValue(action, COPRO_CLIENT_RADON_KVP_WRITE_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.readTimeout = parseContextValue(action, COPRO_CLIENT_RADON_KVP_READ_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.callTimeout = parseContextValue(action, COPRO_CLIENT_RADON_KVP_CALL_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
         this.threadSleepTime = parseContextValue(action, "copro.client.api.sleeptime", THREAD_SLEEP_TIME_DEFAULT);
         this.writeBatchSize = parseContextValue(action, DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE, "10");
         this.targetTableName = this.radonKvp.getOutputTable();

@@ -60,10 +60,10 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
-        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_CONNECT_TIMEOUT, "100"));
-        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_WRITE_TIMEOUT, "100"));
-        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_READ_TIMEOUT, "100"));
-        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_CALL_TIMEOUT, "100"));
+        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_CONNECT_TIMEOUT, "100"));
+        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_WRITE_TIMEOUT, "100"));
+        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_READ_TIMEOUT, "100"));
+        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_CALL_TIMEOUT, "100"));
         this.httpclient=new OkHttpClient.Builder()
                 .connectTimeout(connectTimeout, TimeUnit.MINUTES)
                 .writeTimeout(writeTimeout, TimeUnit.MINUTES)

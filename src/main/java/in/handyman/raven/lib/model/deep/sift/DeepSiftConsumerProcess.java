@@ -50,10 +50,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         this.fileProcessingUtils = fileProcessingUtils;
         this.objectMapper = new ObjectMapper();
         this.processBase64 = processBase64;
-        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DEEP_SIFT_CONNECT_TIMEOUT, "100"));
-        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DEEP_SIFT_WRITE_TIMEOUT, "100"));
-        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DEEP_SIFT_READ_TIMEOUT, "100"));
-        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DEEP_SIFT_CALL_TIMEOUT, "100"));
+        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_CONNECT_TIMEOUT, "100"));
+        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_WRITE_TIMEOUT, "100"));
+        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_READ_TIMEOUT, "100"));
+        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_CALL_TIMEOUT, "100"));
 
         this.httpClient = new OkHttpClient.Builder()
                     .connectTimeout(connectTimeout, TimeUnit.MINUTES)
