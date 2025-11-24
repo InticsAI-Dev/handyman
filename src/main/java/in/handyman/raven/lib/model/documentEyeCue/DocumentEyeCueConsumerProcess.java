@@ -26,7 +26,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
@@ -60,12 +60,15 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
-        Integer timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, "2"));
+        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_CONNECT_TIMEOUT, "100"));
+        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_WRITE_TIMEOUT, "100"));
+        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_READ_TIMEOUT, "100"));
+        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_DOC_EYECUE_CALL_TIMEOUT, "100"));
         this.httpclient=new OkHttpClient.Builder()
-                .connectTimeout(timeOut, TimeUnit.MINUTES)
-                .writeTimeout(timeOut, TimeUnit.MINUTES)
-                .readTimeout(timeOut, TimeUnit.MINUTES)
-                .callTimeout(timeOut, TimeUnit.MINUTES)
+                .connectTimeout(connectTimeout, TimeUnit.MINUTES)
+                .writeTimeout(writeTimeout, TimeUnit.MINUTES)
+                .readTimeout(readTimeout, TimeUnit.MINUTES)
+                .callTimeout(callTimeout, TimeUnit.MINUTES)
                 .build();
         coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
     }

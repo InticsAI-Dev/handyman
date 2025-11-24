@@ -34,8 +34,7 @@ import java.util.stream.Collectors;
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATCH_SIZE;
 import static in.handyman.raven.core.enums.FileProcessConstants.COPRO_API_FILE_INPUT_FORMAT;
-import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
-import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_HTTP_CLIENT_TYPE;
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 
 @ActionExecution(actionName = "AgenticPaperFilter")
 public class AgenticPaperFilterAction implements IActionExecution {
@@ -55,7 +54,10 @@ public class AgenticPaperFilterAction implements IActionExecution {
     private final AgenticPaperFilter agenticPaperFilter;
     private final Marker aMarker;
     private final String processBase64;
-    private final int timeout;
+    private final int connectTimeout;
+    private final int writeTimeout;
+    private final int readTimeout;
+    private final int callTimeout;
     @Getter
     private final String httpClientType;
 
@@ -65,7 +67,10 @@ public class AgenticPaperFilterAction implements IActionExecution {
         this.action = action;
         this.log = log;
         this.processBase64 = action.getContext().getOrDefault(COPRO_API_FILE_INPUT_FORMAT, ProcessFileFormatE.BASE64.name());
-        this.timeout = parseContextValue(action, COPRO_CLIENT_SOCKET_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.connectTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_CONNECT_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.writeTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_WRITE_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.readTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_READ_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+        this.callTimeout = parseContextValue(action, COPRO_AGENTIC_PAPER_FILTER_CALL_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
         this.httpClientType = parseContextValueStr(action, COPRO_HTTP_CLIENT_TYPE, "default");
 
 
@@ -158,9 +163,22 @@ public class AgenticPaperFilterAction implements IActionExecution {
         return agenticPaperFilter.getCondition();
     }
 
-    public int getTimeOut() {
-        return this.timeout;
+    public int getConnectTimeOut() {
+        return this.connectTimeout;
     }
+
+    public int getWriteTimeOut() {
+        return this.writeTimeout;
+    }
+
+    public int getCallTimeout() {
+        return this.callTimeout;
+    }
+
+    public int getReadTimeout() {
+        return this.readTimeout;
+    }
+
 
     @Data
     @AllArgsConstructor
