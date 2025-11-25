@@ -66,6 +66,19 @@ public class LabelWithPriorityProcessor {
             List<SelectionFilteringInputTable> rows,
             List<String> messages) {
 
+        SelectionFilteringInputTable first = rows.get(0);
+        boolean isFirstEmpty =
+                        (first.getWhitelistedLabelsWithPriority() == null || first.getWhitelistedLabelsWithPriority().isBlank() || extractPriorityMap(rows).isEmpty());
+
+
+        if (isFirstEmpty) {
+            rows.forEach(r -> {
+                r.setLabelMatching(true);
+                r.setLabelMatchMessage(appendMsg(r,"Update with empty priority labels returning everything"));
+            });
+            return rows.get(0);
+        }
+
         if (rows.size() == 1) return handleSingleRow(rows.get(0), messages);
 
         if (rows.size() == 2 && rows.stream().filter(this::hasNonEmptyAnswer).count() == 1)
@@ -234,7 +247,19 @@ public class LabelWithPriorityProcessor {
         if (json == null || json.isBlank()) return Map.of();
 
         try {
-            return mapper.readValue(json, new TypeReference<Map<String, Integer>>() {});
+            Map<String, Integer> output = mapper.readValue(json, new TypeReference<Map<String, Integer>>() {});
+
+            Map<String, Integer> temp = new HashMap<>();
+
+            output.forEach((key, value) -> {
+                temp.put(removeSpecialCharacters(key), value);
+            });
+
+            output.clear();
+            output.putAll(temp);
+
+            return output;
+
         } catch (Exception e) {
             return Map.of();
         }
@@ -242,16 +267,24 @@ public class LabelWithPriorityProcessor {
 
     private void assignPriorities(List<SelectionFilteringInputTable> rows, Map<String, Integer> priorityMap) {
         rows.forEach(r -> {
-            String key = r.getSorItemLabel();
+            String key = removeSpecialCharacters(r.getSorItemLabel());
             int p = priorityMap.getOrDefault(key, Integer.MAX_VALUE);
             r.setLabelPriorityIdx(String.valueOf(p));
         });
     }
 
+
+    public String removeSpecialCharacters(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[^a-zA-Z0-9]", "").toLowerCase().trim();
+    }
+
     // ========================= STAGE 5: MESSAGES =========================
     private String appendMsg(SelectionFilteringInputTable row, String message) {
+        String msgWithPriority = "[p=" + row.getLabelPriorityIdx() + "] " + message;
         String existing = row.getLabelMatchMessage();
-        if (existing == null || existing.isBlank()) return message;
-        return existing + " | " + message;
+        if (existing == null || existing.isBlank()) return msgWithPriority;
+        return existing + " | " + msgWithPriority;
     }
+
 }

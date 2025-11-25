@@ -244,6 +244,10 @@ public class SectionFilteringWithLabelPriorityTest {
                 rowId(4L,"origin1", 2L,"ITEM_B", "B1", true, "K2", null),
                 rowId(5L,"origin1", 1L,"ITEM_B", "B2", true, "K3", null),
 
+                //ITEM_B row contains two entries without priority map -> min of paper wins
+                rowId(4L,"origin1", 2L,"ITEM_f", "B1", true, null, null),
+                rowId(5L,"origin1", 1L,"ITEM_f", "B2", true, null, null),
+
 
                 // ITEM_C row contains three entries with no labels present -> min of paper wins
                 rowId(1L,"origin1", 1L, "ITEM_C", "A1", false, "", "{\"KEY1\":1}"),

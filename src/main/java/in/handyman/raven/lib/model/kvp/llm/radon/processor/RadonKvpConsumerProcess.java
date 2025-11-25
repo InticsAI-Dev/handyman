@@ -64,18 +64,20 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         this.action = action;
         this.jdbiResourceName = jdbiResourceName;
         this.providerDataTransformer = providerDataTransformer;
-        int timeOut = aAction.getTimeOut();
+        int connectTimeout = aAction.getConnectTimeOut();
+        int writeTimeout = aAction.getWriteTimeOut();
+        int readTimeout = aAction.getReadTimeout();
+        int callTimeout = aAction.getCallTimeout();
         this.processBase64 = processBase64;
         this.fileProcessingUtils = fileProcessingUtils;
         this.encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
 
         String httpClientType = aAction.getHttpClientType();
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .connectTimeout(timeOut, TimeUnit.MINUTES)
-                .writeTimeout(timeOut, TimeUnit.MINUTES)
-                .readTimeout(timeOut, TimeUnit.MINUTES)
-                .callTimeout(timeOut, TimeUnit.MINUTES)
-                .callTimeout(timeOut, TimeUnit.MINUTES);
+                .connectTimeout(connectTimeout, TimeUnit.MINUTES)
+                .writeTimeout(writeTimeout, TimeUnit.MINUTES)
+                .readTimeout(readTimeout, TimeUnit.MINUTES)
+                .callTimeout(callTimeout, TimeUnit.MINUTES);
 
         if ("HTTP/1.1".equalsIgnoreCase(httpClientType)) {
             log.info(aMarker, "HTTP client protocol explicitly set to HTTP/1.1");
