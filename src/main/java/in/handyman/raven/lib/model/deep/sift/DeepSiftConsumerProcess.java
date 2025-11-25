@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
-import static in.handyman.raven.core.enums.NetworkHandlerConstants.COPRO_CLIENT_SOCKET_TIMEOUT;
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
@@ -50,12 +50,17 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         this.fileProcessingUtils = fileProcessingUtils;
         this.objectMapper = new ObjectMapper();
         this.processBase64 = processBase64;
-        int timeOut = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_SOCKET_TIMEOUT, "100"));
+        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_CONNECT_TIMEOUT, "100"));
+        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_WRITE_TIMEOUT, "100"));
+        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_READ_TIMEOUT, "100"));
+        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_CALL_TIMEOUT, "100"));
+
         this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(timeOut, TimeUnit.MINUTES)
-                .writeTimeout(timeOut, TimeUnit.MINUTES)
-                .readTimeout(timeOut, TimeUnit.MINUTES)
-                .build();
+                    .connectTimeout(connectTimeout, TimeUnit.MINUTES)
+                    .writeTimeout(writeTimeout, TimeUnit.MINUTES)
+                    .readTimeout(readTimeout, TimeUnit.MINUTES)
+                    .callTimeout(callTimeout, TimeUnit.MINUTES)
+                    .build();
         coproRetryService = new CoproRetryService(handymanRepo, httpClient, log);
     }
 

@@ -1,6 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -84,7 +83,8 @@ public class DeepSiftAction implements IActionExecution {
             final CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DeepSiftOutputTable.class, DeepSiftInputTable.class, DeepSift.getResourceConn(), log, new DeepSiftInputTable(), urls, action);
 
             Integer readBatchSize = Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE));
-            final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf).orElse(0);            Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
+            final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf).orElse(0);
+            Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
             DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
 

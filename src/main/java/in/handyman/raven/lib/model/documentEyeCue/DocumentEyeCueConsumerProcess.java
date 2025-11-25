@@ -26,6 +26,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
 
 public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentEyeCueInputTable, DocumentEyeCueOutputTable> {
@@ -48,11 +49,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
 
     private final CoproRetryService coproRetryService;
 
-    final OkHttpClient httpclient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.MINUTES)
-            .writeTimeout(10, TimeUnit.MINUTES)
-            .readTimeout(10, TimeUnit.MINUTES)
-            .build();
+    private final OkHttpClient httpclient ;
 
     public DocumentEyeCueConsumerProcess(Logger log, Marker aMarker,
                                          FileProcessingUtils fileProcessingUtils, ActionExecutionAudit action,
@@ -63,6 +60,16 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         this.action = action;
         this.processBase64 = processBase64;
         this.documentEyeCue = documentEyeCue;
+        int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_CONNECT_TIMEOUT, "100"));
+        int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_WRITE_TIMEOUT, "100"));
+        int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_READ_TIMEOUT, "100"));
+        int callTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DOC_EYECUE_CALL_TIMEOUT, "100"));
+        this.httpclient=new OkHttpClient.Builder()
+                .connectTimeout(connectTimeout, TimeUnit.MINUTES)
+                .writeTimeout(writeTimeout, TimeUnit.MINUTES)
+                .readTimeout(readTimeout, TimeUnit.MINUTES)
+                .callTimeout(callTimeout, TimeUnit.MINUTES)
+                .build();
         coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
     }
 
@@ -258,7 +265,16 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
             if(action.getContext().getOrDefault("doc.eyecue.storecontent.upload","false").equals("true")){
                 log.info(MARKER, "StoreContent upload initiated for document_id: {} | origin_id: {}",
                         entity.getDocumentId(), entity.getOriginId());
-                uploadToStoreContent(outputFilePath, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+                final String outputFilePath1 = outputFilePath;
+                StoreContentUploadExecutor.getInstance().submit(() -> {
+                    try {
+                        uploadToStoreContent(outputFilePath1, documentEyeCueResponse.getProcessedPdfBase64(), entity);
+                    } catch (Exception ex) {
+                        log.error(MARKER, "Error during StoreContent upload for origin_id {}: {}", entity.getOriginId(), ex.getMessage(), ex);
+                        HandymanException handymanException = new HandymanException(ex);
+                        HandymanException.insertException("StoreContent upload failed for origin_id " + entity.getOriginId(), handymanException, action);
+                    }
+                });
             }
 
         } catch (JsonProcessingException e) {

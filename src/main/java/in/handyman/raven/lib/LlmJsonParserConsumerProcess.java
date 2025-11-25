@@ -339,7 +339,19 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
 
         // Check if response key exists in the metadata map
         LlmJsonQueryInputTableSorMeta meta = metaMap.get(response.getKey());
-        labelMatchingCondition(action, response, inticsIntegrity, meta);
+        if(meta==null){
+            response.setValue("");
+            response.setKey("");
+            response.setLabel("");
+            response.setLabelMatching(false);
+            response.setLabelMatchMessage("Meta data not found for the key "+response.getKey());
+            response.setSectionAlias("");
+
+
+        }else {
+            labelMatchingCondition(action, response, inticsIntegrity, meta);
+        }
+
 
 
         if (meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())) {

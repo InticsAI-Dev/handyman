@@ -14,7 +14,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 @Slf4j
-class KafkaPublishActionTest {
+class   KafkaPublishActionTest {
 
     private static final String AES_ENCRYPTION = "AES";
 
@@ -832,38 +832,108 @@ class KafkaPublishActionTest {
                 .name("kafka")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("kafka_response_info")
-                .querySet("select '127.0.0.1:9092' as endpoint, 'elv_json' as topic_name, 'SASL_PLAINTEXT' as auth_security_protocol, 'PLAIN' as sasl_mechanism,\n" +
-                        "            'elevance' as user_name, 'elevance@123' as password, 'AES' as encryption_type, 'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key, product_json as json_data,\n" +
-                        "            ifd.document_id, ifd.uuid, pozfi.origin_id, pozfi.batch_id, pozfi.tenant_id, ifd.transaction_id\n" +
-                        "            from product_outbound.product_outbound_zip_file_input pozfi join inbound_config.ingestion_file_details ifd on pozfi.file_name = ifd.document_id\n" +
-                        "            where pozfi.origin_id='ORIGIN-10'")
+                .outputTable("product_outbound.kafka_response_info")
+                .querySet("select 'localhost:9092' as endpoint, " +
+                        "'elv_json' as topic_name, " +
+                        "'SASL_PLAINTEXT' as auth_security_protocol, " +
+                        "'PLAIN' as sasl_mechanism, " +
+                        "'elevance' as user_name, " +
+                        "'elevance@123' as password, " +
+                        "'AES' as encryption_type, " +
+                        "'RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk' as encryption_key, " +
+                        "'{\"requestTxnId\":\"59af73da-7936-46f2-92f7-3da9bd997101\"," +
+                        "\"status\":\"SUCCESS\"," +
+                        "\"errorMessage\":\"\"," +
+                        "\"errorMessageDetail\":\"\"," +
+                        "\"errorCd\":null," +
+                        "\"documentId\":\"IPCOMCA\"," +
+                        "\"inboundTransactionId\":\"ITX-19234567qwerty890\"," +
+                        "\"metadata\":{" +
+                        "\"documentType\":\"MEDICAL_COMMERCIAL\"," +
+                        "\"documentExtension\":\"pdf\"," +
+                        "\"transactionId\":\"TRZ-101\"," +
+                        "\"inboundDocumentName\":\"IPCOMCA\"," +
+                        "\"processStartTime\":\"2025-10-28T16:01:00.020994\"," +
+                        "\"processEndTime\":\"2025-10-28T16:02:07.715301\"," +
+                        "\"processingTimeMs\":67," +
+                        "\"processedAt\":\"2025-10-28T16:01:19.179377\"," +
+                        "\"pageCount\":0," +
+                        "\"candidatePaper\":[]," +
+                        "\"overallConfidence\":0" +
+                        "}," +
+                        "\"aumipayload\":{" +
+                        "\"service\":[{\"cd\":{\"value\":\"\",\"page\":0,\"confidence\":0,\"boundingBox\":{\"x\":0.0,\"width\":0.0,\"y\":0.0,\"height\":0.0}}}]," +
+                        "\"diagnosis\":[{\"cd\":{\"value\":\"\",\"page\":0,\"confidence\":0,\"boundingBox\":{\"x\":0.0,\"width\":0.0,\"y\":0.0,\"height\":0.0}},\"desc\":{\"value\":\"\",\"page\":0,\"confidence\":0,\"boundingBox\":{\"x\":0.0,\"width\":0.0,\"y\":0.0,\"height\":0.0}},\"codePointer\":{\"value\":\"\",\"page\":0,\"confidence\":0,\"boundingBox\":{\"x\":0.0,\"width\":0.0,\"y\":0.0,\"height\":0.0}}}]," +
+                        "\"multipleMemberIndicator\":{\"value\":\"N\",\"page\":null,\"confidence\":null,\"boundingBox\":null}" +
+                        "}" +
+                        "}' as json_data, " +
+                        "'FM12345678' as document_id, " +
+                        "'1234567890' as file_checksum, " +
+                        "'ORIGIN-123' as origin_id, " +
+                        "'BATCH-1243' as batch_id, " +
+                        "1 as tenant_id, " +
+                        "'TRZ-XOO' as transaction_id")
                 .build();
 
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-
         actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                // ===== BASIC CONFIGURATION =====
                 Map.entry("read.batch.size", "1"),
-                Map.entry("outbound.doc.delivery.notify.url", ""),
-                Map.entry("gen_group_id.group_id", "1"),
-                Map.entry("agadia.secretKey", ""),
-                Map.entry("kafka.auth.security.protocol","SASL_PLAINTEXT"),
-                Map.entry("kafka.encryptionkey","RgF7I3z5FC8k9HkKUm3Htb1HhZPBczdk"),
-                Map.entry("kafka.encryptionType","AES"),
-                Map.entry("kafka.endpoint","127.0.0.1:9092"),
-                Map.entry("kafka.groupid",""),
-                Map.entry("kafka.publish.activator","true"),
-                Map.entry("kafka.sasl.mechanism","PLAIN"),
-                Map.entry("kafka.sasl.password","elevance@123"),
-                Map.entry("kafka.sasl.username","elevance"),
-                Map.entry("kafka.topic.name","elv_json"),
-                Map.entry("kafka.topic.partition","10"),
+                Map.entry("write.batch.size", "1"),
+
+                // ===== KAFKA BROKER CONFIGURATION =====
+                Map.entry("kafka.endpoint", "localhost:9092"),
+                Map.entry("kafka.topic.name", "elv_json"),
+                Map.entry("kafka.groupid", "fastapi-group"),
+
+                // ===== AUTHENTICATION CONFIGURATION =====
+                Map.entry("kafka.auth.security.protocol", "SASL_PLAINTEXT"),
+                Map.entry("kafka.sasl.mechanism", "PLAIN"),
+                Map.entry("kafka.sasl.username", "elevance"),
+                Map.entry("kafka.sasl.password", "elevance@123"),
+                Map.entry("kafka.authentication.sasl.ssl.include", "certs"),
+
+                // ===== AGGRESSIVE TIMEOUT CONFIGURATION TO TRIGGER RETRIES =====
+                Map.entry("kafka.ssl.request.timeout.ms", "10"),        // Very low request timeout
+                Map.entry("kafka.ssl.delivery.timeout.ms", "50"),      // Total delivery timeout
+                Map.entry("kafka.ssl.linger.ms", "0"),                   // No batching delay
+                Map.entry("kafka.ssl.acks", "all"),
+                // ===== RETRY CONFIGURATION =====
+                Map.entry("kafka.enable.retry", "true"),
+                Map.entry("kafka.max.retry.attempts", "3"),
+                Map.entry("kafka.initial.retry.delays.ms", "3"),
+                Map.entry("kafka.max.in.flight.requests", "1"),
+                Map.entry("kafka.enable.idempotence", "true"),
+                Map.entry("kafka.ssl.api.retries", "3"),
+
+                Map.entry("kafka.retry.backoff.multiplier", "100"),
+                Map.entry("kafka.enable.manual.retry", "true"),
+                Map.entry("kafka.enable.inbuild.retry", "false"),
+
+
+                // ===== CONNECTION CONFIGURATION =====
+                Map.entry("kafka.connections.max.idle.ms", "1000"),   // Aggressive connection timeout
+                Map.entry("kafka.reconnect.backoff.ms", "5000"),       // Quick reconnection
+                Map.entry("kafka.reconnect.backoff.max.ms", "100"),  // Max reconnection time
+
+                // ===== OTHER CONFIGURATION =====
+                Map.entry("kafka.publish.activator", "true"),
+                Map.entry("kafka.topic.partition", "10"),
                 Map.entry("outbound.context.condition", "Product"),
                 Map.entry("consumer.API.count", "1"),
-                Map.entry("write.batch.size", "1")));
+                Map.entry("outbound.doc.delivery.notify.url", ""),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("agadia.secretKey", "")
+        ));
+        KafkaPublishAction kafkaPublishAction = new KafkaPublishAction(
+                actionExecutionAudit,
+                log,
+                kafkaPublish
+        );
 
-        KafkaPublishAction deliveryNotifyAction = new KafkaPublishAction(actionExecutionAudit, log, kafkaPublish );
-        deliveryNotifyAction.execute();
+        kafkaPublishAction.execute();
+
+        System.out.println("✓ Kafka publish completed (check logs for retry attempts)!");
     }
 
-}
+    }
