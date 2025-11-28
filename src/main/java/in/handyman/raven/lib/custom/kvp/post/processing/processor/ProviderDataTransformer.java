@@ -114,6 +114,7 @@ public class ProviderDataTransformer {
                 .response(encryptRequestResponse(responsePayload))
                 .endpoint(String.valueOf(endpoint))
                 .sorContainerId(entity.getSorContainerId())
+                .requestId(entity.getRequestId())
                 .build());
         log.error(message);
         handleHandymanExceptionInsert(message, e);
@@ -310,6 +311,7 @@ public class ProviderDataTransformer {
                 .response(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
                 .sorContainerId(Long.valueOf(containerId))
+                .requestId(entity.getRequestId())
                 .build();
     }
 }

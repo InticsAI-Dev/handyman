@@ -38,7 +38,7 @@ public class CoproRetryErrorAuditTable {
     private String computationDetails;
     private Integer coproStatusCode;
     private String coproLog;
-    private String coproErrorDetails;
+    private String coproDetails;
     private String requestId;
     private Long imageDpi;
     private Long imageWidth;

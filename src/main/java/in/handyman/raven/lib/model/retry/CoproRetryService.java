@@ -1,5 +1,7 @@
 package in.handyman.raven.lib.model.retry;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
@@ -251,7 +253,30 @@ public class CoproRetryService {
         if (response != null) {
             retryAudit.setMessage(response.code()  +" -> "+ response.message());
             try {
+                final JsonNode innerJson = setParsedResponseValue(response, action);
+
+                // Extract required fields
+                String computationDetails = innerJson.path("computationDetails").toString();
+                Integer coproStatusCode = innerJson.path("statusCode").asInt();
+                String coproLog = innerJson.path("errorMessage").asText();
+                String coproDetails = innerJson.path("detail").asText();
+                String requestId = innerJson.path("requestId").asText();
+                Long imageDpi = innerJson.path("imageDPI").asLong();
+                Long imageWidth = innerJson.path("imageWidth").asLong();
+                Long imageHeight = innerJson.path("imageHeight").asLong();
+                String extractedImageUnit = innerJson.path("extractedImageUnit").asText();
+
                 retryAudit.setResponse(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
+                retryAudit.setImageDpi(imageDpi);
+                retryAudit.setImageHeight(imageHeight);
+                retryAudit.setImageWidth(imageWidth);
+                retryAudit.setCoproLog(coproLog);
+                retryAudit.setExtractedImageUnit(extractedImageUnit);
+                retryAudit.setComputationDetails(computationDetails);
+                retryAudit.setCoproDetails(coproDetails);
+                retryAudit.setRequestId(requestId);
+                retryAudit.setCoproStatusCode(coproStatusCode);
+
             } catch (IOException ex) {
                 retryAudit.setResponse("peek-failed");
             }
@@ -265,6 +290,14 @@ public class CoproRetryService {
                 retryAudit.setMessage("HTTP/2_ERROR: " + message);
             }
         }
+    }
+
+    private JsonNode setParsedResponseValue(Response response, ActionExecutionAudit action) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
+        JsonNode outputs = root.path("outputs");
+        JsonNode dataNode = outputs.get(0).path("data").get(0);
+        return mapper.readTree(dataNode.asText());
     }
 
     public String encryptRequestResponse(String request, ActionExecutionAudit action) {
