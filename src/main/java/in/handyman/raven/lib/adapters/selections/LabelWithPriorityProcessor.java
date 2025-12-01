@@ -3,6 +3,7 @@ package in.handyman.raven.lib.adapters.selections;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
+import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelPriority;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -173,6 +174,7 @@ public class LabelWithPriorityProcessor {
         messages.add("No labels present → origin: " + winner.getOriginId() + ", sorItem: " + winner.getSorItemName());
         return winner;
     }
+
     private SelectionFilteringInputTable handlePriorityBasedSelection(
             List<SelectionFilteringInputTable> rows,
             Map<String, Integer> priorityMap,
@@ -247,16 +249,13 @@ public class LabelWithPriorityProcessor {
         if (json == null || json.isBlank()) return Map.of();
 
         try {
-            Map<String, Integer> output = mapper.readValue(json, new TypeReference<Map<String, Integer>>() {});
+            List<WhitelistLabelPriority> list = mapper.readValue(json, new TypeReference<List<WhitelistLabelPriority>>() {});
 
-            Map<String, Integer> temp = new HashMap<>();
+            Map<String, Integer> output = new HashMap<>();
 
-            output.forEach((key, value) -> {
-                temp.put(removeSpecialCharacters(key), value);
-            });
-
-            output.clear();
-            output.putAll(temp);
+            for (WhitelistLabelPriority row : list) {
+                output.put(removeSpecialCharacters(row.getWhitelistKey()), row.getLabelPriority());
+            }
 
             return output;
 

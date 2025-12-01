@@ -14,6 +14,7 @@ import in.handyman.raven.lib.adapters.selections.FieldSelectionAdapter;
 import in.handyman.raven.lib.adapters.selections.FieldSelectionAdapterFactory;
 import in.handyman.raven.lib.adapters.selections.LabelWithPriorityProcessor;
 import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
+import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelConfig;
 import in.handyman.raven.lib.model.SectionFiltering;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
@@ -101,7 +102,7 @@ public class SectionFilteringAction implements IActionExecution {
       log.info(aMarker, "Decryption completed for fetched records {}", tableInfos.size());
 
       // 3 Map input to adapter fields
-      List<ExtractedField> extractedFields = mapToExtractedFields(tableInfos);
+      List<ExtractedField> extractedFields = mapToExtractedFields(tableInfos,objectMapper);
 
       // 4 Pre-filter summary
       log.debug(aMarker, "Pre-filter Extracted Fields count: {}", extractedFields.size());
@@ -202,7 +203,7 @@ public class SectionFilteringAction implements IActionExecution {
     /**
      * Converts SelectionFilteringInputTable → ExtractedField
      */
-    private List<ExtractedField> mapToExtractedFields(List<SelectionFilteringInputTable> tableInfos) {
+    private List<ExtractedField> mapToExtractedFields(List<SelectionFilteringInputTable> tableInfos, ObjectMapper objectMapper) {
         if (tableInfos == null || tableInfos.isEmpty()) {
             return Collections.emptyList();
         }
@@ -216,7 +217,7 @@ public class SectionFilteringAction implements IActionExecution {
                         .value(row.getAnswer())
                         .blacklistedLabels(splitCsvToSet(row.getBlacklistedLabels()))
                         .blacklistedSections(splitCsvToSet(row.getBlacklistedSections()))
-                        .whitelistedLabels(splitCsvToSet(row.getWhitelistedLabels()))
+                        .whitelistedLabels(parseWhitelistConfig(row.getWhitelistedLabels(),objectMapper))
                         .build())
                 .collect(Collectors.toList());
     }
@@ -229,6 +230,17 @@ public class SectionFilteringAction implements IActionExecution {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
+    }
+
+    private static List<WhitelistLabelConfig> parseWhitelistConfig(String jsonConfig, ObjectMapper objectMapper) {
+        try {
+            if (jsonConfig == null || jsonConfig.isBlank()) {
+                return Collections.emptyList();
+            }
+            return Arrays.asList(objectMapper.readValue(jsonConfig, WhitelistLabelConfig[].class));
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -508,6 +520,7 @@ public class SectionFilteringAction implements IActionExecution {
             }
         }
     }
+
 
 
     @Override
