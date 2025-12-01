@@ -18,15 +18,51 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("https://intics.elevance.ngrok.dev/v2/models/krypton-x-service/versions/1/infer")
+                .endpoint("http://172.202.112.23/predict")
                 .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
-                        "                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
-                        "                    WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
-                        "                    WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name\n" +
-                        "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
-                        "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
-                        "                    WHERE a.model_registry = 'RADON'  and id =1388;")
+                .querySet("SELECT\n" +
+                        "    pl.file_path AS input_file_path,\n" +
+                        "    pv.base_prompt AS user_prompt,\n" +
+                        "    CASE\n" +
+                        "        WHEN 'false' = 'false' THEN 'RADON_KVP_ACTION'\n" +
+                        "        ELSE 'RADON_BBOX_ACTION'\n" +
+                        "    END AS process,\n" +
+                        "    pl.paper_no,\n" +
+                        "    stpq.origin_id,\n" +
+                        "    stpq.root_pipeline_id AS process_id,\n" +
+                        "    stpq.group_id,\n" +
+                        "    stpq.tenant_id,\n" +
+                        "    stpq.root_pipeline_id,\n" +
+                        "    'RADON' AS model_registry,\n" +
+                        "    stpq.batch_id,\n" +
+                        "    'PRIMARY' AS category,\n" +
+                        "    NOW() AS created_on,\n" +
+                        "    pv.system_prompt AS system_prompt,\n" +
+                        "     (CASE WHEN '${sor.kvp.service.name.activator}' = 'RADON' then 'RADON START'\n" +
+                        "     WHEN '${sor.kvp.service.name.activator}' = 'KRYPTON' then 'KRYPTON START'\n" +
+                        "     WHEN '${sor.kvp.service.name.activator}' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id\n" +
+                        "FROM sor_transaction.sor_transaction_payload_queue_archive stpq\n" +
+                        "JOIN paper_filter.agentic_entity_level_score_audit pl\n" +
+                        "    ON pl.origin_id = stpq.origin_id\n" +
+                        "    AND pl.tenant_id = stpq.tenant_id\n" +
+                        "    AND pl.batch_id = stpq.batch_id\n" +
+                        "  JOIN sor_meta.sor_container sc on \n" +
+                        "  pl.sor_container_id=sc.sor_container_id\n" +
+                        "JOIN sor_meta.radon_prompt_table pv\n" +
+                        "    ON pl.tenant_id = pv.tenant_id\n" +
+                        "    AND pl.sor_container_id = pv.sor_container_id\n" +
+                        "WHERE stpq.group_id = '4'\n" +
+                        "  AND stpq.tenant_id = '1'\n" +
+                        "  AND pv.document_type = 'MEDICAL_COMMERCIAL'\n" +
+                        "  AND pv.status = 'ACTIVE'\n" +
+                        "  AND pv.version = '1'\n" +
+                        "  AND pv.process = CASE\n" +
+                        "                       WHEN 'false' = 'false' THEN 'RADON_KVP_BBOX'\n" +
+                        "                       ELSE 'RADON_KVP'\n" +
+                        "                   END\n" +
+                        "  AND stpq.batch_id = 'BATCH-4_0'\n" +
+                        "  and pl.paper_no =3\n" +
+                        "  AND pl.is_candidate_paper = 'yes';\n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -46,11 +82,13 @@ public class RadonKvpAcionTest {
         ac.getContext().put(ENCRYPT_TEXT_EXTRACTION_OUTPUT, "true");
         ac.getContext().put("bbox.radon_bbox_activator", "false");
         ac.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
-        ac.getContext().put("document_type", "HEALTH_CARE");
+        ac.getContext().put("document_type", "MEDICAL_GBD");
         ac.getContext().put("tenant_id", "1");
-        ac.getContext().put("copro.request.activator.handler.name", "RUNPOD");
+        ac.getContext().put("copro.request.activator.handler.name", "TRITON");
         ac.getContext().put("prompt.bbox.json.placeholder.name", "{%sreplaceable_value_of_the_previous_json}");
         ac.getContext().put("ProviderTransformerFinalBsh", "ProviderTransformerFinalBsh");
+        ac.getContext().put("MemberTransformerFinalBsh", "MemberTransformerFinalBsh");
+
 
 
         RadonKvpAction radonKvpAction = new RadonKvpAction(ac, log, radonKvp);
