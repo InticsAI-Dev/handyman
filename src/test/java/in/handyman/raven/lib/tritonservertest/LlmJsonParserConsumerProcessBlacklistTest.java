@@ -172,7 +172,7 @@ public class LlmJsonParserConsumerProcessBlacklistTest {
         field.setLabel(label);
         field.setValue(value);
         field.setLabelMatching(true);
-        field.setWhitelistedLabels(whitelistedLabels);
+//        field.setWhitelistedLabels(whitelistedLabels);
         return field;
     }
 
