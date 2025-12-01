@@ -36,6 +36,7 @@ public class ProviderDataTransformer {
     private final String jdbiResourceName;
     private final InticsIntegrity encryption;
 
+    // Keys to check for direct passthrough
     private static final String MEMBER_ID_KEY = "member_id";
     private static final String MEDICAID_ID_KEY = "medicaid_id";
     private static final String MULTIPLE_MEMBER_INDICATOR_KEY = "multiple_member_indicator";
@@ -113,7 +114,7 @@ public class ProviderDataTransformer {
     }
 
     /**
-     * Check if the input data contains the specific member keys that should be passed through
+     * Check if the input data contains any of the specific member keys that should be passed through
      */
     private boolean shouldPassthroughMemberData(Object value) {
         if (!(value instanceof List)) {
@@ -125,12 +126,10 @@ public class ProviderDataTransformer {
             return false;
         }
 
-        // Check if first 3 items have the expected keys
+        // Check if any items have the expected keys
         Set<String> foundKeys = new HashSet<>();
-        int itemsToCheck = Math.min(3, dataList.size());
 
-        for (int i = 0; i < itemsToCheck; i++) {
-            Object item = dataList.get(i);
+        for (Object item : dataList) {
             if (item instanceof Map) {
                 Map<?, ?> itemMap = (Map<?, ?>) item;
                 String key = (String) itemMap.get("key");
@@ -140,16 +139,16 @@ public class ProviderDataTransformer {
             }
         }
 
-        // Check if all three required keys are present
-        boolean hasAllKeys = foundKeys.contains(MEMBER_ID_KEY) &&
-                foundKeys.contains(MEDICAID_ID_KEY) &&
+        // Check if ANY of the three keys are present
+        boolean hasAnyKey = foundKeys.contains(MEMBER_ID_KEY) ||
+                foundKeys.contains(MEDICAID_ID_KEY) ||
                 foundKeys.contains(MULTIPLE_MEMBER_INDICATOR_KEY);
 
-        if (hasAllKeys) {
-            log.info("Found all required member keys: {}", foundKeys);
+        if (hasAnyKey) {
+            log.info("Found member key(s) for passthrough: {}", foundKeys);
         }
 
-        return hasAllKeys;
+        return hasAnyKey;
     }
 
     /**
@@ -281,12 +280,28 @@ public class ProviderDataTransformer {
             log.warn("Response payload is null or empty.");
             return Map.of();
         }
+
         try {
+            // First, try to parse as Map
             return objectMapper.readValue(responsePayload, new TypeReference<Map<String, Object>>() {
             });
         } catch (Exception e) {
-            String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
-            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
+            // If it fails, check if it's a direct array
+            try {
+                log.info("Response is not a Map, attempting to parse as array");
+                List<Object> arrayResponse = objectMapper.readValue(responsePayload, new TypeReference<List<Object>>() {
+                });
+
+                // Wrap the array in a map with a default key
+                Map<String, Object> wrappedResponse = new HashMap<>();
+                wrappedResponse.put("data", arrayResponse);
+                log.info("Successfully wrapped array response with {} items", arrayResponse.size());
+                return wrappedResponse;
+
+            } catch (Exception arrayException) {
+                String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
+                handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, arrayException, outputList);
+            }
         }
         return Map.of();
     }
