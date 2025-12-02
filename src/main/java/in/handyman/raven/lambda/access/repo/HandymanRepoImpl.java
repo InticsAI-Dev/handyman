@@ -2,7 +2,6 @@ package in.handyman.raven.lambda.access.repo;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import in.handyman.raven.core.azure.adapters.AzureJdbiConnection;
 import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import in.handyman.raven.core.encryption.ProtegrityApiAudit;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
@@ -56,11 +55,11 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     private static final String SQL_INSERT_COPRO_AUDIT = "INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT + " (" +
             "origin_id, group_id, attempt, tenant_id, process_id, file_path, paper_no, message, status, stage, " +
             "created_on, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, copro_service_id, " +
-            "computation_details, copro_status_code, copro_log, copro_details, request_id, image_dpi, image_width, image_height, extracted_image_unit" +
+            "computation_details, copro_status_code, copro_log, copro_details, request_id" +
             ") VALUES (" +
             ":originId, :groupId, :attempt, :tenantId, :processId, :filePath, :paperNo, :message, :status, :stage, " +
             ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint, :coproServiceId ," +
-            ":computationDetails :: jsonb, :coproStatusCode, :coproLog, :coproDetails, :requestId, :imageDpi, :imageWidth, :imageHeight, :extractedImageUnit" +
+            ":computationDetails :: jsonb, :coproStatusCode, :coproLog, :coproDetails, :requestId" +
             ")";
 
     static {

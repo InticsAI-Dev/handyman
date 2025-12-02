@@ -37,11 +37,11 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private String request;
     private String response;
     private String endpoint;
-    private String computationDetails;
+    private UUID requestId;
     private Integer coproStatusCode;
     private String coproLog;
     private String coproErrorDetails;
-    private UUID requestId;
+    private String computationDetails;
 
     @Override
     public List<Object> getRowData() {
@@ -64,11 +64,11 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.request,
                 this.response,
                 this.endpoint,
-                this.computationDetails,
+                this.requestId,
                 this.coproStatusCode,
                 this.coproLog,
                 this.coproErrorDetails,
-                this.requestId
+                this.computationDetails
         ).collect(Collectors.toList());
     }
 

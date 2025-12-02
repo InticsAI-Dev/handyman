@@ -253,25 +253,36 @@ public class CoproRetryService {
         if (response != null) {
             retryAudit.setMessage(response.code()  +" -> "+ response.message());
             try {
-                final JsonNode innerJson = setParsedResponseValue(response, action);
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode root = mapper.readTree(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
+                JsonNode outputs = root.path("outputs");
 
-                // Extract required fields
-                String computationDetails = innerJson.path("computationDetails").toString();
-                Integer coproStatusCode = innerJson.path("statusCode").asInt();
-                String coproLog = innerJson.path("errorMessage").asText();
-                String coproDetails = innerJson.path("detail").asText();
-                String requestId = innerJson.path("requestId").asText();
-                Long imageDpi = innerJson.path("imageDPI").asLong();
-                Long imageWidth = innerJson.path("imageWidth").asLong();
-                Long imageHeight = innerJson.path("imageHeight").asLong();
-                String extractedImageUnit = innerJson.path("extractedImageUnit").asText();
+                String computationDetails = null;
+                Integer coproStatusCode = null;
+                String coproLog = null;
+                String coproDetails = null;
+                String requestId = null;
+
+                if(!outputs.isEmpty()) {
+                    final JsonNode innerJson = setParsedResponseValue(response, action);
+
+                    // Extract required fields
+                    computationDetails = innerJson.path("computationDetails").toString();
+                    coproStatusCode = innerJson.path("statusCode").asInt();
+                    coproLog = innerJson.path("errorMessage").asText();
+                    coproDetails = innerJson.path("detail").asText();
+                    requestId = innerJson.path("requestId").asText();
+                }else if(root.get("process").asText().equals("DATA_EXTRACTION")){
+                    computationDetails = mapper.writeValueAsString(root.get("metricsData"));
+                    coproStatusCode = root.get("statusCode").asInt();
+                    coproLog = root.get("errorMessage").asText();
+                    coproDetails = root.get("detail").asText();
+                    requestId = root.get("requestId").asText();
+                }
 
                 retryAudit.setResponse(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
-                retryAudit.setImageDpi(imageDpi);
-                retryAudit.setImageHeight(imageHeight);
-                retryAudit.setImageWidth(imageWidth);
                 retryAudit.setCoproLog(coproLog);
-                retryAudit.setExtractedImageUnit(extractedImageUnit);
+
                 retryAudit.setComputationDetails(computationDetails);
                 retryAudit.setCoproDetails(coproDetails);
                 retryAudit.setRequestId(requestId);
