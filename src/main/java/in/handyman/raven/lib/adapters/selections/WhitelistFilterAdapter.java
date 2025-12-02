@@ -1,8 +1,8 @@
 package in.handyman.raven.lib.adapters.selections;
 
+import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelConfig;
+
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class WhitelistFilterAdapter implements FieldSelectionAdapter {
@@ -24,57 +24,67 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
                 })
                 .collect(Collectors.toList());
     }
+    public ExtractedField isLabelValueMatching(List<WhitelistLabelConfig> whitelistFields,
+                                                   ExtractedField response,
+                                                   String filteringType) {
 
-    /**
-     * Checks if label or section-value pair matches whitelist.
-     */
-    public ExtractedField isLabelValueMatching(Set<String> whitelistFields, ExtractedField response, String filteringType) {
         if (response == null) {
             return null;
         }
-        if(whitelistFields == null || whitelistFields.isEmpty()){
+
+        // If no whitelist provided, allow everything but clearly indicate that
+        if (whitelistFields == null || whitelistFields.isEmpty()) {
             response.setLabelMatching(true);
-            response.setLabelMatchMessage("No whitelist provided for " + filteringType + ". All values are allowed.");
+            response.setLabelMatchMessage(
+                    "No whitelist configured for " + filteringType + ". All labels are allowed."
+            );
             return response;
         }
 
         String labelSource = filteringType.equals("SECTIONS") ? response.getSectionAlias() : response.getLabel();
         String rawLabel = safeTrim(labelSource);
-        String rawValue = safeTrim(response.getValue());
-        String label = removeSpecialCharacters(rawLabel);
-        String value = removeSpecialCharacters(rawValue);
-
-        List<String> sanitizedWhitelist = whitelistFields == null ? List.of() :
-                whitelistFields.stream()
-                        .filter(Objects::nonNull)
-                        .map(this::removeSpecialCharacters)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.toList());
-
-        String labelLower = label.toLowerCase();
-        String valueLower = value.toLowerCase();
+        String label = removeSpecialCharacters(rawLabel).toLowerCase();
 
         boolean isLabelMatching = false;
-        String message = "No match found between " + filteringType + " and whitelist.";
+        String message = "No whitelist match found for labels in whitelisted " + filteringType + ".";
 
-        // Case 1: Label is directly whitelisted
-        boolean isWhitelisted = sanitizedWhitelist.stream()
-                .anyMatch(labelLower::equals);
+        for (WhitelistLabelConfig cfg : whitelistFields) {
+            if (cfg == null || cfg.getWhitelistKey() == null) continue;
 
-        if (isWhitelisted) {
-            isLabelMatching = true;
-            message = filteringType + " is whitelisted and allowed.";
-        }
-        // Case 2: Label exactly equals value and value is whitelisted
-        else if (sanitizedWhitelist.contains(valueLower)) {
-            isLabelMatching = true;
-            message = filteringType + " value is explicitly whitelisted.";
+            String sanitizedKey = removeSpecialCharacters(cfg.getWhitelistKey()).toLowerCase();
+            String searchConfig = cfg.getLabelSearchConfig() == null
+                    ? "EXACT"
+                    : cfg.getLabelSearchConfig().trim().toUpperCase();
+
+            boolean matched = false;
+
+            switch (searchConfig) {
+                case "CONTAINS":
+                    matched = label.contains(sanitizedKey);
+                    if (matched) {
+                        isLabelMatching = true;
+                        message = filteringType + " label matched CONTAINS mode: '" + sanitizedKey + "'.";
+                    }
+                    break;
+
+                case "EXACT":
+                default:
+                    matched = label.equals(sanitizedKey);
+                    if (matched) {
+                        isLabelMatching = true;
+                        message = filteringType + " label matched EXACT mode: '" + sanitizedKey + "'.";
+                    }
+                    break;
+            }
+
+            if (matched) break;
         }
 
         response.setLabelMatching(isLabelMatching);
         response.setLabelMatchMessage(message);
         return response;
     }
+
 
     public String safeTrim(String input) {
         return input == null ? "" : input.trim();
