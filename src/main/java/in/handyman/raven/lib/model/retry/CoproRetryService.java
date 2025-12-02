@@ -265,14 +265,13 @@ public class CoproRetryService {
 
                 if(!outputs.isEmpty()) {
                     final JsonNode innerJson = setParsedResponseValue(response, action);
-
                     // Extract required fields
                     computationDetails = innerJson.path("computationDetails").toString();
                     coproStatusCode = innerJson.path("statusCode").asInt();
                     coproLog = innerJson.path("errorMessage").asText();
                     coproDetails = innerJson.path("detail").asText();
                     requestId = innerJson.path("requestId").asText();
-                }else if(root.get("process").asText().equals("DATA_EXTRACTION")){
+                }else if(root.get("process").asText().equals("DATA_EXTRACTION") || root.get("process").asText().equals("DOC_EYE_CUE")){
                     computationDetails = mapper.writeValueAsString(root.get("metricsData"));
                     coproStatusCode = root.get("statusCode").asInt();
                     coproLog = root.get("errorMessage").asText();

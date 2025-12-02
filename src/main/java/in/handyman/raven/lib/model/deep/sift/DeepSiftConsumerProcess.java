@@ -252,7 +252,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                                 .coproStatusCode(modelResponse.getStatusCode())
                                 .computationDetails(objectMapper.writeValueAsString(modelResponse.getMetricsData()))
                                 .requestId(entity.getRequestId())
-                                .coproErrorDetails(modelResponse.getCoproLog())
+                                .coproErrorDetails(modelResponse.getDetail())
                                 .coproLog(modelResponse.getCoproLog())
                                 .build());
                     }

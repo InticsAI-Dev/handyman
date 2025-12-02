@@ -1,5 +1,6 @@
 package in.handyman.raven.lib.model.documentEyeCue;
 
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.ComputationDetails;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,9 +27,8 @@ public class DocumentEyeCueResponse {
     private String processedPdfChecksum;
     private Long docEyeCueDurationMs;
     private String errorMessage;
-    private String computationDetails;
-    private Integer coproStatusCode;
-    private String coproLog;
-    private String coproErrorDetails;
+    private ComputationDetails metricsData;
+    private Integer statusCode;
+    private String detail;
     private UUID requestId;
 }

@@ -261,10 +261,9 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
                     .docEyeCueDurationMs(documentEyeCueResponse.getDocEyeCueDurationMs())
                     .requestId(entity.getRequestId())
-                    .computationDetails(documentEyeCueResponse.getComputationDetails())
-                    .coproErrorDetails(documentEyeCueResponse.getCoproErrorDetails())
-                    .coproLog(documentEyeCueResponse.getCoproLog())
-                    .coproStatusCode(documentEyeCueResponse.getCoproStatusCode())
+                    .computationDetails(objectMapper.writeValueAsString(documentEyeCueResponse.getMetricsData()))
+                    .coproErrorDetails(documentEyeCueResponse.getDetail())
+                    .coproStatusCode(documentEyeCueResponse.getStatusCode())
                     .build();
 
             resultList.add(outputRecord);
