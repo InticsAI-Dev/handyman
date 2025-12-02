@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -36,6 +37,11 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private String request;
     private String response;
     private String endpoint;
+    private String computationDetails;
+    private Integer coproStatusCode;
+    private String coproLog;
+    private String coproErrorDetails;
+    private UUID requestId;
 
     @Override
     public List<Object> getRowData() {
@@ -57,7 +63,12 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.status,
                 this.request,
                 this.response,
-                this.endpoint
+                this.endpoint,
+                this.computationDetails,
+                this.coproStatusCode,
+                this.coproLog,
+                this.coproErrorDetails,
+                this.requestId
         ).collect(Collectors.toList());
     }
 

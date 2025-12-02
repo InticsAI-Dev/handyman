@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -50,6 +52,12 @@ public class XenonResponse {
 
     @JsonProperty("durationTime")
     private Long durationTime;
+
+    private String computationDetails;
+    private Integer coproStatusCode;
+    private String coproLog;
+    private String coproErrorDetails;
+    private UUID requestId;
 
     // Additional helper methods if needed
     public boolean isSuccess() {

@@ -127,6 +127,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         deepSiftRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         deepSiftRequest.setModelName(entity.getModelName());
         deepSiftRequest.setPaperNo(entity.getPaperNo());
+        deepSiftRequest.setRequestId(entity.getRequestId());
         return deepSiftRequest;
     }
 
@@ -144,6 +145,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .actionId(deepSiftRequest.getActionId())
                 .inputFilePath(deepSiftRequest.getInputFilePath())
                 .base64Img(deepSiftRequest.getBase64Img())
+                .requestId(deepSiftRequest.getRequestId())
                 .build();
         return objectMapper.writeValueAsString(customRequest);
     }
@@ -162,6 +164,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     .modelName(deepSiftRequest.getModelName())
                     .actionId(deepSiftRequest.getActionId())
                     .inputFilePath(deepSiftRequest.getInputFilePath())
+                    .requestId(deepSiftRequest.getRequestId())
                     .build();
             return objectMapper.writeValueAsString(sanitizedRequest);
         } catch (JsonProcessingException e) {
@@ -184,7 +187,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(DeepSiftOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).tenantId(entity.getTenantId()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(dbJsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(DeepSiftOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).tenantId(entity.getTenantId()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(dbJsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).request(entity.getRequestId().toString()).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -246,6 +249,11 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                                 .request(encryptRequestResponse(dbJsonRequest))
                                 .response(encryptRequestResponse(responseBody))
                                 .endpoint(String.valueOf(endpoint))
+                                .coproStatusCode(modelResponse.getCoproStatusCode())
+                                .computationDetails(modelResponse.getComputationDetails())
+                                .requestId(entity.getRequestId())
+                                .coproErrorDetails(modelResponse.getCoproErrorDetails())
+                                .coproLog(modelResponse.getCoproLog())
                                 .build());
                     }
                 }
@@ -274,6 +282,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
+                .requestId(entity.getRequestId().toString())
                 .build();
 
     }

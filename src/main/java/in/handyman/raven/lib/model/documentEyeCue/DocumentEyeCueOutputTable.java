@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -36,13 +37,18 @@ public class DocumentEyeCueOutputTable implements CoproProcessor.Entity {
     private String endpoint;
     private String encodedFilePath;
     private Long docEyeCueDurationMs;
-
+    private String computationDetails;
+    private Integer coproStatusCode;
+    private String coproLog;
+    private String coproErrorDetails;
+    private UUID requestId;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processedFilePath,
                 this.status, this.stage, this.message, this.createdOn, this.processId, this.rootPipelineId,
-                this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint, this.encodedFilePath, this.docEyeCueDurationMs).collect(Collectors.toList());
+                this.batchId, this.lastUpdatedOn, this.request, this.response, this.endpoint, this.encodedFilePath, this.docEyeCueDurationMs,
+                this.requestId,this.coproStatusCode,this.coproLog,this.coproErrorDetails,this.computationDetails).collect(Collectors.toList());
     }
 }
 

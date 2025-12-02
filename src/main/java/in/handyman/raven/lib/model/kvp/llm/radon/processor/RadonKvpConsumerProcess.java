@@ -225,7 +225,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(RadonQueryOutputTable.builder().sorContainerId(entity.getSorContainerId()).processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(RadonQueryOutputTable.builder().sorContainerId(entity.getSorContainerId()).processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).endpoint(String.valueOf(endpoint)).requestId(entity.getRequestId()).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);

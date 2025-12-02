@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,4 +26,9 @@ public class DocumentEyeCueResponse {
     private String processedPdfChecksum;
     private Long docEyeCueDurationMs;
     private String errorMessage;
+    private String computationDetails;
+    private Integer coproStatusCode;
+    private String coproLog;
+    private String coproErrorDetails;
+    private UUID requestId;
 }
