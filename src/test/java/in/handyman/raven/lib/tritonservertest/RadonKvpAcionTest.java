@@ -19,14 +19,14 @@ public class RadonKvpAcionTest {
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
                     .endpoint("http://0.0.0.0:7999/predict")
-                .outputTable("sor_transaction.radon_kvp_output_audit_1")
+                .outputTable("sor_transaction.radon_kvp_output_audit")
                 .querySet("SELECT '/data/processed_images/pdf2png/COMM_P2_INREQ_3 (1)/COMM_P2_INREQ_3 (1)-1.png' as input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,\n" +
                         "a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN 'KRYPTON' = 'RADON' then 'RADON START'\n" +
                         "WHEN 'KRYPTON' = 'KRYPTON' then 'KRYPTON START'\n" +
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id, request_id\n" +
                         "FROM sor_transaction.radon_kvp_input_audit a    \n" +
                         "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id    \n" +
-                        "WHERE a.model_registry = 'RADON'  and a.root_pipeline_id=1245;")
+                        "WHERE a.model_registry = 'RADON'  and a.root_pipeline_id=1033 and a.request_id='0aaac5f0-9dd7-490e-8d3e-479ea3d0b7b4';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
