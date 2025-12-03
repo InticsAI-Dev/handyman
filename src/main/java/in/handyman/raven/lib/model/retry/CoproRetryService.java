@@ -263,21 +263,59 @@ public class CoproRetryService {
                 String coproDetails = null;
                 String requestId = null;
 
-                if(!outputs.isEmpty()) {
+                if (!outputs.isEmpty()) {
+
                     final JsonNode innerJson = setParsedResponseValue(response, action);
-                    // Extract required fields
-                    computationDetails = innerJson.path("computationDetails").toString();
-                    coproStatusCode = innerJson.path("statusCode").asInt();
-                    coproLog = innerJson.path("errorMessage").asText();
-                    coproDetails = innerJson.path("detail").asText();
-                    requestId = innerJson.path("requestId").asText();
-                }else if(root.get("process").asText().equals("DATA_EXTRACTION") || root.get("process").asText().equals("DOC_EYE_CUE")){
-                    computationDetails = mapper.writeValueAsString(root.get("metricsData"));
-                    coproStatusCode = root.get("statusCode").asInt();
-                    coproLog = root.get("errorMessage").asText();
-                    coproDetails = root.get("detail").asText();
-                    requestId = root.get("requestId").asText();
+
+                    // computationDetails
+                    JsonNode compNode = innerJson.get("computationDetails");
+                    computationDetails = compNode != null && !compNode.isNull() ? compNode.toString() : null;
+
+                    // statusCode
+                    JsonNode statusNode = innerJson.get("statusCode");
+                    coproStatusCode = statusNode != null && !statusNode.isNull() ? statusNode.asInt() : null;
+
+                    // errorMessage
+                    JsonNode errorNode = innerJson.get("errorMessage");
+                    coproLog = errorNode != null && !errorNode.isNull() ? errorNode.asText() : null;
+
+                    // detail
+                    JsonNode detailNode = innerJson.get("detail");
+                    coproDetails = detailNode != null && !detailNode.isNull() ? detailNode.asText() : null;
+
+                    // requestId
+                    JsonNode reqNode = innerJson.get("requestId");
+                    requestId = reqNode != null && !reqNode.isNull() ? reqNode.asText() : null;
+
+                } else if (
+                        root.has("process")
+                                && ("DATA_EXTRACTION".equals(root.get("process").asText())
+                                || "DOC_EYE_CUE".equals(root.get("process").asText()))
+                ) {
+
+                    // computationDetails = metricsData JSON or null
+                    JsonNode metricsNode = root.get("metricsData");
+                    computationDetails = metricsNode != null && !metricsNode.isNull()
+                            ? mapper.writeValueAsString(metricsNode)
+                            : null;
+
+                    // statusCode
+                    JsonNode statusNode = root.get("statusCode");
+                    coproStatusCode = statusNode != null && !statusNode.isNull() ? statusNode.asInt() : null;
+
+                    // errorMessage
+                    JsonNode errorNode = root.get("errorMessage");
+                    coproLog = errorNode != null && !errorNode.isNull() ? errorNode.asText() : null;
+
+                    // detail
+                    JsonNode detailNode = root.get("detail");
+                    coproDetails = detailNode != null && !detailNode.isNull() ? detailNode.asText() : null;
+
+                    // requestId
+                    JsonNode reqNode = root.get("requestId");
+                    requestId = reqNode != null && !reqNode.isNull() ? reqNode.asText() : null;
                 }
+
 
                 retryAudit.setResponse(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
                 retryAudit.setCoproLog(coproLog);

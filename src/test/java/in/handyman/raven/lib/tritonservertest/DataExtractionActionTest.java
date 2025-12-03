@@ -272,7 +272,7 @@ class DataExtractionActionTest {
                 .condition(true)
                 .endPoint("http://0.0.0.0:7999/predict")
                 .processId("138980184199100180")
-                .resultTable("paper_filter.agentic_paper_filter_output_audit_new")
+                .resultTable("paper_filter.agentic_paper_filter_output_audit")
                 .querySet("SELECT\n" +
                         "a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,\n" +
                         "'/data/processed_images/11-11-2025_04_11_40/tenant_1/group_91/preprocess/paper_itemizer/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as file_path, b.root_pipeline_id, a.template_name , a.batch_id as batch_id\n" +

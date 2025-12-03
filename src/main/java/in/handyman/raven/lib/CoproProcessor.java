@@ -114,28 +114,15 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
     }
 
     private void insertRowsReadIntoStatementAudit(List<I> ts, LocalDateTime startTime) {
-        try {
-            StatementExecutionAudit audit = StatementExecutionAudit.builder()
-                    .rootPipelineId(actionExecutionAudit.getRootPipelineId())
-                    .actionId(actionExecutionAudit.getActionId())
-                    .statementContent("CoproProcessor producer for " + actionExecutionAudit.getActionName())
-                    .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
-                    .rowsRead(ts.size())
-                    .build();
-
-            addAudit(audit, startTime);
-
-        } catch (Exception e) {
-            // log the error (depending on your logger)
-            logger.error("Failed to insert statement execution audit (rowsRead). rootPipelineId={}, actionId={}, error={}",
-                    actionExecutionAudit.getRootPipelineId(),
-                    actionExecutionAudit.getActionId(),
-                    e.getMessage(),
-                    e);
-            // optional: swallow exception so it doesn't break processing
-        }
+        final StatementExecutionAudit audit = StatementExecutionAudit.builder()
+                .rootPipelineId(actionExecutionAudit.getRootPipelineId())
+                .actionId(actionExecutionAudit.getActionId())
+                .statementContent("CoproProcessor producer for " + actionExecutionAudit.getActionName())
+                .timeTaken((double) ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()))
+                .rowsRead(ts.size())
+                .build();
+        addAudit(audit, startTime);
     }
-
 
     private void insertCompletionIntoStatementAudit(LocalDateTime startTime) {
         final StatementExecutionAudit audit = StatementExecutionAudit.builder()
