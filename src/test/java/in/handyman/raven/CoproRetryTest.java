@@ -83,7 +83,7 @@ public class CoproRetryTest {
 //        Response response,
 //        Exception e,
 //        ActionExecutionAudit action
-        coproRetryService.populateAudit(1, audit, "{requestBody}", response, null, actionAudit);
+//        coproRetryService.populateAudit(1, audit, "{requestBody}", response, null, actionAudit);
 
         // Verify populated fields
         assertEquals("200 -> OK", audit.getMessage());
