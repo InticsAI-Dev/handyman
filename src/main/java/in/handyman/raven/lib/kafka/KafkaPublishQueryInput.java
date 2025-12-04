@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class KafkaPublishQueryInput {
-
     private String endpoint;
     private String topicName;
     private String authSecurityProtocol;
