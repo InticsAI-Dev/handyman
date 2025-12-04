@@ -1,11 +1,15 @@
 package in.handyman.raven.lib.bsh.member;
 
 import java.util.*;
+import org.slf4j.Logger;
 
-public class MemberDataTransformer {
+public class MemberTransformerFinalBsh {
+
     private boolean enableAddressMerging;
+    private Logger logger;
 
     private static Set ADDRESS_FIELDS;
+    private static Set PASSTHROUGH_KEYS;
 
     static {
         ADDRESS_FIELDS = new HashSet();
@@ -14,31 +18,164 @@ public class MemberDataTransformer {
         ADDRESS_FIELDS.add("member_city");
         ADDRESS_FIELDS.add("member_gender");
         ADDRESS_FIELDS.add("member_address_line1");
+
+        // Keys that trigger passthrough mode
+        PASSTHROUGH_KEYS = new HashSet();
+        PASSTHROUGH_KEYS.add("member_id");
+        PASSTHROUGH_KEYS.add("medicaid_id");
+        PASSTHROUGH_KEYS.add("multiple_member_indicator");
     }
 
-    public MemberDataTransformer() {
+    public MemberTransformerFinalBsh() {
         this.enableAddressMerging = false;
     }
 
-    public MemberDataTransformer(boolean enableAddressMerging) {
+    public MemberTransformerFinalBsh(Logger logger) {
+        this.logger = logger;
+        this.enableAddressMerging = false;
+        if (logger != null) logger.info("MemberTransformerFinalBsh initialized without merging");
+    }
+
+    public MemberTransformerFinalBsh(boolean enableAddressMerging) {
         this.enableAddressMerging = enableAddressMerging;
     }
 
-    public Map processPatientData(Map input) {
-        System.out.println("Starting processPatientData execution");
+    public MemberTransformerFinalBsh(boolean enableAddressMerging, Logger logger) {
+        this.enableAddressMerging = enableAddressMerging;
+        this.logger = logger;
+        if (logger != null) logger.info("MemberTransformerFinalBsh initialized with merging=" + enableAddressMerging);
+    }
 
-        List patientDataList = (List) input.get("patient_data");
-        if (patientDataList == null || patientDataList.isEmpty()) {
-            System.out.println("No patient data found in input");
-            return createEmptyOutput();
+    /**
+     * Main processing method compatible with ProviderDataTransformer
+     * Returns List<Hashtable> format with sorContainerName
+     */
+    public List processProviders(Object input) {
+        log("Starting processProviders for member data");
+
+        // Handle different input types
+        List inputList = null;
+        if (input instanceof List) {
+            inputList = (List) input;
+        } else if (input instanceof Map) {
+            Map inputMap = (Map) input;
+            inputList = (List) inputMap.get("patient_data");
         }
 
-        Map result = new HashMap();
-        List memberDetailsList = new ArrayList();
+        if (inputList == null || inputList.isEmpty()) {
+            log("No data found in input");
+            return new ArrayList();
+        }
+
+        // Check if this is passthrough data
+        if (shouldPassthrough(inputList)) {
+            log("Detected passthrough pattern - processing directly");
+            return processPassthroughData(inputList);
+        }
+
+        // Otherwise process normally
+        return processNormalData(inputList);
+    }
+
+    /**
+     * Check if data should be passed through without transformation
+     */
+    private boolean shouldPassthrough(List dataList) {
+        if (dataList == null || dataList.isEmpty()) {
+            return false;
+        }
+
+        Set foundKeys = new HashSet();
+
+        for (int i = 0; i < dataList.size(); i++) {
+            Object item = dataList.get(i);
+            if (item instanceof Map) {
+                Map itemMap = (Map) item;
+                Object keyObj = itemMap.get("key");
+                if (keyObj != null) {
+                    foundKeys.add(keyObj);
+                }
+            }
+        }
+
+        // Check if any passthrough keys are present
+        for (Iterator it = PASSTHROUGH_KEYS.iterator(); it.hasNext(); ) {
+            Object passthroughKey = it.next();
+            if (foundKeys.contains(passthroughKey)) {
+                log("Found passthrough key: " + passthroughKey);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Process data in passthrough mode - minimal transformation
+     * Returns List<Hashtable> with sorContainerName for Java processor
+     */
+    private List processPassthroughData(List dataList) {
+        log("Processing " + dataList.size() + " items in passthrough mode");
+
+        List result = new ArrayList();
         Set seen = new HashSet();
 
+        for (int i = 0; i < dataList.size(); i++) {
+            Object item = dataList.get(i);
+            if (item instanceof Map) {
+                Map itemMap = (Map) item;
+
+                String key = (String) itemMap.get("key");
+                Object valueObj = itemMap.get("value");
+                String value = valueObj != null ? String.valueOf(valueObj) : "";
+                String label = (String) itemMap.get("label");
+                Object sectionAliasObj = itemMap.get("section_alias");
+                String sectionAlias = sectionAliasObj != null ? (String) sectionAliasObj : "MEMBER_INFO";
+
+                String uniqueKey = key + "|" + value;
+
+                if (!seen.contains(uniqueKey)) {
+                    seen.add(uniqueKey);
+
+                    Hashtable outputItem = new Hashtable();
+                    outputItem.put("key", key);
+                    outputItem.put("value", value);
+                    outputItem.put("label", label != null ? label : "");
+                    outputItem.put("sectionAlias", sectionAlias);
+                    outputItem.put("confidence", 0.0);
+                    outputItem.put("sorContainerName", "MEMBER_DETAILS");
+
+                    // Handle bounding box
+                    Object bbObj = itemMap.get("boundingBox");
+                    if (bbObj instanceof Map) {
+                        outputItem.put("boundingBox", bbObj);
+                    } else {
+                        outputItem.put("boundingBox", new HashMap());
+                    }
+
+                    result.add(outputItem);
+
+                    log("Passthrough field: key=" + key + ", value=" + value);
+                }
+            }
+        }
+
+        log("Passthrough processing complete with " + result.size() + " fields");
+        return result;
+    }
+
+    /**
+     * Process data normally with full transformation logic
+     * Returns List<Hashtable> with sorContainerName for Java processor
+     */
+    private List processNormalData(List patientDataList) {
+        log("Processing data with normal transformation");
+
+        List result = new ArrayList();
+        Set seen = new HashSet();
         List sections = new ArrayList();
 
+        // Parse input data into sections
         for (int p = 0; p < patientDataList.size(); p++) {
             Map patientSection = (Map) patientDataList.get(p);
             Map meta = (Map) patientSection.get("_meta");
@@ -72,19 +209,17 @@ public class MemberDataTransformer {
             sections.add(sectionData);
         }
 
+        // Apply address merging if enabled
         if (enableAddressMerging) {
-            System.out.println("Address merging is ENABLED - performing merge");
+            log("Address merging is ENABLED - performing merge");
             mergeAddressFields(sections);
         } else {
-            System.out.println("Address merging is DISABLED - skipping merge");
+            log("Address merging is DISABLED - skipping merge");
         }
 
+        // Convert sections to output format (List<Hashtable> with sorContainerName)
         for (int s = 0; s < sections.size(); s++) {
             SectionData sectionData = (SectionData) sections.get(s);
-            Map sectionOutput = new HashMap();
-            sectionOutput.put("sectionAlias", sectionData.sectionAlias);
-
-            List transformedFields = new ArrayList();
 
             for (int fd = 0; fd < sectionData.fields.size(); fd++) {
                 FieldData fieldData = (FieldData) sectionData.fields.get(fd);
@@ -93,10 +228,13 @@ public class MemberDataTransformer {
                 if (!seen.contains(uniqueKey)) {
                     seen.add(uniqueKey);
 
-                    Map transformedField = new HashMap();
-                    transformedField.put("key", fieldData.key);
-                    transformedField.put("value", fieldData.value);
-                    transformedField.put("label", fieldData.label);
+                    Hashtable outputItem = new Hashtable();
+                    outputItem.put("key", fieldData.key);
+                    outputItem.put("value", fieldData.value);
+                    outputItem.put("label", fieldData.label);
+                    outputItem.put("sectionAlias", sectionData.sectionAlias);
+                    outputItem.put("confidence", 0.0);
+                    outputItem.put("sorContainerName", "MEMBER_DETAILS");
 
                     Map boundingBox = new HashMap();
                     if (fieldData.boundingBoxList != null && fieldData.boundingBoxList.size() == 4) {
@@ -105,28 +243,21 @@ public class MemberDataTransformer {
                         boundingBox.put("bottomRightX", fieldData.boundingBoxList.get(2));
                         boundingBox.put("bottomRightY", fieldData.boundingBoxList.get(3));
                     }
-                    transformedField.put("boundingBox", boundingBox);
+                    outputItem.put("boundingBox", boundingBox);
 
-                    transformedFields.add(transformedField);
+                    result.add(outputItem);
                 }
             }
-
-            sectionOutput.put("fields", transformedFields);
-            memberDetailsList.add(sectionOutput);
         }
 
-        result.put("MEMBER_DETAILS", memberDetailsList);
-
-        System.out.println("Completed processPatientData execution with " + memberDetailsList.size() + " sections");
+        log("Normal processing complete with " + result.size() + " fields");
         return result;
     }
 
     private void mergeAddressFields(List sections) {
         for (int i = 0; i < sections.size(); i++) {
             SectionData targetSection = (SectionData) sections.get(i);
-
             boolean targetHasAddress = hasAddressFields(targetSection);
-
             MemberIdentifier targetId = extractMemberIdentifier(targetSection);
 
             if (targetId.isEmpty()) {
@@ -140,11 +271,11 @@ public class MemberDataTransformer {
                 MemberIdentifier sourceId = extractMemberIdentifier(sourceSection);
 
                 if (targetId.matches(sourceId)) {
-                    System.out.println("Found matching sections: " + targetSection.sectionAlias +
+                    log("Found matching sections: " + targetSection.sectionAlias +
                             " and " + sourceSection.sectionAlias);
 
                     if (!targetHasAddress && hasAddressFields(sourceSection)) {
-                        System.out.println("Moving address fields from " + sourceSection.sectionAlias +
+                        log("Moving address fields from " + sourceSection.sectionAlias +
                                 " to " + targetSection.sectionAlias);
                         moveAddressFields(sourceSection, targetSection);
                     }
@@ -198,23 +329,20 @@ public class MemberDataTransformer {
             }
         }
 
-        // Remove from source
         for (int i = 0; i < toRemove.size(); i++) {
             source.fields.remove(toRemove.get(i));
         }
 
         target.fields.addAll(addressFields);
-
-        System.out.println("Moved " + addressFields.size() + " address fields");
+        log("Moved " + addressFields.size() + " address fields");
     }
 
-    private Map createEmptyOutput() {
-        Map result = new HashMap();
-        result.put("MEMBER_DETAILS", new ArrayList());
-        return result;
+    private void log(String msg) {
+        if (logger != null) logger.info(msg);
+        else System.out.println(msg);
     }
 
-    // Inner classes - must be public static for BeanShell
+    // Inner classes
     public static class SectionData {
         public String sectionAlias;
         public List fields;
