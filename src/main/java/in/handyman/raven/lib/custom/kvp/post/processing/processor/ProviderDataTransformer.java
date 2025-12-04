@@ -36,11 +36,6 @@ public class ProviderDataTransformer {
     private final String jdbiResourceName;
     private final InticsIntegrity encryption;
 
-    // Keys to check for direct passthrough
-    private static final String MEMBER_ID_KEY = "member_id";
-    private static final String MEDICAID_ID_KEY = "medicaid_id";
-    private static final String MULTIPLE_MEMBER_INDICATOR_KEY = "multiple_member_indicator";
-
 
     public ProviderDataTransformer(Logger log, Marker aMarker, ObjectMapper objectMapper,
                                    ActionExecutionAudit action, String jdbiResourceName, InticsIntegrity encryption) {
@@ -65,6 +60,7 @@ public class ProviderDataTransformer {
             Interpreter interpreter = new Interpreter();
             log.info("Beanshell script evaluated successfully.");
 
+
             interpreter.eval(sourceCode);
 
             Map<String, Object> responseMap = parseResponse(responsePayload, request, endpoint, entity, outputList);
@@ -72,34 +68,19 @@ public class ProviderDataTransformer {
                 log.warn("Parsed response is empty for payload: {}", responsePayload);
                 return outputList;
             }
-
             responseMap.forEach((key, value) -> {
                 try {
-                    boolean isMemberData = className != null && className.contains("Member");
 
-                    List<RadonQueryOutputTable> mappedData;
-                    if (isMemberData) {
-                        log.info("Processing as MEMBER data with class: {}", className);
+                    List<RadonQueryOutputTable> mappedInterpreterData = processMappingInterpreter(
+                            interpreter, className, value, entity, request, apiResponse, endpoint);
 
-                        // Check if input matches member_id, medicaid_id, multiple_member_indicator pattern
-                        if (shouldPassthroughMemberData(value)) {
-                            log.info("Detected member data passthrough pattern - bypassing transformation");
-                            mappedData = processMemberDataDirectly(value, entity, request, apiResponse, endpoint);
-                        } else {
-                            mappedData = processMappingMember(
-                                    interpreter, className, value, entity, request, apiResponse, endpoint);
-                        }
-                    } else {
-                        log.info("Processing as PROVIDER data with class: {}", className);
-                        mappedData = processMappingInterpreter(
-                                interpreter, className, value, entity, request, apiResponse, endpoint);
-                    }
+//                    List<RadonQueryOutputTable> mappedJavaData = processMappingJava(
+//                            interpreter, className, convertedList, entity, request, apiResponse, endpoint);
 
-                    outputList.addAll(mappedData);
+                    outputList.addAll(mappedInterpreterData);
 
                 } catch (EvalError e) {
-                    String errorMessage = "Error evaluating Beanshell script for origin id " + entity.getOriginId() +
-                            " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
+                    String errorMessage = "Error evaluating Beanshell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
                     handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
                 }
             });
@@ -110,123 +91,6 @@ public class ProviderDataTransformer {
         }
 
         log.info("Total mapped entries: {}", outputList.size());
-        return outputList;
-    }
-
-    /**
-     * Check if the input data contains any of the specific member keys that should be passed through
-     */
-    private boolean shouldPassthroughMemberData(Object value) {
-        if (!(value instanceof List)) {
-            return false;
-        }
-
-        List<?> dataList = (List<?>) value;
-        if (dataList.isEmpty()) {
-            return false;
-        }
-
-        // Check if any items have the expected keys
-        Set<String> foundKeys = new HashSet<>();
-
-        for (Object item : dataList) {
-            if (item instanceof Map) {
-                Map<?, ?> itemMap = (Map<?, ?>) item;
-                String key = (String) itemMap.get("key");
-                if (key != null) {
-                    foundKeys.add(key);
-                }
-            }
-        }
-
-        // Check if ANY of the three keys are present
-        boolean hasAnyKey = foundKeys.contains(MEMBER_ID_KEY) ||
-                foundKeys.contains(MEDICAID_ID_KEY) ||
-                foundKeys.contains(MULTIPLE_MEMBER_INDICATOR_KEY);
-
-        if (hasAnyKey) {
-            log.info("Found member key(s) for passthrough: {}", foundKeys);
-        }
-
-        return hasAnyKey;
-    }
-
-    /**
-     * Process member data directly without Beanshell transformation
-     */
-    private List<RadonQueryOutputTable> processMemberDataDirectly(
-            Object value, RadonQueryInputTable entity,
-            String request, String apiResponse, String endpoint) {
-
-        log.info("Processing member data directly (passthrough mode)");
-        List<RadonQueryOutputTable> outputList = new ArrayList<>();
-
-        if (!(value instanceof List)) {
-            log.warn("Expected List but got: {}", value.getClass().getName());
-            return outputList;
-        }
-
-        List<?> dataList = (List<?>) value;
-
-        try {
-            // Convert to LlmJsonParserKvpKrypton format
-            List<LlmJsonParserKvpKrypton> kvpFields = new ArrayList<>();
-
-            for (Object item : dataList) {
-                if (item instanceof Map) {
-                    Map<?, ?> itemMap = (Map<?, ?>) item;
-
-                    String key = (String) itemMap.get("key");
-                    Object valueObj = itemMap.get("value");
-                    String label = (String) itemMap.get("label");
-                    String sectionAlias = (String) itemMap.get("section_alias");
-                    Object boundingBox = itemMap.get("boundingBox");
-                    Object confidence = itemMap.get("confidence");
-
-                    // Use default section if empty
-                    if (sectionAlias == null || sectionAlias.isEmpty()) {
-                        sectionAlias = "MEMBER_INFO";
-                    }
-
-                    // Convert confidence to double
-                    double confidenceValue = 0.0;
-                    if (confidence instanceof Number) {
-                        confidenceValue = ((Number) confidence).doubleValue();
-                    }
-
-                    LlmJsonParserKvpKrypton kvpField = new LlmJsonParserKvpKrypton(
-                            key,
-                            valueObj != null ? String.valueOf(valueObj) : "",
-                            label != null ? label : "",
-                            sectionAlias,
-                            confidenceValue,
-                            objectMapper.convertValue(boundingBox, JsonNode.class)
-                    );
-                    kvpFields.add(kvpField);
-
-                    log.info("Processed field directly: key={}, value={}", key, valueObj);
-                }
-            }
-
-            // Get container ID
-            Optional<String> containerIdOpt = getContainerId("MEMBER_DETAILS");
-            if (containerIdOpt.isPresent()) {
-                String containerId = containerIdOpt.get();
-                String responseJson = objectMapper.writeValueAsString(kvpFields);
-                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
-                log.info("Added {} member fields directly to output", kvpFields.size());
-            } else {
-                log.warn("Container ID not found for MEMBER_DETAILS");
-                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint,
-                        String.valueOf(entity.getSorContainerId()), "[]"));
-            }
-
-        } catch (JsonProcessingException e) {
-            String errorMessage = "Error processing member data directly for origin id " + entity.getOriginId() +
-                    " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
-            handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
-        }
-
         return outputList;
     }
 
@@ -273,24 +137,22 @@ public class ProviderDataTransformer {
         return requestStr;
     }
 
-
-    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint, RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) {
-
-        if (responsePayload == null) {
+    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint,
+                                              RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) {
+        if (responsePayload == null || responsePayload.trim().isEmpty()) {
             log.warn("Response payload is null or empty.");
             return Map.of();
         }
 
         try {
             // First, try to parse as Map
-            return objectMapper.readValue(responsePayload, new TypeReference<Map<String, Object>>() {
-            });
-        } catch (Exception e) {
-            // If it fails, check if it's a direct array
+            return objectMapper.readValue(responsePayload, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception mapException) {
+            // If it fails, try to parse as array and wrap it
             try {
                 log.info("Response is not a Map, attempting to parse as array");
-                List<Object> arrayResponse = objectMapper.readValue(responsePayload, new TypeReference<List<Object>>() {
-                });
+                List<Object> arrayResponse = objectMapper.readValue(responsePayload,
+                        new TypeReference<List<Object>>() {});
 
                 // Wrap the array in a map with a default key
                 Map<String, Object> wrappedResponse = new HashMap<>();
@@ -299,8 +161,13 @@ public class ProviderDataTransformer {
                 return wrappedResponse;
 
             } catch (Exception arrayException) {
-                String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
-                handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, arrayException, outputList);
+                // If both fail, log error
+                String errorMessage = "Error parsing response JSON in bean shell script for origin id " +
+                        entity.getOriginId() + " and paper no " + entity.getPaperNo() +
+                        " message : " + arrayException.getMessage();
+                log.error(errorMessage, arrayException);
+                handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint,
+                        arrayException, outputList);
             }
         }
         return Map.of();
@@ -319,22 +186,6 @@ public class ProviderDataTransformer {
         Object providerMapObject = interpreter.get("providerMap");
 
         return mapOutputTable(providerMapObject, entity, request, apiResponse, endpoint);
-    }
-
-    private List<RadonQueryOutputTable> processMappingMember(
-            Interpreter interpreter, String className, Object response,
-            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError {
-
-        log.info("Processing member data with className: {}", className);
-        interpreter.set("logger", log);
-        String classInstantiation = className + " mapper = new " + className + "(logger);";
-        interpreter.eval(classInstantiation);
-        interpreter.set("inputData", response);
-        interpreter.eval("memberMap = mapper.processPatientData(inputData);");
-
-        Object memberMapObject = interpreter.get("memberMap");
-
-        return mapOutputTableForMember(memberMapObject, entity, request, apiResponse, endpoint);
     }
 
     private List<RadonQueryOutputTable> processMappingJava(
@@ -386,84 +237,15 @@ public class ProviderDataTransformer {
                     try {
                         String responseJson = objectMapper.writeValueAsString(kvps);
 
+
                         outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
                     } catch (JsonProcessingException e) {
-                        String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
+                        String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
                         handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
 
                     }
                 });
             });
-        }
-
-        return outputList;
-    }
-
-    private List<RadonQueryOutputTable> mapOutputTableForMember(
-            Object memberMapObject, RadonQueryInputTable entity,
-            String request, String apiResponse, String endpoint) {
-
-        List<RadonQueryOutputTable> outputList = new ArrayList<>();
-
-        if (memberMapObject instanceof Map) {
-            Map<?, ?> memberMap = (Map<?, ?>) memberMapObject;
-            Object memberDetailsObj = memberMap.get("MEMBER_DETAILS");
-
-            if (memberDetailsObj instanceof List) {
-                List<?> memberDetailsList = (List<?>) memberDetailsObj;
-
-                log.info("Processing {} member detail sections", memberDetailsList.size());
-
-                for (Object sectionObj : memberDetailsList) {
-                    if (sectionObj instanceof Map) {
-                        Map<?, ?> section = (Map<?, ?>) sectionObj;
-                        String sectionAlias = (String) section.get("sectionAlias");
-                        List<?> fields = (List<?>) section.get("fields");
-
-                        log.info("Processing section: {} with {} fields", sectionAlias, fields != null ? fields.size() : 0);
-
-                        if (fields != null && !fields.isEmpty()) {
-                            Optional<String> containerIdOpt = getContainerId("MEMBER_DETAILS");
-                            containerIdOpt.ifPresent(containerId -> {
-                                try {
-                                    // Convert fields to LlmJsonParserKvpKrypton format
-                                    List<LlmJsonParserKvpKrypton> kvpFields = new ArrayList<>();
-                                    for (Object fieldObj : fields) {
-                                        if (fieldObj instanceof Map) {
-                                            Map<?, ?> field = (Map<?, ?>) fieldObj;
-
-                                            LlmJsonParserKvpKrypton kvpField = new LlmJsonParserKvpKrypton(
-                                                    (String) field.get("key"),
-                                                    (String) field.get("value"),
-                                                    (String) field.get("label"),
-                                                    sectionAlias,
-                                                    0.0,
-                                                    objectMapper.convertValue(field.get("boundingBox"), JsonNode.class)
-                                            );
-                                            kvpFields.add(kvpField);
-                                        }
-                                    }
-
-                                    String responseJson = objectMapper.writeValueAsString(kvpFields);
-                                    outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
-                                    log.info("Added member section to output with {} fields", kvpFields.size());
-
-                                } catch (JsonProcessingException e) {
-                                    String errorMessage = "Error parsing member data for origin id " + entity.getOriginId() +
-                                            " and paper no " + entity.getPaperNo() + " message : " + e.getMessage();
-                                    handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
-                                }
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        if (outputList.isEmpty()) {
-            log.warn("No member details processed, adding empty output");
-            outputList.add(buildOutputTable(entity, request, apiResponse, endpoint,
-                    String.valueOf(entity.getSorContainerId()), "[]"));
         }
 
         return outputList;
