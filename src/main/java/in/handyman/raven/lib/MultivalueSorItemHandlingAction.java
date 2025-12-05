@@ -273,16 +273,15 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
 
     public Map<String, List<MultiValueOutputResult>> groupByOriginAndRemoveDuplicateAnswers(List<MultiValueOutputResult> inputList) {
 
-
         return inputList.stream()
                 .collect(Collectors.groupingBy(
-                        MultiValueOutputResult::getOriginId, // group by originId
+                        item -> item.getOriginId() + "|" + item.getSorItemName(),   // key = String
                         Collectors.collectingAndThen(
                                 Collectors.toList(),
                                 list -> {
                                     Set<String> seenAnswers = new HashSet<>();
                                     return list.stream()
-                                            .filter(item -> seenAnswers.add(item.getAnswer()))
+                                            .filter(i -> seenAnswers.add(i.getAnswer()))
                                             .collect(Collectors.toList());
                                 }
                         )

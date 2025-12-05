@@ -23,7 +23,7 @@ class multiValueSorItemHandlingTest {
                         "vqa.sor_question, vqa.synonym_id, vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry,\n" +
                         "vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, vqa.line_item_type, vqa.is_encrypted,\n" +
                         "vqa.encryption_policy_id\n" +
-                        "from sor_transaction.vqa_transaction vqa\n" +
+                        "from transit_data.sor_item_multivalue_filtering_input_14840 vqa\n" +
                         "where vqa.line_item_type = 'multi_value';")
                 .build();
 
