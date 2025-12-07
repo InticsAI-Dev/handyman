@@ -50,12 +50,12 @@ public class LlmJsonParserAction implements IActionExecution {
     public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(    ?::timestamp,?,?,?,?,?," +
             "    ?,?,?::jsonb,?,?,?,?,?,?," +
             "    ?,?,?,?,?,?,?,?,?,?" +
-            ",?::boolean,?)";
+            ",?::boolean,?, ?)";
 
     public static final String INSERT_COLUMNS_UPDATED = "created_on, tenant_id, created_user_id, last_updated_on, last_updated_user_id,confidence, " +
             "sor_item_name, answer, bbox, paper_no,origin_id, group_id, root_pipeline_id, batch_id, model_registry, " +
             "extracted_image_unit, image_dpi, image_height, image_width, sor_container_id, sor_item_label,section_alias," +
-            "bbox_asis, is_label_matching,label_match_message,is_encrypted,encryption_policy";
+            "bbox_asis, is_label_matching,label_match_message,is_encrypted,encryption_policy,sor_container_instance";
 
 
     public LlmJsonParserAction(final ActionExecutionAudit action, final Logger log,

@@ -198,7 +198,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
                 groupId, selectedPageNo, firstInput.getVqaScore(), firstInput.getQuestionId(), firstInput.getSynonymId(),
                 firstInput.getModelRegistry(), firstInput.getDocumentId(), firstInput.getBBox(), firstInput.getRootPipelineId(),
                 firstInput.getAggregatedScore(), firstInput.getMaskedScore(), firstInput.getRank(),
-                firstInput.getSorItemAttributionId(), firstInput.getFrequency()
+                firstInput.getSorItemAttributionId(), firstInput.getFrequency(),firstInput.getSorContainerInstance()
         );
 
         log.info("Inserted concatenated value for originId={}, sorItemName={}, paperNo={}", firstInput.getOriginId(), firstInput.getSorItemName(), selectedPageNo);
@@ -212,16 +212,16 @@ public class MultivalueConcatenationAction implements IActionExecution {
     log.info("Completed multi-value concatenation for batchId: {}", batchId);
   }
 
-  private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId, String batchId, String predictedValue, Integer groupId, Integer paperNo, Double vqaScore, Long questionId, Long synonymId, String modelRegistry, String documentId, String bBox, Long rootPipelineId, Long aggregatedScore, Long maskedScore, Long rank, Long sorItemAttributionId, Long frequency) {
+  private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId, String batchId, String predictedValue, Integer groupId, Integer paperNo, Double vqaScore, Long questionId, Long synonymId, String modelRegistry, String documentId, String bBox, Long rootPipelineId, Long aggregatedScore, Long maskedScore, Long rank, Long sorItemAttributionId, Long frequency,String sorContainerInstance) {
     jdbi.useHandle(handle -> handle.createUpdate(
                     "INSERT INTO " + outputTable + " (" +
                             "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, " +
                             "aggregated_score, masked_score, origin_id, paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, " +
-                            "document_id, b_box, group_id, root_pipeline_id, vqa_score, question_id, synonym_id, model_registry, batch_id, frequency" +
+                            "document_id, b_box, group_id, root_pipeline_id, vqa_score, question_id, synonym_id, model_registry, batch_id, frequency, sor_container_instance" +
                             ") VALUES (" +
                             ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :tenantId, " +
                             ":aggregatedScore, :maskedScore, :originId, :paperNo, :predictedValue, :rank, :sorItemAttributionId, :sorItemName, " +
-                            ":documentId, :bBox, :groupId, :rootPipelineId, :vqaScore, :questionId, :synonymId, :modelRegistry, :batchId, :frequency" +
+                            ":documentId, :bBox, :groupId, :rootPipelineId, :vqaScore, :questionId, :synonymId, :modelRegistry, :batchId, :frequency, :sorContainerInstance" +
                             ");")
             .bind("createdOn", LocalDate.now())
             .bind("createdUserId", tenantId)
@@ -246,6 +246,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
             .bind("modelRegistry", modelRegistry)
             .bind("batchId", batchId)
             .bind("frequency", frequency)
+            .bind("sorContainerInstance", sorContainerInstance)
             .execute());
     log.info("Predicted value has been done for the multivalue concatenating logic.");
   }
@@ -288,6 +289,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
     private Long frequency;
     private String encryptionPolicy;
     private String isEncrypted;
+    private String sorContainerInstance;
 
   }
 

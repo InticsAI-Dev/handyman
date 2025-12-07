@@ -44,6 +44,7 @@ public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
     private String labelMatchMessage;
     private String isEncrypted;
     private String encryptionPolicy;
+    private String sorContainerInstance;
 
     @Override
     public List<Object> getRowData() {
@@ -52,7 +53,7 @@ public class LlmJsonQueryOutputTable implements CoproProcessor.Entity {
                 this.originId, this.groupId, this.rootPipelineId, this.batchId, this.modelRegistry,
                 this.extractedImageUnit, this.imageDpi, this.imageHeight, this.imageWidth,
                 this.sorContainerId, this.sorItemLabel, this.sectionAlias, this.bBoxAsIs, this.isLabelMatching,this.labelMatchMessage,
-                this.isEncrypted,this.encryptionPolicy).collect(Collectors.toList());
+                this.isEncrypted,this.encryptionPolicy,this.sorContainerInstance).collect(Collectors.toList());
     }
 
     @Override

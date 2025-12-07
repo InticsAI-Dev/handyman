@@ -59,12 +59,12 @@ public class SectionFilteringAction implements IActionExecution {
                     "sor_item_name, sor_item_label, section_alias, answer, confidence, bbox, " +
                     "bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height, " +
                     "image_width, is_label_matching, label_match_message, " +
-                    " is_encrypted, encryption_policy";
+                    " is_encrypted, encryption_policy,sor_container_instance";
 
     public static final String INSERT_INTO_VALUES_UPDATED =
             "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
                     "?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
-                    " ?, ?, ?, ?, ?, ?, ?::boolean, ?)";
+                    " ?, ?, ?, ?, ?, ?, ?::boolean, ?, ?)";
 
     public SectionFilteringAction(final ActionExecutionAudit action, final Logger log,
       final Object sectionFiltering) {
@@ -178,7 +178,8 @@ public class SectionFilteringAction implements IActionExecution {
                             .bind(24, row.isLabelMatching())
                             .bind(25, row.getLabelMatchMessage())
                             .bind(26, row.getIsEncrypted())
-                            .bind(27,row.getEncryptionPolicy());
+                            .bind(27,row.getEncryptionPolicy())
+                            .bind(28,row.getSorContainerInstance());
 
 
                     batch.add();

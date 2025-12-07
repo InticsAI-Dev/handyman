@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
@@ -202,6 +203,7 @@ public class ProviderDataTransformer {
     private List<RadonQueryOutputTable> mapOutputTable(
             Object providerMapObject, RadonQueryInputTable entity,
             String request, String apiResponse, String endpoint) {
+        AtomicInteger counter = new AtomicInteger(0);
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 
@@ -213,6 +215,7 @@ public class ProviderDataTransformer {
 
                 Hashtable item = (Hashtable) providerDataList.get(i);
                 String container = (String) item.get("sorContainerName");
+
 
                 LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(item);
 
@@ -228,17 +231,18 @@ public class ProviderDataTransformer {
 
             }
             if (kvpContainers.isEmpty()) {
-                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), "[]"));
+                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), "[]",""));
             }
 
             kvpContainers.forEach((container, kvps) -> {
+                String containerInstance = container+"_"+ counter.incrementAndGet();
                 Optional<String> containerIdOpt = getContainerId(container);
                 containerIdOpt.ifPresent(containerId -> {
                     try {
                         String responseJson = objectMapper.writeValueAsString(kvps);
 
 
-                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
+                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson,containerInstance));
                     } catch (JsonProcessingException e) {
                         String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
                         handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
@@ -301,7 +305,7 @@ public class ProviderDataTransformer {
 
     private RadonQueryOutputTable buildOutputTable(
             RadonQueryInputTable entity, String request, String apiResponse,
-            String endpoint, String containerId, String encryptedContent) {
+            String endpoint, String containerId, String encryptedContent, String containerInstance) {
 
         return RadonQueryOutputTable.builder()
                 .createdOn(entity.getCreatedOn())
@@ -328,6 +332,7 @@ public class ProviderDataTransformer {
                 .response(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
                 .sorContainerId(Long.valueOf(containerId))
+                .sorContainerInstance(containerInstance)
                 .build();
     }
 }

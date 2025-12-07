@@ -151,9 +151,9 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private String buildInsertSQL() {
         return "INSERT INTO " + postProcessingExecutor.getOutputTable() + " (" +
                 "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, " +
-                "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id) VALUES (" +
+                "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id, sor_container_instance) VALUES (" +
                 "now(), :createdUserId, now(), :createdUserId, :tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, :extractedValue, :vqaScore, " +
-                ":rank, :sorItemAttributionId, :sorItemName, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId)";
+                ":rank, :sorItemAttributionId, :sorItemName, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId , :sorContainerInstance)" ;
     }
 
     @Override
@@ -188,5 +188,6 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String encryptionPolicy;
         private String isEncrypted;
         private String lineItemType;
+        private String sorContainerInstance;
     }
 }

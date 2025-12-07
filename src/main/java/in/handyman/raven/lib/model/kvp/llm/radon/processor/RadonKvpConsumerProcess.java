@@ -379,6 +379,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 extractedContent = modelResponse.getInferResponse();
             }
 
+            String sorContainerInstance = entity.getSorContainerName() + "_0";
             parentObj.add(RadonQueryOutputTable.builder()
                     .createdOn(entity.getCreatedOn())
                     .createdUserId(tenantId)
@@ -403,6 +404,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .message("Radon kvp action macro completed")
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
+                    .sorContainerInstance(sorContainerInstance)
                     .build()
             );
         }

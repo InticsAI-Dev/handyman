@@ -18,51 +18,16 @@ public class RadonKvpAcionTest {
                 .name("radon kvp api call action")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .endpoint("http://172.202.112.23/predict")
-                .outputTable("sor_transaction.radon_kvp_output_audit")
-                .querySet("SELECT\n" +
-                        "    pl.file_path AS input_file_path,\n" +
-                        "    pv.base_prompt AS user_prompt,\n" +
-                        "    CASE\n" +
-                        "        WHEN 'false' = 'false' THEN 'RADON_KVP_ACTION'\n" +
-                        "        ELSE 'RADON_BBOX_ACTION'\n" +
-                        "    END AS process,\n" +
-                        "    pl.paper_no,\n" +
-                        "    stpq.origin_id,\n" +
-                        "    stpq.root_pipeline_id AS process_id,\n" +
-                        "    stpq.group_id,\n" +
-                        "    stpq.tenant_id,\n" +
-                        "    stpq.root_pipeline_id,\n" +
-                        "    'RADON' AS model_registry,\n" +
-                        "    stpq.batch_id,\n" +
-                        "    'PRIMARY' AS category,\n" +
-                        "    NOW() AS created_on,\n" +
-                        "    pv.system_prompt AS system_prompt,\n" +
-                        "     (CASE WHEN '${sor.kvp.service.name.activator}' = 'RADON' then 'RADON START'\n" +
-                        "     WHEN '${sor.kvp.service.name.activator}' = 'KRYPTON' then 'KRYPTON START'\n" +
-                        "     WHEN '${sor.kvp.service.name.activator}' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id\n" +
-                        "FROM sor_transaction.sor_transaction_payload_queue_archive stpq\n" +
-                        "JOIN paper_filter.agentic_entity_level_score_audit pl\n" +
-                        "    ON pl.origin_id = stpq.origin_id\n" +
-                        "    AND pl.tenant_id = stpq.tenant_id\n" +
-                        "    AND pl.batch_id = stpq.batch_id\n" +
-                        "  JOIN sor_meta.sor_container sc on \n" +
-                        "  pl.sor_container_id=sc.sor_container_id\n" +
-                        "JOIN sor_meta.radon_prompt_table pv\n" +
-                        "    ON pl.tenant_id = pv.tenant_id\n" +
-                        "    AND pl.sor_container_id = pv.sor_container_id\n" +
-                        "WHERE stpq.group_id = '4'\n" +
-                        "  AND stpq.tenant_id = '1'\n" +
-                        "  AND pv.document_type = 'MEDICAL_COMMERCIAL'\n" +
-                        "  AND pv.status = 'ACTIVE'\n" +
-                        "  AND pv.version = '1'\n" +
-                        "  AND pv.process = CASE\n" +
-                        "                       WHEN 'false' = 'false' THEN 'RADON_KVP_BBOX'\n" +
-                        "                       ELSE 'RADON_KVP'\n" +
-                        "                   END\n" +
-                        "  AND stpq.batch_id = 'BATCH-4_0'\n" +
-                        "  and pl.paper_no =3\n" +
-                        "  AND pl.is_candidate_paper = 'yes';\n")
+                .endpoint("http://172.202.112.23:8000/predict")
+                .outputTable("transit_data.radon_kvp_output_3")
+                .querySet("\n" +
+                        "SELECT '/Users/anandh.andrews/intics-workspace/data/1/transaction/TRZ-283/1760546700213-b720e00f-e0f5-4134-a1d9-013c120d686c/processed_images/15-10-2025_10_10_01/tenant_1/group_274/preprocess/paper_itemizer/pdf_to_image/processed/MCD_P10_OB extension_overstay/MCD_P10_OB extension_overstay_4.png' as input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,'KRYPTON' as model_name,\n" +
+                        "                    a.batch_id, a.model_registry, a.category, now() as created_on, \n" +
+                        "                    'KRYPTON' as api_name,sc.post_processing::bool as post_process,\n" +
+                        "                    sc.post_process_class_name as post_process_class_name,sc.sor_container_id,sc.sor_container_name\n" +
+                        "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
+                        "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
+                        "WHERE a.model_registry = 'RADON' and a.tenant_id=1 and a.batch_id ='BATCH-15_0' and a.sor_container_id =1442;\n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
