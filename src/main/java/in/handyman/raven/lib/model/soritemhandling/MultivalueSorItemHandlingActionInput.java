@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MultivalueSorItemHandlingActionInput {
+    private Integer transactionId;
     private String status;
     private String answer;
     private String bBox;
@@ -36,7 +37,7 @@ public class MultivalueSorItemHandlingActionInput {
     private String stage;
     private String batchId;
     private String lineItemType;
-    private String isEncrypted;
+    private Boolean isEncrypted;
     private Integer encryptionPolicyId;
     private String encryptionPolicy;
 

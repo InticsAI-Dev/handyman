@@ -17,7 +17,7 @@ public class SecurityEngine {
         LoggingInitializer.initialize();
     }
 
-    private SecurityEngine() {
+    public SecurityEngine() {
         throw new IllegalStateException("Utility class cannot be instantiated");
     }
 

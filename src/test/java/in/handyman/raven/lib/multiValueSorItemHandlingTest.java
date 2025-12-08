@@ -14,17 +14,18 @@ class multiValueSorItemHandlingTest {
         MultivalueSorItemHandling multivalueSorItemHandling = MultivalueSorItemHandling.builder()
                 .name("Multivalue Concatenation Action")
                 .condition(true)
-                .outputTable("entity_voting.sor_item_multivalue_filtering_output")
+                .outputTable("transit_data.sor_item_multivalue_filtering_output_16094")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status, \n" +
+                .querySet("select vqa.transaction_id , vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status, \n" +
                         "vqa.version, vqa.answer, vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
                         "vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no,\n" +
                         "vqa.question_id, vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, \n" +
                         "vqa.sor_question, vqa.synonym_id, vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry,\n" +
                         "vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, vqa.line_item_type, vqa.is_encrypted,\n" +
-                        "vqa.encryption_policy_id\n" +
-                        "from transit_data.sor_item_multivalue_filtering_input_14840 vqa\n" +
-                        "where vqa.line_item_type = 'multi_value';")
+                        "vqa.encryption_policy_id, ep.encryption_policy \n" +
+                        "from transit_data.sor_item_multivalue_filtering_input_16094 vqa\n" +
+                        "join sor_meta.encryption_policies ep on vqa.encryption_policy_id=ep.encryption_policy_id\n" +
+                        "where vqa.line_item_type = 'multi_value'")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
@@ -32,8 +33,12 @@ class multiValueSorItemHandlingTest {
         action.getContext().put("group_id", "2014");
         action.getContext().put("batch_id", "BATCH-2014_0_new");
         action.getContext().put("created_user_id", "1");
-        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
-//        action.setRootPipelineId(929L);
+        action.getContext().put("scalar.adapter.activator", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        action.getContext().put("protegrity.enc.api.url", "https://adi.intics.ai/vulcan-server/vulcan/api/encryption/encrypt");
+        action.getContext().put("protegrity.dec.api.url", "https://adi.intics.ai/vulcan-server/vulcan/api/encryption/decrypt");
+        action.getContext().put("pipeline.encryption.default.holder","PROTEGRITY_API_ENC");
+
 
         MultivalueSorItemHandlingAction multivalueSorItemHandlingAction = new MultivalueSorItemHandlingAction(action, log, multivalueSorItemHandling);
         multivalueSorItemHandlingAction.execute();

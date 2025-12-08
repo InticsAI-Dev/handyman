@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -20,7 +21,6 @@ import in.handyman.raven.lib.model.soritemhandling.MultiValueOutputResult;
 import in.handyman.raven.lib.model.soritemhandling.MultivalueSorItemHandlingActionInput;
 import in.handyman.raven.util.CommonQueryUtil;
 
-import org.apache.kafka.common.protocol.types.Field;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
@@ -45,6 +45,8 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
 
   private final Marker aMarker;
   public static final String AES_256 = "AES256";
+  public final InticsIntegrity encryption;
+
 
     public MultivalueSorItemHandlingAction(final ActionExecutionAudit action, final Logger log,
       final Object multivalueSorItemHandling) {
@@ -52,7 +54,8 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     this.action = action;
     this.log = log;
     this.aMarker = MarkerFactory.getMarker(" MultivalueSorItemHandling:"+this.multivalueSorItemHandling.getName());
-  }
+    this.encryption = SecurityEngine.getInticsIntegrityMethod(this.action, this.log);
+    }
 
   @Override
   public void execute() throws Exception {
@@ -66,8 +69,14 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
           final List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs = fetchValuesFromDB(jdbi);
 
           final List<MultiValueOutputResult> multivalueConcatenationOutput = splitCommaSeparatedValues(multivalueConcatenationInputs, pipelineEndToEndEncryptionActivator, encryption);
+
           Map<String, List<MultiValueOutputResult>> cleanedList = groupByOriginAndRemoveDuplicateAnswers(multivalueConcatenationOutput);
-          List<MultiValueOutputResult> encryptedValue = encryptData(cleanedList, pipelineEndToEndEncryptionActivator, encryption);
+          // Flatten the map values into a single list
+          List<MultiValueOutputResult> flatList = cleanedList.values().stream()
+                  .flatMap(List::stream)
+                  .collect(Collectors.toList());
+          List<MultiValueOutputResult> encryptedValue = encryptData(flatList, pipelineEndToEndEncryptionActivator, encryption);
+
           outputBuilder(jdbi, outputTableName, encryptedValue);
 
           log.info(aMarker, "Successfully inserted {} records into {}", multivalueConcatenationOutput.size(), outputTableName);
@@ -93,14 +102,17 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
         jdbi.useTransaction(handle -> {
             final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multivalueSorItemHandling.getQuerySet());
             AtomicInteger i = new AtomicInteger(0);
-            for (String sqlToExecute : formattedQuery) {
-                log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
-                Query query = handle.createQuery(sqlToExecute);
-                ResultIterable<MultivalueSorItemHandlingActionInput> resultIterable = query.mapToBean(MultivalueSorItemHandlingActionInput.class);
-                List<MultivalueSorItemHandlingActionInput> processingExecutorInputs = resultIterable.stream().collect(Collectors.toList());
-                multivalueConcatenationInputs.addAll(processingExecutorInputs);
-                log.info(aMarker, "executed query from index {}", i.get());
-                System.out.println(multivalueConcatenationInputs);
+            try {
+                for (String sqlToExecute : formattedQuery) {
+                    log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
+                    Query query = handle.createQuery(sqlToExecute);
+                    ResultIterable<MultivalueSorItemHandlingActionInput> resultIterable = query.mapToBean(MultivalueSorItemHandlingActionInput.class);
+                    List<MultivalueSorItemHandlingActionInput> processingExecutorInputs = resultIterable.stream().collect(Collectors.toList());
+                    multivalueConcatenationInputs.addAll(processingExecutorInputs);
+                    log.info(aMarker, "executed query from index {}", i.get());
+                }
+            }catch(Exception e){
+                System.out.println(e);
             }
         });
         return multivalueConcatenationInputs;
@@ -109,29 +121,25 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     @Override
     public List<MultiValueOutputResult> splitCommaSeparatedValues(List<MultivalueSorItemHandlingActionInput> multivalueSorItemHandlingActionInput, Boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
 
-        AtomicInteger counter = new AtomicInteger(1);
-        final List<MultiValueOutputResult> output = new ArrayList<>();
-        for (MultivalueSorItemHandlingActionInput input : multivalueSorItemHandlingActionInput) {
-            String sorItemValue = input.getAnswer();
-            if (sorItemValue == null || sorItemValue.isBlank()) {
-                log.info(aMarker, "Empty answer for document {}", input.getDocumentId());
-                continue;
-            }
-            Integer increment = counter.incrementAndGet();
-           String encryptionKey = input.getOriginId().concat("_").concat(input.getSorItemName());
-            String finalEncryptionKey = encryptionKey.concat("_").concat(String.valueOf(increment));
-           String decryptVal = decryptData(input, pipelineEndToEndEncryptionActivator, encryption, finalEncryptionKey);
 
-            if (decryptVal != null && decryptVal.contains(",")) {
-               String[] splitValues = decryptVal.split("\\s*,\\s*");
+        final List<MultiValueOutputResult> output = new ArrayList<>();
+
+        decryptData(multivalueSorItemHandlingActionInput, pipelineEndToEndEncryptionActivator, encryption);
+
+        for (MultivalueSorItemHandlingActionInput input : multivalueSorItemHandlingActionInput) {
+
+            if (input.getAnswer().contains(",")) {
+               String[] splitValues = input.getAnswer().split("\\s*,\\s*");
                // decrypt
+                AtomicInteger counter = new AtomicInteger(1);
                for (String value : splitValues) {
                    // remove duplicates
+                   Integer counterAdd = counter.getAndIncrement();
+                   input.setTransactionId(counterAdd);
                    output.add(buildOutputResult(input, value, pipelineEndToEndEncryptionActivator, encryption));
                }
            }else {
                 output.add(buildOutputResult(input, input.getAnswer(), pipelineEndToEndEncryptionActivator, encryption));
-
             }
 
         }
@@ -140,6 +148,7 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     public MultiValueOutputResult buildOutputResult( MultivalueSorItemHandlingActionInput input, String answer,  Boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
 
             return MultiValueOutputResult.builder()
+                .id(input.getTransactionId())
                 .sorItemName(input.getSorItemName())
                 .answer(answer)
                 .bBox(input.getBBox())
@@ -163,6 +172,9 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
                 .synonymId(input.getSynonymId())
                 .tenantId(input.getTenantId())
                 .vqaScore(input.getVqaScore())
+                .encryptionPolicy(input.getEncryptionPolicy())
+                .encryptionPolicyId(input.getEncryptionPolicyId())
+                .isEncrypted(input.getIsEncrypted())
                 .build();
     }
 
@@ -199,75 +211,53 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     }
 
 
-    public String decryptData(MultivalueSorItemHandlingActionInput input, Boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption, String finalEncryptionKey) {
+    public void decryptData(List<MultivalueSorItemHandlingActionInput> input, Boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
 
-        String value = "";
         String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
-        if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+        if (pipelineEndToEndEncryptionActivator) {
             try {
                 if("false".equalsIgnoreCase(scalarAdapterActivator)){
                     log.info("Scalar activator is disabled, running decryption in AES256 mode when decrypting");
-                    value = encryption.decrypt(input.getAnswer(), AES_256, finalEncryptionKey);
+                    decryptAnswersByAES(input, encryption);
                 }else {
                     log.info("Scalar activator is enabled, running decryption in policy mode when decrypting");
-                    value = encryption.decrypt(input.getAnswer(), input.getEncryptionPolicy(), finalEncryptionKey);
+                    decryptAnswers(input, encryption);
                 }
-                log.debug("Decrypted value for originId={}, sorItemName={}", input.getOriginId(), input.getSorItemName());
+                log.info("Decrypted value for list size={},", input.size());
 
             } catch (Exception e) {
-                log.error("Decryption failed for originId={}, sorItemName={}: {}", input.getOriginId(), input.getSorItemName(), e.getMessage(), e);
+                log.error("Decryption failed {}", e.getMessage(), e);
                 throw e;
             }
         }else{
             log.info("end to end encryption activator is deactivated");
-            log.debug("returning actual value for originId={}, sorItemName={}", input.getOriginId(), input.getSorItemName());
-            value = input.getAnswer();
         }
-        return value;
     }
 
-    public List<MultiValueOutputResult> encryptData(Map<String, List<MultiValueOutputResult>> inputs,
+    public List<MultiValueOutputResult> encryptData(List<MultiValueOutputResult> inputs,
                                                     Boolean pipelineEndToEndEncryptionActivator,
                                                     InticsIntegrity encryption) {
 
-        AtomicInteger counter = new AtomicInteger(0);
-        List<MultiValueOutputResult> finalResult = new ArrayList<>();
-
-        for (Map.Entry<String, List<MultiValueOutputResult>> entry : inputs.entrySet()) {
-            String originId = entry.getKey();
-            List<MultiValueOutputResult> items = entry.getValue();
-
-            for (MultiValueOutputResult input : items) {
-                Integer increment = counter.incrementAndGet();
-
-                // Build encryption key using originId, sorItemName, and counter
-                String encryptionKey = input.getOriginId().concat("_").concat(input.getSorItemName());
-                String finalEncryptionKey = encryptionKey.concat("_").concat(String.valueOf(increment));
-
-                String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
-                String value = "";
-
-                if (pipelineEndToEndEncryptionActivator && Boolean.TRUE.equals(input.getIsEncrypted())) {
-                    try {
-                        if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
-                            log.info("Scalar activator is disabled, running encryption in AES256 mode");
-                            value = encryption.encrypt(input.getAnswer(), AES_256, finalEncryptionKey);
-                            input.setAnswer(value);
-                        } else {
-                            log.info("Scalar activator is enabled, running encryption in policy mode");
-                            value = encryption.encrypt(input.getAnswer(), input.getEncryptionPolicy(), finalEncryptionKey);
-                            input.setAnswer(value);
-                        }
-                        log.info("Encrypted concatenated value for originId={}, sorItemName={}", input.getOriginId(), input.getSorItemName());
-                    } catch (Exception e) {
-                        log.error("Encryption failed for originId={}, sorItemName={}: {}", input.getOriginId(), input.getSorItemName(), e.getMessage(), e);
-                        throw e;
-                    }
+        String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
+        List<MultiValueOutputResult> output = new ArrayList<>();
+        if (pipelineEndToEndEncryptionActivator) {
+            try {
+                if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
+                    log.info("Scalar activator is disabled, running encryption in AES256 mode");
+                    output = encryptAnswersByAES(inputs, encryption);
+                } else {
+                    log.info("Scalar activator is enabled, running encryption in policy mode");
+                    output = encryptAnswers(inputs, encryption);
                 }
-                finalResult.add(input);
+                log.info("Decrypted value for list size={},", inputs.size());
+            } catch (Exception e) {
+                log.error("Decrypted value for list size={},", inputs.size());
+                throw e;
             }
+        }else{
+            log.info("Encryption activator is disabled, running encryption in disabled mode");
         }
-        return finalResult;
+    return output;
     }
 
 
@@ -289,6 +279,140 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     }
 
 
+    public void decryptAnswers(List<MultivalueSorItemHandlingActionInput> inputList, InticsIntegrity encryption) {
+        if (inputList == null || inputList.isEmpty()) {
+            return;
+        }
 
+        // Step 1: Convert to EncryptionRequestClass
+        List<EncryptionRequestClass> decryptionRequests = inputList.stream()
+                .filter(MultivalueSorItemHandlingActionInput::getIsEncrypted)
+                .filter(obj -> obj.getTransactionId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
+                .map(obj -> new EncryptionRequestClass(obj.getEncryptionPolicy(), obj.getAnswer(), String.valueOf(obj.getTransactionId())))
+                .collect(Collectors.toList());
+        log.info(aMarker, "Total records to decrypt for answers: {}", decryptionRequests.size());
+        // Step 2: Call external Protegrity API
+        List<EncryptionRequestClass> responseList = encryption.decrypt(decryptionRequests);
+
+        // Step 3: Build a lookup map from response
+        Map<Integer, String> encryptedMap = responseList.stream()
+                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .collect(Collectors.toMap(
+                        item -> Integer.parseInt(item.getKey()),
+                        EncryptionRequestClass::getValue
+                ));
+
+
+        // Step 4: Update original list
+        for (MultivalueSorItemHandlingActionInput item : inputList) {
+            Integer key = item.getTransactionId();
+            if (item.getTransactionId() != null && encryptedMap.containsKey(key)) {
+                String answer = encryptedMap.get(item.getTransactionId());
+                item.setAnswer(answer);
+
+            }
+        }
+    }
+
+    public void decryptAnswersByAES(List<MultivalueSorItemHandlingActionInput> inputList, InticsIntegrity encryption) {
+        if (inputList == null || inputList.isEmpty()) {
+            return;
+        }
+
+        // Step 1: Convert to EncryptionRequestClass
+        List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(MultivalueSorItemHandlingActionInput::getIsEncrypted)
+                .filter(obj -> obj.getTransactionId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
+                .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getTransactionId())))
+                .collect(Collectors.toList());
+        log.info(aMarker, "Total records to decrypt for answers: {}", encryptionRequests.size());
+        // Step 2: Call external Protegrity API
+        List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
+
+        // Step 3: Build a lookup map from response
+        Map<Long, String> encryptedMap = responseList.stream()
+                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .collect(Collectors.toMap(
+                        item -> Long.parseLong(item.getKey()),
+                        EncryptionRequestClass::getValue
+                ));
+
+
+        // Step 4: Update original list
+        for (MultivalueSorItemHandlingActionInput item : inputList) {
+            if (item.getTransactionId() != null && encryptedMap.containsKey(item.getTransactionId())) {
+                String answer = encryptedMap.get(item.getTransactionId());
+                item.setAnswer(answer);
+
+            }
+        }
+    }
+
+
+    public List<MultiValueOutputResult> encryptAnswers(List<MultiValueOutputResult> inputList, InticsIntegrity encryption) {
+        if (inputList == null || inputList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<MultiValueOutputResult> outputList = new ArrayList<>();
+        // Step 1: Convert to EncryptionRequestClass
+        List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(MultiValueOutputResult::getIsEncrypted)
+                .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
+                .map(obj -> new EncryptionRequestClass(obj.getEncryptionPolicy(), obj.getAnswer(),String.valueOf(obj.getId())))
+                .collect(Collectors.toList());
+        log.info(aMarker, "Total records to encrypt for answers: {}", encryptionRequests.size());
+        // Step 2: Call external Protegrity API
+        List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
+
+        // Step 3: Build a lookup map from response
+        Map<Integer, String> encryptedMap = responseList.stream()
+                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .collect(Collectors.toMap(
+                        item -> Integer.parseInt(item.getKey()),
+                        EncryptionRequestClass::getValue
+                ));
+
+
+        // Step 4: Update original list
+        for (MultiValueOutputResult itemVal : inputList) {
+            if (itemVal.getId() != null && encryptedMap.containsKey(itemVal.getId())) {
+                itemVal.setAnswer(encryptedMap.get(itemVal.getId()));
+            }
+
+            outputList.add(itemVal);
+        }
+        return outputList;
+    }
+
+    public List<MultiValueOutputResult> encryptAnswersByAES(List<MultiValueOutputResult> inputList, InticsIntegrity encryption) {
+
+        // Step 1: Convert to EncryptionRequestClass
+        List<EncryptionRequestClass> encryptionRequests = inputList.stream()
+                .filter(MultiValueOutputResult::getIsEncrypted)
+                .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
+                .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(),String.valueOf(obj.getId())))
+                .collect(Collectors.toList());
+        log.info(aMarker, "Total records to encrypt for answers: {}", encryptionRequests.size());
+        // Step 2: Call external Protegrity API
+        List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
+
+        // Step 3: Build a lookup map from response
+        Map<Long, String> encryptedMap = responseList.stream()
+                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .collect(Collectors.toMap(
+                        item -> Long.parseLong(item.getKey()),
+                        EncryptionRequestClass::getValue
+                ));
+
+
+        // Step 4: Update original list
+        for (MultiValueOutputResult itemVal : inputList) {
+            Integer keyVal = itemVal.getId();
+            if (itemVal.getId() != null && encryptedMap.containsKey(keyVal)) {
+                itemVal.setAnswer(encryptedMap.get(itemVal.getId()));
+            }
+        }
+        return inputList;
+    }
 
 }

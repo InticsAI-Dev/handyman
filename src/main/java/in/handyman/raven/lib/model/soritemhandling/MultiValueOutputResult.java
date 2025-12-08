@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MultiValueOutputResult {
+    private Integer id;
     private String status;
     private String answer;
     private String bBox;
