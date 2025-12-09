@@ -1,10 +1,12 @@
 package in.handyman.raven.lib.adapters.selections;
 
+import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelConfig;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -20,6 +22,6 @@ public class ExtractedField {
     private Set<String> blacklistedSections;
     private boolean isLabelMatching;
     private String labelMatchMessage;
-    private Set<String> whitelistedLabels;
+    private List<WhitelistLabelConfig> whitelistedLabels;
 
 }
