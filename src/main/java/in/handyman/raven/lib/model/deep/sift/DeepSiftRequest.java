@@ -28,4 +28,6 @@ public class DeepSiftRequest {
     private String modelName;
     private String templateName;
     private UUID requestId;
+    private Boolean coproMetricsActivator;
+
 }

@@ -103,6 +103,10 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         String originId = entity.getOriginId();
         Long processId = entity.getProcessId();
         Long tenantId = entity.getTenantId();
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsActivator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricsActivator(coproMetricsActivator);
 
         if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
                 && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")) {
@@ -170,6 +174,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setSorContainerId(entity.getSorContainerId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
         radonKvpExtractionRequest.setRequestId(entity.getRequestId());
+        radonKvpExtractionRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
 
         String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
                 ? fileProcessingUtils.convertFileToBase64(filePath)
@@ -412,7 +417,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
                     .requestId(entity.getRequestId())
-                    .coproStatusCode(Integer.parseInt(modelResponse.getStatusCode()))
+                    .coproStatusCode(modelResponse.getStatusCode())
                     .coproLog(modelResponse.getErrorMessage())
                     .coproErrorDetails(modelResponse.getDetail())
                     .computationDetails(mapper.writeValueAsString(modelResponse.getComputationDetails()))

@@ -82,6 +82,10 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     public List<DocumentEyeCueOutputTable> process(URL endpoint, DocumentEyeCueInputTable entity) throws Exception {
         log.info(aMarker, "Document EyeCue consumer process started with endpoint {} and File path {}",
                 endpoint, entity.getFilePath());
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsCalculator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricActivator(coproMetricsCalculator);
 
         return documentEyeCueApiCall(entity, action, endpoint, documentEyeCue.getOutputDir());
     }
@@ -126,6 +130,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         documentEyeCueRequest.setActionId(action.getActionId().intValue());
         documentEyeCueRequest.setOutputDir(outputDir);
         documentEyeCueRequest.setRequestId(entity.getRequestId());
+        documentEyeCueRequest.setCoproMetricsActivator(entity.getCoproMetricActivator());
 
         // Set file path or base64 based on processing format
         String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())

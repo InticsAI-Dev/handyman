@@ -72,11 +72,11 @@ public class DeepSiftActionTest {
                 .condition(true)
                 .endPoint("http://localhost:8001/xenon-textract")
                 .processId("138980184199100180")
-                .resultTable("transit_data.deep_sift_output_5112")
+                .resultTable("deep_sift.deep_sift_output_audit")
                 .querySet("SELECT     dsi.origin_id,     dsi.group_id,     dsi.created_on,     dsi.created_by,     \n" +
                         "'/data/processed_images/pdf2png/COMM_P2_INREQ_3 (1)/COMM_P2_INREQ_3 (1)-1.png' as input_file_path,     dsi.root_pipeline_id,     dsi.tenant_id,     dsi.batch_id, \n" +
                         "dsi.paper_no,     dsi.source_document_type,     dsi.model_id,     dsi.model_name,   \n" +
-                        "dsi.base_prompt,     dsi.system_prompt, gen_random_uuid() as request_id FROM transit_data.deep_sift_input_5112 dsi\n" )
+                        "dsi.base_prompt,     dsi.system_prompt, gen_random_uuid() as request_id FROM deep_sift.deep_sift_input_audit dsi limit 1;" )
                 .forkBatchSize("5")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -98,8 +98,8 @@ public class DeepSiftActionTest {
                 Map.entry("write.batch.size", "1"),
                 Map.entry("deep.sift.extraction.activator", "true"),
                 Map.entry("copro.isretry.enabled", "true"),
-                Map.entry("copro.processor.consumer.route.type", "MODERN")
-
+                Map.entry("copro.processor.consumer.route.type", "MODERN"),
+                Map.entry("copro.metrics.activator", "true")
         ));
         DeepSiftAction deepSiftAction = new DeepSiftAction(actionExecutionAudit, log, deepSift);
         deepSiftAction.execute();

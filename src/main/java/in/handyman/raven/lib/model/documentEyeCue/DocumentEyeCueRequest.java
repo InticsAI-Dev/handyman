@@ -28,4 +28,5 @@ public class DocumentEyeCueRequest {
     private Boolean skipTextPages = true;
     private Integer maxPaperCount;
     private UUID requestId;
+    private Boolean coproMetricsActivator;
 }

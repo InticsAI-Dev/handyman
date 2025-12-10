@@ -105,6 +105,11 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             String textExtractionModelName = action.getContext().get(AGENTIC_PAPER_FILTER_MODEL_NAME);
             String inputFilePath = entity.getFilePath();
             String filePath = String.valueOf(entity.getFilePath());
+            final UUID requestId = UUID.randomUUID();
+            final Boolean coproMetricsActivator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+            entity.setRequestId(requestId);
+            entity.setCoproMetricsActivator(coproMetricsActivator);
+
 
             if (log.isInfoEnabled()) {
                 log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
@@ -169,6 +174,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         radonKvpExtractionRequest.setModelName(action.getContext().get("agentic.paper.filter.activator").equalsIgnoreCase("true") ? "KRYPTON" : entity.getModelName());
         radonKvpExtractionRequest.setRequestId(entity.getRequestId());
+        radonKvpExtractionRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
         return radonKvpExtractionRequest;
     }
 
@@ -354,7 +360,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                     .computationDetails(mapper.writeValueAsString(dataExtractionDataItem.getComputationDetails()))
                     .coproErrorDetails(dataExtractionDataItem.getDetail())
                     .coproLog(dataExtractionDataItem.getErrorMessage())
-                    .coproStatusCode(Integer.valueOf(dataExtractionDataItem.getStatusCode()))
+                    .coproStatusCode(dataExtractionDataItem.getStatusCode())
                     .requestId(entity.getRequestId())
                     .build());
         }

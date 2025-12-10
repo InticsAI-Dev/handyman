@@ -37,6 +37,8 @@ public class AgenticPaperFilterInput  implements CoproProcessor.Entity {
     private Integer uniqueId;
     private String promptType;
     private UUID requestId;
+    private Boolean coproMetricsActivator;
+
 
 
 

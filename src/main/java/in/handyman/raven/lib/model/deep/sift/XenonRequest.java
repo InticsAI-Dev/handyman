@@ -25,6 +25,7 @@ public class XenonRequest {
     private Long actionId;
     private String inputFilePath;
     private UUID requestId;
+    private Boolean coproMetricsActivator;
 
     @JsonProperty("base64Image")
     private String base64Img;

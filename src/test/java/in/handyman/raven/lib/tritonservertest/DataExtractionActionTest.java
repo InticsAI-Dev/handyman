@@ -272,29 +272,22 @@ class DataExtractionActionTest {
                 .condition(true)
                 .endPoint("http://0.0.0.0:7999/predict")
                 .processId("138980184199100180")
-                .resultTable("transit_data.agentic_paper_filter_output_6834")
-                .querySet("SELECT\n" +
-                        "a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,\n" +
-                        "'/data/processed_images/11-11-2025_04_11_40/tenant_1/group_91/preprocess/paper_itemizer/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as file_path, b.root_pipeline_id, a.template_name , a.batch_id as batch_id\n" +
-                        ",'61f0c404-5cb3-11e7-907b-a6006ad3dba0' as request_id,\n" +
-                        "r.base_prompt  as user_prompt, r.system_prompt as system_prompt\n" +
-                        "FROM info.source_of_truth a\n" +
-                        "join info.asset a2 on a.asset_id =a2.asset_id  and a.tenant_id=a2.tenant_id\n" +
-                        "LEFT JOIN sor_meta.radon_prompt_table r\n" +
-                        "ON r.tenant_id = a.tenant_id\n" +
-                        "JOIN paper_filter.agentic_paper_filter_payload_queue_archive b\n" +
-                        "ON a.origin_id = b.origin_id AND a.tenant_id = b.tenant_id\n" +
-                        "WHERE a.group_id = 27\n" +
-                        "AND a.tenant_id = 1\n" +
-                        "AND b.batch_id = 'BATCH-27_0'\n" +
-                        "AND r.process = 'AGENTIC_PAPER_FILTER'\n" +
-                        "AND r.use_case = 'PAPER_FILTER'\n" +
-                        "AND r.status ='ACTIVE'\n" +
-                        "AND r.version = '1'\n" +
-                        "AND r.prompt_type = 'DOCUMENT'\n" +
-                        "AND r.document_type = 'MEDICAL_GBD'\n" +
-                        "AND a.paper_no BETWEEN 1 AND 20\n" +
-                        "limit 1;\n")
+                .resultTable("paper_filter.agentic_paper_filter_output_audit")
+                .querySet("SELECT a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no, \n" +
+                        "'/data/processed_images/11-11-2025_04_11_40/tenant_1/group_91/preprocess/paper_itemizer/pdf_to_image/processed/COMM_P2_INREQ_3/COMM_P2_INREQ_3_1.png' as file_path, b.root_pipeline_id, a.template_name,         \n" +
+                        "b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt   \n" +
+                        "FROM paper_filter.agentic_paper_filter_payload_queue_archive b         \n" +
+                        "JOIN info.source_of_truth a            \n" +
+                        "ON a.origin_id = b.origin_id AND a.tenant_id = b.tenant_id AND a.batch_id = b.batch_id  \n" +
+                        "join info.asset a2 on a.asset_id =a2.asset_id  and a.tenant_id=a2.tenant_id    \n" +
+                        "LEFT JOIN sor_meta.radon_prompt_table r             \n" +
+                        "ON r.tenant_id = a.tenant_id        \n" +
+                        "WHERE  a.group_id = 19      \n" +
+                        "AND a.tenant_id = 1            AND b.batch_id = 'BATCH-19_0'          \n" +
+                        "AND r.process = 'AGENTIC_PAPER_FILTER'            AND r.use_case = 'PAPER_FILTER'     \n" +
+                        "AND r.status ='ACTIVE'            AND r.version = '1'      \n" +
+                        "AND r.prompt_type = 'DOCUMENT'            AND r.document_type = 'MEDICAL_COMMERCIAL'       \n" +
+                        "AND a.paper_no BETWEEN 1 AND 2;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:8000/predict");
@@ -314,6 +307,7 @@ class DataExtractionActionTest {
                 Map.entry(ENCRYPT_AGENTIC_FILTER_OUTPUT, "false"),
                 Map.entry("page.content.min.length.threshold", "1"),
                 Map.entry("copro.isretry.enabled", "true"),
+                Map.entry("copro.metrics.activator", "true"),
                 Map.entry("write.batch.size", "1")));
 
         AgenticPaperFilterAction dataExtractionAction = new AgenticPaperFilterAction(actionExecutionAudit, log, dataExtraction);

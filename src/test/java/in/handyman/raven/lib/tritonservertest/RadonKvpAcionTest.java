@@ -26,7 +26,7 @@ public class RadonKvpAcionTest {
                         "WHEN 'KRYPTON' = 'NEON' then 'NEON START' end) as api_name,sc.post_processing::bool as post_process,sc.post_process_class_name as post_process_class_name,sc.sor_container_id, request_id\n" +
                         "FROM sor_transaction.radon_kvp_input_audit a    \n" +
                         "JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id    \n" +
-                        "WHERE a.model_registry = 'RADON'  and a.root_pipeline_id=1033 and a.request_id='0aaac5f0-9dd7-490e-8d3e-479ea3d0b7b4';")
+                        "WHERE a.model_registry = 'RADON' limit 1;")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -57,6 +57,7 @@ public class RadonKvpAcionTest {
         ac.getContext().put("pipeline.req.res.encryption", "false");
         ac.getContext().put("copro.processor.consumer.route.type", "MODERN");
         ac.getContext().put("copro.isretry.enabled", "true");
+        ac.getContext().put("copro.metrics.activator", "true");
 
 
 

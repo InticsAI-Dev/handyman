@@ -262,10 +262,10 @@ public class CoproRetryService {
                 String coproLog = null;
                 String coproDetails = null;
                 String requestId = null;
-
+                final String peekResponseBody = response.peekBody(Long.MAX_VALUE).string();
                 if (!outputs.isEmpty()) {
 
-                    final JsonNode innerJson = setParsedResponseValue(response, action);
+                    final JsonNode innerJson = setParsedResponseValue(action, peekResponseBody);
 
                     // computationDetails
                     JsonNode compNode = innerJson.get("computationDetails");
@@ -317,7 +317,7 @@ public class CoproRetryService {
                 }
 
 
-                retryAudit.setResponse(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
+                retryAudit.setResponse(encryptRequestResponse(peekResponseBody, action));
                 retryAudit.setCoproLog(coproLog);
 
                 retryAudit.setComputationDetails(computationDetails);
@@ -340,9 +340,9 @@ public class CoproRetryService {
         }
     }
 
-    private JsonNode setParsedResponseValue(Response response, ActionExecutionAudit action) throws IOException {
+    private JsonNode setParsedResponseValue(ActionExecutionAudit action, String responseBody) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
+        JsonNode root = mapper.readTree(encryptRequestResponse(responseBody, action));
         JsonNode outputs = root.path("outputs");
         JsonNode dataNode = outputs.get(0).path("data").get(0);
         return mapper.readTree(dataNode.asText());

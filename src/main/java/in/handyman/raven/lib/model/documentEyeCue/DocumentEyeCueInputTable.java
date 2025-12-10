@@ -29,6 +29,7 @@ public class DocumentEyeCueInputTable implements CoproProcessor.Entity {
     private String documentId;
     private String fileName;
     private UUID requestId;
+    private Boolean coproMetricActivator;
 
     @Override
     public List<Object> getRowData() {

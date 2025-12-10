@@ -66,6 +66,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
     @Override
     public List<DeepSiftOutputTable> process(URL endpoint, DeepSiftInputTable entity) throws IOException {
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsCalculator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricsActivator(coproMetricsCalculator);
         List<DeepSiftOutputTable> parentObj = new ArrayList<>();
         long startTime = System.currentTimeMillis();
 
@@ -128,6 +132,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         deepSiftRequest.setModelName(entity.getModelName());
         deepSiftRequest.setPaperNo(entity.getPaperNo());
         deepSiftRequest.setRequestId(entity.getRequestId());
+        deepSiftRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
         return deepSiftRequest;
     }
 
@@ -146,6 +151,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .inputFilePath(deepSiftRequest.getInputFilePath())
                 .base64Img(deepSiftRequest.getBase64Img())
                 .requestId(deepSiftRequest.getRequestId())
+                .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
                 .build();
         return objectMapper.writeValueAsString(customRequest);
     }
@@ -165,6 +171,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     .actionId(deepSiftRequest.getActionId())
                     .inputFilePath(deepSiftRequest.getInputFilePath())
                     .requestId(deepSiftRequest.getRequestId())
+                    .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
                     .build();
             return objectMapper.writeValueAsString(sanitizedRequest);
         } catch (JsonProcessingException e) {

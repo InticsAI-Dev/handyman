@@ -35,7 +35,7 @@ public class RadonKvpLineItem {
     private String extractedImageUnit;
     private String processName;
     private ComputationDetails computationDetails;
-    private String statusCode;
+    private Integer statusCode;
     private String errorMessage;
     private String detail;
     private String modelVersion;
