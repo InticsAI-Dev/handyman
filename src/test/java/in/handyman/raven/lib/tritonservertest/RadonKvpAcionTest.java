@@ -27,7 +27,7 @@ public class RadonKvpAcionTest {
                         "                    sc.post_process_class_name as post_process_class_name,sc.sor_container_id,sc.sor_container_name\n" +
                         "                    FROM sor_transaction.radon_kvp_input_audit a\n" +
                         "                    JOIN sor_meta.sor_container sc on a.sor_container_id=sc.sor_container_id\n" +
-                        "WHERE a.model_registry = 'RADON' and a.tenant_id=1 and a.batch_id ='BATCH-15_0' and a.sor_container_id =1442;\n")
+                        "WHERE a.model_registry = 'RADON' and a.tenant_id=1 and a.id=1608;\n")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

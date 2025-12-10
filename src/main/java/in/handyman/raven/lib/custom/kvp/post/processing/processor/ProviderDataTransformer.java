@@ -235,14 +235,13 @@ public class ProviderDataTransformer {
             }
 
             kvpContainers.forEach((container, kvps) -> {
-                String containerInstance = container+"_"+ counter.incrementAndGet();
                 Optional<String> containerIdOpt = getContainerId(container);
                 containerIdOpt.ifPresent(containerId -> {
                     try {
                         String responseJson = objectMapper.writeValueAsString(kvps);
 
 
-                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson,containerInstance));
+                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson,container));
                     } catch (JsonProcessingException e) {
                         String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
                         handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
@@ -270,22 +269,49 @@ public class ProviderDataTransformer {
     private Optional<String> getContainerId(String sorContainerName) {
         log.info("Fetching container ID for {}", sorContainerName);
 
+
+        String normalizedContainerName = normalizeContainerName(sorContainerName);
+
+        log.info("Fetching container ID normalized container name {}", normalizedContainerName);
         String query = "SELECT sor_container_id FROM sor_meta.sor_container " +
                 "WHERE sor_container_name = :sorContainerName " +
                 "AND document_type = :documentType " +
                 "AND tenant_id = :tenantId " +
                 "AND status='ACTIVE'";
 
-        log.info(aMarker, "Fetching container ID for {}", sorContainerName);
+        log.info(aMarker, "Fetching container ID for {}", normalizedContainerName);
 
         Map<String, Object> params = Map.of(
                 "documentType", action.getContext().get("document_type"),
                 "tenantId", Long.valueOf(action.getContext().get("tenant_id")),
-                "sorContainerName", sorContainerName
+                "sorContainerName", normalizedContainerName
         );
 
         return DatabaseUtility.fetchSingleResult(jdbiResourceName, query, params);
     }
+
+    public static String normalizeContainerName(String sorContainerName) {
+        if (sorContainerName == null) return null;
+
+        int lastUnderscore = sorContainerName.lastIndexOf('_');
+
+        // No underscore → return as is
+        if (lastUnderscore == -1) {
+            return sorContainerName;
+        }
+
+        String prefix = sorContainerName.substring(0, lastUnderscore);
+        String lastPart = sorContainerName.substring(lastUnderscore + 1);
+
+        // Check if last part is a number
+        if (lastPart.matches("\\d+")) {
+            return prefix;
+        }
+
+        // Not a number → return as is
+        return sorContainerName;
+    }
+
 
     private String encryptIfRequired(String content) {
 
