@@ -50,10 +50,10 @@ public class CoproRetryService {
     public Response callCoproApiWithRetry(Request request,
                                           String requestBody,
                                           CoproRetryErrorAuditTable retryAudit,
-                                          ActionExecutionAudit actionAudit) throws IOException {
+                                          ActionExecutionAudit actionAudit, UUID requestId) throws IOException {
         int maxRetries = Integer.parseInt(actionAudit.getContext().getOrDefault("copro.retry.attempt", "1"));
         IOException lastException = null;
-        retryAudit.setCoproServiceId(UUID.randomUUID().toString());
+        retryAudit.setCoproServiceId(requestId.toString());
         log.info("Starting Copro API call with up to {} retries for stage {} with id {}",
                 maxRetries,retryAudit.getStage(),retryAudit.getCoproServiceId());
 
@@ -261,7 +261,6 @@ public class CoproRetryService {
                 Integer coproStatusCode = null;
                 String coproLog = null;
                 String coproDetails = null;
-                String requestId = null;
                 final String peekResponseBody = response.peekBody(Long.MAX_VALUE).string();
                 if (!outputs.isEmpty()) {
 
@@ -285,8 +284,6 @@ public class CoproRetryService {
 
                     // requestId
                     JsonNode reqNode = innerJson.get("requestId");
-                    requestId = reqNode != null && !reqNode.isNull() ? reqNode.asText() : null;
-
                 } else if (
                         root.has("process")
                                 && ("DATA_EXTRACTION".equals(root.get("process").asText())
@@ -313,7 +310,6 @@ public class CoproRetryService {
 
                     // requestId
                     JsonNode reqNode = root.get("requestId");
-                    requestId = reqNode != null && !reqNode.isNull() ? reqNode.asText() : null;
                 }
 
 
@@ -322,7 +318,6 @@ public class CoproRetryService {
 
                 retryAudit.setComputationDetails(computationDetails);
                 retryAudit.setCoproDetails(coproDetails);
-                retryAudit.setRequestId(requestId);
                 retryAudit.setCoproStatusCode(coproStatusCode);
 
             } catch (IOException ex) {

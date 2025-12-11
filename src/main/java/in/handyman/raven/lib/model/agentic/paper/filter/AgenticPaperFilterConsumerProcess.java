@@ -192,7 +192,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Response response;
         try {
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
-                    ? coproRetryService.callCoproApiWithRetry(request, requestForInsert, auditInput, this.action)
+                    ? coproRetryService.callCoproApiWithRetry(request, requestForInsert, auditInput, this.action, entity.getRequestId())
                     : httpclient.newCall(request).execute();
 
             if (response == null) {

@@ -226,7 +226,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         Response response;
         try {
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
-                    ? coproRetryService.callCoproApiWithRetry(request, jsonInsertRequest, auditInput, this.action)
+                    ? coproRetryService.callCoproApiWithRetry(request, jsonInsertRequest, auditInput, this.action, entity.getRequestId())
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";

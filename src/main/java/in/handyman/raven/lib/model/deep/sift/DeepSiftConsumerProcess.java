@@ -190,7 +190,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         Response response;
         try {
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
-                    ? coproRetryService.callCoproApiWithRetry(request, dbJsonRequest, auditInput, this.action)
+                    ? coproRetryService.callCoproApiWithRetry(request, dbJsonRequest, auditInput, this.action, entity.getRequestId())
                     : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
