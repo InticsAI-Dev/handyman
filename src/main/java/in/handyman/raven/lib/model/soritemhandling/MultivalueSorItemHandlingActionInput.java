@@ -42,5 +42,6 @@ public class MultivalueSorItemHandlingActionInput {
     private String sorContainerInstance;
     private String isMultiEntityEnabled;
     private String sorContainerName;
-
+    private String sectionAlias;
+    private String whitelistedSections;
 }

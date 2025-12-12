@@ -1,5 +1,7 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
@@ -45,6 +47,7 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
   private final Logger log;
 
   private final MultivalueSorItemHandling multivalueSorItemHandling;
+    static ObjectMapper mapper = new ObjectMapper();
 
   private final Marker aMarker;
   public static final String AES_256 = "AES256";
@@ -75,19 +78,26 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
 
           List<MultivalueSorItemHandlingActionInput> singleValueFilteredList =
                   multivalueConcatenationInputs.stream()
-                          .filter(item -> "single_value".equals(item.getLineItemType()))
+                          .filter(item -> "single_value".equals(item.getLineItemType()) && !"multiple_member_indicator".equals(item.getSorItemName()))
                           .collect(Collectors.toList());
 
           List<MultivalueSorItemHandlingActionInput> multiValueFilteredList =
                   multivalueConcatenationInputs.stream()
-                          .filter(item -> "multi_value".equals(item.getLineItemType()))
+                          .filter(item -> "multi_value".equals(item.getLineItemType()) && !"multiple_member_indicator".equals(item.getSorItemName()))
                           .collect(Collectors.toList());
 
-          List<MultivalueSorItemHandlingActionInput> maxSingleValueFilteredList=selectMaxCountNodes(singleValueFilteredList);
+          List<MultivalueSorItemHandlingActionInput> multiMemberKeyFilteredList =
+                  multivalueConcatenationInputs.stream()
+                          .filter(item -> "multiple_member_indicator".equals(item.getSorItemName()))
+                          .collect(Collectors.toList());
+
+          List<MultivalueSorItemHandlingActionInput> maxSingleValueFilteredList=filterBySectionAliasOrFallback(singleValueFilteredList);
 
           handleSingleValueLineItems(maxSingleValueFilteredList, pipelineEndToEndEncryptionActivator, encryption, output);
 
           handleMultiValueLineItems(multiValueFilteredList, pipelineEndToEndEncryptionActivator, encryption, output);
+
+          handleSingleValueLineItems(multiMemberKeyFilteredList, pipelineEndToEndEncryptionActivator, encryption, output);
 
           outputBuilderAndInsert(jdbi, outputTableName, output);
 
@@ -104,42 +114,102 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
 
   }
 
-    public static List<MultivalueSorItemHandlingActionInput> reindexSorContainerInstances(
-            List<MultivalueSorItemHandlingActionInput> list) {
+    public List<MultivalueSorItemHandlingActionInput> filterBySectionAliasOrFallback(
+            List<MultivalueSorItemHandlingActionInput> inputs
+    ) {
+        if (inputs == null || inputs.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        // Step 1: Normalize container names -> MEMBER_DETAILS_0 → MEMBER_DETAILS
-        Function<String, String> normalize = (container) -> {
-            if (container == null) return null;
-            return container;
-        };
+        ObjectMapper mapper = new ObjectMapper();
+        List<MultivalueSorItemHandlingActionInput> finalOutput = new ArrayList<>();
 
-        // Step 2: Group by normalized container name
-        Map<String, List<MultivalueSorItemHandlingActionInput>> grouped =
-                list.stream().collect(Collectors.groupingBy(
-                        x -> normalize.apply(x.getSorContainerInstance()),
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
+        // -------------------------------
+        // Group base: originId → paperNo → sorContainerInstance
+        // -------------------------------
+        Map<String, Map<Long, Map<String, List<MultivalueSorItemHandlingActionInput>>>> grouped =
+                inputs.stream().collect(
+                        Collectors.groupingBy(
+                                MultivalueSorItemHandlingActionInput::getOriginId,
+                                Collectors.groupingBy(
+                                        MultivalueSorItemHandlingActionInput::getPaperNo,
+                                        Collectors.groupingBy(
+                                                MultivalueSorItemHandlingActionInput::getSorContainerInstance
+                                        )
+                                )
+                        )
+                );
 
-        // Step 3: Reassign new sequential container ids
-        int globalCounter = 1;   // You want the new output to start from 1
+        // Process each instance group
+        for (String originId : grouped.keySet()) {
+            for (Long paperNo : grouped.get(originId).keySet()) {
+                for (String instance : grouped.get(originId).get(paperNo).keySet()) {
 
-        for (Map.Entry<String, List<MultivalueSorItemHandlingActionInput>> entry : grouped.entrySet()) {
+                    List<MultivalueSorItemHandlingActionInput> instanceList =
+                            grouped.get(originId).get(paperNo).get(instance);
 
-            String baseName = entry.getKey();
-            List<MultivalueSorItemHandlingActionInput> items = entry.getValue();
+                    // For priority selection
+                    int bestPriority = Integer.MAX_VALUE;
+                    List<MultivalueSorItemHandlingActionInput> bestMatches = new ArrayList<>();
 
-            for (MultivalueSorItemHandlingActionInput item : items) {
+                    for (MultivalueSorItemHandlingActionInput item : instanceList) {
 
-                String newContainerInstance = baseName + "_" + globalCounter;
-                item.setSorContainerInstance(newContainerInstance);
+                        String rawJson = item.getWhitelistedSections();
+                        String alias = item.getSectionAlias();
 
-                globalCounter++;
+                        if (rawJson == null || alias == null) {
+                            continue;
+                        }
+
+                        try {
+                            List<Map<String, Object>> parsed =
+                                    mapper.readValue(rawJson, new TypeReference<List<Map<String, Object>>>() {});
+
+                            for (Map<String, Object> entry : parsed) {
+                                String truthEntity = (String) entry.get("truthEntity");
+                                Integer priority = (Integer) entry.get("priorityLevel");
+
+                                if (truthEntity == null || priority == null) continue;
+
+                                // contains-match (case insensitive)
+                                if (alias.toLowerCase().contains(truthEntity.toLowerCase())) {
+
+                                    if (priority < bestPriority) { // smaller = higher priority
+                                        bestPriority = priority;
+                                        bestMatches.clear();
+                                        bestMatches.add(item);
+                                    } else if (priority == bestPriority) {
+                                        bestMatches.add(item);
+                                    }
+                                }
+                            }
+
+                        } catch (Exception e) {
+                            // ignore JSON parse errors for this entry
+                        }
+                    }
+
+                    // If at least one priority-based match exists
+                    if (!bestMatches.isEmpty()) {
+                        finalOutput.addAll(bestMatches);
+                    }
+                }
             }
         }
 
-        return list;
+        // -------------------------------
+        // If priority-based filtering returned something → apply max-group logic
+        // -------------------------------
+        if (!finalOutput.isEmpty()) {
+            return selectMaxCountNodes(finalOutput);
+        }
+
+        // -------------------------------
+        // Priority returned ZERO → fallback
+        // -------------------------------
+        return selectMaxCountNodes(inputs);
     }
+
 
     public static List<MultivalueSorItemHandlingActionInput> selectMaxCountNodes(
             List<MultivalueSorItemHandlingActionInput> list) {
@@ -195,6 +265,13 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     }
 
 
+    private static List<WhitelistEntry> parseWhitelistEntries(String json) {
+        try {
+            return mapper.readValue(json, new TypeReference<List<WhitelistEntry>>() {});
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
 
 
     public List<MultiValueOutputResult> getSingleValueOutputResults(List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption, String outputTableName){
@@ -243,13 +320,10 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
         return output;
     }
 
-    private void handleSingleValueLineItems(List<MultivalueSorItemHandlingActionInput> multivalueSorItemHandlingActionInput, Boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption, List<MultiValueOutputResult> output) {
-        List<MultivalueSorItemHandlingActionInput> singleValueFilteredList =
-                multivalueSorItemHandlingActionInput.stream()
-                        .filter(item -> "single_value".equals(item.getLineItemType()))
-                        .collect(Collectors.toList());
 
-        singleValueFilteredList.forEach(multivalueSorItemHandlingActionInput1 -> {
+    private void handleSingleValueLineItems(List<MultivalueSorItemHandlingActionInput> multivalueSorItemHandlingActionInput, Boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption, List<MultiValueOutputResult> output) {
+
+        multivalueSorItemHandlingActionInput.forEach(multivalueSorItemHandlingActionInput1 -> {
             output.add(buildOutputResult(multivalueSorItemHandlingActionInput1, multivalueSorItemHandlingActionInput1.getAnswer(), pipelineEndToEndEncryptionActivator, encryption));
             log.info(aMarker, "Filtered multi value item for document id {}", multivalueSorItemHandlingActionInput1.getDocumentId());
         });
@@ -449,6 +523,13 @@ public class MultivalueSorItemHandlingAction implements IMultivalueSorItemHandli
     }
 
 
+    public static class WhitelistEntry {
+        private String truthEntity;
+        private int priorityLevel;
+
+        public String getTruthEntity() { return truthEntity; }
+        public int getPriorityLevel() { return priorityLevel; }
+    }
 
 
 }

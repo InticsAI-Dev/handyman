@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 class multiValueSorItemHandlingTest {
@@ -53,16 +54,24 @@ class multiValueSorItemHandlingTest {
                 .condition(true)
                 .outputTable("entity_voting.sor_item_multivalue_filtering_output")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("\n" +
-                        "             select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
+                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
                         "            vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
                         "            vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
                         "            vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
                         "            vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
-                        "            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, false as is_multi_entity_enabled, vqa.sor_container_instance ,ep.sor_container_name\n" +
-                        "            from sor_transaction.vqa_transaction vqa\n" +
-                        "            join transit_data.sor_meta_consolidated_15280 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
-                        "            where vqa.origin_id='ORIGIN-80' and ep.sor_container_name like ('MEMBER_DETAILS');\n")
+                        "            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections\n" +
+                        "            from transit_data.vqa_transaction_16068 vqa\n" +
+                        "            join transit_data.sor_meta_consolidated_16068 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
+                        "            LEFT JOIN (\n" +
+                        "                                    SELECT\n" +
+                        "                                        sor_container_id,\n" +
+                        "                                        jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections\n" +
+                        "                                    FROM sor_meta.truth_entity_priority\n" +
+                        "                                    WHERE section_type = 'ALLOWED'\n" +
+                        "                                    GROUP BY sor_container_id\n" +
+                        "                                ) bs\n" +
+                        "                                    ON bs.sor_container_id = ep.sor_container_id\n" +
+                        "            where ep.sor_container_name like ('MEMBER_DETAILS');\n")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
@@ -81,13 +90,20 @@ class multiValueSorItemHandlingTest {
             System.out.println(multivalueConcatenationInput);
         }
 
-        List<MultivalueSorItemHandlingActionInput> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.selectMaxCountNodes(multivalueConcatenationInputs);
+        List<MultivalueSorItemHandlingActionInput> singleValueFilteredList =
+                multivalueConcatenationInputs.stream()
+                        .filter(item -> "single_value".equals(item.getLineItemType()) && !"multiple_member_indicator".equals(item.getSorItemName()))
+                        .collect(Collectors.toList());
+
+        List<MultivalueSorItemHandlingActionInput> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.filterBySectionAliasOrFallback(singleValueFilteredList);
         System.out.println("Max sor Instance Outputs:");
         remappedMultivalueSorItemHandlingAction.forEach(multivalueSorItemHandlingActionInput -> {
             System.out.println(multivalueSorItemHandlingActionInput);
         });
 
     }
+
+
     private List<MultivalueSorItemHandlingActionInput> buildTestData() {
 
         List<MultivalueSorItemHandlingActionInput> list = new ArrayList<>();
