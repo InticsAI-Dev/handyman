@@ -200,40 +200,47 @@ public class LabelWithPriorityProcessor {
             winner = topPriorityRows.get(0);
         } else {
 
-            // Check if all answers are equal
+            winner = topPriorityRows.stream()
+                    .min(Comparator
+                            .comparing((SelectionFilteringInputTable r) ->
+                                    !hasNonEmptyAnswer(r))
+                            .thenComparingLong(SelectionFilteringInputTable::getId)
+                    )
+                    .orElseThrow();
+
             boolean allEqualAnswers = topPriorityRows.stream()
                     .map(SelectionFilteringInputTable::getAnswer)
                     .filter(Objects::nonNull)
+                    .filter(a -> !a.isBlank())
                     .collect(Collectors.toSet())
                     .size() <= 1;
 
-            // ★ NEW RULE ★
-            // Same priority & same (or different) answers → pick MIN ID
-            winner = topPriorityRows.stream()
-                    .min(Comparator.comparingLong(SelectionFilteringInputTable::getId))
-                    .orElseThrow();
-
-            if (allEqualAnswers) {
+            if (hasNonEmptyAnswer(winner)) {
+                winner.setLabelMatchMessage(
+                        appendMsg(winner, "Selected: has answer with priority " + minPriority)
+                );
+            } else if (allEqualAnswers) {
                 winner.setLabelMatchMessage(
                         appendMsg(winner, "Equal answers → selected min id")
                 );
             } else {
                 winner.setLabelMatchMessage(
-                        appendMsg(winner, "Different answers → selected min id")
+                        appendMsg(winner, "Selected min id (no answers present)")
                 );
             }
         }
 
-        // Mark winner and losers
         for (SelectionFilteringInputTable r : rows) {
             boolean isWinner = (r == winner);
             r.setLabelMatching(isWinner);
-            r.setLabelMatchMessage(
-                    appendMsg(r,
-                            isWinner ? "Selected using priority + id tiebreak"
-                                    : "Rejected"
-                    )
-            );
+            if (!isWinner) {
+                r.setLabelMatchMessage(
+                        appendMsg(r, "Rejected: " +
+                                (hasNonEmptyAnswer(winner) && !hasNonEmptyAnswer(r)
+                                        ? "winner has answer"
+                                        : "lower id chosen"))
+                );
+            }
         }
 
         messages.add("Whitelist priority applied → origin: " + winner.getOriginId()
