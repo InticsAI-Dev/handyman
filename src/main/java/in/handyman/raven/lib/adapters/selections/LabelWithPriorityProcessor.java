@@ -21,7 +21,7 @@ public class LabelWithPriorityProcessor {
      */
     public List<SelectionFilteringInputTable> process(
             List<SelectionFilteringInputTable> input
-            ) {
+    ) {
         List<String> messages = new ArrayList<>();
 
         if (input == null || input.isEmpty()) return Collections.emptyList();
@@ -69,7 +69,7 @@ public class LabelWithPriorityProcessor {
 
         SelectionFilteringInputTable first = rows.get(0);
         boolean isFirstEmpty =
-                        (first.getWhitelistedLabelsWithPriority() == null || first.getWhitelistedLabelsWithPriority().isBlank() || extractPriorityMap(rows).isEmpty());
+                (first.getWhitelistedLabelsWithPriority() == null || first.getWhitelistedLabelsWithPriority().isBlank() || extractPriorityMap(rows).isEmpty());
 
 
         if (isFirstEmpty) {
@@ -199,34 +199,67 @@ public class LabelWithPriorityProcessor {
         if (topPriorityRows.size() == 1) {
             winner = topPriorityRows.get(0);
         } else {
-
-            winner = topPriorityRows.stream()
-                    .min(Comparator
-                            .comparing((SelectionFilteringInputTable r) ->
-                                    !hasNonEmptyAnswer(r))
-                            .thenComparingLong(SelectionFilteringInputTable::getId)
-                    )
-                    .orElseThrow();
-
-            boolean allEqualAnswers = topPriorityRows.stream()
-                    .map(SelectionFilteringInputTable::getAnswer)
-                    .filter(Objects::nonNull)
-                    .filter(a -> !a.isBlank())
+            // Check if all labels are the same
+            boolean allLabelsIdentical = topPriorityRows.stream()
+                    .map(r -> removeSpecialCharacters(r.getSorItemLabel()))
+                    .filter(label -> label != null && !label.isEmpty())
                     .collect(Collectors.toSet())
                     .size() <= 1;
 
-            if (hasNonEmptyAnswer(winner)) {
-                winner.setLabelMatchMessage(
-                        appendMsg(winner, "Selected: has answer with priority " + minPriority)
-                );
-            } else if (allEqualAnswers) {
-                winner.setLabelMatchMessage(
-                        appendMsg(winner, "Equal answers → selected min id")
-                );
+            if (allLabelsIdentical) {
+                // When all labels are same, prioritize by: min paperNo → has answer → min id
+                winner = topPriorityRows.stream()
+                        .min(Comparator
+                                .comparingLong(SelectionFilteringInputTable::getPaperNo)
+                                .thenComparing((SelectionFilteringInputTable r) -> !hasNonEmptyAnswer(r))
+                                .thenComparingLong(SelectionFilteringInputTable::getId)
+                        )
+                        .orElseThrow();
+
+                // Check if winner was selected from same page with multiple values
+                long winnerPageNo = winner.getPaperNo();
+                long samePageCount = topPriorityRows.stream()
+                        .filter(r -> r.getPaperNo() == winnerPageNo)
+                        .count();
+
+                if (samePageCount > 1) {
+                    winner.setLabelMatchMessage(
+                            appendMsg(winner, "Same label on page " + winnerPageNo + " → selected with answer/min id=" + winner.getId())
+                    );
+                } else {
+                    winner.setLabelMatchMessage(
+                            appendMsg(winner, "Same labels → selected min paperNo=" + winner.getPaperNo())
+                    );
+                }
             } else {
-                winner.setLabelMatchMessage(
-                        appendMsg(winner, "Selected min id (no answers present)")
-                );
+                // Different labels with same priority: has answer → min id
+                winner = topPriorityRows.stream()
+                        .min(Comparator
+                                .comparing((SelectionFilteringInputTable r) -> !hasNonEmptyAnswer(r))
+                                .thenComparingLong(SelectionFilteringInputTable::getId)
+                        )
+                        .orElseThrow();
+
+                boolean allEqualAnswers = topPriorityRows.stream()
+                        .map(SelectionFilteringInputTable::getAnswer)
+                        .filter(Objects::nonNull)
+                        .filter(a -> !a.isBlank())
+                        .collect(Collectors.toSet())
+                        .size() <= 1;
+
+                if (hasNonEmptyAnswer(winner)) {
+                    winner.setLabelMatchMessage(
+                            appendMsg(winner, "Selected: has answer with priority " + minPriority)
+                    );
+                } else if (allEqualAnswers) {
+                    winner.setLabelMatchMessage(
+                            appendMsg(winner, "Equal answers → selected min id")
+                    );
+                } else {
+                    winner.setLabelMatchMessage(
+                            appendMsg(winner, "Selected min id (no answers present)")
+                    );
+                }
             }
         }
 
@@ -238,7 +271,7 @@ public class LabelWithPriorityProcessor {
                         appendMsg(r, "Rejected: " +
                                 (hasNonEmptyAnswer(winner) && !hasNonEmptyAnswer(r)
                                         ? "winner has answer"
-                                        : "lower id chosen"))
+                                        : "lower paperNo/id chosen"))
                 );
             }
         }
