@@ -51,8 +51,8 @@ public class StoreContent {
     private static final String VERSIONING_FLAG = "Y";
     private static final String CONTENT_KEY_TYPE = "DCN";
     private static final String CHANNEL_TYPE_VALUE = "SMRTINT";
-    private static final String DOC_TYPE_VALUE = "LETTER";
-    private static final String PLAN_VALUE = "SMARTINTAKE_WC_CLAIMS";
+    private static final String DOC_TYPE_VALUE = "doc.eye.cue.store.content.doc.type.value";
+    private static final String PLAN_VALUE = "doc.eye.cue.store.content.smartintake.wc.claims";
     private static final String KEY_STORECONTENT_API_KEY = "storecontent.api.key";
     private static final Pattern UPDATED_SUFFIX_PATTERN = Pattern.compile("(?i)(?:_updated)(\\d+)?$");
 
@@ -249,13 +249,17 @@ public class StoreContent {
                     : file.getName();
 
             String fileName = getFileName(baseFileName, action, "NON-STREAMING");
+
+            String docTypeValue = action.getContext().get(DOC_TYPE_VALUE);
+            String planValue = action.getContext().get(PLAN_VALUE);
+
             contentMetadata.put("FileName", fileName);
             contentMetadata.put("MimeType",
                     Files.probeContentType(file.toPath()) != null
                             ? Files.probeContentType(file.toPath())
                             : DEFAULT_MIME_TYPE);
             contentMetadata.put("CHANNEL_TYPE", CHANNEL_TYPE_VALUE);
-            contentMetadata.put("DocType", DOC_TYPE_VALUE);
+            contentMetadata.put("DocType", docTypeValue);
             requestDto.setContentMetaData(contentMetadata);
 
             HashMap<String, String> additionalParams = new HashMap<>();
@@ -271,7 +275,7 @@ public class StoreContent {
             }
 
             additionalParams.put("contentkeytype", CONTENT_KEY_TYPE);
-            additionalParams.put("plan", PLAN_VALUE);
+            additionalParams.put("plan", planValue);
             requestDto.setAddtionalParams(additionalParams);
 
             HashMap<String, String> headers = new HashMap<>();
@@ -326,6 +330,7 @@ public class StoreContent {
                     : file.getName();
 
             String fileName = getFileName(baseFileName, action, "STREAMING");
+            String planValue = action.getContext().get(PLAN_VALUE);
             contentMetadata.put("FileName", fileName);
             contentMetadata.put("MimeType", DEFAULT_MIME_TYPE);
             requestDto.setContentMetaData(contentMetadata);
@@ -341,7 +346,7 @@ public class StoreContent {
                 additionalParams.put("contentkey", "");
             }
             additionalParams.put("contentkeytype", CONTENT_KEY_TYPE);
-            additionalParams.put("plan", PLAN_VALUE);
+            additionalParams.put("plan", planValue);
             requestDto.setAddtionalParams(additionalParams);
 
             HashMap<String, String> headers = new HashMap<>();
